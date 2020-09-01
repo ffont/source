@@ -28,6 +28,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <juce_opengl/juce_opengl.h>
+#include <juce_osc/juce_osc.h>
 
 
 #if defined (JUCE_PROJUCER_VERSION) && JUCE_PROJUCER_VERSION < JUCE_VERSION
@@ -49,8 +50,8 @@
 namespace ProjectInfo
 {
     const char* const  projectName    = "SourceSampler";
-    const char* const  companyName    = "";
-    const char* const  versionString  = "1.0.0";
-    const int          versionNumber  = 0x10000;
+    const char* const  companyName    = "Rita & Aurora";
+    const char* const  versionString  = "0.0.1";
+    const int          versionNumber  = 0x1;
 }
 #endif
