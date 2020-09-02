@@ -226,6 +226,13 @@
 			path = System/Library/Frameworks/Cocoa.framework;
 			sourceTree = SDKROOT;
 		};
+		13136607F9291DD5C2F82BAE = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = defines.h;
+			path = ../../Source/defines.h;
+			sourceTree = "SOURCE_ROOT";
+		};
 		160F33129C21F39682D768BC = {
 			isa = PBXFileReference;
 			lastKnownFileType = text.plist.xml;
@@ -287,6 +294,13 @@
 			lastKnownFileType = sourcecode.cpp.objcpp;
 			name = "include_juce_core.mm";
 			path = "../../JuceLibraryCode/include_juce_core.mm";
+			sourceTree = "SOURCE_ROOT";
+		};
+		372BAC76C5A8F2B77569BB78 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = ServerInterface.h;
+			path = ../../Source/ServerInterface.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		3A51C56292D0A44CFF079D55 = {
@@ -450,25 +464,18 @@
 			path = System/Library/Frameworks/CoreAudio.framework;
 			sourceTree = SDKROOT;
 		};
-		9A72388A5D6940CDD807D379 = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.c.h;
-			name = "api_key.example.h";
-			path = "../../Source/api_key.example.h";
-			sourceTree = "SOURCE_ROOT";
-		};
-		9CEC83F693310D63B5BBEB2C = {
-			isa = PBXFileReference;
-			lastKnownFileType = file;
-			name = "juce_gui_basics";
-			path = "../../3rdParty/JUCE_ELK/modules/juce_gui_basics";
-			sourceTree = "SOURCE_ROOT";
-		};
 		A0D94CD81D7A0528B6351D81 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.h;
 			name = FreesoundAPI.h;
 			path = ../../Source/FreesoundAPI.h;
+			sourceTree = "SOURCE_ROOT";
+		};
+		A2685F1639A6FDB636BE458D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "api_key.h";
+			path = "../../Source/api_key.h";
 			sourceTree = "SOURCE_ROOT";
 		};
 		B0238AED8FE0635FBFEB6E0D = {
@@ -492,11 +499,11 @@
 			path = SourceSampler.component;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
-		A2685F1639A6FDB636BE458D = {
+		9A72388A5D6940CDD807D379 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.h;
-			name = "api_key.h";
-			path = "../../Source/api_key.h";
+			name = "api_key.example.h";
+			path = "../../Source/api_key.example.h";
 			sourceTree = "SOURCE_ROOT";
 		};
 		AD1ABE63B91D0D70A1CE782B = {
@@ -512,6 +519,13 @@
 			includeInIndex = 0;
 			path = libSourceSampler.a;
 			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		9CEC83F693310D63B5BBEB2C = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_gui_basics";
+			path = "../../3rdParty/JUCE_ELK/modules/juce_gui_basics";
+			sourceTree = "SOURCE_ROOT";
 		};
 		A7BEB4349A7BB9ABC1A11602 = {
 			isa = PBXFileReference;
@@ -670,6 +684,7 @@
 		D6F4544776E0B949F646A967 = {
 			isa = PBXGroup;
 			children = (
+				13136607F9291DD5C2F82BAE,
 				9A72388A5D6940CDD807D379,
 				A2685F1639A6FDB636BE458D,
 				CA7E3E2A594B692989FA319E,
@@ -679,6 +694,7 @@
 				042B13F5D6A591E5AA8E1FF6,
 				3CAABA94EAA743182819A1D8,
 				F913441AFAB33F45033E472D,
+				372BAC76C5A8F2B77569BB78,
 			);
 			name = Source;
 			sourceTree = "<group>";

@@ -8,6 +8,7 @@
               pluginManufacturerCode="RaAu" pluginCode="SoSa">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Source">
+      <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>
       <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
             file="Source/api_key.example.h"/>
       <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>
@@ -23,6 +24,8 @@
       <FILE id="wHELQH" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="wRsXOS" name="ServerInterface.h" compile="0" resource="0"
+            file="Source/ServerInterface.h"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>

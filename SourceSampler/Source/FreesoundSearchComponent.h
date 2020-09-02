@@ -13,6 +13,7 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "PluginProcessor.h"
 #include "api_key.h"
+#include "defines.h"
 
 
 class ResultsTableComponent : public Component,
@@ -161,9 +162,10 @@ public:
     
     void actionListenerCallback (const String &message) override
     {
-        if (message.startsWith("SHOULD_UPDATE_SOUNDS_TABLE"))
+        if (message.startsWith(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE)))
         {
             updateSoundsTable();
+            searchInput.setText(processor->getQuery(), dontSendNotification);
         }
     }
     

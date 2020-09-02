@@ -36,6 +36,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
     auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
     makeQueryAndLoadSounds(queries[randomInt]);
+    
+    // Configure processor to listen messages from server interface
+    serverInterface.addActionListener(this);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -45,6 +48,9 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
     for (int i = 0; i < downloadTasksToDelete.size(); i++) {
         downloadTasksToDelete.at(i).reset();
     }
+    
+    // Remove this as a listener from serverInterface
+    serverInterface.removeActionListener(this);
 }
 
 //==============================================================================
@@ -182,9 +188,26 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
 
 //==============================================================================
 
+void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
+{
+    if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
+        
+        String query = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
+        std::cout << "New query triggered from server: " << query << std::endl;
+        makeQueryAndLoadSounds(query);
+    }
+}
+
+//==============================================================================
+
 void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query)
 {
+    if (isQueryinAndDownloadingSounds){
+        std::cout << "Source is already busy querying and downloading sounds" << std::endl;
+    }
+    
     std::cout << "Querying new sounds for: " << query << std::endl;
+    isQueryinAndDownloadingSounds = true;
     FreesoundClient client(FREESOUND_API_KEY);
     SoundList list = client.textSearch(query, "duration:[0 TO 0.5]", "score", 1, -1, 150, "id,name,username,license,previews");
     Array<FSSound> sounds = list.toArrayOfSounds();
@@ -219,13 +242,14 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     }
     query = textQuery;
     soundsArray = soundsInfo;
-    sendActionMessage("SHOULD_UPDATE_SOUNDS_TABLE");
+    sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
     // Load the sounds in the sampler
     std::cout << "Loading downloaded sounds to sampler" << std::endl;
     setSources();
     
     std::cout << "All done and ready!" << std::endl << std::endl;
+    isQueryinAndDownloadingSounds = false;
 }
 
 void SourceSamplerAudioProcessor::setSources()

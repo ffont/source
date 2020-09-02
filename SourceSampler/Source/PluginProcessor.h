@@ -12,13 +12,16 @@
 
 #include <JuceHeader.h>
 #include "FreesoundAPI.h"
+#include "ServerInterface.h"
+#include "defines.h"
 
 
 //==============================================================================
 /**
 */
 class SourceSamplerAudioProcessor  : public AudioProcessor,
-                                     public ActionBroadcaster
+                                     public ActionBroadcaster,
+                                     public ActionListener
 {
 public:
     //==============================================================================
@@ -59,6 +62,10 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
+    // Action listener
+    void actionListenerCallback (const String &message) override;
+    
+    //==============================================================================
     void makeQueryAndLoadSounds(const String& query);
     File tmpDownloadLocation;
     void newSoundsReady(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
@@ -74,6 +81,7 @@ public:
 
 private:
     
+    bool isQueryinAndDownloadingSounds = false;
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasksToDelete;
     Synthesiser sampler;
     AudioFormatManager audioFormatManager;
@@ -82,6 +90,8 @@ private:
     double startTime;
     String query;
     std::vector<juce::StringArray> soundsArray;
+    
+    ServerInterface serverInterface;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
