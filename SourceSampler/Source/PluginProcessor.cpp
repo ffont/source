@@ -11,6 +11,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "api_key.h"
+#include <climits>  // for using INT_MAX
 
 //==============================================================================
 SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
