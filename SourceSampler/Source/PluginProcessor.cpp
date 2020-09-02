@@ -31,8 +31,10 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
-    // Start with a default query
-    makeQueryAndLoadSounds("wood");
+    // Start with a default random query
+    std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
+    auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
+    makeQueryAndLoadSounds(queries[randomInt]);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -178,6 +180,27 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
 }
 
 //==============================================================================
+
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query)
+{
+    std::cout << "Querying new sounds for: " << query << std::endl;
+    FreesoundClient client(FREESOUND_API_KEY);
+    SoundList list = client.textSearch(query, "duration:[0 TO 0.5]", "score", 1, -1, 150, "id,name,username,license,previews");
+    Array<FSSound> sounds = list.toArrayOfSounds();
+    std::random_shuffle(sounds.begin(), sounds.end());
+    sounds.resize(16);
+    std::vector<juce::StringArray> soundsInfo;
+    for (int i=0; i<sounds.size(); i++){
+        FSSound sound = sounds[i];
+        StringArray soundData;
+        soundData.add(sound.name);
+        soundData.add(sound.user);
+        soundData.add(sound.license);
+        soundsInfo.push_back(soundData);
+    }
+    newSoundsReady(sounds, query, soundsInfo);
+}
+
 void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundsInfo)
 {
     // This method is called by the FreesoundSearchComponent when a new query has
@@ -189,15 +212,19 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     FreesoundClient client(FREESOUND_API_KEY);
     for (int i=0; i<sounds.size(); i++){
         File location = tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3");
-        std::cout << location.getFullPathName() << std::endl;
+        //std::cout << location.getFullPathName() << std::endl;
         std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadMP3SoundPreview(sounds[i], location);
         downloadTasksToDelete.push_back(std::move(downloadTask));
     }
-    setSources();
     query = textQuery;
     soundsArray = soundsInfo;
-    
     sendActionMessage("SHOULD_UPDATE_SOUNDS_TABLE");
+    
+    // Load the sounds in the sampler
+    std::cout << "Loading downloaded sounds to sampler" << std::endl;
+    setSources();
+    
+    std::cout << "All done and ready!" << std::endl << std::endl;
 }
 
 void SourceSamplerAudioProcessor::setSources()
@@ -256,27 +283,6 @@ String SourceSamplerAudioProcessor::getQuery()
 std::vector<juce::StringArray> SourceSamplerAudioProcessor::getData()
 {
     return soundsArray;
-}
-
-//==============================================================================
-
-void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query)
-{
-    FreesoundClient client(FREESOUND_API_KEY);
-    SoundList list = client.textSearch(query, "duration:[0 TO 0.5]", "score", 1, -1, 150, "id,name,username,license,previews");
-    Array<FSSound> sounds = list.toArrayOfSounds();
-    std::random_shuffle(sounds.begin(), sounds.end());
-    sounds.resize(16);
-    std::vector<juce::StringArray> soundsInfo;
-    for (int i=0; i<sounds.size(); i++){
-        FSSound sound = sounds[i];
-        StringArray soundData;
-        soundData.add(sound.name);
-        soundData.add(sound.user);
-        soundData.add(sound.license);
-        soundsInfo.push_back(soundData);
-    }
-    newSoundsReady(sounds, query, soundsInfo);
 }
 
 //==============================================================================

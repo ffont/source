@@ -59,6 +59,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
+    void makeQueryAndLoadSounds(const String& query);
     File tmpDownloadLocation;
     void newSoundsReady(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
 
@@ -69,9 +70,6 @@ public:
     bool isArrayNotEmpty();
     String getQuery();
     std::vector<juce::StringArray> getData();
-    
-    //==============================================================================
-    void makeQueryAndLoadSounds(const String& query);
     
 
 private:
