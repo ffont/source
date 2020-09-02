@@ -77,6 +77,10 @@
 			isa = PBXBuildFile;
 			fileRef = 7B7047A307A218418CB0612C;
 		};
+		185705B1CABA064D6E3B2F91 = {
+			isa = PBXBuildFile;
+			fileRef = CA7E3E2A594B692989FA319E;
+		};
 		DF8FB1342E15E248CF2BB8FB = {
 			isa = PBXBuildFile;
 			fileRef = 0093CD2C1A4C423E37B299BC;
@@ -397,6 +401,13 @@
 			path = RecentFilesMenuTemplate.nib;
 			sourceTree = "SOURCE_ROOT";
 		};
+		7BD35529F57CE0DF99D259DC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = FreesoundSearchComponent.h;
+			path = ../../Source/FreesoundSearchComponent.h;
+			sourceTree = "SOURCE_ROOT";
+		};
 		7EA54F98BDA2739089629A6C = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.objcpp;
@@ -439,11 +450,25 @@
 			path = System/Library/Frameworks/CoreAudio.framework;
 			sourceTree = SDKROOT;
 		};
+		9A72388A5D6940CDD807D379 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "api_key.example.h";
+			path = "../../Source/api_key.example.h";
+			sourceTree = "SOURCE_ROOT";
+		};
 		9CEC83F693310D63B5BBEB2C = {
 			isa = PBXFileReference;
 			lastKnownFileType = file;
 			name = "juce_gui_basics";
 			path = "../../3rdParty/JUCE_ELK/modules/juce_gui_basics";
+			sourceTree = "SOURCE_ROOT";
+		};
+		A0D94CD81D7A0528B6351D81 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = FreesoundAPI.h;
+			path = ../../Source/FreesoundAPI.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		B0238AED8FE0635FBFEB6E0D = {
@@ -466,6 +491,13 @@
 			includeInIndex = 0;
 			path = SourceSampler.component;
 			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		A2685F1639A6FDB636BE458D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "api_key.h";
+			path = "../../Source/api_key.h";
+			sourceTree = "SOURCE_ROOT";
 		};
 		AD1ABE63B91D0D70A1CE782B = {
 			isa = PBXFileReference;
@@ -558,6 +590,13 @@
 			path = "../../3rdParty/JUCE_ELK/modules/juce_graphics";
 			sourceTree = "SOURCE_ROOT";
 		};
+		CA7E3E2A594B692989FA319E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			name = FreesoundAPI.cpp;
+			path = ../../Source/FreesoundAPI.cpp;
+			sourceTree = "SOURCE_ROOT";
+		};
 		D1CC908F6CA754A1B1B062D1 = {
 			isa = PBXFileReference;
 			lastKnownFileType = file;
@@ -631,6 +670,11 @@
 		D6F4544776E0B949F646A967 = {
 			isa = PBXGroup;
 			children = (
+				9A72388A5D6940CDD807D379,
+				A2685F1639A6FDB636BE458D,
+				CA7E3E2A594B692989FA319E,
+				A0D94CD81D7A0528B6351D81,
+				7BD35529F57CE0DF99D259DC,
 				0093CD2C1A4C423E37B299BC,
 				042B13F5D6A591E5AA8E1FF6,
 				3CAABA94EAA743182819A1D8,
@@ -1689,6 +1733,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				185705B1CABA064D6E3B2F91,
 				DF8FB1342E15E248CF2BB8FB,
 				A4FB6FE8FE17AF5967D16FB6,
 				1A1186452CA817A639F17376,

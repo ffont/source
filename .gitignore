@@ -4,4 +4,4 @@ xcuserdata/
 *.pyc
 __pycache__
 VST2_SDK
-
+api_key.h

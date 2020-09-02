@@ -15,9 +15,10 @@
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    freesoundSearchComponent.setProcessor(&processor);
+    addAndMakeVisible (freesoundSearchComponent);
+    setSize (10, 10);  // Is re-set when running resize()
+    setResizable(false, false);
 }
 
 SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
@@ -27,16 +28,16 @@ SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
 //==============================================================================
 void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
-
-    g.setColour (Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), Justification::centred, 1);
 }
 
 void SourceSamplerAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    float width = 450;
+    float height = 450;
+    float unitMargin = 10;
+    
+    freesoundSearchComponent.setBounds (unitMargin,  unitMargin, width - (unitMargin * 2), height - 2 * unitMargin);
+    
+    setSize(width, height);
 }

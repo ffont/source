@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "api_key.h"
 
 //==============================================================================
 SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
@@ -24,10 +25,23 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                        )
 #endif
 {
+    tmpDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler");
+    tmpDownloadLocation.deleteRecursively();
+    tmpDownloadLocation.createDirectory();
+    midicounter = 1;
+    startTime = Time::getMillisecondCounterHiRes() * 0.001;
+    
+    // Start with a default query
+    makeQueryAndLoadSounds("wood");
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
 {
+    // Deletes the tmp directory so downloaded files do not stay there
+    tmpDownloadLocation.deleteRecursively();
+    for (int i = 0; i < downloadTasksToDelete.size(); i++) {
+        downloadTasksToDelete.at(i).reset();
+    }
 }
 
 //==============================================================================
@@ -97,6 +111,7 @@ void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesP
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    sampler.setCurrentPlaybackSampleRate(sampleRate);
 }
 
 void SourceSamplerAudioProcessor::releaseResources()
@@ -131,31 +146,10 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
-    ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
-    }
+    midiMessages.addEvents(midiFromEditor, 0, INT_MAX, 0);
+    midiFromEditor.clear();
+    sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    midiMessages.clear();
 }
 
 //==============================================================================
@@ -181,6 +175,108 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+//==============================================================================
+void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundsInfo)
+{
+    // This method is called by the FreesoundSearchComponent when a new query has
+    // been made and new sounda have been selected for loading into the sampler.
+    // This methods downloads the sounds, sotres in tmp directory and...
+    
+    // Download the sounds
+    std::cout << "Downloading new sounds" << std::endl;
+    FreesoundClient client(FREESOUND_API_KEY);
+    for (int i=0; i<sounds.size(); i++){
+        File location = tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3");
+        std::cout << location.getFullPathName() << std::endl;
+        std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadMP3SoundPreview(sounds[i], location);
+        downloadTasksToDelete.push_back(std::move(downloadTask));
+    }
+    setSources();
+    query = textQuery;
+    soundsArray = soundsInfo;
+    
+    sendActionMessage("SHOULD_UPDATE_SOUNDS_TABLE");
+}
+
+void SourceSamplerAudioProcessor::setSources()
+{
+    int poliphony = 16;
+    int maxLength = 10;
+    for (int i = 0; i < poliphony; i++) {
+        sampler.addVoice(new SamplerVoice());
+    }
+
+    if(audioFormatManager.getNumKnownFormats() == 0){
+        audioFormatManager.registerBasicFormats();
+    }
+
+    Array<File> files = tmpDownloadLocation.findChildFiles(2, false);
+    for (int i = 0; i < files.size(); i++) {
+        std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(files[i]));
+        BigInteger notes;
+        notes.setRange(i * 8, i * 8 + 7, true);
+        sampler.addSound(new SamplerSound(String(i), *reader, notes, i*8, 0, maxLength, maxLength));
+        //reader.release();
+    }
+}
+
+void SourceSamplerAudioProcessor::addToMidiBuffer(int notenumber)
+{
+
+    MidiMessage message = MidiMessage::noteOn(10, notenumber, (uint8)100);
+    double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
+    message.setTimeStamp(timestamp);
+
+    auto sampleNumber = (int)(timestamp * getSampleRate());
+
+    midiFromEditor.addEvent(message,sampleNumber);
+
+    //auto messageOff = MidiMessage::noteOff(message.getChannel(), message.getNoteNumber());
+    //messageOff.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001 - startTime);
+    //midiFromEditor.addEvent(messageOff,sampleNumber+1);
+
+}
+
+double SourceSamplerAudioProcessor::getStartTime(){
+    return startTime;
+}
+
+bool SourceSamplerAudioProcessor::isArrayNotEmpty()
+{
+    return soundsArray.size() != 0;
+}
+
+String SourceSamplerAudioProcessor::getQuery()
+{
+    return query;
+}
+
+std::vector<juce::StringArray> SourceSamplerAudioProcessor::getData()
+{
+    return soundsArray;
+}
+
+//==============================================================================
+
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query)
+{
+    FreesoundClient client(FREESOUND_API_KEY);
+    SoundList list = client.textSearch(query, "duration:[0 TO 0.5]", "score", 1, -1, 150, "id,name,username,license,previews");
+    Array<FSSound> sounds = list.toArrayOfSounds();
+    std::random_shuffle(sounds.begin(), sounds.end());
+    sounds.resize(16);
+    std::vector<juce::StringArray> soundsInfo;
+    for (int i=0; i<sounds.size(); i++){
+        FSSound sound = sounds[i];
+        StringArray soundData;
+        soundData.add(sound.name);
+        soundData.add(sound.user);
+        soundData.add(sound.license);
+        soundsInfo.push_back(soundData);
+    }
+    newSoundsReady(sounds, query, soundsInfo);
 }
 
 //==============================================================================

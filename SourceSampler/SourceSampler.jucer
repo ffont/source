@@ -8,6 +8,14 @@
               pluginManufacturerCode="RaAu" pluginCode="SoSa">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Source">
+      <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
+            file="Source/api_key.example.h"/>
+      <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>
+      <FILE id="NVOE4I" name="FreesoundAPI.cpp" compile="1" resource="0"
+            file="Source/FreesoundAPI.cpp"/>
+      <FILE id="P6tAZZ" name="FreesoundAPI.h" compile="0" resource="0" file="Source/FreesoundAPI.h"/>
+      <FILE id="UyfGeE" name="FreesoundSearchComponent.h" compile="0" resource="0"
+            file="Source/FreesoundSearchComponent.h"/>
       <FILE id="NeAMrM" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="soXJt9" name="PluginProcessor.h" compile="0" resource="0"

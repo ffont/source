@@ -11,11 +11,14 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "FreesoundAPI.h"
+
 
 //==============================================================================
 /**
 */
-class SourceSamplerAudioProcessor  : public AudioProcessor
+class SourceSamplerAudioProcessor  : public AudioProcessor,
+                                     public ActionBroadcaster
 {
 public:
     //==============================================================================
@@ -54,8 +57,34 @@ public:
     //==============================================================================
     void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    //==============================================================================
+    File tmpDownloadLocation;
+    void newSoundsReady(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
+
+    void setSources();
+    void addToMidiBuffer(int notenumber);
+
+    double getStartTime();
+    bool isArrayNotEmpty();
+    String getQuery();
+    std::vector<juce::StringArray> getData();
+    
+    //==============================================================================
+    void makeQueryAndLoadSounds(const String& query);
+    
 
 private:
+    
+    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasksToDelete;
+    Synthesiser sampler;
+    AudioFormatManager audioFormatManager;
+    MidiBuffer midiFromEditor;
+    long midicounter;
+    double startTime;
+    String query;
+    std::vector<juce::StringArray> soundsArray;
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };
