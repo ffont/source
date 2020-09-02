@@ -6,4 +6,4 @@
 */
 
 #include "AppConfig.h"
-#include <juce_opengl/juce_opengl.mm>
+#include <juce_osc/juce_osc.cpp>

@@ -24,21 +24,21 @@
         <CONFIGURATION isDebug="0" name="Release"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_audio_basics" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_plugin_client" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_utils" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_core" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_cryptography" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_data_structures" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_events" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_graphics" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_basics" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_extra" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_opengl" path="3rdParty/JUCE/modules"/>
-        <MODULEPATH id="juce_osc" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_core" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_cryptography" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_data_structures" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_events" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_graphics" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_osc" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="juce_dsp" path="3rdParty/JUCE_ELK/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <LINUX_MAKE targetFolder="Builds/ELKAudioOS" vstLegacyFolder="/code/VST2_SDK"
@@ -50,7 +50,6 @@
                        libraryPath="/workdir/sysroots/aarch64-elk-linux/usr/lib/"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_opengl" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_graphics" path="~/JUCE/modules"/>
@@ -65,6 +64,7 @@
         <MODULEPATH id="juce_audio_devices" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_audio_basics"/>
         <MODULEPATH id="juce_osc" path="~/JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="~/JUCE/modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
   </EXPORTFORMATS>
@@ -79,16 +79,16 @@
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
-    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
   </MODULES>
   <LIVE_SETTINGS>
     <OSX/>
   </LIVE_SETTINGS>
   <JUCEOPTIONS JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_STRICT_REFCOUNTEDPOINTER="1"
-               JUCE_WEB_BROWSER="0"/>
+               JUCE_WEB_BROWSER="0" JUCE_USE_CURL="1"/>
 </JUCERPROJECT>
