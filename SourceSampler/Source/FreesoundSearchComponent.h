@@ -26,9 +26,10 @@ public:
     
         addAndMakeVisible (table);
         
-        table.getHeader().addColumn("Name", 1, 200, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
-        table.getHeader().addColumn("Author", 2, 100, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
-        table.getHeader().addColumn("License", 3, 400, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
+        table.getHeader().addColumn("ID", 1, 50, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
+        table.getHeader().addColumn("Name", 2, 200, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
+        table.getHeader().addColumn("Author", 3, 100, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
+        table.getHeader().addColumn("License", 4, 400, 50, 1000, (TableHeaderComponent::visible | TableHeaderComponent::resizable ));
     }
     
     int getNumRows() override {
@@ -70,7 +71,7 @@ public:
     }
 
 	void cellClicked(int rowNumber, int columnId, const MouseEvent &) {
-		processor->addToMidiBuffer(rowNumber * 8);
+		processor->addToMidiBuffer(rowNumber);
 	}
 
 	void setProcessor(SourceSamplerAudioProcessor* p)
@@ -146,7 +147,9 @@ public:
     {
         if (button == &searchButton)
         {
-            processor->makeQueryAndLoadSounds(searchInput.getText(true));
+            int numSounds = 16;
+            float maxSoundLength = 0.5;
+            processor->makeQueryAndLoadSounds(searchInput.getText(true), numSounds, maxSoundLength);
         }
     }
     

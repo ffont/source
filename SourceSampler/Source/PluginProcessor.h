@@ -66,12 +66,12 @@ public:
     void actionListenerCallback (const String &message) override;
     
     //==============================================================================
-    void makeQueryAndLoadSounds(const String& query);
+    void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     File tmpDownloadLocation;
     void newSoundsReady(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
 
-    void setSources();
-    void addToMidiBuffer(int notenumber);
+    void setSources(int midiNoteRootOffset);
+    void addToMidiBuffer(int soundNumber);
 
     double getStartTime();
     bool isArrayNotEmpty();
@@ -82,7 +82,7 @@ public:
 private:
     
     bool isQueryinAndDownloadingSounds = false;
-    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasksToDelete;
+    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     Synthesiser sampler;
     AudioFormatManager audioFormatManager;
     MidiBuffer midiFromEditor;
