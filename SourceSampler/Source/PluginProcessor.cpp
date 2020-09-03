@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "SourceSampler.h"
 #include "api_key.h"
 #include <climits>  // for using INT_MAX
 
@@ -300,9 +301,10 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
     sampler.clearVoices();
     
     // Configure sampler basics
+    // TODO: do I really need to create the voices every "setSources" time?
     int poliphony = 16;
     for (int i = 0; i < poliphony; i++) {
-        sampler.addVoice(new SamplerVoice());
+        sampler.addVoice(new SourceSamplerVoice());
     }
     
     if(audioFormatManager.getNumKnownFormats() == 0){
@@ -326,8 +328,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                 std::cout << "- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch << std::endl;
-                sampler.addSound(new SamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, attackTime, releaseTime, maxSampleLength));
-                
+                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, attackTime, releaseTime, maxSampleLength));
             } else {
                 std::cout << "- Skipping sound " << soundID << " (no file found or file is empty)" << std::endl;
             }
