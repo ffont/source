@@ -9,9 +9,19 @@
     <h1>Source, a Freesound-powered sampler</h1>
 
     <form action="." method="post">
-        <input name="query" type="text">
+        <label for="query">Query:</label><input name="query" value="{{query}}" type="text"><br>
+        <label for="numSounds">Num sounds:</label><input name="numSounds" value="{{numSounds}}" type="text" placeholder="16"><br>
+        <label for="maxSoundLength">Max sound length:</label><input name="maxSoundLength" value="{{maxSoundLength}}" type="text" placeholder="0.5"><br>
         <input type="submit">
     </form>
+    
+    <br>
+
+    <form action="." method="post">
+        <label for="midiRootNoteOffset">MIDI root note offset:</label><input name="midiRootNoteOffset" value="{{midiRootNoteOffset}}" type="number"><br>
+        <input type="submit">
+    </form>
+
 </body>
 
 </html>

@@ -11,12 +11,28 @@ osc_client = None
 
 @app.route('/', methods = ['GET', 'POST'])
 def index():
+    query = ''
+    numSounds = 16
+    maxSoundLength = 0.5
+    midiRootNoteOffset = 0
+
     if request.method == 'POST':
-        query = request.form['query']
-        osc_client.send_message(b'/new_query', [query])    
+        if 'query' in request.form:
+            # New query form was submitted
+            query = request.form['query']
+            numSounds = int(request.form['numSounds'] or '16')
+            maxSoundLength = float(request.form['maxSoundLength'] or '0.5')
+            osc_client.send_message(b'/new_query', [query, numSounds, maxSoundLength])   
+        
+        if 'midiRootNoteOffset' in request.form:
+            # MIDI offset form was submitted
+            midiRootNoteOffset = int(request.form['midiRootNoteOffset']) 
+            osc_client.send_message(b'/set_midi_root_offset', [-1 * midiRootNoteOffset])   
     
-    return render_template("index.html")
+    return render_template("index.html", query=query, numSounds=numSounds, maxSoundLength=maxSoundLength, midiRootNoteOffset=midiRootNoteOffset)
     
+
+
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
