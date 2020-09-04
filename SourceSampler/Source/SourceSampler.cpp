@@ -76,20 +76,42 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
 }
 
+void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
+{
+    filterCutoff = sound->filterCutoff;
+    filterRessonance = sound->filterRessonance;
+    auto& filter = processorChain.get<filterIndex>();
+    filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+    filter.setResonance (filterRessonance);
+    
+    masterGain = sound->gain;
+    auto& gain = processorChain.get<masterGainIndex>();
+    gain.setGainLinear (masterGain);
+    
+    adsr.setSampleRate (sound->sourceSampleRate);
+    adsr.setParameters (sound->params);
+}
+
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
 {
-    if (auto* sound = dynamic_cast<const SourceSamplerSound*> (s))
+    if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
+        // Reset some parameters
+        pitchRatioMod = 0.0;
+        filterCutoffMod = 0.0;
+        
+        // Load and configure parameters from SourceSamplerSound
+        updateParametersFromSourceSamplerSound(sound);
+        
+        // Initialize other variables
         pitchRatio = std::pow (2.0, (midiNoteNumber - sound->midiRootNote) / 12.0)
-                        * sound->sourceSampleRate / getSampleRate();
-
+            * sound->sourceSampleRate / getSampleRate();
+        
         sourceSamplePosition = 0.0;
         lgain = velocity;
         rgain = velocity;
 
-        adsr.setSampleRate (sound->sourceSampleRate);
-        adsr.setParameters (sound->params);
-
+        // Trigger ADSR
         adsr.noteOn();
     }
     else
@@ -149,8 +171,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 {
     if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
     {
+        // Do some preparation
         int originalNumSamples = numSamples; // user later for filter processing
-        
+        updateParametersFromSourceSamplerSound(playingSound);
         
         // Sampler reading and rendering
         auto& data = *playingSound->data;

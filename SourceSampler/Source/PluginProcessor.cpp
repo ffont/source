@@ -217,6 +217,18 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         std::cout << "Offsetting midi root note by: " << newOffset << std::endl;
         setSources(newOffset);
         
+    } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
+        String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();
+        String parameterName = tokens[1];
+        float parameterValue = tokens[2].getFloatValue();
+        std::cout << "Setting parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue << std::endl;
+        if (soundIndex < sampler.getNumSounds() - 1){
+            auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
+            sound->setParameterByNameFloat(parameterName, parameterValue);
+        }
     }
 }
 

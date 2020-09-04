@@ -30,6 +30,7 @@ public:
             oscReveiverInitialized = true;
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
+            addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
         }
     }
     
@@ -53,6 +54,15 @@ public:
             if (message.size() == 1 && message[0].isInt32())  {
                 int newOffset = message[0].getInt32();
                 String actionMessage = String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET) + ":" + (String)newOffset;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT){
+            if (message.size() == 3)  {
+                int soundIndex = message[0].getInt32();  // Index of the sound in SourceSamplerSynthesiser object
+                String parameterName = message[1].getString();  // Name of the parameter to change
+                float value = message[2].getFloat32();  // Value of the parameter to set
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR + parameterName + SERIALIZATION_SEPARATOR  + (String)value + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_SET_SOUND_PARAMETER_FLOAT) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
         }

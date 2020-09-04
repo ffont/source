@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Source web interface</title>
+    <title>Source, a Freesound-powered sampler</title>
 </head>
 
 <body>
@@ -19,6 +19,18 @@
 
     <form action="." method="post">
         <label for="midiRootNoteOffset">MIDI root note offset:</label><input name="midiRootNoteOffset" value="{{midiRootNoteOffset}}" type="number"><br>
+        <input type="submit">
+    </form>
+
+    <br>
+
+    <form action="." method="post">
+        <label for="soundIndex">Sound index (use -1 for all):</label><input name="soundIndex" value="{{soundIndex}}" type="text"><br>
+        <label for="filterCutoff">Filter cutoff:</label><input name="filterCutoff" value="{{filterCutoff}}" type="text"><br>
+        <label for="filterResonance">Filter resonance:</label><input name="filterResonance" value="{{filterResonance}}" type="text"><br>
+        <label for="maxPitchRatioMod">AT>pitch:</label><input name="maxPitchRatioMod" value="{{maxPitchRatioMod}}" type="text"><br>
+        <label for="maxFilterCutoffMod">AT>cutoff:</label><input name="maxFilterCutoffMod" value="{{maxFilterCutoffMod}}" type="text"><br>
+        <label for="gain">Filter gain:</label><input name="gain" value="{{gain}}" type="text"><br>
         <input type="submit">
     </form>
 

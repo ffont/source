@@ -63,6 +63,22 @@ public:
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;
     bool appliesToChannel (int midiChannel) override;
+    
+    //==============================================================================
+    void setParameterByNameFloat(const String& name, float value){
+        // TODO: is there a way to find variable by string name?
+        if (name == "filterCutoff") {
+            filterCutoff = value;
+        } else if (name == "filterRessonance") {
+            filterRessonance = value;
+        } else if (name == "maxPitchRatioMod") {
+            maxPitchRatioMod = value;
+        } else if (name == "maxFilterCutoffMod") {
+            maxFilterCutoffMod = value;
+        } else if (name == "gain") {
+            gain = value;
+        }
+    }
 
 private:
     //==============================================================================
@@ -76,8 +92,11 @@ private:
 
     ADSR::Parameters params;
     
-    float maxPitchRatioMod = 1.0;  // 100% of current pitch ratio (1 octave)
+    float filterCutoff = 20000.0;  // Default cutoff (fully open)
+    float filterRessonance = 0.0;  // Default resonance
+    float maxPitchRatioMod = 0.1;  // 100% of current pitch ratio (1 octave)
     float maxFilterCutoffMod = 10.0; // 10 times the base cutoff
+    float gain = 1.0; // Master gain for the sound
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };
@@ -95,6 +114,8 @@ public:
 
     //==============================================================================
     bool canPlaySound (SynthesiserSound*) override;
+    
+    void updateParametersFromSourceSamplerSound(SourceSamplerSound* sound);
 
     void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel) override;
     void stopNote (float velocity, bool allowTailOff) override;
@@ -127,10 +148,13 @@ private:
         masterGainIndex
     };
     juce::dsp::ProcessorChain<juce::dsp::LadderFilter<float>, juce::dsp::Gain<float>> processorChain;
-    float filterCutoff = 200.0f;
-    float filterRessonance = 0.7f;
+    float filterCutoff = 20000.0f;
+    float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;
     float masterGain = 1.0f;
+    
+    // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
+    // the loaded sonund defaults
 
     JUCE_LEAK_DETECTOR (SourceSamplerVoice)
 };
