@@ -13,6 +13,7 @@
 #include <JuceHeader.h>
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
+#include "SourceSampler.h"
 #include "defines.h"
 
 
@@ -83,7 +84,7 @@ private:
     
     bool isQueryinAndDownloadingSounds = false;
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
-    Synthesiser sampler;
+    SourceSamplerSynthesiser sampler;
     AudioFormatManager audioFormatManager;
     MidiBuffer midiFromEditor;
     long midicounter;

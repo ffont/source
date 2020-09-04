@@ -58,7 +58,17 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 // --------- implementation of SourceSamplerVoice
 
 
-SourceSamplerVoice::SourceSamplerVoice() {}
+SourceSamplerVoice::SourceSamplerVoice() {
+    
+    auto& filter = processorChain.get<filterIndex>();
+    filter.setCutoffFrequencyHz (filterCutoff);
+    filter.setResonance (filterRessonance);
+    
+    auto& gain = processorChain.get<masterGainIndex>();
+    gain.setGainLinear (masterGain);
+    
+}
+
 SourceSamplerVoice::~SourceSamplerVoice() {}
 
 bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
@@ -108,15 +118,29 @@ void SourceSamplerVoice::controllerMoved (int /*controllerNumber*/, int /*newVal
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
-    // Aftertouch modifies the playback speed up to an octave
-    pitchRatioMod = pitchRatio * (double)newAftertouchValue/127.0;
+    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    {
+        // Aftertouch modifies the playback speed up to an octave
+        pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
+        
+        // Aftertouch also modified filter cutoff
+        filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
+        processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+    }
 }
 
 
 void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 {
-    // Channel aftertouch modifies the playback speed up to an octave
-    pitchRatioMod = pitchRatio * (double)newChannelPressureValue/127.0;
+    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    {
+        // Channel aftertouch modifies the playback speed up to an octave
+        pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
+        
+        // Aftertouch also modified filter cutoff
+        filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
+        processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+    }
 }
 
 
@@ -125,6 +149,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 {
     if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
     {
+        int originalNumSamples = numSamples; // user later for filter processing
+        
+        
+        // Sampler reading and rendering
         auto& data = *playingSound->data;
         const float* const inL = data.getReadPointer (0);
         const float* const inR = data.getNumChannels() > 1 ? data.getReadPointer (1) : nullptr;
@@ -167,5 +195,16 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 break;
             }
         }
+
+        // Filter and master gain processing
+        auto block = juce::dsp::AudioBlock<float> (outputBuffer);
+        auto blockToUse = block.getSubBlock ((size_t) startSample, (size_t) originalNumSamples);
+        auto contextToUse = juce::dsp::ProcessContextReplacing<float> (blockToUse);
+        processorChain.process (contextToUse);
     }
+}
+
+void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
+{
+    processorChain.prepare (spec);
 }

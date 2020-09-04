@@ -107,6 +107,11 @@ public:
         searchInput.setEditable (true);
         addAndMakeVisible (searchInput);
         
+        maxSoundLength.setText("0.5", dontSendNotification);
+        maxSoundLength.setColour (Label::backgroundColourId, getLookAndFeel().findColour (ResizableWindow::backgroundColourId).brighter());
+        maxSoundLength.setEditable (true);
+        addAndMakeVisible (maxSoundLength);
+        
         searchButton.addListener (this);
         searchButton.setButtonText("Go!");
         addAndMakeVisible (searchButton);
@@ -136,20 +141,21 @@ public:
     {
         float unitMargin = 10;
         float searchButtonWidth = 100;
+        float maxSoundLengthWidth = 100;
         float inputHeight = 20;
         
-        searchInput.setBounds(0, 0, getWidth() - unitMargin - searchButtonWidth, inputHeight);
-        searchButton.setBounds(getWidth()  - searchButtonWidth, 0, searchButtonWidth, inputHeight);
+        searchInput.setBounds(0, 0, getWidth() - 2 * unitMargin - searchButtonWidth - maxSoundLengthWidth, inputHeight);
+        maxSoundLength.setBounds(getWidth()  - searchButtonWidth - unitMargin - maxSoundLengthWidth, 0, maxSoundLengthWidth, inputHeight);
+        searchButton.setBounds(getWidth() - searchButtonWidth, 0, searchButtonWidth, inputHeight);
         searchResults.setBounds(0, inputHeight + unitMargin, getWidth(), getHeight() - (inputHeight + unitMargin));
     }
     
     void buttonClicked (Button* button) override
     {
-        if (button == &searchButton)
-        {
+        if (button == &searchButton){
             int numSounds = 16;
-            float maxSoundLength = 0.5;
-            processor->makeQueryAndLoadSounds(searchInput.getText(true), numSounds, maxSoundLength);
+            float length = maxSoundLength.getText(true).getFloatValue();
+            processor->makeQueryAndLoadSounds(searchInput.getText(true), numSounds, length);
         }
     }
     
@@ -177,6 +183,7 @@ private:
     SourceSamplerAudioProcessor* processor;
     
     Label searchInput;
+    Label maxSoundLength;
     TextButton searchButton;
     ResultsTableComponent searchResults;
     

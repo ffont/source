@@ -10,7 +10,6 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "SourceSampler.h"
 #include "api_key.h"
 #include <climits>  // for using INT_MAX
 
@@ -124,9 +123,7 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    sampler.setCurrentPlaybackSampleRate(sampleRate);
+    sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
 
 void SourceSamplerAudioProcessor::releaseResources()
@@ -161,10 +158,17 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
+    // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
+    // it gets played here
     midiMessages.addEvents(midiFromEditor, 0, INT_MAX, 0);
     midiFromEditor.clear();
+    
+    // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    midiMessages.clear();
+    
+    // TODO: compute master effects here?
+    
+    midiMessages.clear(); // Why clearing here?
 }
 
 //==============================================================================
@@ -298,14 +302,6 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
 void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
 {
     sampler.clearSounds();
-    sampler.clearVoices();
-    
-    // Configure sampler basics
-    // TODO: do I really need to create the voices every "setSources" time?
-    int poliphony = 16;
-    for (int i = 0; i < poliphony; i++) {
-        sampler.addVoice(new SourceSamplerVoice());
-    }
     
     if(audioFormatManager.getNumKnownFormats() == 0){
         audioFormatManager.registerBasicFormats();
