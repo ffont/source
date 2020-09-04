@@ -26,10 +26,8 @@
       <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="wRsXOS" name="ServerInterface.h" compile="0" resource="0"
             file="Source/ServerInterface.h"/>
-      <FILE id="lbba55" name="SourceSamplerSound.cpp" compile="1" resource="0"
-            file="Source/SourceSamplerSound.cpp"/>
-      <FILE id="zEQRKD" name="SourceSamplerVoice.cpp" compile="1" resource="0"
-            file="Source/SourceSamplerVoice.cpp"/>
+      <FILE id="zEQRKD" name="SourceSampler.cpp" compile="1" resource="0"
+            file="Source/SourceSampler.cpp"/>
       <FILE id="tcetRZ" name="SourceSampler.h" compile="0" resource="0" file="Source/SourceSampler.h"/>
     </GROUP>
   </MAINGROUP>
