@@ -25,6 +25,15 @@ def index():
         'maxFilterCutoffMod': 10.0,
         'gain': 1.0,
     }
+    rveerbParamNames = ['roomSize', 'damping', 'wetLevel', 'dryLevel', 'width', 'freezeMode']  # Needed to ensure sorting in dict
+    reverbParams = {
+        'roomSize': 0.5,
+        'damping': 0.5,
+        'wetLevel': 0.0,
+        'dryLevel': 1.0,
+        'width': 1.0,
+        'freezeMode': 0.0,
+    }
 
     if request.method == 'POST':
         if 'query' in request.form:
@@ -47,12 +56,22 @@ def index():
             else:
                 soundsToUpdate = [int(soundIndex)]
             for sound_idx in soundsToUpdate:
-                for parameter_name in sound_parameter_names:
+                for parameter_name in list(soundParams.keys()):
                     value = float(request.form[parameter_name])
                     osc_client.send_message(b'/set_sound_parameter', [sound_idx, parameter_name, value]) 
                     soundParams[parameter_name] = value
-    
+
+        if 'roomSize' in request.form:
+            # Setting reverb parameters
+            values_list = []
+            for parameter_name in rveerbParamNames:
+                value = float(request.form[parameter_name])
+                reverbParams[parameter_name] = value
+                values_list.append(value)
+            osc_client.send_message(b'/set_reverb_parameters', values_list) 
+            
     tvars = soundParams.copy()
+    tvars.update(reverbParams)
     tvars.update({
         'query': query,
         'numSounds': numSounds,

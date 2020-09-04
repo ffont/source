@@ -65,20 +65,7 @@ public:
     bool appliesToChannel (int midiChannel) override;
     
     //==============================================================================
-    void setParameterByNameFloat(const String& name, float value){
-        // TODO: is there a way to find variable by string name?
-        if (name == "filterCutoff") {
-            filterCutoff = value;
-        } else if (name == "filterRessonance") {
-            filterRessonance = value;
-        } else if (name == "maxPitchRatioMod") {
-            maxPitchRatioMod = value;
-        } else if (name == "maxFilterCutoffMod") {
-            maxFilterCutoffMod = value;
-        } else if (name == "gain") {
-            gain = value;
-        }
-    }
+    void setParameterByNameFloat(const String& name, float value);
 
 private:
     //==============================================================================
@@ -167,10 +154,27 @@ public:
     
     SourceSamplerSynthesiser()
     {
+        // Configure sampler voices
         for (auto i = 0; i < maxNumVoices; ++i)
             addVoice (new SourceSamplerVoice);
 
         setNoteStealingEnabled (true);
+        
+        // Configure effects chain
+        Reverb::Parameters reverbParameters;
+        reverbParameters.roomSize = 0.5f;
+        reverbParameters.damping = 0.5f;
+        reverbParameters.wetLevel = 0.0f;
+        reverbParameters.dryLevel = 1.0f;
+        reverbParameters.width = 1.0f;
+        reverbParameters.freezeMode = 0.0f;
+        auto& reverb = fxChain.get<reverbIndex>();
+        reverb.setParameters(reverbParameters);
+    }
+    
+    void setReverbParameters (Reverb::Parameters params) {
+        auto& reverb = fxChain.get<reverbIndex>();
+        reverb.setParameters(params);
     }
     
     void prepare (const juce::dsp::ProcessSpec& spec) noexcept

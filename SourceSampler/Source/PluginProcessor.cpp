@@ -229,7 +229,20 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
             sound->setParameterByNameFloat(parameterName, parameterValue);
         }
-    }
+    } else if (message.startsWith(String(ACTION_SET_REVERB_PARAMETERS))){
+        String serializedParameters = message.substring(String(ACTION_SET_REVERB_PARAMETERS).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        Reverb::Parameters reverbParameters;
+        reverbParameters.roomSize = tokens[0].getFloatValue();
+        reverbParameters.damping = tokens[1].getFloatValue();
+        reverbParameters.wetLevel = tokens[2].getFloatValue();
+        reverbParameters.dryLevel = tokens[3].getFloatValue();
+        reverbParameters.width = tokens[4].getFloatValue();
+        reverbParameters.freezeMode = tokens[5].getFloatValue();
+        std::cout << "Setting new reverb parameters " << std::endl;
+        sampler.setReverbParameters(reverbParameters);
+    }    
 }
 
 //==============================================================================

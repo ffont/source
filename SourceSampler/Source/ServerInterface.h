@@ -31,6 +31,7 @@ public:
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
+            addListener (this, OSC_ADDRESS_SET_REVERB_PARAMETERS);
         }
     }
     
@@ -46,7 +47,9 @@ public:
                 int numSounds = message[1].getInt32();
                 float maxLength = message[2].getFloat32();
                 String separator = ";";
-                String serializedParameters = query + SERIALIZATION_SEPARATOR + (String)numSounds + SERIALIZATION_SEPARATOR  + (String)maxLength + SERIALIZATION_SEPARATOR;
+                String serializedParameters = query + SERIALIZATION_SEPARATOR +
+                                              (String)numSounds + SERIALIZATION_SEPARATOR  +
+                                              (String)maxLength + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
@@ -61,8 +64,27 @@ public:
                 int soundIndex = message[0].getInt32();  // Index of the sound in SourceSamplerSynthesiser object
                 String parameterName = message[1].getString();  // Name of the parameter to change
                 float value = message[2].getFloat32();  // Value of the parameter to set
-                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR + parameterName + SERIALIZATION_SEPARATOR  + (String)value + SERIALIZATION_SEPARATOR;
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                              parameterName + SERIALIZATION_SEPARATOR  +
+                                              (String)value + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_SET_SOUND_PARAMETER_FLOAT) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_REVERB_PARAMETERS){
+            if (message.size() == 6)  {
+                float roomSize = message[0].getFloat32();
+                float damping = message[1].getFloat32();
+                float wetLevel = message[2].getFloat32();
+                float dryLevel = message[3].getFloat32();
+                float width = message[4].getFloat32();
+                float freezeMode = message[5].getFloat32();
+                String serializedParameters = (String)roomSize + SERIALIZATION_SEPARATOR +
+                                              (String)damping + SERIALIZATION_SEPARATOR +
+                                              (String)wetLevel + SERIALIZATION_SEPARATOR +
+                                              (String)dryLevel + SERIALIZATION_SEPARATOR +
+                                              (String)width + SERIALIZATION_SEPARATOR +
+                                              (String)freezeMode + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_SET_REVERB_PARAMETERS) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
         }

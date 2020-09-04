@@ -54,6 +54,21 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
     return true;
 }
 
+void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
+    // TODO: is there a way to find variable by string name?
+    if (name == "filterCutoff") {
+        filterCutoff = value;
+    } else if (name == "filterRessonance") {
+        filterRessonance = value;
+    } else if (name == "maxPitchRatioMod") {
+        maxPitchRatioMod = value;
+    } else if (name == "maxFilterCutoffMod") {
+        maxFilterCutoffMod = value;
+    } else if (name == "gain") {
+        gain = value;
+    }
+}
+
 
 // --------- implementation of SourceSamplerVoice
 
