@@ -91,4 +91,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     osc_client = OSCClient(args.ip, args.osc_port, encoding='utf8')
-    app.run(port=args.http_port, debug=True)
+    app.run(host='0.0.0.0', port=args.http_port, debug=True)
+    print('If running on the Pi, you should be able to access the server at "http://elk-pi.local:8123"')

@@ -26,17 +26,23 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                        )
 #endif
 {
+    #if ELK_BUILD
+    tmpDownloadLocation = File("/udata/source/");
+    #else
     tmpDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler");
+    #endif
     
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
+    #if !ELK_BUILD
     // Start with a default random query
     std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
     auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
     int numSounds = 16;
     float maxSoundLength = 0.5;
     makeQueryAndLoadSounds(queries[randomInt], numSounds, maxSoundLength);
+    #endif
     
     // Configure processor to listen messages from server interface
     serverInterface.addActionListener(this);
@@ -123,6 +129,7 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    //setLatencySamples (samplesPerBlock);
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
 

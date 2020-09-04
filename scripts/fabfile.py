@@ -24,8 +24,11 @@ def send_elk(ctx):
     print('********************************************************\n')
     with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
         for local_file, destination_dir in [
-            ("../start.sh", remote_dir),
-            ("../source_sushi_config.json", remote_dir),
+            ("start.sh", remote_dir),
+            ("source_sushi_config.json", remote_dir),
+            ("../server/app.py", remote_dir),
+            ("../server/requirements.txt", remote_dir),
+            ("../server/templates/index.html", remote_dir + 'templates/'),
             ("../SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
         ]:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
