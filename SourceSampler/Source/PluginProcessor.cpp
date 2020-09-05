@@ -35,14 +35,12 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
-    #if !ELK_BUILD
     // Start with a default random query
     std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
     auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
     int numSounds = 16;
     float maxSoundLength = 0.5;
     makeQueryAndLoadSounds(queries[randomInt], numSounds, maxSoundLength);
-    #endif
     
     // Configure processor to listen messages from server interface
     serverInterface.addActionListener(this);
@@ -129,7 +127,8 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    //setLatencySamples (samplesPerBlock);
+    std::cout << "Calling prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock << std::endl;
+    
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
 
@@ -309,6 +308,7 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     }
     
     std::cout << "Waiting for all download tasks to finish..." << std::endl;
+    int64 startedWaitingTime = Time::getCurrentTime().toMilliseconds();
     bool allFinished = false;
     while (!allFinished){
         allFinished = true;
@@ -317,11 +317,25 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
                 allFinished = false;
             }
         }
+        if (Time::getCurrentTime().toMilliseconds() - startedWaitingTime > 10000){
+            // If more than 10 seconds, mark all as finished
+            allFinished = true;
+        }
     }
+    
+    // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
+    /*
+    std::vector<juce::StringArray> soundsInfoDownloadedOk;
+    for (int i=0; i<downloadTasks.size(); i++){
+        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").exists()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").getSize() > 0)){
+            soundsInfoDownloadedOk.push_back(soundsInfo[i]);
+        }
+    }*/
     
     // Store info about the query and tell UI component(s) to update
     query = textQuery;
     soundsArray = soundsInfo;
+    //soundsArray = soundsInfoDownloadedOk;
     sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
     // Load the sounds in the sampler
@@ -349,7 +363,11 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
             String soundID = soundsArray[i][0];
+            #if ELK_BUILD
+            File audioSample = File("/udata/_note.wav");
+            #else
             File audioSample = tmpDownloadLocation.getChildFile(soundID).withFileExtension("mp3");
+            #endif
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
                 int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2 + midiNoteRootOffset;
