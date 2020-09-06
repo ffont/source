@@ -300,9 +300,9 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     std::cout << "Downloading new sounds..." << std::endl;
     FreesoundClient client(FREESOUND_API_KEY);
     for (int i=0; i<sounds.size(); i++){
-        File location = tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3");
+        File location = tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg");
         if (!location.exists()){  // Dont' re-download if file already exists
-            std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadMP3SoundPreview(sounds[i], location);
+            std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadOGGSoundPreview(sounds[i], location);
             downloadTasks.push_back(std::move(downloadTask));
         }
     }
@@ -324,13 +324,12 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     }
     
     // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
-    /*
     std::vector<juce::StringArray> soundsInfoDownloadedOk;
     for (int i=0; i<downloadTasks.size(); i++){
         if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").exists()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").getSize() > 0)){
             soundsInfoDownloadedOk.push_back(soundsInfo[i]);
         }
-    }*/
+    }
     
     // Store info about the query and tell UI component(s) to update
     query = textQuery;
@@ -363,11 +362,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
             String soundID = soundsArray[i][0];
-            #if ELK_BUILD
-            File audioSample = File("/udata/_note.wav");
-            #else
-            File audioSample = tmpDownloadLocation.getChildFile(soundID).withFileExtension("mp3");
-            #endif
+            File audioSample = tmpDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
                 int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2 + midiNoteRootOffset;
@@ -398,10 +393,6 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
         auto sampleNumber = (int)(timestamp * getSampleRate());
 
         midiFromEditor.addEvent(message,sampleNumber);
-
-        //auto messageOff = MidiMessage::noteOff(message.getChannel(), message.getNoteNumber());
-        //messageOff.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001 - startTime);
-        //midiFromEditor.addEvent(messageOff,sampleNumber+1);
     }
 }
 
