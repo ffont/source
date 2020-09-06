@@ -65,3 +65,49 @@ To build Source for the ELK platform Source it needs a custom version of JUCE wh
 The custom JUCE patch is included as a submodule of this repository (`source/SourceSampler/3rdParty/JUCE_ELK`) and is already configured in the Projucer file. For conveniency, the standard JUCE version (at the same commit as the patched one) is also included as a submodule (`source/SourceSampler/3rdParty/JUCE`), but is not really used anywhere.
 
 As far as I know, JUCE 6 is not yet supported by ELK, so we're using 5.4.7 here. Once JUCE 6 becomes supported, we won't probably need the cusotm patch (because JUCE 6 supports headless plugins) and also we won't need the VST2 SDK anymore because JUCE 6 can build VST3 plugins on Linux platforms.
+
+### Auto-start notes for ELK platform
+
+Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html/documents/working_with_elk_board.html#configuring-automatic-startup
+
+1) Modify `sushi` service to point to `/home/mind/source_sushi_config.json`
+
+2) Create new service for python server at `/lib/systemd/system/source-server.service` (use `sudo`)
+
+```
+[Unit]
+Description=source web server
+After=load-drivers.service
+
+[Service]
+Type=simple
+RemainAfterExit=yes
+WorkingDirectory=/home/mind/
+ExecStart=python app.py
+User=mind
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3) Enable `sushi` and `source-server` services
+
+```
+sudo systemctl enable sushi
+sudo systemctl enable source-server
+```
+
+Now both services will start automatically on start up. You can still use `start.sh` to test new versions because the previous processes will be killed.
+
+When running from startup, you can check std out logs with:
+
+```
+sudo journalctl -fu sushi  # for sushi
+sudo journalctl -fu source-server  # for the server
+```
+
+**NOTE:** for some reason, when auto starting sushi, the plugin does not work correctly and output lots of noise. To avoid this issue, for now I have disabled the auto start services and I start them manually using the `start.sh` script.
+
+
+
+    
