@@ -14,12 +14,8 @@ fi
 
 # Start python server and wait a few seconds
 echo "* Starting python server..."
-python app.py &
+python /home/mind/app.py &
 
 # Start sushi with source plugin
 echo "* Starting sushi..."
-sushi -r -c /home/mind/source_sushi_config.json &
-
-# Running acconect to connect MIDI interface
-echo "* Connecting MIDI interface..."
-sleep 10  && aconnect 16 128
+sushi -r -c /home/mind/source_sushi_config.json

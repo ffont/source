@@ -28,6 +28,9 @@ public:
     //==============================================================================
     SourceSamplerAudioProcessor();
     ~SourceSamplerAudioProcessor();
+    
+    //==============================================================================
+    std::string exec(const char* cmd); // Util function to run in command line
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -68,8 +71,8 @@ public:
     
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
-    File tmpDownloadLocation;
-    void newSoundsReady(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
+    File soundsDownloadLocation;
+    void newSoundsReadyToDownload(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
 
     void setSources(int midiNoteRootOffset);
     void addToMidiBuffer(int soundNumber);
@@ -79,7 +82,6 @@ public:
     String getQuery();
     std::vector<juce::StringArray> getData();
     
-
 private:
     
     bool isQueryinAndDownloadingSounds = false;
@@ -93,6 +95,8 @@ private:
     std::vector<juce::StringArray> soundsArray;
     
     ServerInterface serverInterface;
+    
+    bool aconnectWasRun = false;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)

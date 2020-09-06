@@ -27,9 +27,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #endif
 {
     #if ELK_BUILD
-    tmpDownloadLocation = File("/udata/source/");
+    soundsDownloadLocation = File("/udata/source/");
     #else
-    tmpDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler");
+    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler");
     #endif
     
     midicounter = 1;
@@ -38,7 +38,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // Start with a default random query
     std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
     auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
+    #if ELK_BUILD
+    int numSounds = 4;  // Use less sounds by default in ELK so it starts faster
+    #else
     int numSounds = 16;
+    #endif
     float maxSoundLength = 0.5;
     makeQueryAndLoadSounds(queries[randomInt], numSounds, maxSoundLength);
     
@@ -49,9 +53,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
 {
     // Deletes the tmp directory so downloaded files do not stay there
-    if (tmpDownloadLocation.exists()){
-        tmpDownloadLocation.deleteRecursively();
-    }
+    //if (soundsDownloadLocation.exists()){
+    //    soundsDownloadLocation.deleteRecursively();
+    //}
     
     // Delete download task objects
     for (int i = 0; i < downloadTasks.size(); i++) {
@@ -60,6 +64,20 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
     
     // Remove this as a listener from serverInterface
     serverInterface.removeActionListener(this);
+}
+
+//==============================================================================
+std::string SourceSamplerAudioProcessor::exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
 }
 
 //==============================================================================
@@ -127,7 +145,7 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    std::cout << "Calling prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock << std::endl;
+    std::cout << "Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock << std::endl;
     
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
@@ -164,6 +182,16 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
+    #if ELK_BUILD
+    // It is very ugly to do this here... should find an alternative!
+    if (!aconnectWasRun){
+        String aconnectCommandLine =  "aconnect " + String(ACONNECT_MIDI_INTERFACE_ID) + " " + String(ACONNECT_SUSHI_ID);
+        std::cout << "Calling aconnect to setup MIDI in to sushi connection " << std::endl;
+        exec(static_cast<const char*> (aconnectCommandLine.toUTF8()));
+        aconnectWasRun = true;
+    }
+    #endif
+    
     // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
     // it gets played here
     midiMessages.addEvents(midiFromEditor, 0, INT_MAX, 0);
@@ -279,28 +307,28 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query, in
             soundData.add(sound.license);
             soundsInfo.push_back(soundData);
         }
-        newSoundsReady(sounds, query, soundsInfo);
+        newSoundsReadyToDownload(sounds, query, soundsInfo);
     } else {
         std::cout << "Query got no results..." << std::endl;
     }
 }
 
-void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundsInfo)
+void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundsInfo)
 {
     // This method is called by the FreesoundSearchComponent when a new query has
     // been made and new sounda have been selected for loading into the sampler.
     // This methods downloads the sounds, sotres in tmp directory and...
     
     //
-    if (!tmpDownloadLocation.exists()){
-        tmpDownloadLocation.createDirectory();
+    if (!soundsDownloadLocation.exists()){
+        soundsDownloadLocation.createDirectory();
     }
     
     // Download the sounds
     std::cout << "Downloading new sounds..." << std::endl;
     FreesoundClient client(FREESOUND_API_KEY);
     for (int i=0; i<sounds.size(); i++){
-        File location = tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg");
+        File location = soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg");
         if (!location.exists()){  // Dont' re-download if file already exists
             std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadOGGSoundPreview(sounds[i], location);
             downloadTasks.push_back(std::move(downloadTask));
@@ -317,7 +345,7 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
                 allFinished = false;
             }
         }
-        if (Time::getCurrentTime().toMilliseconds() - startedWaitingTime > 10000){
+        if (Time::getCurrentTime().toMilliseconds() - startedWaitingTime > MAX_DOWNLOAD_WAITING_TIME_MS){
             // If more than 10 seconds, mark all as finished
             allFinished = true;
         }
@@ -326,7 +354,7 @@ void SourceSamplerAudioProcessor::newSoundsReady (Array<FSSound> sounds, String 
     // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
     std::vector<juce::StringArray> soundsInfoDownloadedOk;
     for (int i=0; i<downloadTasks.size(); i++){
-        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").exists()) && (tmpDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").getSize() > 0)){
+        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").getSize() > 0)){
             soundsInfoDownloadedOk.push_back(soundsInfo[i]);
         }
     }
@@ -362,7 +390,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
             String soundID = soundsArray[i][0];
-            File audioSample = tmpDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
+            File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
                 int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2 + midiNoteRootOffset;

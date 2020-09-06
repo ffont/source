@@ -102,12 +102,7 @@ Now both services will start automatically on start up. You can still use `start
 When running from startup, you can check std out logs with:
 
 ```
-sudo journalctl -fu sushi  # for sushi
-sudo journalctl -fu source-server  # for the server
+sudo journalctl -fu sushi
+sudo journalctl -fu source-server
 ```
-
-**NOTE:** for some reason, when auto starting sushi, the plugin does not work correctly and output lots of noise. To avoid this issue, for now I have disabled the auto start services and I start them manually using the `start.sh` script.
-
-
-
     
