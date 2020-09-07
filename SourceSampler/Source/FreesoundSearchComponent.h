@@ -77,11 +77,38 @@ public:
 	void setProcessor(SourceSamplerAudioProcessor* p)
 	{
 		processor = p;
-		if (p->isArrayNotEmpty()) {
-			data = p->getData();
-			updateContent();
-		}
+        updateTableFromProcessor();
+        updateContent();
 	}
+    
+    void updateTableFromProcessor(){
+        clearItems();
+        ValueTree loadedSoundsInfo = processor->getLoadedSoundsInfo();
+        for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
+            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
+            StringArray soundData;
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_NAME).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_USER).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_LICENSE).toString());
+            addRowData(soundData);
+        }
+        updateContent();
+    }
+    
+    std::vector<StringArray> soundsInfoValueTreeToVectorStringArray(ValueTree soundsInfo){
+        std::vector<StringArray> output;
+        for (int i=0; i<soundsInfo.getNumChildren(); i++){
+            ValueTree soundInfo = soundsInfo.getChild(i);
+            StringArray soundData;
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_NAME).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_USER).toString());
+            soundData.add(soundInfo.getProperty(STATE_SOUND_INFO_LICENSE).toString());
+            output.push_back(soundData);
+        }
+        return output;
+    }
 
 	std::vector<StringArray> getData() {
 		return data;
@@ -161,12 +188,7 @@ public:
     
     void updateSoundsTable ()
     {
-        searchResults.clearItems();
-        std::vector<juce::StringArray> loadedSoundsInfo = processor->getData();
-        for (int i=0; i<loadedSoundsInfo.size(); i++){
-            searchResults.addRowData(loadedSoundsInfo[i]);
-        }
-        searchResults.updateContent();
+        searchResults.updateTableFromProcessor();
     }
     
     void actionListenerCallback (const String &message) override

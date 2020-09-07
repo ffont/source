@@ -35,28 +35,12 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
-    // Start with a default random query
-    std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
-    auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
-    #if ELK_BUILD
-    int numSounds = 8;  // Use less sounds by default in ELK so it starts faster
-    #else
-    int numSounds = 16;
-    #endif
-    float maxSoundLength = 0.5;
-    makeQueryAndLoadSounds(queries[randomInt], numSounds, maxSoundLength);
-    
     // Configure processor to listen messages from server interface
     serverInterface.addActionListener(this);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
-{
-    // Deletes the tmp directory so downloaded files do not stay there
-    //if (soundsDownloadLocation.exists()){
-    //    soundsDownloadLocation.deleteRecursively();
-    //}
-    
+{    
     // Delete download task objects
     for (int i = 0; i < downloadTasks.size(); i++) {
         downloadTasks.at(i).reset();
@@ -215,17 +199,62 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 }
 
 //==============================================================================
+std::unique_ptr<XmlElement> SourceSamplerAudioProcessor::collectPresetStateInformation ()
+{
+    ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
+    
+    // Add general stuff
+    state.setProperty(STATE_QUERY, query, nullptr);
+    
+    // Add sounds info
+    state.appendChild(loadedSoundsInfo, nullptr);
+    
+    // Add sampler state (includes main settings and individual sampler sounds parameters)
+    state.appendChild(sampler.getState(), nullptr);
+    
+    std::unique_ptr<XmlElement> xml (state.createXml());
+    std::cout << "Saving state..." << std::endl;
+    //std::cout << xml->createDocument("") <<std::endl; // Print state for debugging purposes
+    return xml;
+}
+
 void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    // Save current state information to memory block
+    copyXmlToBinary (*collectPresetStateInformation(), destData);
+}
+
+void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
+{
+    // Load state informaiton form XML state
+    std::cout << "Loading state..." << std::endl;
+    
+    // Set main stuff
+    if (state.hasProperty(STATE_QUERY)){
+        query = state.getProperty(STATE_QUERY).toString();
+    }
+    
+    // Load loaded sounds info and download them
+    ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
+    if (soundsInfo.isValid()){
+        downloadSoundsAndSetSources(soundsInfo);
+    }
+    
+    // Set the rest of sampler parameters
+    ValueTree samplerState = state.getChildWithName(STATE_SAMPLER);
+    if (samplerState.isValid()){
+        sampler.loadState(samplerState);
+    }
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    // Load state information form memory block, convert to XML and call function to
+    // load preset from state xml
+    std::unique_ptr<XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+    if (xmlState.get() != nullptr){
+        loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
+    }
 }
 
 //==============================================================================
@@ -287,15 +316,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength)
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float maxSoundLength)
 {
     if (isQueryinAndDownloadingSounds){
         std::cout << "Source is already busy querying and downloading sounds" << std::endl;
     }
     
-    std::cout << "Querying new sounds for: " << query << std::endl;
+    query = textQuery;
     isQueryinAndDownloadingSounds = true;
+    
     FreesoundClient client(FREESOUND_API_KEY);
+    std::cout << "Querying new sounds for: " << query << std::endl;
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews");
     if (list.getCount() > 0){
@@ -303,23 +334,25 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query, in
         Array<FSSound> sounds = list.toArrayOfSounds();
         std::random_shuffle(sounds.begin(), sounds.end());
         sounds.resize(jmin(numSounds, list.getCount()));
-        std::vector<juce::StringArray> soundsInfo;
+        
+        ValueTree soundsInfo = ValueTree(STATE_SOUNDS_INFO);
         for (int i=0; i<sounds.size(); i++){
+            ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
             FSSound sound = sounds[i];
-            StringArray soundData;
-            soundData.add(sound.id);
-            soundData.add(sound.name);
-            soundData.add(sound.user);
-            soundData.add(sound.license);
-            soundsInfo.push_back(soundData);
+            soundInfo.setProperty(STATE_SOUND_INFO_ID, sound.id, nullptr);
+            soundInfo.setProperty(STATE_SOUND_INFO_NAME, sound.name, nullptr);
+            soundInfo.setProperty(STATE_SOUND_INFO_USER, sound.user, nullptr);
+            soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, sound.license, nullptr);
+            soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL,sound.getOGGPreviewURL().toString(false), nullptr);
+            soundsInfo.appendChild(soundInfo, nullptr);
         }
-        newSoundsReadyToDownload(sounds, query, soundsInfo);
+        downloadSoundsAndSetSources(soundsInfo);
     } else {
         std::cout << "Query got no results..." << std::endl;
     }
 }
 
-void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundsInfo)
+void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsInfo)
 {
     // This method is called by the FreesoundSearchComponent when a new query has
     // been made and new sounda have been selected for loading into the sampler.
@@ -330,19 +363,19 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
         soundsDownloadLocation.createDirectory();
     }
     
-    std::vector<juce::StringArray> soundsInfoDownloadedOk;  // Here we will add info of soudns that downloaded ok
-    
     #if !ELK_BUILD
     
     // Download the sounds within the plugin
     
-    // Download the sounds
+    // Download the sounds (if not already downloaded)
     std::cout << "Downloading new sounds..." << std::endl;
     FreesoundClient client(FREESOUND_API_KEY);
-    for (int i=0; i<sounds.size(); i++){
-        File location = soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg");
+    
+    for (int i=0; i<soundsInfo.getNumChildren(); i++){
+        ValueTree soundInfo = soundsInfo.getChild(i);
+        File location = soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg");
         if (!location.exists()){  // Dont' re-download if file already exists
-            std::unique_ptr<URL::DownloadTask> downloadTask = client.downloadOGGSoundPreview(sounds[i], location);
+            std::unique_ptr<URL::DownloadTask> downloadTask = URL(soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL)).downloadToFile(location, "");
             downloadTasks.push_back(std::move(downloadTask));
         }
     }
@@ -363,21 +396,16 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
         }
     }
     
-    // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
-    for (int i=0; i<downloadTasks.size(); i++){
-        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").getSize() > 0)){
-            soundsInfoDownloadedOk.push_back(soundsInfo[i]);
-        }
-    }
-    
+
     #else
     // If inside ELK build, download the sounds with the python server as it seems to be much much faster
     std::cout << "Sending download task to python server..." << std::endl;
     URL url = URL("http://localhost:8123/download_sounds");
     
     String urlsParam = "";
-    for (int i=0; i<sounds.size(); i++){
-        urlsParam = urlsParam + sounds[i].getOGGPreviewURL().toString(false) + ",";
+    for (int i=0; i<soundsInfo.getNumChildren(); i++){
+        ValueTree soundInfo = soundsInfo.getChild(i);
+        urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL) + ",";
     }
     url = url.withParameter("urls", urlsParam);
     
@@ -395,22 +423,23 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
         //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
         String resp = stream->readEntireStreamAsString();
         std::cout << "Response with " << statusCode << ": " << resp << std::endl;
-        
-        // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
-        for (int i=0; i<sounds.size(); i++){
-            if ((soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").getSize() > 0)){
-                soundsInfoDownloadedOk.push_back(soundsInfo[i]);
-            }
-        }
     } else {
         std::cout << "Downloading in server failed!" << std::endl;
     }
     
-    
     #endif
     
-    // Store info about the query and tell UI component(s) to update
-    query = textQuery;
+    // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
+    std::cout << "Filtering out sounds that did not download well" << std::endl;
+    ValueTree soundsInfoDownloadedOk = ValueTree(STATE_SOUNDS_INFO);
+    for (int i=0; i<soundsInfo.getNumChildren(); i++){
+        ValueTree soundInfo = soundsInfo.getChild(i);
+        if ((soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg").getSize() > 0)){
+            soundsInfoDownloadedOk.appendChild(soundInfo.createCopy(), nullptr);
+        }
+    }
+    
+    // Store info about the loaded sounds and tell UI components to update
     loadedSoundsInfo = soundsInfoDownloadedOk;
     sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
@@ -432,13 +461,13 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
     int attackTime = 0;
     int releaseTime = 1;
     int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
-    int nSounds = (int)loadedSoundsInfo.size();
+    int nSounds = loadedSoundsInfo.getNumChildren();
     
     std::cout << "Loading " << nSounds << " sounds to sampler" << std::endl;
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
-            String soundID = loadedSoundsInfo[i][0];
+            String soundID = loadedSoundsInfo.getChild(i).getProperty(STATE_SOUND_INFO_ID).toString();
             File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
@@ -458,7 +487,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
 {
     
-    int nSounds = (int)loadedSoundsInfo.size();
+    int nSounds = loadedSoundsInfo.getNumChildren();
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         int midiNoteForNormalPitch = soundNumber * nNotesPerSound + nNotesPerSound / 2;
@@ -477,17 +506,12 @@ double SourceSamplerAudioProcessor::getStartTime(){
     return startTime;
 }
 
-bool SourceSamplerAudioProcessor::isArrayNotEmpty()
-{
-    return loadedSoundsInfo.size() != 0;
-}
-
 String SourceSamplerAudioProcessor::getQuery()
 {
     return query;
 }
 
-std::vector<juce::StringArray> SourceSamplerAudioProcessor::getData()
+ValueTree SourceSamplerAudioProcessor::getLoadedSoundsInfo()
 {
     return loadedSoundsInfo;
 }

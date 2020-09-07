@@ -55,7 +55,7 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 }
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
-    // TODO: is there a way to find variable by string name?
+    // --> Start auto-generated code A
     if (name == "filterCutoff") {
         filterCutoff = value;
     } else if (name == "filterRessonance") {
@@ -66,6 +66,36 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
         maxFilterCutoffMod = value;
     } else if (name == "gain") {
         gain = value;
+    }
+    // --> End auto-generated code A
+}
+
+ValueTree SourceSamplerSound::getState(){
+    ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
+    
+    // TODO: iterate over all parameters
+    // --> Start auto-generated code B
+    ValueTree soundParameter = ValueTree(STATE_SAMPLER_SOUND_PARAMETER);
+    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr);
+    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr);
+    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr);
+    state.appendChild(soundParameter, nullptr);
+    // --> End auto-generated code B
+    
+    return state;
+}
+
+void SourceSamplerSound::loadState(ValueTree soundState){
+    
+    // Iterate over parameters and load them
+    for (int i=0; i<soundState.getChildWithName(STATE_SAMPLER_SOUND_PARAMETERS).getNumChildren(); i++){
+        ValueTree parameter = soundState.getChildWithName(STATE_SAMPLER_SOUND_PARAMETERS).getChild(i);
+        String type = soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
+        String name = soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
+        if (type == "float"){
+            float value = (float)soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+            setParameterByNameFloat(name, value);
+        }
     }
 }
 

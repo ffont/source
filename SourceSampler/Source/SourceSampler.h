@@ -66,6 +66,10 @@ public:
     
     //==============================================================================
     void setParameterByNameFloat(const String& name, float value);
+    
+    //==============================================================================
+    ValueTree getState();
+    void loadState(ValueTree soundState);
 
 private:
     //==============================================================================
@@ -185,6 +189,82 @@ public:
             dynamic_cast<SourceSamplerVoice*> (v)->prepare (spec);
 
         fxChain.prepare (spec);
+    }
+    
+    //==============================================================================
+    ValueTree getState(){
+        
+        ValueTree state = ValueTree(STATE_SAMPLER);
+        
+        // Add reverb settings to state
+        ValueTree reverbParameters = ValueTree(STATE_REVERB_PARAMETERS);
+        auto& reverb = fxChain.get<reverbIndex>();
+        Reverb::Parameters params = reverb.getParameters();
+        reverbParameters.setProperty(STATE_REVERB_ROOMSIZE, params.roomSize, nullptr);
+        reverbParameters.setProperty(STATE_REVERB_DAMPING, params.damping, nullptr);
+        reverbParameters.setProperty(STATE_REVERB_WETLEVEL, params.wetLevel, nullptr);
+        reverbParameters.setProperty(STATE_REVERB_DRYLEVEL, params.dryLevel, nullptr);
+        reverbParameters.setProperty(STATE_REVERB_WIDTH, params.width, nullptr);
+        reverbParameters.setProperty(STATE_REVERB_FREEZEMODE, params.freezeMode, nullptr);
+        state.appendChild(reverbParameters, nullptr);
+        
+        // Add individual sound settings to state
+        ValueTree samplerSoundsState = ValueTree(STATE_SAMPLER_SOUNDS);
+        samplerSoundsState.setProperty(STATE_SAMPLER_NSOUNDS, getNumSounds(), nullptr);
+        for (int i=0; i<getNumSounds(); i++){
+            auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
+            samplerSoundsState.appendChild(sound->getState(), nullptr);
+        }
+        state.appendChild(samplerSoundsState, nullptr);
+        
+        return state;
+    }
+    
+    void loadState(ValueTree samplerState){
+        
+        // This should be called after having called "setSources" with the corresponding sounds
+        // This will set the individual sound parameters to the stored ones, but does no deal with
+        // loading specific sounds or downloading them. This also set "global" parameters.
+        
+        // Load reverb parameters
+        ValueTree reveberParametersVT = samplerState.getChildWithName(STATE_REVERB_PARAMETERS);
+        if (reveberParametersVT.isValid()){
+            Reverb::Parameters reverbParameters;
+            if (reveberParametersVT.hasProperty(STATE_REVERB_ROOMSIZE)){
+                reverbParameters.roomSize = (float)reveberParametersVT.getProperty(STATE_REVERB_ROOMSIZE);
+            }
+            if (reveberParametersVT.hasProperty(STATE_REVERB_DAMPING)){
+                reverbParameters.damping = (float)reveberParametersVT.getProperty(STATE_REVERB_DAMPING);
+            }
+            if (reveberParametersVT.hasProperty(STATE_REVERB_WETLEVEL)){
+                reverbParameters.wetLevel = (float)reveberParametersVT.getProperty(STATE_REVERB_WETLEVEL);
+            }
+            if (reveberParametersVT.hasProperty(STATE_REVERB_DRYLEVEL)){
+                reverbParameters.dryLevel = (float)reveberParametersVT.getProperty(STATE_REVERB_DRYLEVEL);
+            }
+            if (reveberParametersVT.hasProperty(STATE_REVERB_WIDTH)){
+                reverbParameters.width = (float)reveberParametersVT.getProperty(STATE_REVERB_WIDTH);
+            }
+            if (reveberParametersVT.hasProperty(STATE_REVERB_FREEZEMODE)){
+                reverbParameters.freezeMode = (float)reveberParametersVT.getProperty(STATE_REVERB_FREEZEMODE);
+            }
+            auto& reverb = fxChain.get<reverbIndex>();
+            reverb.setParameters(reverbParameters);
+        }
+        
+        // Load individual sound settings
+        ValueTree samplerSoundsVT = samplerState.getChildWithName(STATE_SAMPLER_SOUNDS);
+        if (samplerSoundsVT.isValid()){
+            // NOTE: this assumes that the order of the sounds in the Sampler is the same order stored in the state ValueTree
+            // TODO: double check that the order is preserved!
+            for (int i=0; i<samplerSoundsVT.getNumChildren(); i++){
+                ValueTree soundState = samplerSoundsVT.getChild(i);
+                if (i<getNumSounds()){  // Safety check to make sure we don't try to modify sound that does not exist
+                    auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
+                    sound->loadState(soundState);
+                }
+            }
+        }
     }
     
 private:

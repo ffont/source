@@ -62,7 +62,9 @@ public:
     void changeProgramName (int index, const String& newName) override;
 
     //==============================================================================
+    std::unique_ptr<XmlElement> collectPresetStateInformation ();
     void getStateInformation (MemoryBlock& destData) override;
+    void loadPresetFromStateInformation (ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
@@ -70,17 +72,17 @@ public:
     void actionListenerCallback (const String &message) override;
     
     //==============================================================================
-    void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     File soundsDownloadLocation;
-    void newSoundsReadyToDownload(Array<FSSound> sounds, String textQuery, std::vector<juce::StringArray> soundInfo);
-
+    
+    void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
+    void downloadSoundsAndSetSources(ValueTree soundsInfo);
     void setSources(int midiNoteRootOffset);
+    
     void addToMidiBuffer(int soundNumber);
 
     double getStartTime();
-    bool isArrayNotEmpty();
     String getQuery();
-    std::vector<juce::StringArray> getData();
+    ValueTree getLoadedSoundsInfo();
     
 private:
     
@@ -92,7 +94,7 @@ private:
     long midicounter;
     double startTime;
     String query;
-    std::vector<juce::StringArray> loadedSoundsInfo;
+    ValueTree loadedSoundsInfo;
     
     ServerInterface serverInterface;
     
