@@ -32,6 +32,8 @@ public:
             addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
             addListener (this, OSC_ADDRESS_SET_REVERB_PARAMETERS);
+            addListener (this, OSC_ADDRESS_SAVE_CURRENT_PRESET);
+            addListener (this, OSC_ADDRESS_LOAD_PRESET);
         }
     }
     
@@ -87,7 +89,19 @@ public:
                 String actionMessage = String(ACTION_SET_REVERB_PARAMETERS) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
-        }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SAVE_CURRENT_PRESET){
+            if (message.size() == 1)  {
+                String presetName = message[0].getString();  // Name of the preset to save
+                String actionMessage = String(ACTION_SAVE_CURRENT_PRESET) + ":" + presetName;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_LOAD_PRESET){
+            if (message.size() == 1)  {
+                String presetName = message[0].getString();  // Name of the preset to save
+                String actionMessage = String(ACTION_LOAD_PRESET) + ":" + presetName;
+                sendActionMessage(actionMessage);
+            }
+        }       
     }
 
 private:

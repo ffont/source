@@ -208,8 +208,9 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 }
 
 //==============================================================================
-std::unique_ptr<XmlElement> SourceSamplerAudioProcessor::collectPresetStateInformation ()
+ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
 {
+    std::cout << "Saving state..." << std::endl;
     ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
     
     // Add general stuff
@@ -221,16 +222,40 @@ std::unique_ptr<XmlElement> SourceSamplerAudioProcessor::collectPresetStateInfor
     // Add sampler state (includes main settings and individual sampler sounds parameters)
     state.appendChild(sampler.getState(), nullptr);
     
-    std::unique_ptr<XmlElement> xml (state.createXml());
-    std::cout << "Saving state..." << std::endl;
-    //std::cout << xml->createDocument("") <<std::endl; // Print state for debugging purposes
-    return xml;
+    return state;
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
     // Save current state information to memory block
-    copyXmlToBinary (*collectPresetStateInformation(), destData);
+    ValueTree state = collectPresetStateInformation();
+    std::unique_ptr<XmlElement> xml (state.createXml());
+    //std::cout << xml->createDocument("") <<std::endl; // Print state for debugging purposes
+    copyXmlToBinary (*xml, destData);
+}
+
+void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& presetName)
+{
+    ValueTree state = collectPresetStateInformation();
+    std::unique_ptr<XmlElement> xml (state.createXml());
+    File location = presetFilesLocation.getChildFile(presetName).withFileExtension("source_preset");
+    if (location.existsAsFile()){
+        // If already exists, delete it
+        location.deleteFile();
+    }
+    xml->writeTo(location);
+}
+
+void SourceSamplerAudioProcessor::loadPresetFromFile (const String& presetName)
+{
+    File location = presetFilesLocation.getChildFile(presetName).withFileExtension("source_preset");
+    if (location.existsAsFile()){
+        XmlDocument xmlDocument (location);
+        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        if (xmlState.get() != nullptr){
+            loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
+        }
+    }
 }
 
 void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
@@ -320,7 +345,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reverbParameters.freezeMode = tokens[5].getFloatValue();
         std::cout << "Setting new reverb parameters " << std::endl;
         sampler.setReverbParameters(reverbParameters);
-    }    
+    } else if (message.startsWith(String(ACTION_SAVE_CURRENT_PRESET))){
+        String presetName = message.substring(String(ACTION_SAVE_CURRENT_PRESET).length() + 1);
+        saveCurrentPresetToFile(presetName);
+    } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
+        String presetName = message.substring(String(ACTION_LOAD_PRESET).length() + 1);
+        loadPresetFromFile(presetName);
+    }
 }
 
 //==============================================================================

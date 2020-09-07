@@ -66,6 +66,14 @@ def index():
                 reverbParams[parameter_name] = value
                 values_list.append(value)
             osc_client.send_message(b'/set_reverb_parameters', values_list) 
+
+        if 'presetName' in request.form:
+            # Save current preset
+            osc_client.send_message(b'/save_current_preset', [request.form['presetName']]) 
+
+        if 'loadPresetName' in request.form:
+            # Load preset
+            osc_client.send_message(b'/load_preset', [request.form['loadPresetName']]) 
             
     tvars = soundParams.copy()
     tvars.update(reverbParams)

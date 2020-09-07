@@ -62,10 +62,12 @@ public:
     void changeProgramName (int index, const String& newName) override;
 
     //==============================================================================
-    std::unique_ptr<XmlElement> collectPresetStateInformation ();
+    ValueTree collectPresetStateInformation ();
     void getStateInformation (MemoryBlock& destData) override;
     void loadPresetFromStateInformation (ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
+    void saveCurrentPresetToFile(const String& presetName);
+    void loadPresetFromFile (const String& presetName);
     
     //==============================================================================
     // Action listener
