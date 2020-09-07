@@ -73,6 +73,9 @@ public:
     
     //==============================================================================
     File soundsDownloadLocation;
+    File presetFilesLocation;
+    
+    //==============================================================================
     
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     void downloadSoundsAndSetSources(ValueTree soundsInfo);

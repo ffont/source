@@ -27,10 +27,19 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #endif
 {
     #if ELK_BUILD
-    soundsDownloadLocation = File("/udata/source/");
+    soundsDownloadLocation = File("/udata/source/sounds/");
+    presetFilesLocation = File("/udata/source/presets/");
     #else
-    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler");
+    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler/sounds");
+    presetFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler/presets");
     #endif
+    
+    if (!soundsDownloadLocation.exists()){
+        soundsDownloadLocation.createDirectory();
+    }
+    if (!presetFilesLocation.exists()){
+        presetFilesLocation.createDirectory();
+    }
     
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
@@ -357,11 +366,7 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     // This method is called by the FreesoundSearchComponent when a new query has
     // been made and new sounda have been selected for loading into the sampler.
     // This methods downloads the sounds, sotres in tmp directory and...
-    
-    //
-    if (!soundsDownloadLocation.exists()){
-        soundsDownloadLocation.createDirectory();
-    }
+
     
     #if !ELK_BUILD
     
