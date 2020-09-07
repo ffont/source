@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 import argparse
+import requests
+import os
 
 from flask import Flask, render_template, request, redirect, url_for
 from oscpy.client import OSCClient
@@ -75,7 +77,26 @@ def index():
         'soundIndex': soundIndex
     })
     return render_template("index.html", **tvars)
-    
+
+
+@app.route('/download_sounds', methods = ['GET'])
+def download_sounds():
+    for url in request.args['urls'].split(','):
+        if url:
+            sound_id = url.split('/')[-1].split('_')[0]
+            outfile = '/udata/source/' + sound_id + '.ogg'
+            if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
+                print('Downloading ' + url)
+                r = requests.get(url, allow_redirects=True)
+                open(outfile, 'wb').write(r.content)
+    return 'All downloaded!'
+
+
+@app.route('/set_sound_parameter_float', methods = ['GET'])
+def set_sound_parameter_float():
+    osc_client.send_message(b'/set_sound_parameter', [int(request.args['soundIdx']), request.args['param'], float(request.args['value'])]) 
+    return 'Parameter set!'
+
 
 if __name__ == '__main__':
     

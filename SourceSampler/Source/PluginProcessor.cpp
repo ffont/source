@@ -297,7 +297,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& query, in
     isQueryinAndDownloadingSounds = true;
     FreesoundClient client(FREESOUND_API_KEY);
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(query, filter, "score", 1, -1, 150, "id,name,username,license,previews");
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews");
     if (list.getCount() > 0){
         std::cout << "Query got " << list.getCount() << " results" << std::endl;
         Array<FSSound> sounds = list.toArrayOfSounds();
@@ -330,6 +330,12 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
         soundsDownloadLocation.createDirectory();
     }
     
+    std::vector<juce::StringArray> soundsInfoDownloadedOk;  // Here we will add info of soudns that downloaded ok
+    
+    #if !ELK_BUILD
+    
+    // Download the sounds within the plugin
+    
     // Download the sounds
     std::cout << "Downloading new sounds..." << std::endl;
     FreesoundClient client(FREESOUND_API_KEY);
@@ -358,12 +364,50 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
     }
     
     // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
-    std::vector<juce::StringArray> soundsInfoDownloadedOk;
     for (int i=0; i<downloadTasks.size(); i++){
         if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").getSize() > 0)){
             soundsInfoDownloadedOk.push_back(soundsInfo[i]);
         }
     }
+    
+    #else
+    // If inside ELK build, download the sounds with the python server as it seems to be much much faster
+    std::cout << "Sending download task to python server..." << std::endl;
+    URL url = URL("http://localhost:8123/download_sounds");
+    
+    String urlsParam = "";
+    for (int i=0; i<sounds.size(); i++){
+        urlsParam = urlsParam + sounds[i].getOGGPreviewURL().toString(false) + ",";
+    }
+    url = url.withParameter("urls", urlsParam);
+    
+    String header;
+    int statusCode = -1;
+    StringPairArray responseHeaders;
+    String data = "";
+    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+    bool postLikeRequest = false;
+    
+    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+        &responseHeaders, &statusCode)))
+    {
+        //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
+        String resp = stream->readEntireStreamAsString();
+        std::cout << "Response with " << statusCode << ": " << resp << std::endl;
+        
+        // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
+        for (int i=0; i<sounds.size(); i++){
+            if ((soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").getSize() > 0)){
+                soundsInfoDownloadedOk.push_back(soundsInfo[i]);
+            }
+        }
+    } else {
+        std::cout << "Downloading in server failed!" << std::endl;
+    }
+    
+    
+    #endif
     
     // Store info about the query and tell UI component(s) to update
     query = textQuery;

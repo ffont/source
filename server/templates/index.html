@@ -3,6 +3,28 @@
 
 <head>
     <title>Source, a Freesound-powered sampler</title>
+
+    <script>
+
+        function setParameter(element){
+            var baseName = element.name.replace("Slider", "");
+            var value = element.value;
+            var soundIdx = document.getElementById("soundIndexId").value;
+            document.getElementById(baseName + "Id").value = value;
+
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+
+                if (this.status == 200) {
+                    console.log("Response 200");
+                }
+            };
+            xhr.open('GET', '/set_sound_parameter_float?soundIdx=' + soundIdx + '&param=' + baseName + '&value=' + value, true);
+            xhr.send();
+        }
+        
+    </script>
 </head>
 
 <body>
@@ -30,8 +52,9 @@
 
     <form action="." method="post">
         <h3>Sound parameters</h3>
-        <label for="soundIndex">Sound index (use -1 for all):</label><input name="soundIndex" value="{{soundIndex}}" type="text"><br>
-        <label for="filterCutoff">Filter cutoff:</label><input name="filterCutoff" value="{{filterCutoff}}" type="text"><br>
+        <label for="soundIndex">Sound index (use -1 for all):</label><input id="soundIndexId" name="soundIndex" value="{{soundIndex}}" type="text"><br>
+        <input type="range" name="filterCutoffSlider" min="0" max="20000.0" step="0.5" oninput="setParameter(this)"><br>
+        <label for="filterCutoff">Filter cutoff:</label><input id="filterCutoffId" name="filterCutoff" value="{{filterCutoff}}" type="text"><br>
         <label for="filterResonance">Filter resonance:</label><input name="filterResonance" value="{{filterResonance}}" type="text"><br>
         <label for="maxPitchRatioMod">AT>pitch:</label><input name="maxPitchRatioMod" value="{{maxPitchRatioMod}}" type="text"><br>
         <label for="maxFilterCutoffMod">AT>cutoff:</label><input name="maxFilterCutoffMod" value="{{maxFilterCutoffMod}}" type="text"><br>
