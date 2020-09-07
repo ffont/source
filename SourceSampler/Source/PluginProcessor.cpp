@@ -441,7 +441,7 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     String urlsParam = "";
     for (int i=0; i<soundsInfo.getNumChildren(); i++){
         ValueTree soundInfo = soundsInfo.getChild(i);
-        urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL) + ",";
+        urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
     }
     url = url.withParameter("urls", urlsParam);
     
