@@ -92,7 +92,7 @@ private:
     long midicounter;
     double startTime;
     String query;
-    std::vector<juce::StringArray> soundsArray;
+    std::vector<juce::StringArray> loadedSoundsInfo;
     
     ServerInterface serverInterface;
     

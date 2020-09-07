@@ -61,7 +61,7 @@ public:
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT){
             if (message.size() == 3)  {
-                int soundIndex = message[0].getInt32();  // Index of the sound in SourceSamplerSynthesiser object
+                int soundIndex = message[0].getInt32();  // Index of the sound in SourceSamplerSynthesiser object (-1 means all sounds)
                 String parameterName = message[1].getString();  // Name of the parameter to change
                 float value = message[2].getFloat32();  // Value of the parameter to set
                 String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +

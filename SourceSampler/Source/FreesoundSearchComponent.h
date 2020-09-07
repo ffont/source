@@ -162,9 +162,9 @@ public:
     void updateSoundsTable ()
     {
         searchResults.clearItems();
-        std::vector<juce::StringArray> soundsArray = processor->getData();
-        for (int i=0; i<soundsArray.size(); i++){
-            searchResults.addRowData(soundsArray[i]);
+        std::vector<juce::StringArray> loadedSoundsInfo = processor->getData();
+        for (int i=0; i<loadedSoundsInfo.size(); i++){
+            searchResults.addRowData(loadedSoundsInfo[i]);
         }
         searchResults.updateContent();
     }

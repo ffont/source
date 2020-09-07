@@ -51,15 +51,10 @@ def index():
         if 'soundIndex' in request.form:
             # Setting sound parameters
             soundIndex = int(request.form['soundIndex'])
-            if (soundIndex == -1):
-                soundsToUpdate = list(range(0, 16))
-            else:
-                soundsToUpdate = [int(soundIndex)]
-            for sound_idx in soundsToUpdate:
-                for parameter_name in list(soundParams.keys()):
-                    value = float(request.form[parameter_name])
-                    osc_client.send_message(b'/set_sound_parameter', [sound_idx, parameter_name, value]) 
-                    soundParams[parameter_name] = value
+            for parameter_name in list(soundParams.keys()):
+                value = float(request.form[parameter_name])
+                osc_client.send_message(b'/set_sound_parameter', [int(soundIndex), parameter_name, value]) 
+                soundParams[parameter_name] = value
 
         if 'roomSize' in request.form:
             # Setting reverb parameters

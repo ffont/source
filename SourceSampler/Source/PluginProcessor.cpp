@@ -39,7 +39,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     std::vector<String> queries = {"wood", "metal", "glass", "percussion", "cat", "hit", "drums"};
     auto randomInt = juce::Random::getSystemRandom().nextInt(queries.size());
     #if ELK_BUILD
-    int numSounds = 4;  // Use less sounds by default in ELK so it starts faster
+    int numSounds = 8;  // Use less sounds by default in ELK so it starts faster
     #else
     int numSounds = 16;
     #endif
@@ -200,8 +200,6 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
-    // TODO: compute master effects here?
-    
     midiMessages.clear(); // Why clearing here?
 }
 
@@ -255,14 +253,22 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
         StringArray tokens;
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();
+        int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
         String parameterName = tokens[1];
         float parameterValue = tokens[2].getFloatValue();
         std::cout << "Setting parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue << std::endl;
-        if (soundIndex < sampler.getNumSounds() - 1){
-            auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
-            sound->setParameterByNameFloat(parameterName, parameterValue);
+        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
+            if (soundIndex < sampler.getNumSounds() - 1){
+                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
+                sound->setParameterByNameFloat(parameterName, parameterValue);
+            }
+        } else {
+            for (int i=0; i<sampler.getNumSounds(); i++){
+                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(i).get());
+                sound->setParameterByNameFloat(parameterName, parameterValue);
+            }
         }
+        
     } else if (message.startsWith(String(ACTION_SET_REVERB_PARAMETERS))){
         String serializedParameters = message.substring(String(ACTION_SET_REVERB_PARAMETERS).length() + 1);
         StringArray tokens;
@@ -354,15 +360,14 @@ void SourceSamplerAudioProcessor::newSoundsReadyToDownload (Array<FSSound> sound
     // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
     std::vector<juce::StringArray> soundsInfoDownloadedOk;
     for (int i=0; i<downloadTasks.size(); i++){
-        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("mp3").getSize() > 0)){
+        if ((downloadTasks[i]->isFinished()) && (!downloadTasks[i]->hadError()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").exists()) && (soundsDownloadLocation.getChildFile(sounds[i].id).withFileExtension("ogg").getSize() > 0)){
             soundsInfoDownloadedOk.push_back(soundsInfo[i]);
         }
     }
     
     // Store info about the query and tell UI component(s) to update
     query = textQuery;
-    soundsArray = soundsInfo;
-    //soundsArray = soundsInfoDownloadedOk;
+    loadedSoundsInfo = soundsInfoDownloadedOk;
     sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
     // Load the sounds in the sampler
@@ -383,13 +388,13 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
     int attackTime = 0;
     int releaseTime = 1;
     int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
-    int nSounds = (int)soundsArray.size();
+    int nSounds = (int)loadedSoundsInfo.size();
     
     std::cout << "Loading " << nSounds << " sounds to sampler" << std::endl;
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
-            String soundID = soundsArray[i][0];
+            String soundID = loadedSoundsInfo[i][0];
             File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
@@ -409,7 +414,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
 {
     
-    int nSounds = (int)soundsArray.size();
+    int nSounds = (int)loadedSoundsInfo.size();
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         int midiNoteForNormalPitch = soundNumber * nNotesPerSound + nNotesPerSound / 2;
@@ -430,7 +435,7 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 bool SourceSamplerAudioProcessor::isArrayNotEmpty()
 {
-    return soundsArray.size() != 0;
+    return loadedSoundsInfo.size() != 0;
 }
 
 String SourceSamplerAudioProcessor::getQuery()
@@ -440,7 +445,7 @@ String SourceSamplerAudioProcessor::getQuery()
 
 std::vector<juce::StringArray> SourceSamplerAudioProcessor::getData()
 {
-    return soundsArray;
+    return loadedSoundsInfo;
 }
 
 //==============================================================================
