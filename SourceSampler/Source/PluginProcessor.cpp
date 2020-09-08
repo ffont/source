@@ -49,7 +49,10 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
+    
+    // Action listeners
     serverInterface.addActionListener(this);
+    sampler.addActionListener(this);
     
     // Load global settings
     loadGlobalPersistentStateFromFile();
@@ -68,8 +71,9 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
         downloadTasks.at(i).reset();
     }
     
-    // Remove this as a listener from serverInterface
+    // Remove listeners
     serverInterface.removeActionListener(this);
+    sampler.removeActionListener(this);
 }
 
 //==============================================================================
@@ -181,7 +185,6 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
         ValueTree presetMapping = presetNumberMapping.getChild(i);
         int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
         if (mappingNumber == index){
-            // TODO: is this 0-based? 1-based?
             String name = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
             return name;
         }
