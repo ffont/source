@@ -6,6 +6,8 @@
 
     <script>
 
+        var updateStateTimer;
+
         function setParameter(element){
             var baseName = element.name.replace("Slider", "");
             var value = element.value;
@@ -34,6 +36,8 @@
                         document.getElementById("oldIndicator").innerHTML = '';
                         document.getElementById("state").value = this.responseText;
                     }
+                } else {
+                    document.getElementById("state").value = 'No response from server';
                 }
             };
             xhr.open('GET', '/update_state', true);
@@ -50,14 +54,19 @@
             };
             xhr.open('GET', '/trigger_post_state', true);
             xhr.send();
+
+            setTimeout(function(){ // Update the state after a while
+                updateState();
+            }, 200);
         }
 
         document.addEventListener("DOMContentLoaded", function(){
-            triggerPostState();            
-            setInterval(function(){
-                //triggerPostState();
+            triggerPostState();       
+
+            /*     
+            updateStateTimer = setInterval(function(){
                 updateState();
-            }, 200);
+            }, 200);*/
         });
         
     </script>

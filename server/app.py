@@ -14,6 +14,7 @@ osc_client = None
 sound_parameter_names = ['filterCutoff', 'filterResonance', 'maxPitchRatioMod', 'maxFilterCutoffMod', 'gain']
 plugin_state = "No sate"
 time_post_state_triggered = None
+time_post_state_received = None
 
 
 @app.route('/', methods = ['GET', 'POST'])
@@ -109,7 +110,7 @@ def download_sounds():
     for url in request.args['urls'].split(','):
         if url:
             sound_id = url.split('/')[-1].split('_')[0]
-            outfile = '/udata/source/' + sound_id + '.ogg'
+            outfile = '/udata/source/sounds/' + sound_id + '.ogg'
             if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
                 print('Downloading ' + url)
                 r = requests.get(url, allow_redirects=True)
@@ -120,7 +121,9 @@ def download_sounds():
 @app.route('/state_from_plugin', methods = ['POST'])
 def state_from_plugin():
     global plugin_state
+    global time_post_state_received
     print('State from plugin')
+    time_post_state_received = time.time()
     plugin_state = request.data
     return 'State received'
 
@@ -128,9 +131,9 @@ def state_from_plugin():
 @app.route('/update_state', methods = ['GET'])
 def update_state():
     global plugin_state
-    global time_post_state_triggered
-    if time_post_state_triggered is not None and time.time() - time_post_state_triggered > 1:
-        # If older than 1 second, plugin is maybe disconnected
+    global time_post_state_received
+    if time_post_state_received is not None and time.time() - time_post_state_received > 5:
+        # If older than 5 seconds, plugin is maybe disconnected
         return 'Maybe old'
     else:
         return Response(plugin_state, mimetype='text/xml')
