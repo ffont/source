@@ -15,7 +15,6 @@
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (this.readyState != 4) return;
-
                 if (this.status == 200) {
                     console.log("Response 200");
                 }
@@ -23,6 +22,43 @@
             xhr.open('GET', '/set_sound_parameter_float?soundIdx=' + soundIdx + '&param=' + baseName + '&value=' + value, true);
             xhr.send();
         }
+
+        function updateState(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    if (this.responseText == 'Maybe old'){
+                        document.getElementById("oldIndicator").innerHTML = '*';
+                    } else {
+                        document.getElementById("oldIndicator").innerHTML = '';
+                        document.getElementById("state").value = this.responseText;
+                    }
+                }
+            };
+            xhr.open('GET', '/update_state', true);
+            xhr.send();
+        }
+
+        function triggerPostState(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    // Do nothing
+                }
+            };
+            xhr.open('GET', '/trigger_post_state', true);
+            xhr.send();
+        }
+
+        document.addEventListener("DOMContentLoaded", function(){
+            triggerPostState();            
+            setInterval(function(){
+                //triggerPostState();
+                updateState();
+            }, 200);
+        });
         
     </script>
 </head>
@@ -104,6 +140,10 @@
         <input type="submit">
     </form>
 
+    
+    <h3>State</h3>
+    <button onclick="triggerPostState();">Trigger post state</button><span id="oldIndicator"></span>
+    <textarea id="state" style="width:100%;height:500px;"></textarea>
 
 </body>
 

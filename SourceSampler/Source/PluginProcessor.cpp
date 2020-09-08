@@ -379,15 +379,20 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     }
 }
 
-void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
+ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
 {
-    // This is to save settings that need to persist between sampler runs and that do not
-    // change per preset
-    
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
     settings.appendChild(presetNumberMapping, nullptr);
+    return settings;
+}
+
+void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
+{
+    // This is to save settings that need to persist between sampler runs and that do not
+    // change per preset
+    ValueTree settings = collectGlobalSettingsStateInformation();
     std::unique_ptr<XmlElement> xml (settings.createXml());
     File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
@@ -537,8 +542,28 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_SET_MIDI_THRU))){
         bool midiThru = message.substring(String(ACTION_SET_MIDI_THRU).length() + 1).getIntValue() == 1;
         setMidiThru(midiThru);
+    } else if (message.startsWith(String(ACTION_POST_STATE))){
+        ValueTree presetState = collectPresetStateInformation();
+        ValueTree globalSettings = collectGlobalSettingsStateInformation();
+        ValueTree fullState = ValueTree("SourceFullState");
+        fullState.appendChild(presetState, nullptr);
+        fullState.appendChild(globalSettings, nullptr);
+        
+        URL url = URL("http://localhost:8123/state_from_plugin");
+        String header = "Content-Type: text/xml";
+        int statusCode = -1;
+        StringPairArray responseHeaders;
+        String data = fullState.toXmlString();
+        if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+        bool postLikeRequest = true;
+        if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+            &responseHeaders, &statusCode)))
+        {
+            // No need to read response really
+            //String resp = stream->readEntireStreamAsString();
+        }
     }
-
 }
 
 //==============================================================================

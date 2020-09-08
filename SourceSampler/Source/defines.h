@@ -19,6 +19,7 @@
 #define ACTION_LOAD_PRESET "ACTION_LOAD_PRESET"
 #define ACTION_SET_MIDI_IN_CHANNEL "ACTION_SET_MIDI_IN_CHANNEL"
 #define ACTION_SET_MIDI_THRU "ACTION_SET_MIDI_THRU"
+#define ACTION_POST_STATE "ACTION_POST_STATE"
 
 #define OSC_ADDRESS_SET_MIDI_ROOT_OFFSET "/set_midi_root_offset"
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
@@ -28,6 +29,7 @@
 #define OSC_ADDRESS_LOAD_PRESET "/load_preset"
 #define OSC_ADDRESS_SET_MIDI_IN_CHANNEL "/set_midi_in_channel"
 #define OSC_ADDRESS_SET_MIDI_THRU "/set_midi_thru"
+#define OSC_ADDRESS_POST_STATE "/post_state"
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"

@@ -3,14 +3,17 @@ from __future__ import print_function
 import argparse
 import requests
 import os
+import time
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
 
 app = Flask(__name__, static_url_path='/static', static_folder='static/')
 osc_client = None
 
 sound_parameter_names = ['filterCutoff', 'filterResonance', 'maxPitchRatioMod', 'maxFilterCutoffMod', 'gain']
+plugin_state = "No sate"
+time_post_state_triggered = None
 
 
 @app.route('/', methods = ['GET', 'POST'])
@@ -112,6 +115,33 @@ def download_sounds():
                 r = requests.get(url, allow_redirects=True)
                 open(outfile, 'wb').write(r.content)
     return 'All downloaded!'
+
+
+@app.route('/state_from_plugin', methods = ['POST'])
+def state_from_plugin():
+    global plugin_state
+    print('State from plugin')
+    plugin_state = request.data
+    return 'State received'
+
+
+@app.route('/update_state', methods = ['GET'])
+def update_state():
+    global plugin_state
+    global time_post_state_triggered
+    if time_post_state_triggered is not None and time.time() - time_post_state_triggered > 1:
+        # If older than 1 second, plugin is maybe disconnected
+        return 'Maybe old'
+    else:
+        return Response(plugin_state, mimetype='text/xml')
+
+
+@app.route('/trigger_post_state', methods = ['GET'])
+def trigger_post_state():
+    global time_post_state_triggered
+    time_post_state_triggered = time.time()
+    osc_client.send_message(b'/post_state', []) 
+    return 'Post state triggered'
 
 
 @app.route('/set_sound_parameter_float', methods = ['GET'])
