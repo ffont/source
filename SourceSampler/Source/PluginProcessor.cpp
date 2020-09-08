@@ -49,12 +49,13 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
+    serverInterface.addActionListener(this);
     
     // Load global settings
     loadGlobalPersistentStateFromFile();
     
-    // Configure processor to listen messages from server interface
-    serverInterface.addActionListener(this);
+    // Set default program 0
+    setCurrentProgram(0);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -125,26 +126,80 @@ double SourceSamplerAudioProcessor::getTailLengthSeconds() const
 
 int SourceSamplerAudioProcessor::getNumPrograms()
 {
+    int numPresets = presetNumberMapping.getNumChildren();
+    if (numPresets > 0)
+        return numPresets;
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
 int SourceSamplerAudioProcessor::getCurrentProgram()
 {
+    int index = getPresetNumberByName(presetName);
+    if (index > 0)
+        return index;
     return 0;
 }
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
+    String name = getPresetFilenameByIndex(index);
+    if (name != ""){
+        loadPresetFromFile(name);
+    }
 }
 
 const String SourceSamplerAudioProcessor::getProgramName (int index)
 {
+    String name = getPresetFilenameByIndex(index);
+    if (name != ""){
+        return name;
+    }
     return {};
 }
 
 void SourceSamplerAudioProcessor::changeProgramName (int index, const String& newName)
 {
+    if (index > -1){
+        String currentName = getPresetFilenameByIndex(index);
+        if (currentName != ""){
+            // Make a copy of the preset file in disk
+            File currentPresetLocation = getPresetFilePathFromName(currentName);
+            File newPresetLocation = getPresetFilePathFromName(newName);
+            if (currentPresetLocation.existsAsFile()){
+                currentPresetLocation.copyFileTo(newPresetLocation);
+            }
+            // Update the preset mapping
+            updatePresetNumberMapping(newName, index);
+        }
+    }
+}
+
+String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
+{
+    for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
+        ValueTree presetMapping = presetNumberMapping.getChild(i);
+        int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
+        if (mappingNumber == index){
+            // TODO: is this 0-based? 1-based?
+            String name = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
+            return name;
+        }
+    }
+    return "";
+}
+
+int SourceSamplerAudioProcessor::getPresetNumberByName(const String& name)
+{
+    for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
+        ValueTree presetMapping = presetNumberMapping.getChild(i);
+        String _name = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
+        if (name == _name){
+            int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
+            return mappingNumber;
+        }
+    }
+    return -1;
 }
 
 //==============================================================================
@@ -222,7 +277,6 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 //==============================================================================
 ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
 {
-    std::cout << "Saving state..." << std::endl;
     ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
     
     // Add general stuff
@@ -247,22 +301,34 @@ void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
     copyXmlToBinary (*xml, destData);
 }
 
-void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName)
+void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName, int index)
 {
-    presetName = _presetName;
+    if (_presetName == ""){
+        // No name provided, generate unique name
+        presetName = "unnamed";
+        for (int i=0; i<8; i++){
+            presetName = presetName + (String)juce::Random::getSystemRandom().nextInt (9);
+        }
+    } else {
+        presetName = _presetName;
+    }
+
     ValueTree state = collectPresetStateInformation();
     std::unique_ptr<XmlElement> xml (state.createXml());
-    File location = presetFilesLocation.getChildFile(presetName).withFileExtension("source_preset");
+    File location = getPresetFilePathFromName(presetName);
     if (location.existsAsFile()){
         // If already exists, delete it
         location.deleteFile();
     }
     xml->writeTo(location);
+    if (index > -1){
+        updatePresetNumberMapping(presetName, index);
+    }
 }
 
 void SourceSamplerAudioProcessor::loadPresetFromFile (const String& presetName)
 {
-    File location = presetFilesLocation.getChildFile(presetName).withFileExtension("source_preset");
+    File location = getPresetFilePathFromName(presetName);
     if (location.existsAsFile()){
         XmlDocument xmlDocument (location);
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
@@ -315,8 +381,9 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
     
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
+    settings.appendChild(presetNumberMapping, nullptr);
     std::unique_ptr<XmlElement> xml (settings.createXml());
-    File location = sourceDataLocation.getChildFile("settings").withFileExtension("source_settings");
+    File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
         // If already exists, delete it
         location.deleteFile();
@@ -326,7 +393,7 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
 
 void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
 {
-    File location = sourceDataLocation.getChildFile("settings").withFileExtension("source_settings");
+    File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
         XmlDocument xmlDocument (location);
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
@@ -336,8 +403,45 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL)){
                 sampler.midiInChannel = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL);
             }
+            
+            ValueTree _presetNumberMapping = settings.getChildWithName(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
+            if (_presetNumberMapping.isValid()){
+                presetNumberMapping = _presetNumberMapping;
+            }
         }
     }
+}
+
+void SourceSamplerAudioProcessor::updatePresetNumberMapping(const String& presetName, int index)
+{
+    // If preset already exists at this index location, remove it from the value tree so later we re-add it (updated)
+    if (getPresetFilenameByIndex(index) != ""){
+        ValueTree newPresetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
+        for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
+            ValueTree preset = presetNumberMapping.getChild(i);
+            if (index != (int)preset.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER)){
+                newPresetNumberMapping.appendChild(preset.createCopy(), nullptr);
+            }
+        }
+        presetNumberMapping = newPresetNumberMapping;
+    }
+    
+    // Add entry to the preset mapping list
+    ValueTree mapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING);
+    mapping.setProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER, index, nullptr);
+    mapping.setProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME, presetName, nullptr);
+    presetNumberMapping.appendChild(mapping, nullptr);
+    saveGlobalPersistentStateToFile();
+}
+
+File SourceSamplerAudioProcessor::getPresetFilePathFromName(const String& presetName)
+{
+    return presetFilesLocation.getChildFile(presetName).withFileExtension("xml");
+}
+
+File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
+{
+    return sourceDataLocation.getChildFile("settings").withFileExtension("xml");
 }
 
 //==============================================================================
@@ -394,15 +498,32 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reverbParameters.freezeMode = tokens[5].getFloatValue();
         std::cout << "Setting new reverb parameters " << std::endl;
         sampler.setReverbParameters(reverbParameters);
+        
     } else if (message.startsWith(String(ACTION_SAVE_CURRENT_PRESET))){
-        String presetName = message.substring(String(ACTION_SAVE_CURRENT_PRESET).length() + 1);
-        saveCurrentPresetToFile(presetName);
+        String serializedParameters = message.substring(String(ACTION_SAVE_CURRENT_PRESET).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        String presetName = tokens[0];
+        int index = tokens[1].getIntValue();
+        saveCurrentPresetToFile(presetName, index);
+        
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
-        String presetName = message.substring(String(ACTION_LOAD_PRESET).length() + 1);
-        loadPresetFromFile(presetName);
+        String serializedParameters = message.substring(String(ACTION_LOAD_PRESET).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        String presetName = tokens[0];
+        int index = tokens[1].getIntValue();
+        // If index specified, load preset form index, otherwise, load it by name
+        if (index > -1){
+            setCurrentProgram(index);
+        } else {
+            loadPresetFromFile(presetName);
+        }
+        
     } else if (message.startsWith(String(ACTION_SET_MIDI_IN_CHANNEL))){
         int channel = message.substring(String(ACTION_SET_MIDI_IN_CHANNEL).length() + 1).getIntValue();
         setMidiInChannelFilter(channel);
+        
     }
         
 }
@@ -549,7 +670,6 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     // Load the sounds in the sampler
     setSources(0);
     
-    std::cout << "All done and ready!" << std::endl << std::endl;
     isQueryinAndDownloadingSounds = false;
 }
 

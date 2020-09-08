@@ -70,11 +70,13 @@ def index():
 
         if 'presetName' in request.form:
             # Save current preset
-            osc_client.send_message(b'/save_current_preset', [request.form['presetName']]) 
+            index = int(request.form['presetNumber'])
+            osc_client.send_message(b'/save_current_preset', [request.form['presetName'], index]) 
 
-        if 'loadPresetName' in request.form:
+        if 'loadPresetName' in request.form or 'loadPresetNumber' in request.form:
             # Load preset
-            osc_client.send_message(b'/load_preset', [request.form['loadPresetName']]) 
+            index = int(request.form['loadPresetNumber'])
+            osc_client.send_message(b'/load_preset', [request.form['loadPresetName'], index]) 
         
         if 'midiInChannel' in request.form:
             # Set midi in filter

@@ -60,16 +60,19 @@ public:
     void setCurrentProgram (int index) override;
     const String getProgramName (int index) override;
     void changeProgramName (int index, const String& newName) override;
+    String getPresetFilenameByIndex(int index);
+    int getPresetNumberByName(const String& name);
 
     //==============================================================================
     ValueTree collectPresetStateInformation ();
     void getStateInformation (MemoryBlock& destData) override;
     void loadPresetFromStateInformation (ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
-    void saveCurrentPresetToFile(const String& presetName);
+    void saveCurrentPresetToFile(const String& presetName, int index);
     void loadPresetFromFile (const String& presetName);
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
+    void updatePresetNumberMapping(const String& presetName, int index);
     
     //==============================================================================
     // Action listener
@@ -79,6 +82,9 @@ public:
     File sourceDataLocation;
     File soundsDownloadLocation;
     File presetFilesLocation;
+    
+    File getPresetFilePathFromName(const String& presetName);
+    File getGlobalSettingsFilePathFromName();
     
     //==============================================================================
     void setMidiInChannelFilter(int channel);
@@ -108,6 +114,8 @@ private:
     String query = "";
     String presetName = "unnamed";
     ValueTree loadedSoundsInfo;
+    
+    ValueTree presetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
     
     ServerInterface serverInterface;
     
