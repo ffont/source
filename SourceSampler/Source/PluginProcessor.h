@@ -88,6 +88,7 @@ public:
     
     //==============================================================================
     void setMidiInChannelFilter(int channel);
+    void setMidiThru(bool doMidiTrhu);
     
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
@@ -114,6 +115,7 @@ private:
     String query = "";
     String presetName = "unnamed";
     ValueTree loadedSoundsInfo;
+    bool midiOutForwardsMidiIn = true;
     
     ValueTree presetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
     

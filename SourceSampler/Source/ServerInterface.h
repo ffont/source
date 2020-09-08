@@ -35,6 +35,7 @@ public:
             addListener (this, OSC_ADDRESS_SAVE_CURRENT_PRESET);
             addListener (this, OSC_ADDRESS_LOAD_PRESET);
             addListener (this, OSC_ADDRESS_SET_MIDI_IN_CHANNEL);
+            addListener (this, OSC_ADDRESS_SET_MIDI_THRU);
         }
     }
     
@@ -114,7 +115,15 @@ public:
                 String actionMessage = String(ACTION_SET_MIDI_IN_CHANNEL) + ":" + (String)channel;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_MIDI_THRU){
+            if (message.size() == 1)  {
+                int midiThru = message[0].getInt32();
+                String actionMessage = String(ACTION_SET_MIDI_THRU) + ":" + (String)midiThru;
+                sendActionMessage(actionMessage);
+            }
         }
+            
+            
     }
 
 private:

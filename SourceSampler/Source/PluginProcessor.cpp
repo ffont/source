@@ -263,7 +263,9 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
-    midiMessages.clear(); // Why clearing here?
+    if (!midiOutForwardsMidiIn){
+        midiMessages.clear();  // Clear messages from buffer so we don't forward them to the output
+    }
 }
 
 //==============================================================================
@@ -384,6 +386,7 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
     
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
     settings.appendChild(presetNumberMapping, nullptr);
     std::unique_ptr<XmlElement> xml (settings.createXml());
     File location = getGlobalSettingsFilePathFromName();
@@ -405,6 +408,10 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL)){
                 sampler.midiInChannel = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL);
+            }
+            
+            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU)){
+                midiOutForwardsMidiIn = (bool)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU);
             }
             
             ValueTree _presetNumberMapping = settings.getChildWithName(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
@@ -527,8 +534,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int channel = message.substring(String(ACTION_SET_MIDI_IN_CHANNEL).length() + 1).getIntValue();
         setMidiInChannelFilter(channel);
         
+    } else if (message.startsWith(String(ACTION_SET_MIDI_THRU))){
+        bool midiThru = message.substring(String(ACTION_SET_MIDI_THRU).length() + 1).getIntValue() == 1;
+        setMidiThru(midiThru);
     }
-        
+
 }
 
 //==============================================================================
@@ -541,6 +551,12 @@ void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
         channel = 16;
     }
     sampler.midiInChannel = channel;
+    saveGlobalPersistentStateToFile();
+}
+
+void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
+{
+    midiOutForwardsMidiIn = doMidiTrhu;
     saveGlobalPersistentStateToFile();
 }
 

@@ -82,6 +82,10 @@ def index():
             # Set midi in filter
             midiInChannel = int(request.form['midiInChannel']) 
             osc_client.send_message(b'/set_midi_in_channel', [midiInChannel]) 
+
+        if 'hiddenMidiThru' in request.form:
+            # Set midi thru
+            osc_client.send_message(b'/set_midi_thru', [1 if 'midiThru' in request.form else 0]) 
             
             
     tvars = soundParams.copy()
