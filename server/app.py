@@ -36,6 +36,7 @@ def index():
         'width': 1.0,
         'freezeMode': 0.0,
     }
+    midiInChannel = 0
 
     if request.method == 'POST':
         if 'query' in request.form:
@@ -74,6 +75,12 @@ def index():
         if 'loadPresetName' in request.form:
             # Load preset
             osc_client.send_message(b'/load_preset', [request.form['loadPresetName']]) 
+        
+        if 'midiInChannel' in request.form:
+            # Set midi in filter
+            midiInChannel = int(request.form['midiInChannel']) 
+            osc_client.send_message(b'/set_midi_in_channel', [midiInChannel]) 
+            
             
     tvars = soundParams.copy()
     tvars.update(reverbParams)
@@ -82,7 +89,8 @@ def index():
         'numSounds': numSounds,
         'maxSoundLength': maxSoundLength,
         'midiRootNoteOffset': midiRootNoteOffset,
-        'soundIndex': soundIndex
+        'soundIndex': soundIndex,
+        'midiInChannel': midiInChannel,
     })
     return render_template("index.html", **tvars)
 

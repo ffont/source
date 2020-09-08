@@ -17,6 +17,7 @@
 #define ACTION_SET_REVERB_PARAMETERS "ACTION_SET_REVERB_PARAMETERS"
 #define ACTION_SAVE_CURRENT_PRESET "ACTION_SAVE_CURRENT_PRESET"
 #define ACTION_LOAD_PRESET "ACTION_LOAD_PRESET"
+#define ACTION_SET_MIDI_IN_CHANNEL "ACTION_SET_MIDI_IN_CHANNEL"
 
 #define OSC_ADDRESS_SET_MIDI_ROOT_OFFSET "/set_midi_root_offset"
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
@@ -24,9 +25,11 @@
 #define OSC_ADDRESS_SET_REVERB_PARAMETERS "/set_reverb_parameters"
 #define OSC_ADDRESS_SAVE_CURRENT_PRESET "/save_current_preset"
 #define OSC_ADDRESS_LOAD_PRESET "/load_preset"
+#define OSC_ADDRESS_SET_MIDI_IN_CHANNEL "/set_midi_in_channel"
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"
+#define STATE_PRESET_NAME "presetName"
 
 #define STATE_QUERY "query"
 
@@ -55,7 +58,8 @@
 #define STATE_SAMPLER_SOUND_PARAMETER_NAME "parameter_name"
 #define STATE_SAMPLER_SOUND_PARAMETER_VALUE "parameter_value"
 
-
+#define GLOBAL_PERSISTENT_STATE "GlobalSettings"
+#define GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL "midiInChannel"
 
 #define SERIALIZATION_SEPARATOR ";"
 

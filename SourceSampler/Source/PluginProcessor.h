@@ -68,17 +68,22 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     void saveCurrentPresetToFile(const String& presetName);
     void loadPresetFromFile (const String& presetName);
+    void saveGlobalPersistentStateToFile();
+    void loadGlobalPersistentStateFromFile();
     
     //==============================================================================
     // Action listener
     void actionListenerCallback (const String &message) override;
     
     //==============================================================================
+    File sourceDataLocation;
     File soundsDownloadLocation;
     File presetFilesLocation;
     
     //==============================================================================
+    void setMidiInChannelFilter(int channel);
     
+    //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     void downloadSoundsAndSetSources(ValueTree soundsInfo);
     void setSources(int midiNoteRootOffset);
@@ -90,20 +95,21 @@ public:
     ValueTree getLoadedSoundsInfo();
     
 private:
-    
-    bool isQueryinAndDownloadingSounds = false;
-    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     SourceSamplerSynthesiser sampler;
     AudioFormatManager audioFormatManager;
+    
     MidiBuffer midiFromEditor;
     long midicounter;
+    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
+    bool isQueryinAndDownloadingSounds = false;
     double startTime;
-    String query;
+    bool aconnectWasRun = false;
+    
+    String query = "";
+    String presetName = "unnamed";
     ValueTree loadedSoundsInfo;
     
     ServerInterface serverInterface;
-    
-    bool aconnectWasRun = false;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)

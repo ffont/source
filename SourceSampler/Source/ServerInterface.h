@@ -34,6 +34,7 @@ public:
             addListener (this, OSC_ADDRESS_SET_REVERB_PARAMETERS);
             addListener (this, OSC_ADDRESS_SAVE_CURRENT_PRESET);
             addListener (this, OSC_ADDRESS_LOAD_PRESET);
+            addListener (this, OSC_ADDRESS_SET_MIDI_IN_CHANNEL);
         }
     }
     
@@ -101,7 +102,13 @@ public:
                 String actionMessage = String(ACTION_LOAD_PRESET) + ":" + presetName;
                 sendActionMessage(actionMessage);
             }
-        }       
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_MIDI_IN_CHANNEL){
+            if (message.size() == 1)  {
+                int channel = message[0].getInt32();  // Midi channel to accept (-1 for all channels)
+                String actionMessage = String(ACTION_SET_MIDI_IN_CHANNEL) + ":" + (String)channel;
+                sendActionMessage(actionMessage);
+            }
+        }
     }
 
 private:

@@ -26,14 +26,20 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                        )
 #endif
 {
+    
     #if ELK_BUILD
+    sourceDataLocation = File("/udata/source/");
     soundsDownloadLocation = File("/udata/source/sounds/");
     presetFilesLocation = File("/udata/source/presets/");
     #else
-    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler/sounds");
-    presetFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("FreesoundSimpleSampler/presets");
+    sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
+    presetFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
     #endif
     
+    if (!sourceDataLocation.exists()){
+        sourceDataLocation.createDirectory();
+    }
     if (!soundsDownloadLocation.exists()){
         soundsDownloadLocation.createDirectory();
     }
@@ -44,12 +50,18 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
+    // Load global settings
+    loadGlobalPersistentStateFromFile();
+    
     // Configure processor to listen messages from server interface
     serverInterface.addActionListener(this);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
-{    
+{
+    // Save current global persistent state (global settings)
+    saveGlobalPersistentStateToFile();
+    
     // Delete download task objects
     for (int i = 0; i < downloadTasks.size(); i++) {
         downloadTasks.at(i).reset();
@@ -214,6 +226,7 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
     
     // Add general stuff
+    state.setProperty(STATE_PRESET_NAME, presetName, nullptr);
     state.setProperty(STATE_QUERY, query, nullptr);
     
     // Add sounds info
@@ -234,8 +247,9 @@ void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
     copyXmlToBinary (*xml, destData);
 }
 
-void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& presetName)
+void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName)
 {
+    presetName = _presetName;
     ValueTree state = collectPresetStateInformation();
     std::unique_ptr<XmlElement> xml (state.createXml());
     File location = presetFilesLocation.getChildFile(presetName).withFileExtension("source_preset");
@@ -267,6 +281,9 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     if (state.hasProperty(STATE_QUERY)){
         query = state.getProperty(STATE_QUERY).toString();
     }
+    if (state.hasProperty(STATE_PRESET_NAME)){
+        presetName = state.getProperty(STATE_PRESET_NAME).toString();
+    }
     
     // Load loaded sounds info and download them
     ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
@@ -288,6 +305,38 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     std::unique_ptr<XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
         loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
+    }
+}
+
+void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
+{
+    // This is to save settings that need to persist between sampler runs and that do not
+    // change per preset
+    
+    ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
+    std::unique_ptr<XmlElement> xml (settings.createXml());
+    File location = sourceDataLocation.getChildFile("settings").withFileExtension("source_settings");
+    if (location.existsAsFile()){
+        // If already exists, delete it
+        location.deleteFile();
+    }
+    xml->writeTo(location);
+}
+
+void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
+{
+    File location = sourceDataLocation.getChildFile("settings").withFileExtension("source_settings");
+    if (location.existsAsFile()){
+        XmlDocument xmlDocument (location);
+        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        if (xmlState.get() != nullptr){
+            ValueTree settings = ValueTree::fromXml(*xmlState.get());
+            
+            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL)){
+                sampler.midiInChannel = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL);
+            }
+        }
     }
 }
 
@@ -351,8 +400,26 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
         String presetName = message.substring(String(ACTION_LOAD_PRESET).length() + 1);
         loadPresetFromFile(presetName);
+    } else if (message.startsWith(String(ACTION_SET_MIDI_IN_CHANNEL))){
+        int channel = message.substring(String(ACTION_SET_MIDI_IN_CHANNEL).length() + 1).getIntValue();
+        setMidiInChannelFilter(channel);
     }
+        
 }
+
+//==============================================================================
+
+void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
+{
+    if (channel < 0){
+        channel = 0;  // Al channels
+    } else if (channel > 16){
+        channel = 16;
+    }
+    sampler.midiInChannel = channel;
+    saveGlobalPersistentStateToFile();
+}
+
 
 //==============================================================================
 
