@@ -266,6 +266,17 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     if (!midiOutForwardsMidiIn){
         midiMessages.clear();  // Clear messages from buffer so we don't forward them to the output
     }
+    
+    /*
+     // TESTING code for MIDI out messages
+    std::cout << "midi out" << std::endl;
+    MidiMessage message = MidiMessage::noteOn(1, 65, (uint8)127);
+    double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
+    message.setTimeStamp(timestamp);
+    auto sampleNumber =  (int) (timestamp * getSampleRate());
+    midiMessages.addEvent (message, sampleNumber);
+     */
+    
 }
 
 //==============================================================================
