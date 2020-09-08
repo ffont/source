@@ -63,6 +63,81 @@
                 "port": 0,
                 "channel": 0,
                 "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 1,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 2,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 3,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 4,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 5,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 6,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 7,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 8,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 9,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 10,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 11,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 12,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 13,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 14,
+                "track": "main"
+            },
+            {
+                "port": 0,
+                "channel": 15,
+                "track": "main"
             }
         ]
     }
