@@ -60,6 +60,18 @@
             }, 200);
         }
 
+        function getSystemStats(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    document.getElementById("systemStats").value = this.responseText;
+                }
+            };
+            xhr.open('GET', '/get_system_stats', true);
+            xhr.send();
+        }
+
         document.addEventListener("DOMContentLoaded", function(){
             triggerPostState();       
 
@@ -67,6 +79,11 @@
             updateStateTimer = setInterval(function(){
                 updateState();
             }, 200);*/
+
+            /*
+            updateSystemStatsTimer = setInterval(function(){
+                getSystemStats();
+            }, 1000);*/
         });
         
     </script>
@@ -153,6 +170,10 @@
     <h3>State</h3>
     <button onclick="triggerPostState();">Trigger post state</button><span id="oldIndicator"></span>
     <textarea id="state" style="width:100%;height:500px;"></textarea>
+
+    <h3>System stats</h3>
+    <button onclick="getSystemStats();">Get system stats</button>
+    <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
 
 </body>
 

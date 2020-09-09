@@ -1,6 +1,12 @@
 from __future__ import print_function
 
 import argparse
+try:
+    import commands
+    do_system_stats = True
+except:
+    # Python 3
+    do_system_stats = False
 import requests
 import os
 import time
@@ -151,6 +157,20 @@ def trigger_post_state():
 def set_sound_parameter_float():
     osc_client.send_message(b'/set_sound_parameter', [int(request.args['soundIdx']), request.args['param'], float(request.args['value'])]) 
     return 'Parameter set!'
+
+
+@app.route('/get_system_stats', methods = ['GET'])
+def get_system_stats():
+    if do_system_stats:
+        # Get system stats (only works when running in ELK as for other host(s) the command would be different)
+        temp_out = commands.getstatusoutput("sudo vcgencmd measure_temp")[1]
+        cpu_usage = commands.getstatusoutput("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[1]
+        mem_usage = commands.getstatusoutput("free | grep Mem | awk '{print $3/$2 * 100.0}'")[1]
+        msw = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + commands.getstatusoutput("more /proc/xenomai/sched/stat | grep sushi_b64")[1]
+        return "{0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(temp_out, cpu_usage, mem_usage, msw)
+    else:
+        return 'No stats'
+
 
 
 if __name__ == '__main__':
