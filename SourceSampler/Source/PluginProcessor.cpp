@@ -783,7 +783,11 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
         int nNotesPerSound = 128 / nSounds;
         int midiNoteForNormalPitch = soundNumber * nNotesPerSound + nNotesPerSound / 2;
         
-        MidiMessage message = MidiMessage::noteOn(sampler.midiInChannel, midiNoteForNormalPitch, (uint8)127);
+        int midiChannel = sampler.midiInChannel;
+        if (midiChannel == 0){
+            midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
+        }
+        MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
         double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
         message.setTimeStamp(timestamp);
 
