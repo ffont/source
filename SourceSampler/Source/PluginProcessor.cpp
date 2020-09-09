@@ -611,7 +611,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     FreesoundClient client(FREESOUND_API_KEY);
     std::cout << "Querying new sounds for: " << query << std::endl;
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews");
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_time2s", 0);
     if (list.getCount() > 0){
         std::cout << "Query got " << list.getCount() << " results" << std::endl;
         Array<FSSound> sounds = list.toArrayOfSounds();
@@ -627,6 +627,19 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             soundInfo.setProperty(STATE_SOUND_INFO_USER, sound.user, nullptr);
             soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, sound.license, nullptr);
             soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL,sound.getOGGPreviewURL().toString(false), nullptr);
+            ValueTree soundAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS);
+            if (sound.analysis.hasProperty("rhythm")){
+                if (sound.analysis["rhythm"].hasProperty("onset_times")){
+                    ValueTree soundAnalysisOnsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
+                    for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
+                        ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
+                        onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, sound.analysis["rhythm"]["onset_times"][j], nullptr);
+                        soundAnalysisOnsetTimes.appendChild(onset, nullptr);
+                    }
+                    soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
+                }
+            }
+            soundInfo.appendChild(soundAnalysis, nullptr);
             soundsInfo.appendChild(soundInfo, nullptr);
         }
         downloadSoundsAndSetSources(soundsInfo);
