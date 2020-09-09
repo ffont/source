@@ -18,8 +18,6 @@ SourceSamplerSound::SourceSamplerSound (const String& soundName,
                                         AudioFormatReader& source,
                                         const BigInteger& notes,
                                         int midiNoteForNormalPitch,
-                                        double attackTimeSecs,
-                                        double releaseTimeSecs,
                                         double maxSampleLengthSeconds)
     : name (soundName),
       sourceSampleRate (source.sampleRate),
@@ -35,8 +33,6 @@ SourceSamplerSound::SourceSamplerSound (const String& soundName,
 
         source.read (data.get(), 0, length + 4, 0, true, true);
 
-        params.attack  = static_cast<float> (attackTimeSecs);
-        params.release = static_cast<float> (releaseTimeSecs);
     }
 }
 
@@ -56,30 +52,67 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
     // --> Start auto-generated code A
-    if (name == "filterCutoff") {
-        filterCutoff = value;
-    } else if (name == "filterRessonance") {
-        filterRessonance = value;
-    } else if (name == "maxPitchRatioMod") {
-        maxPitchRatioMod = value;
-    } else if (name == "maxFilterCutoffMod") {
-        maxFilterCutoffMod = value;
-    } else if (name == "gain") {
-        gain = value;
-    }
+    if (name == "filterCutoff") { filterCutoff = jlimit(0.0f, 20000.0f, value); }
+    else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
+    else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
+    else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 10.0f, value); }
+    else if (name == "gain") { gain = jlimit(0.0f, 1.0f, value); }
+    else if (name == "ampADSR.attack") { ampADSR.attack = value; }
+    else if (name == "ampADSR.decay") { ampADSR.decay = value; }
+    else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
+    else if (name == "ampADSR.release") { ampADSR.release = value; }
     // --> End auto-generated code A
 }
 
 ValueTree SourceSamplerSound::getState(){
     ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
     
-    // TODO: iterate over all parameters
     // --> Start auto-generated code B
-    ValueTree soundParameter = ValueTree(STATE_SAMPLER_SOUND_PARAMETER);
-    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr);
-    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr);
-    soundParameter.setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr);
-    state.appendChild(soundParameter, nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterCutoff", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterCutoff, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterRessonance", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterRessonance, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxPitchRatioMod", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxPitchRatioMod, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterCutoffMod", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterCutoffMod, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.attack", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.attack, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.decay", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.decay, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.sustain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.sustain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.release", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.release, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -133,8 +166,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (masterGain);
     
-    adsr.setSampleRate (sound->sourceSampleRate);
-    adsr.setParameters (sound->params);
+    adsr.setParameters (sound->ampADSR);
 }
 
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
@@ -146,6 +178,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         filterCutoffMod = 0.0;
         
         // Load and configure parameters from SourceSamplerSound
+        adsr.setSampleRate (sound->sourceSampleRate);
         updateParametersFromSourceSamplerSound(sound);
         
         // Initialize other variables

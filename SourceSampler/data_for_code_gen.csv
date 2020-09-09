@@ -1,0 +1,7 @@
+name,type,min,max,default,,,,,,,,,,,,,,,
+filterCutoff,float,0,20000,20000,,,,,,,,,,,,,,,
+filterRessonance,float,0,1,0,,,,,,,,,,,,,,,
+maxPitchRatioMod,float,0,2,0.1,,,,,,,,,,,,,,,
+maxFilterCutoffMod,float,0,10,10,,,,,,,,,,,,,,,
+gain,float,0,1,0.5,,,,,,,,,,,,,,,
+ampADSR,adsr,,,"0.1f, 0.0f, 1.0f, 1.0f",,,,,,,,,,,,,,,

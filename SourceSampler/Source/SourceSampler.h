@@ -40,8 +40,6 @@ public:
                         AudioFormatReader& source,
                         const BigInteger& midiNotes,
                         int midiNoteForNormalPitch,
-                        double attackTimeSecs,
-                        double releaseTimeSecs,
                         double maxSampleLengthSeconds);
 
     /** Destructor. */
@@ -55,10 +53,6 @@ public:
         This could return nullptr if there was a problem loading the data.
     */
     AudioBuffer<float>* getAudioData() const noexcept       { return data.get(); }
-
-    //==============================================================================
-    /** Changes the parameters of the ADSR envelope which will be applied to the sample. */
-    void setEnvelopeParameters (ADSR::Parameters parametersToUse)    { params = parametersToUse; }
 
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;
@@ -81,13 +75,16 @@ private:
     BigInteger midiNotes;
     int length = 0, midiRootNote = 0;
 
-    ADSR::Parameters params;
+    // Define sound "controllable" parameters here
     
-    float filterCutoff = 20000.0;  // Default cutoff (fully open)
-    float filterRessonance = 0.0;  // Default resonance
-    float maxPitchRatioMod = 0.1;  // 100% of current pitch ratio (1 octave)
-    float maxFilterCutoffMod = 10.0; // 10 times the base cutoff
-    float gain = 1.0; // Master gain for the sound
+    // --> Start auto-generated code A
+    float filterCutoff = 20000.0f;
+    float filterRessonance = 0.0f;
+    float maxPitchRatioMod = 0.1f;
+    float maxFilterCutoffMod = 10.0f;
+    float gain = 0.5f;
+    ADSR::Parameters ampADSR = {0.1f, 0.0f, 1.0f, 1.0f};
+    // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };

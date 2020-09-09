@@ -749,8 +749,6 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
         audioFormatManager.registerBasicFormats();
     }
 
-    int attackTime = 0;
-    int releaseTime = 1;
     int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
     int nSounds = loadedSoundsInfo.getNumChildren();
     
@@ -766,7 +764,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                 std::cout << "- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch << std::endl;
-                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, attackTime, releaseTime, maxSampleLength));
+                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength));
             } else {
                 std::cout << "- Skipping sound " << soundID << " (no file found or file is empty)" << std::endl;
             }
