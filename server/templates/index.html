@@ -58,11 +58,54 @@
 
         function updateAllSliderLabels(){
             var elements = document.querySelectorAll("input[type=range]")
-            for (var i = 0, element; element = elements[i++];) {
-                var labelElement = document.getElementById(element.id + "Label");
-                if (labelElement != null) {
-                    labelElement.innerHTML = element.value;
-                }
+            for (var i = 0, sliderElement; sliderElement = elements[i++];) {
+                updateSliderLabel(sliderElement);
+            }
+        }
+
+        function updateSliderLabel(sliderElement){
+            var labelElement = document.getElementById(sliderElement.id + "Label");
+            if (labelElement != null) {
+                labelElement.innerHTML = getProcessedSoundParameterValuLinToExp(sliderElement).toFixed(2);
+            }
+        }
+
+        var expStrength = 2;
+
+        function linToExp(x){
+            return (Math.pow(x,expStrength));
+        }
+
+        function expToLin(x){
+            return (Math.pow(x,1/expStrength));
+        }
+
+        function sliderShouldBehaveExponentially(sliderElement){
+            var name = sliderElement.name;
+            if ((name.indexOf("attack") > -1) ||
+                (name.indexOf("decay") > -1) ||
+                (name.indexOf("release") > -1) ||
+                (name == "filterCutoff")
+            ){
+                return true;
+            }
+            return false;
+        }
+
+        function getProcessedSoundParameterValuLinToExp(sliderElement){
+            var value = parseFloat(sliderElement.value, 10);
+            if (sliderShouldBehaveExponentially(sliderElement) == true){
+                return linToExp(value/sliderElement.max)*sliderElement.max;
+            } else {
+                return value;
+            }
+        }
+
+        function getProcessedSoundParameterValueExpToLin(sliderElement, valueRaw){
+            if (sliderShouldBehaveExponentially(sliderElement) == true){
+                return expToLin(valueRaw/sliderElement.max)*sliderElement.max;
+            } else {
+                return valueRaw;
             }
         }
 
@@ -83,8 +126,8 @@
         }
 
         function setSoundParameter(soundIdx, sliderElement){
-            document.getElementById(sliderElement.id + "Label").innerHTML = sliderElement.value;
-            sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, sliderElement.value], 'int;str;float')
+            updateSliderLabel(sliderElement);
+            sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'int;str;float')
         }
 
         function makeQuery(){
@@ -139,15 +182,15 @@
         function generateSoundEditControls(soundIdx){
             html = '';
             // --> Start auto-generated code A
-            html += '<input type="range" id="' + soundIdx + '_filterCutoff" name="filterCutoff" min="0.0" max="20000.0" value="20000.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > filterCutoff: <span id="' + soundIdx + '_filterCutoffLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > filterRessonance: <span id="' + soundIdx + '_filterRessonanceLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_maxPitchRatioMod" name="maxPitchRatioMod" min="0.0" max="2.0" value="0.1" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > maxPitchRatioMod: <span id="' + soundIdx + '_maxPitchRatioModLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_maxFilterCutoffMod" name="maxFilterCutoffMod" min="0.0" max="10.0" value="10.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterCutoffMod: <span id="' + soundIdx + '_maxFilterCutoffModLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.1" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="1.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterCutoff" name="filterCutoff" min="0.0" max="20000.0" value="20000.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterCutoff: <span id="' + soundIdx + '_filterCutoffLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterRessonance: <span id="' + soundIdx + '_filterRessonanceLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_maxPitchRatioMod" name="maxPitchRatioMod" min="0.0" max="2.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxPitchRatioMod: <span id="' + soundIdx + '_maxPitchRatioModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_maxFilterCutoffMod" name="maxFilterCutoffMod" min="0.0" max="10.0" value="10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterCutoffMod: <span id="' + soundIdx + '_maxFilterCutoffModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
@@ -193,9 +236,12 @@
                     var parameter = samplerSoundParameters[j];
                     var name = parameter.getAttribute('parameter_name');
                     var type = parameter.getAttribute('parameter_type');
-                    var value = parameter.getAttribute('parameter_value');
+                    var rawValue = parameter.getAttribute('parameter_value');
+                    
                     if (type == "float"){
-                        slidersToUpdate.push([i + '_' + name, parseFloat(value, 10)])   
+                        var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
+                        var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
+                        slidersToUpdate.push([i + '_' + name, value])
                     }
                 }
             }
