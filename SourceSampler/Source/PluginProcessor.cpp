@@ -549,6 +549,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_SET_MIDI_THRU))){
         bool midiThru = message.substring(String(ACTION_SET_MIDI_THRU).length() + 1).getIntValue() == 1;
         setMidiThru(midiThru);
+        
     } else if (message.startsWith(String(ACTION_POST_STATE))){
         ValueTree presetState = collectPresetStateInformation();
         ValueTree globalSettings = collectGlobalSettingsStateInformation();
@@ -570,6 +571,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             // No need to read response really
             //String resp = stream->readEntireStreamAsString();
         }
+    } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
+        int soundIndex = message.substring(String(ACTION_PLAY_SOUND).length() + 1).getIntValue();
+        addToMidiBuffer(soundIndex);
+        
     }
 }
 

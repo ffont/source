@@ -116,6 +116,10 @@
             sendOsc('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
         }
 
+        function playSound(soundIdx){
+            sendOsc('/play_sound', [soundIdx], 'int')
+        }
+
         function savePreset(){
             var name = document.getElementsByName('presetName')[0].value;
             var idx = document.getElementsByName('presetIdx')[0].value;
@@ -173,7 +177,7 @@
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var sound = soundInfoElements[i];
                 html = '<div class="controls_card">';
-                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><br>';
+                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><br>';
                 html += sound.getAttribute('soundName') + '<br>';
                 html += generateSoundEditControls(i);
                 html += '</div>';
