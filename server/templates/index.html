@@ -23,6 +23,7 @@
         var updateStateTimer;
         var updateSystemStatsTimer;
         var lastReceivedStateText;
+        var stateTimeInterval = 2000;
 
         document.addEventListener("DOMContentLoaded", function () {
             triggerPostState();
@@ -39,7 +40,7 @@
         function startAutoUpdate(){
             updateStateTimer = setInterval(function () {
                 triggerPostState();
-            }, 200);
+            }, stateTimeInterval);
 
             updateSystemStatsTimer = setInterval(function () {
                 getSystemStats();
