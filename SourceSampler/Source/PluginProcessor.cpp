@@ -204,7 +204,7 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    std::cout << "Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock << std::endl;
+    DBG("Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock);
     
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
@@ -245,7 +245,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // It is very ugly to do this here... should find an alternative!
     if (!aconnectWasRun){
         String aconnectCommandLine =  "aconnect " + String(ACONNECT_MIDI_INTERFACE_ID) + " " + String(ACONNECT_SUSHI_ID);
-        std::cout << "Calling aconnect to setup MIDI in to sushi connection " << std::endl;
+        DBG("Calling aconnect to setup MIDI in to sushi connection");
         exec(static_cast<const char*> (aconnectCommandLine.toUTF8()));
         aconnectWasRun = true;
     }
@@ -356,7 +356,7 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
 void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
 {
     // Load state informaiton form XML state
-    std::cout << "Loading state..." << std::endl;
+    DBG("Loading state...");
     
     // Set main stuff
     if (state.hasProperty(STATE_QUERY)){
@@ -479,7 +479,7 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    DBG("Action message: " + message);
+    DBG("Action message: " << message);
     
     if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
         String serializedParameters = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
@@ -488,12 +488,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String query = tokens[0];
         int numSounds = tokens[1].getIntValue();
         float maxSoundLength = tokens[2].getFloatValue();
-        std::cout << "New query triggered from server: " << query << " " << numSounds << " " << maxSoundLength << std::endl;
+        DBG("New query triggered from server: " << query << " " << numSounds << " " << maxSoundLength);
         makeQueryAndLoadSounds(query, numSounds, maxSoundLength);
         
     } else if (message.startsWith(String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET))){
         int newOffset = message.substring(String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET).length() + 1).getIntValue();
-        std::cout << "Offsetting midi root note by: " << newOffset << std::endl;
+        DBG("Offsetting midi root note by: " << newOffset);
         setSources(newOffset);
         
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
@@ -503,7 +503,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
         String parameterName = tokens[1];
         float parameterValue = tokens[2].getFloatValue();
-        std::cout << "Setting parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue << std::endl;
+        DBG("Setting parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
             if (soundIndex < sampler.getNumSounds() - 1){
                 auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
@@ -527,7 +527,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reverbParameters.dryLevel = tokens[3].getFloatValue();
         reverbParameters.width = tokens[4].getFloatValue();
         reverbParameters.freezeMode = tokens[5].getFloatValue();
-        std::cout << "Setting new reverb parameters " << std::endl;
+        DBG("Setting new reverb parameters ");
         sampler.setReverbParameters(reverbParameters);
         
     } else if (message.startsWith(String(ACTION_SAVE_CURRENT_PRESET))){
@@ -603,18 +603,18 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float maxSoundLength)
 {
     if (isQueryinAndDownloadingSounds){
-        std::cout << "Source is already busy querying and downloading sounds" << std::endl;
+        DBG("Source is already busy querying and downloading sounds");
     }
     
     query = textQuery;
     isQueryinAndDownloadingSounds = true;
     
     FreesoundClient client(FREESOUND_API_KEY);
-    std::cout << "Querying new sounds for: " << query << std::endl;
+    DBG("Querying new sounds for: " << query);
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_time2s", 0);
     if (list.getCount() > 0){
-        std::cout << "Query got " << list.getCount() << " results" << std::endl;
+        DBG("Query got " << list.getCount() << " results");
         Array<FSSound> sounds = list.toArrayOfSounds();
         std::random_shuffle(sounds.begin(), sounds.end());
         sounds.resize(jmin(numSounds, list.getCount()));
@@ -645,7 +645,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         }
         downloadSoundsAndSetSources(soundsInfo);
     } else {
-        std::cout << "Query got no results..." << std::endl;
+        DBG("Query got no results...");
     }
 }
 
@@ -661,7 +661,7 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     // Download the sounds within the plugin
     
     // Download the sounds (if not already downloaded)
-    std::cout << "Downloading new sounds..." << std::endl;
+    DBG("Downloading new sounds...");
     FreesoundClient client(FREESOUND_API_KEY);
     
     for (int i=0; i<soundsInfo.getNumChildren(); i++){
@@ -673,7 +673,7 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
         }
     }
     
-    std::cout << "Waiting for all download tasks to finish..." << std::endl;
+    DBG("Waiting for all download tasks to finish...");
     int64 startedWaitingTime = Time::getCurrentTime().toMilliseconds();
     bool allFinished = false;
     while (!allFinished){
@@ -692,7 +692,7 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
 
     #else
     // If inside ELK build, download the sounds with the python server as it seems to be much much faster
-    std::cout << "Sending download task to python server..." << std::endl;
+    DBG("Sending download task to python server...");
     URL url = URL("http://localhost:8123/download_sounds");
     
     String urlsParam = "";
@@ -715,15 +715,15 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     {
         //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
         String resp = stream->readEntireStreamAsString();
-        std::cout << "Response with " << statusCode << ": " << resp << std::endl;
+        DBG("Response with " << statusCode << ": " << resp);
     } else {
-        std::cout << "Downloading in server failed!" << std::endl;
+        DBG("Downloading in server failed!");
     }
     
     #endif
     
     // Make sure that files were downloaded correctly and remove those sounds for which files were not downloaded
-    std::cout << "Filtering out sounds that did not download well" << std::endl;
+    DBG("Filtering out sounds that did not download well");
     ValueTree soundsInfoDownloadedOk = ValueTree(STATE_SOUNDS_INFO);
     for (int i=0; i<soundsInfo.getNumChildren(); i++){
         ValueTree soundInfo = soundsInfo.getChild(i);
@@ -753,7 +753,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
     int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
     int nSounds = loadedSoundsInfo.getNumChildren();
     
-    std::cout << "Loading " << nSounds << " sounds to sampler" << std::endl;
+    DBG("Loading " << nSounds << " sounds to sampler");
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
@@ -764,14 +764,14 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
                 int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2 + midiNoteRootOffset;
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                std::cout << "- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch << std::endl;
+                DBG("- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch);
                 sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength));
             } else {
-                std::cout << "- Skipping sound " << soundID << " (no file found or file is empty)" << std::endl;
+                DBG("- Skipping sound " << soundID << " (no file found or file is empty)");
             }
         }
     }
-    std::cout << "Sampler sources configured with " << sampler.getNumSounds() << " sounds and " << sampler.getNumVoices() << " voices" << std::endl;
+    DBG("Sampler sources configured with " << sampler.getNumSounds() << " sounds and " << sampler.getNumVoices() << " voices");
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)

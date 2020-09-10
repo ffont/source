@@ -23,10 +23,10 @@ public:
     {
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
-            std::cout << "ERROR setting OSC receiver" << std::endl;
+            DBG("ERROR setting OSC receiver");
             oscReveiverInitialized = false;
         } else {
-            std::cout << "Listening for OSC messages" << std::endl;
+            DBG("Listening for OSC messages");
             oscReveiverInitialized = true;
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
