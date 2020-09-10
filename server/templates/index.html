@@ -82,13 +82,16 @@
 
         function sliderShouldBehaveExponentially(sliderElement){
             var name = sliderElement.name;
-            if ((name.indexOf("attack") > -1) ||
-                (name.indexOf("decay") > -1) ||
-                (name.indexOf("release") > -1) ||
-                (name == "filterCutoff")
-            ){
-                return true;
+            if (name != null){
+                if ((name.indexOf("attack") > -1) ||
+                    (name.indexOf("decay") > -1) ||
+                    (name.indexOf("release") > -1) ||
+                    (name == "filterCutoff")
+                ){
+                    return true;
+                }
             }
+            
             return false;
         }
 
@@ -191,6 +194,11 @@
             html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterADSR.attack" name="filterADSR.attack" min="0.0" max="20.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.attack: <span id="' + soundIdx + '_filterADSR.attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterADSR.decay" name="filterADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.decay: <span id="' + soundIdx + '_filterADSR.decayLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterADSR.sustain" name="filterADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.sustain: <span id="' + soundIdx + '_filterADSR.sustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterADSR.release" name="filterADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.release: <span id="' + soundIdx + '_filterADSR.releaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_maxFilterADSRMod" name="maxFilterADSRMod" min="0.0" max="10.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterADSRMod: <span id="' + soundIdx + '_maxFilterADSRModLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }

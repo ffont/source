@@ -779,7 +779,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                 DBG("- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch);
-                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength));
+                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength, getSampleRate(), getBlockSize()));
             } else {
                 DBG("- Skipping sound " << soundID << " (no file found or file is empty)");
             }

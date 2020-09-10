@@ -18,11 +18,16 @@ SourceSamplerSound::SourceSamplerSound (const String& soundName,
                                         AudioFormatReader& source,
                                         const BigInteger& notes,
                                         int midiNoteForNormalPitch,
-                                        double maxSampleLengthSeconds)
+                                        double maxSampleLengthSeconds,
+                                        double _pluginSampleRate,
+                                        int _pluginBlockSize)
     : name (soundName),
       sourceSampleRate (source.sampleRate),
       midiNotes (notes),
-      midiRootNote (midiNoteForNormalPitch)
+      midiRootNote (midiNoteForNormalPitch),
+      pluginSampleRate (_pluginSampleRate),
+      pluginBlockSize (_pluginBlockSize)
+      
 {
     if (sourceSampleRate > 0 && source.lengthInSamples > 0)
     {
@@ -61,6 +66,11 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
     else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
     else if (name == "ampADSR.release") { ampADSR.release = value; }
+    else if (name == "filterADSR.attack") { filterADSR.attack = value; }
+    else if (name == "filterADSR.decay") { filterADSR.decay = value; }
+    else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
+    else if (name == "filterADSR.release") { filterADSR.release = value; }
+    else if (name == "maxFilterADSRMod") { maxFilterADSRMod = jlimit(0.0f, 10.0f, value); }
     // --> End auto-generated code A
 }
 
@@ -113,6 +123,31 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.release", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.release, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.attack", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.attack, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.decay", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.decay, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.sustain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.sustain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.release", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.release, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterADSRMod", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterADSRMod, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -156,17 +191,19 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 
 void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
 {
+    adsr.setParameters (sound->ampADSR);
+    adsrFilter.setParameters (sound->filterADSR);
+    
     filterCutoff = sound->filterCutoff;
     filterRessonance = sound->filterRessonance;
     auto& filter = processorChain.get<filterIndex>();
-    filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+    filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod + sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample()); // Base cutoff + AT mod + ADSR mod
     filter.setResonance (filterRessonance);
     
     masterGain = sound->gain;
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (masterGain);
-    
-    adsr.setParameters (sound->ampADSR);
+
 }
 
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
@@ -178,7 +215,9 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         filterCutoffMod = 0.0;
         
         // Load and configure parameters from SourceSamplerSound
-        adsr.setSampleRate (sound->sourceSampleRate);
+        adsr.setSampleRate (sound->pluginSampleRate);
+        // TODO: what should really be the sample rate below?
+        adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
         updateParametersFromSourceSamplerSound(sound);
         
         // Initialize other variables
@@ -191,6 +230,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
 
         // Trigger ADSR
         adsr.noteOn();
+        adsrFilter.noteOn();
     }
     else
     {
@@ -203,11 +243,13 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
     if (allowTailOff)
     {
         adsr.noteOff();
+        adsrFilter.noteOff();
     }
     else
     {
         clearCurrentNote();
         adsr.reset();
+        adsrFilter.reset();
         pitchRatioMod = 0;
     }
 }

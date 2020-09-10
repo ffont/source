@@ -40,7 +40,9 @@ public:
                         AudioFormatReader& source,
                         const BigInteger& midiNotes,
                         int midiNoteForNormalPitch,
-                        double maxSampleLengthSeconds);
+                        double maxSampleLengthSeconds,
+                        double _pluginSampleRate,
+                        int _pluginBlockSize);
 
     /** Destructor. */
     ~SourceSamplerSound() override;
@@ -74,6 +76,9 @@ private:
     double sourceSampleRate;
     BigInteger midiNotes;
     int length = 0, midiRootNote = 0;
+    
+    double pluginSampleRate;
+    int pluginBlockSize;
 
     // Define sound "controllable" parameters here
     
@@ -84,6 +89,8 @@ private:
     float maxFilterCutoffMod = 10.0f;
     float gain = 0.5f;
     ADSR::Parameters ampADSR = {0.1f, 0.0f, 1.0f, 1.0f};
+    ADSR::Parameters filterADSR = {0.1f, 0.0f, 1.0f, 1.0f};
+    float maxFilterADSRMod = 1.0f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -127,6 +134,7 @@ private:
     double sourceSamplePosition = 0;
     float lgain = 0, rgain = 0;
     ADSR adsr;
+    ADSR adsrFilter;
     
     //==============================================================================
     // ProcessorChain (filter and master gain)
