@@ -61,7 +61,7 @@ public:
     const String getProgramName (int index) override;
     void changeProgramName (int index, const String& newName) override;
     String getPresetFilenameByIndex(int index);
-    int getPresetNumberByName(const String& name);
+    int currentPresetIndex = 0;
 
     //==============================================================================
     ValueTree collectPresetStateInformation ();
@@ -69,7 +69,7 @@ public:
     void loadPresetFromStateInformation (ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
     void saveCurrentPresetToFile(const String& presetName, int index);
-    void loadPresetFromFile (const String& presetName);
+    bool loadPresetFromFile (const String& fileName);
     ValueTree collectGlobalSettingsStateInformation ();
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
@@ -84,7 +84,8 @@ public:
     File soundsDownloadLocation;
     File presetFilesLocation;
     
-    File getPresetFilePathFromName(const String& presetName);
+    File getPresetFilePath(const String& presetFilename);
+    String getPresetFilenameFromNameAndIndex(const String& presetName, int index);
     File getGlobalSettingsFilePathFromName();
     
     //==============================================================================

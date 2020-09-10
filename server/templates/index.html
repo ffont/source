@@ -22,6 +22,7 @@
 
         var updateStateTimer;
         var updateSystemStatsTimer;
+        var lastReceivedStateText;
 
         document.addEventListener("DOMContentLoaded", function () {
             triggerPostState();
@@ -83,14 +84,14 @@
 
         function makeQuery(){
             var query = document.getElementsByName('query')[0].value;
-            var numSounds = document.getElementsByName('numSounds')[0].value;
-            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value;
+            var numSounds = document.getElementsByName('numSounds')[0].value || 16;
+            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
             sendOsc('/new_query', [query, numSounds, maxSoundLength], 'str;int;float')
         }
 
         function setMidiRootNoteOffset(){
             var offset = document.getElementsByName('midiRootNoteOffset')[0].value;
-            sendOsc('/set_midi_root_offset', [midiRootNoteOffset * -1], 'int')
+            sendOsc('/set_midi_root_offset', [offset * -1], 'int')
         }
 
         function setMidiInChannel() {
@@ -122,7 +123,7 @@
 
         function loadPreset() {
             var idx = document.getElementsByName('presetIdx')[0].value;
-            sendOsc('/load_preset', ["", idx], 'str;int')
+            sendOsc('/load_preset', [idx], 'int')
         }
 
         // UI generation
@@ -145,12 +146,26 @@
         function syncUIWithState(xmlState){
             
             var SourcePresetState = xmlState.getElementsByTagName('SourcePresetState')[0];
+            var GlobalSettings = xmlState.getElementsByTagName('GlobalSettings')[0];
+            
+            // Update global values
             document.getElementsByName('query')[0].value = SourcePresetState.getAttribute('query');
             document.getElementsByName('presetName')[0].value = SourcePresetState.getAttribute('presetName');
+            
+            document.getElementsByName('midiThru')[0].value = GlobalSettings.getAttribute('midiThru');
+            document.getElementsByName('midiInChannel')[0].value = GlobalSettings.getAttribute('midiInChannel');
 
+            var ReverbParameters = xmlState.getElementsByTagName('ReverbParameters')[0];
+            document.getElementById('0_roomSize').value = ReverbParameters.getAttribute('reverb_roomSize');
+            document.getElementById('0_damping').value = ReverbParameters.getAttribute('reverb_damping');
+            document.getElementById('0_wetLevel').value = ReverbParameters.getAttribute('reverb_wetLevel');
+            document.getElementById('0_dryLevel').value = ReverbParameters.getAttribute('reverb_dryLevel');
+            document.getElementById('0_width').value = ReverbParameters.getAttribute('reverb_width');
+            document.getElementById('0_freezeMode').value = ReverbParameters.getAttribute('reverb_freezeMode');
+ 
+            // Update individual sound editors
             var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
             individualSoundEditorsElement.innerHTML = '';
-            
             var soundInfoElements = xmlState.getElementsByTagName('soundInfo');
             var samplerSoundElements = xmlState.getElementsByTagName('SamplerSound');
             var slidersToUpdate = [];
@@ -162,8 +177,7 @@
                 html += generateSoundEditControls(i);
                 html += '</div>';
                 individualSoundEditorsElement.innerHTML += html;
-                
-                // Update values of UI
+
                 var samplerSound = samplerSoundElements[i];
                 var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
                 for (var j = 0; j < samplerSoundParameters.length; j++) {
@@ -195,7 +209,10 @@
                         if (this.responseXML != undefined){
                             document.getElementById("errorIndicator").innerHTML = '';
                             document.getElementById("state").value = this.responseText;
-                            syncUIWithState(this.responseXML);
+                            if (this.responseText != lastReceivedStateText){
+                                syncUIWithState(this.responseXML);
+                            }
+                            lastReceivedStateText = this.responseText;
                         }
                     }
                 } else {
@@ -249,6 +266,7 @@
         <button onclick="loadPreset()">Load</button><br>
         Preset name:</label><input name="presetName" value="" type="text">
 
+        <br><br>
         <b>Query</b><br>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
         Num sounds:<input name="numSounds" value="" type="text" placeholder="16"><br>

@@ -130,7 +130,7 @@ double SourceSamplerAudioProcessor::getTailLengthSeconds() const
 
 int SourceSamplerAudioProcessor::getNumPrograms()
 {
-    int numPresets = presetNumberMapping.getNumChildren();
+    int numPresets = presetNumberMapping.getNumChildren(); //TODO: should this be the biggest integer?
     if (numPresets > 0)
         return numPresets;
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
@@ -139,42 +139,51 @@ int SourceSamplerAudioProcessor::getNumPrograms()
 
 int SourceSamplerAudioProcessor::getCurrentProgram()
 {
-    int index = getPresetNumberByName(presetName);
-    if (index > 0)
-        return index;
-    return 0;
+    return currentPresetIndex;
 }
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
-    String name = getPresetFilenameByIndex(index);
-    if (name != ""){
-        loadPresetFromFile(name);
+    bool loaded = loadPresetFromFile(getPresetFilenameByIndex(index));
+    if (loaded){
+        currentPresetIndex = index;
     }
 }
 
 const String SourceSamplerAudioProcessor::getProgramName (int index)
 {
-    String name = getPresetFilenameByIndex(index);
-    if (name != ""){
-        return name;
+    File location = getPresetFilePath(getPresetFilenameByIndex(index));
+    if (location.existsAsFile()){
+        XmlDocument xmlDocument (location);
+        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        if (xmlState.get() != nullptr){
+            ValueTree state = ValueTree::fromXml(*xmlState.get());
+            if (state.hasProperty(STATE_PRESET_NAME)){
+                return state.getProperty(STATE_PRESET_NAME).toString();
+            }
+        }
     }
     return {};
 }
 
 void SourceSamplerAudioProcessor::changeProgramName (int index, const String& newName)
 {
-    if (index > -1){
-        String currentName = getPresetFilenameByIndex(index);
-        if (currentName != ""){
-            // Make a copy of the preset file in disk
-            File currentPresetLocation = getPresetFilePathFromName(currentName);
-            File newPresetLocation = getPresetFilePathFromName(newName);
-            if (currentPresetLocation.existsAsFile()){
-                currentPresetLocation.copyFileTo(newPresetLocation);
+    File location = getPresetFilePath(getPresetFilenameByIndex(index));
+    if (location.existsAsFile()){
+        XmlDocument xmlDocument (location);
+        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        if (xmlState.get() != nullptr){
+            ValueTree state = ValueTree::fromXml(*xmlState.get());
+            state.setProperty(STATE_PRESET_NAME, newName, nullptr);
+            std::unique_ptr<XmlElement> updatedXmlState (state.createXml());
+            String filename = getPresetFilenameFromNameAndIndex(newName, index);
+            File location = getPresetFilePath(filename);
+            if (location.existsAsFile()){
+                // If already exists, delete it
+                location.deleteFile();
             }
-            // Update the preset mapping
-            updatePresetNumberMapping(newName, index);
+            updatedXmlState->writeTo(location);
+            updatePresetNumberMapping(filename, index);
         }
     }
 }
@@ -185,24 +194,11 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
         ValueTree presetMapping = presetNumberMapping.getChild(i);
         int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
         if (mappingNumber == index){
-            String name = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
-            return name;
+            String filename = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
+            return filename;
         }
     }
     return "";
-}
-
-int SourceSamplerAudioProcessor::getPresetNumberByName(const String& name)
-{
-    for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
-        ValueTree presetMapping = presetNumberMapping.getChild(i);
-        String _name = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
-        if (name == _name){
-            int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
-            return mappingNumber;
-        }
-    }
-    return -1;
 }
 
 //==============================================================================
@@ -331,27 +327,30 @@ void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _preset
 
     ValueTree state = collectPresetStateInformation();
     std::unique_ptr<XmlElement> xml (state.createXml());
-    File location = getPresetFilePathFromName(presetName);
+    String filename = getPresetFilenameFromNameAndIndex(presetName, index);
+    File location = getPresetFilePath(filename);
     if (location.existsAsFile()){
         // If already exists, delete it
         location.deleteFile();
     }
     xml->writeTo(location);
     if (index > -1){
-        updatePresetNumberMapping(presetName, index);
+        updatePresetNumberMapping(filename, index);
     }
 }
 
-void SourceSamplerAudioProcessor::loadPresetFromFile (const String& presetName)
+bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
 {
-    File location = getPresetFilePathFromName(presetName);
+    File location = getPresetFilePath(fileName);
     if (location.existsAsFile()){
         XmlDocument xmlDocument (location);
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
         }
+        return true;
     }
+    return false; // No file found
 }
 
 void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
@@ -460,10 +459,16 @@ void SourceSamplerAudioProcessor::updatePresetNumberMapping(const String& preset
     saveGlobalPersistentStateToFile();
 }
 
-File SourceSamplerAudioProcessor::getPresetFilePathFromName(const String& presetName)
+File SourceSamplerAudioProcessor::getPresetFilePath(const String& presetFilename)
 {
-    return presetFilesLocation.getChildFile(presetName).withFileExtension("xml");
+    return presetFilesLocation.getChildFile(presetFilename).withFileExtension("xml");
 }
+
+String SourceSamplerAudioProcessor::getPresetFilenameFromNameAndIndex(const String& presetName, int index)
+{
+    return (String)index; // Only use index as filename
+}
+
 
 File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 {
@@ -474,9 +479,7 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    #if JUCE_DEBUG
-    std::cout << "Action message: " << message << std::endl;
-    #endif
+    DBG("Action message: " + message);
     
     if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
         String serializedParameters = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
@@ -536,17 +539,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         saveCurrentPresetToFile(presetName, index);
         
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
-        String serializedParameters = message.substring(String(ACTION_LOAD_PRESET).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        String presetName = tokens[0];
-        int index = tokens[1].getIntValue();
-        // If index specified, load preset form index, otherwise, load it by name
-        if (index > -1){
-            setCurrentProgram(index);
-        } else {
-            loadPresetFromFile(presetName);
-        }
+        int index = message.substring(String(ACTION_LOAD_PRESET).length() + 1).getIntValue();
+        setCurrentProgram(index);
         
     } else if (message.startsWith(String(ACTION_SET_MIDI_IN_CHANNEL))){
         int channel = message.substring(String(ACTION_SET_MIDI_IN_CHANNEL).length() + 1).getIntValue();

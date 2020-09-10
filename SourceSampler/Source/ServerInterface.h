@@ -102,12 +102,9 @@ public:
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_LOAD_PRESET){
-            if (message.size() == 2)  {
-                String presetName = message[0].getString();  // Name of the preset to load
-                int index = message[1].getInt32();  // Preset index
-                String serializedParameters = presetName + SERIALIZATION_SEPARATOR +
-                                              (String)index + SERIALIZATION_SEPARATOR;
-                String actionMessage = String(ACTION_LOAD_PRESET) + ":" + serializedParameters;
+            if (message.size() == 1)  {
+                int index = message[0].getInt32();  // Preset index
+                String actionMessage = String(ACTION_LOAD_PRESET) + ":" + (String)index;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_MIDI_IN_CHANNEL){
@@ -127,10 +124,6 @@ public:
             sendActionMessage(actionMessage);
             
         }
-            
-            
-            
-            
     }
 
 private:
