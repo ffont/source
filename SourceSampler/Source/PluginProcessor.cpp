@@ -346,9 +346,18 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
         XmlDocument xmlDocument (location);
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
+            ValueTree presetState = ValueTree::fromXml(*xmlState.get());
+            loadPresetFromStateInformation(presetState);
+            
+            // Now post state to the server as well
+            ValueTree globalSettings = collectGlobalSettingsStateInformation();
+            ValueTree fullState = ValueTree("SourceFullState");
+            fullState.appendChild(presetState, nullptr);
+            fullState.appendChild(globalSettings, nullptr);
+            sendStateToServer(fullState);
+            
+            return true;
         }
-        return true;
     }
     return false; // No file found
 }
@@ -556,25 +565,30 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         ValueTree fullState = ValueTree("SourceFullState");
         fullState.appendChild(presetState, nullptr);
         fullState.appendChild(globalSettings, nullptr);
+        sendStateToServer(fullState);
         
-        URL url = URL("http://localhost:8123/state_from_plugin");
-        String header = "Content-Type: text/xml";
-        int statusCode = -1;
-        StringPairArray responseHeaders;
-        String data = fullState.toXmlString();
-        if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-        bool postLikeRequest = true;
-        if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-            &responseHeaders, &statusCode)))
-        {
-            // No need to read response really
-            //String resp = stream->readEntireStreamAsString();
-        }
     } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
         int soundIndex = message.substring(String(ACTION_PLAY_SOUND).length() + 1).getIntValue();
         addToMidiBuffer(soundIndex);
         
+    }
+}
+
+void SourceSamplerAudioProcessor::sendStateToServer(ValueTree state)
+{
+    URL url = URL("http://localhost:8123/state_from_plugin");
+    String header = "Content-Type: text/xml";
+    int statusCode = -1;
+    StringPairArray responseHeaders;
+    String data = state.toXmlString();
+    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+    bool postLikeRequest = true;
+    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+        &responseHeaders, &statusCode)))
+    {
+        // No need to read response really
+        //String resp = stream->readEntireStreamAsString();
     }
 }
 

@@ -74,6 +74,7 @@ public:
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
     void updatePresetNumberMapping(const String& presetName, int index);
+    void sendStateToServer(ValueTree state);
     
     //==============================================================================
     // Action listener

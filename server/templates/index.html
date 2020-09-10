@@ -23,13 +23,10 @@
         var updateStateTimer;
         var updateSystemStatsTimer;
         var lastReceivedStateText;
-        var stateTimeInterval = 2000;
+        var updateStateInterval = 200;
 
         document.addEventListener("DOMContentLoaded", function () {
             triggerPostState();
-            setTimeout(function () {
-                updateState();
-            }, 400);
             
             document.getElementById('allSoundsEditor').innerHTML = '<b>All sounds</b><br>' + generateSoundEditControls(-1);
             updateAllSliderLabels();
@@ -39,8 +36,8 @@
 
         function startAutoUpdate(){
             updateStateTimer = setInterval(function () {
-                triggerPostState();
-            }, stateTimeInterval);
+                updateState();
+            }, updateStateInterval);
 
             updateSystemStatsTimer = setInterval(function () {
                 getSystemStats();
@@ -48,7 +45,7 @@
         }
 
         function stopAutoUpdate() {
-            window.clearInterval(updateStateTimer);
+            window.clearInterval(updateStateInterval);
             window.clearInterval(updateSystemStatsTimer);
         }
 
@@ -239,10 +236,6 @@
             };
             xhr.open('GET', '/trigger_post_state', true);
             xhr.send();
-
-            setTimeout(function(){ // Update the state after a while
-                updateState();
-            }, 200);
         }
 
         function getSystemStats(){
