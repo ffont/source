@@ -4,40 +4,203 @@
 <head>
     <title>Source, a Freesound-powered sampler</title>
 
+    <style>
+        .cards_container_slide {
+            overflow: scroll;
+            white-space: nowrap;
+        }
+
+        .controls_card {
+            display:inline-block;
+            padding:5px;
+            background-color:#eeeeee;
+            margin:5px;
+        }
+    </style>
+
     <script>
 
         var updateStateTimer;
+        var updateSystemStatsTimer;
 
-        function setParameter(element){
-            var baseName = element.name.replace("Slider", "");
-            var value = element.value;
-            var soundIdx = document.getElementById("soundIndexId").value;
-            document.getElementById(baseName + "Id").value = value;
+        document.addEventListener("DOMContentLoaded", function () {
+            triggerPostState();
+            setTimeout(function () {
+                updateState();
+            }, 400);
+            
+            document.getElementById('allSoundsEditor').innerHTML = '<b>All sounds</b><br>' + generateSoundEditControls(-1);
+            updateAllSliderLabels();
+
+            startAutoUpdate();
+        });
+
+        function startAutoUpdate(){
+            updateStateTimer = setInterval(function () {
+                triggerPostState();
+            }, 200);
+
+            updateSystemStatsTimer = setInterval(function () {
+                getSystemStats();
+            }, 1000);
+        }
+
+        function stopAutoUpdate() {
+            window.clearInterval(updateStateTimer);
+            window.clearInterval(updateSystemStatsTimer);
+        }
+
+        function updateAllSliderLabels(){
+            var elements = document.querySelectorAll("input[type=range]")
+            for (var i = 0, element; element = elements[i++];) {
+                var labelElement = document.getElementById(element.id + "Label");
+                if (labelElement != null) {
+                    labelElement.innerHTML = element.value;
+                }
+            }
+        }
+
+        function sendOsc(address, values, types) {
+            var data = new FormData();
+            data.append('address', address);
+            data.append('values', values.join(';'));
+            data.append('types', types);
 
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (this.readyState != 4) return;
                 if (this.status == 200) {
-                    console.log("Response 200");
                 }
             };
-            xhr.open('GET', '/set_sound_parameter_float?soundIdx=' + soundIdx + '&param=' + baseName + '&value=' + value, true);
-            xhr.send();
+            xhr.open('POST', '/send_osc', true);
+            xhr.send(data);
         }
 
+        function setSoundParameter(soundIdx, sliderElement){
+            document.getElementById(sliderElement.id + "Label").innerHTML = sliderElement.value;
+            sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, sliderElement.value], 'int;str;float')
+        }
+
+        function makeQuery(){
+            var query = document.getElementsByName('query')[0].value;
+            var numSounds = document.getElementsByName('numSounds')[0].value;
+            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value;
+            sendOsc('/new_query', [query, numSounds, maxSoundLength], 'str;int;float')
+        }
+
+        function setMidiRootNoteOffset(){
+            var offset = document.getElementsByName('midiRootNoteOffset')[0].value;
+            sendOsc('/set_midi_root_offset', [midiRootNoteOffset * -1], 'int')
+        }
+
+        function setMidiInChannel() {
+            var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
+            sendOsc('/set_midi_in_channel', [midiInChannel], 'int')
+        }
+
+        function setMidiThru() {
+            var midiThru = document.getElementsByName('midiThru')[0].checked;
+            sendOsc('/set_midi_thru', [midiThru ? 1: 0], 'int')
+        }
+
+        function setReverbParameters() {
+            var roomSize = document.getElementById('0_roomSize').value;
+            var damping = document.getElementById('0_damping').value;
+            var wetLevel = document.getElementById('0_wetLevel').value;
+            var dryLevel = document.getElementById('0_dryLevel').value;
+            var width = document.getElementById('0_width').value;
+            var freezeMode = document.getElementById('0_freezeMode').value;
+            updateAllSliderLabels();
+            sendOsc('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
+        }
+
+        function savePreset(){
+            var name = document.getElementsByName('presetName')[0].value;
+            var idx = document.getElementsByName('presetIdx')[0].value;
+            sendOsc('/save_current_preset', [name, idx], 'str;int')
+        }
+
+        function loadPreset() {
+            var idx = document.getElementsByName('presetIdx')[0].value;
+            sendOsc('/load_preset', ["", idx], 'str;int')
+        }
+
+        // UI generation
+        function generateSoundEditControls(soundIdx){
+            html = '';
+            // --> Start auto-generated code A
+            html += '<input type="range" id="' + soundIdx + '_filterCutoff" name="filterCutoff" min="0.0" max="20000.0" value="20000.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > filterCutoff: <span id="' + soundIdx + '_filterCutoffLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > filterRessonance: <span id="' + soundIdx + '_filterRessonanceLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_maxPitchRatioMod" name="maxPitchRatioMod" min="0.0" max="2.0" value="0.1" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > maxPitchRatioMod: <span id="' + soundIdx + '_maxPitchRatioModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_maxFilterCutoffMod" name="maxFilterCutoffMod" min="0.0" max="10.0" value="10.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterCutoffMod: <span id="' + soundIdx + '_maxFilterCutoffModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.1" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="1.0" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
+            // --> End auto-generated code A
+            return html;
+        }
+
+        function syncUIWithState(xmlState){
+            
+            var SourcePresetState = xmlState.getElementsByTagName('SourcePresetState')[0];
+            document.getElementsByName('query')[0].value = SourcePresetState.getAttribute('query');
+            document.getElementsByName('presetName')[0].value = SourcePresetState.getAttribute('presetName');
+
+            var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
+            individualSoundEditorsElement.innerHTML = '';
+            
+            var soundInfoElements = xmlState.getElementsByTagName('soundInfo');
+            var samplerSoundElements = xmlState.getElementsByTagName('SamplerSound');
+            var slidersToUpdate = [];
+            for (var i = 0; i < soundInfoElements.length; i++) {
+                var sound = soundInfoElements[i];
+                html = '<div class="controls_card">';
+                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><br>';
+                html += sound.getAttribute('soundName') + '<br>';
+                html += generateSoundEditControls(i);
+                html += '</div>';
+                individualSoundEditorsElement.innerHTML += html;
+                
+                // Update values of UI
+                var samplerSound = samplerSoundElements[i];
+                var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
+                for (var j = 0; j < samplerSoundParameters.length; j++) {
+                    var parameter = samplerSoundParameters[j];
+                    var name = parameter.getAttribute('parameter_name');
+                    var type = parameter.getAttribute('parameter_type');
+                    var value = parameter.getAttribute('parameter_value');
+                    if (type == "float"){
+                        slidersToUpdate.push([i + '_' + name, parseFloat(value, 10)])   
+                    }
+                }
+            }
+            for (var i=0; i<slidersToUpdate.length; i++){
+                document.getElementById(slidersToUpdate[i][0]).value = slidersToUpdate[i][1];
+            }
+            updateAllSliderLabels();
+        }
+
+        // State handling
         function updateState(){
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (this.readyState != 4) return;
                 if (this.status == 200) {
                     if (this.responseText == 'Maybe old'){
-                        document.getElementById("oldIndicator").innerHTML = '*';
+                        document.getElementById("errorIndicator").innerHTML = 'Plugin appears to be offline';
                     } else {
-                        document.getElementById("oldIndicator").innerHTML = '';
-                        document.getElementById("state").value = this.responseText;
+                            document.getElementById("errorIndicator").innerHTML = 'Plugin appears to be offline';
+                        if (this.responseXML != undefined){
+                            document.getElementById("errorIndicator").innerHTML = '';
+                            document.getElementById("state").value = this.responseText;
+                            syncUIWithState(this.responseXML);
+                        }
                     }
                 } else {
-                    document.getElementById("state").value = 'No response from server';
+                    document.getElementById("errorIndicator").innerHTML = 'Server appears to be offline';
+                    document.getElementById("state").value = '';
                 }
             };
             xhr.open('GET', '/update_state', true);
@@ -71,110 +234,64 @@
             xhr.open('GET', '/get_system_stats', true);
             xhr.send();
         }
-
-        document.addEventListener("DOMContentLoaded", function(){
-            triggerPostState();       
-
-            /*     
-            updateStateTimer = setInterval(function(){
-                updateState();
-            }, 200);*/
-
-            /*
-            updateSystemStatsTimer = setInterval(function(){
-                getSystemStats();
-            }, 1000);*/
-        });
         
     </script>
 </head>
 
 <body>
     <h1>Source, a Freesound-powered sampler</h1>
+    <span id="errorIndicator"></span><br>
 
-    <form action="." method="post">
-        <h3>Query</h3>
-        <label for="query">Query:</label><input name="query" value="{{query}}" type="text"><br>
-        <label for="numSounds">Num sounds:</label><input name="numSounds" value="{{numSounds}}" type="text" placeholder="16"><br>
-        <label for="maxSoundLength">Max sound length:</label><input name="maxSoundLength" value="{{maxSoundLength}}" type="text" placeholder="0.5"><br>
-        <input type="submit">
+    <div class="controls_card">
+        <b>Preset</b><br>
+        Preset number:</label><input name="presetIdx" value="" type="number">
+        <button onclick="savePreset()">Save</button>
+        <button onclick="loadPreset()">Load</button><br>
+        Preset name:</label><input name="presetName" value="" type="text">
 
-        <p>Bass sound: 8123</p>
-    </form>
+        <b>Query</b><br>
+        Query:<input name="query" value="" type="text" placeholder="percussion"><br>
+        Num sounds:<input name="numSounds" value="" type="text" placeholder="16"><br>
+        Max sound length:<input name="maxSoundLength" value="" type="text" placeholder="0.5"><br>
+        <button onclick="makeQuery()">Go!</button>
+    </div>
+
+    <div class="controls_card">
+        <b>Reverb</b><br>
+        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setReverbParameters()">
+        roomSize: <span id="0_roomSizeLabel"></span><br>
+        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setReverbParameters()">
+        damping: <span id="0_dampingLabel"></span><br>
+        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setReverbParameters()">
+        wetLevel: <span id="0_wetLevelLabel"></span><br>
+        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setReverbParameters()">
+        dryLevel: <span id="0_dryLevelLabel"></span><br>
+        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setReverbParameters()">
+        width: <span id="0_widthLabel"></span><br>
+        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setReverbParameters()">
+        freezeMode: <span id="0_freezeModeLabel"></span>
+    </div>
+
+    <div class="controls_card">
+        <b>System stats</b><br>
+        <button onclick="getSystemStats();">Get system stats</button>
+        <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
+    </div>
+
+    <div class="controls_card">
+        <b>Global options</b><br>
+        MIDI root note offset:<input name="midiRootNoteOffset" value="" type="number"
+            onchange="setMidiRootNoteOffset()"><br>
+        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
+        MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
+    </div>
     
-    <br>
+    <div id="allSoundsEditor" class="controls_card"></div>
+    <div id="individualSoundEditors" class="cards_container_slide"></div>
 
-    <form action="." method="post">
-        <h3>Global MIDI note offset</h3>
-        <label for="midiRootNoteOffset">MIDI root note offset:</label><input name="midiRootNoteOffset" value="{{midiRootNoteOffset}}" type="number"><br>
-        <input type="submit">
-    </form>
-
-    <br>
-
-    <form action="." method="post">
-        <h3>Sound parameters</h3>
-        <label for="soundIndex">Sound index (use -1 for all):</label><input id="soundIndexId" name="soundIndex" value="{{soundIndex}}" type="text"><br>
-        <input type="range" name="filterCutoffSlider" min="0" max="20000.0" step="0.5" oninput="setParameter(this)"><br>
-        <label for="filterCutoff">Filter cutoff:</label><input id="filterCutoffId" name="filterCutoff" value="{{filterCutoff}}" type="text"><br>
-        <label for="filterResonance">Filter resonance:</label><input name="filterResonance" value="{{filterResonance}}" type="text"><br>
-        <label for="maxPitchRatioMod">AT>pitch:</label><input name="maxPitchRatioMod" value="{{maxPitchRatioMod}}" type="text"><br>
-        <label for="maxFilterCutoffMod">AT>cutoff:</label><input name="maxFilterCutoffMod" value="{{maxFilterCutoffMod}}" type="text"><br>
-        <label for="gain">Master gain:</label><input name="gain" value="{{gain}}" type="text"><br>
-        <input type="submit">
-    </form>
-
-    <br>
-
-    <form action="." method="post">
-        <h3>Reverb</h3>
-        <label for="roomSize">Room size:</label><input name="roomSize" value="{{roomSize}}" type="text"><br>
-        <label for="damping">Damping:</label><input name="damping" value="{{damping}}" type="text"><br>
-        <label for="wetLevel">Wet level:</label><input name="wetLevel" value="{{wetLevel}}" type="text"><br>
-        <label for="dryLevel">Dry level:</label><input name="dryLevel" value="{{dryLevel}}" type="text"><br>
-        <label for="width">Width:</label><input name="width" value="{{width}}" type="text"><br>
-        <label for="freezeMode">Freeze mode:</label><input name="freezeMode" value="{{freezeMode}}" type="text"><br>
-        <input type="submit">
-    </form>
-
-    <br>
-
-    <form action="." method="post">
-        <h3>Save preset</h3>
-        <label for="presetNumber">Preset number:</label><input name="presetNumber" value="" type="number"><br>
-        <label for="presetName">Preset name:</label><input name="presetName" value="" type="text"><br>
-        <input type="submit">
-    </form>
-
-    <form action="." method="post">
-        <h3>Load preset</h3>
-        <label for="loadPresetNumber">Preset number:</label><input name="loadPresetNumber" value="-1" type="number"> OR 
-        <label for="loadPresetName">Preset name:</label><input name="loadPresetName" value="" type="text"><br>
-        <input type="submit">
-    </form>
-
-    <form action="." method="post">
-        <h3>Midi in channel</h3>
-        <label for="midiInChannel">MIDI in channel:</label><input name="midiInChannel" value="{{midiInChannel}}" type="number"><br>
-        <input type="submit">
-    </form>
-
-    <form action="." method="post">
-        <h3>Midi thru</h3>
-        <input type="hidden" name="hiddenMidiThru">
-        <label for="midiThru">MIDI thru:</label><input name="midiThru" value="" type="checkbox"><br>
-        <input type="submit">
-    </form>
-
-    
     <h3>State</h3>
-    <button onclick="triggerPostState();">Trigger post state</button><span id="oldIndicator"></span>
+    <button onclick="triggerPostState();">Trigger post state</button><button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button>
     <textarea id="state" style="width:100%;height:500px;"></textarea>
 
-    <h3>System stats</h3>
-    <button onclick="getSystemStats();">Get system stats</button>
-    <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
-
 </body>
-
 </html>

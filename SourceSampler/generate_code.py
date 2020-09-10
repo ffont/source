@@ -86,7 +86,33 @@ def generate_code(controls_data_filename):
     current_code += '    '
     code_dict['SourceSampler.h'] = {}
     code_dict['SourceSampler.h']['A'] = current_code
-    
+
+    # Generate HTML interface sound edit elements code
+    current_code = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list]):
+        if control_data['type'] == 'float':
+            defaultf = float(control_data['default'])
+            minf = float(control_data['min'])
+            maxf = float(control_data['max'])
+            control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf})
+            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+                **control_data)
+        elif control_data['type'] == 'adsr':
+            for count, adsr_phase in enumerate(['attack', 'decay', 'sustain', 'release']):  # Note that these names ust match ADSR::Parameters names
+                minf = [0.0, 0.0, 0.0, 0.0][count]
+                maxf = [20.0, 20.0, 1.0, 20.0][count]
+                defaultf = float(control_data['default'].replace('f', '').split(',')[count])
+                control_data.update({'adsr_phase': adsr_phase, 'minf': minf, 'maxf': maxf, 'defaultf': defaultf})
+                current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}.{adsr_phase}" name="{name}.{adsr_phase}" min="{minf}" max="{maxf}" value="{defaultf}" step="0.1" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}.{adsr_phase}: <span id="' + soundIdx + '_{name}.{adsr_phase}Label"></span><br>'\n""".format(
+                    **control_data)
+        else:
+            # Don't know what to do with other types
+            pass
+    current_code += '            '
+    code_dict['../../server/templates/index.html'] = {}
+    code_dict['../../server/templates/index.html']['A'] = current_code
+
+
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))
 
     return code_dict

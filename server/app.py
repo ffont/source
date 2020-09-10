@@ -10,9 +10,11 @@ except:
 import requests
 import os
 import time
+import sys
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
+
 
 app = Flask(__name__, static_url_path='/static', static_folder='static/')
 osc_client = None
@@ -23,91 +25,9 @@ time_post_state_triggered = None
 time_post_state_received = None
 
 
-@app.route('/', methods = ['GET', 'POST'])
-def index():
-    query = ''
-    numSounds = 16
-    maxSoundLength = 0.5
-    midiRootNoteOffset = 0
-    soundIndex = -1
-    soundParams = {
-        'filterCutoff': 20000.0,
-        'filterResonance': 0.0,
-        'maxPitchRatioMod': 0.1,
-        'maxFilterCutoffMod': 10.0,
-        'gain': 1.0,
-    }
-    rveerbParamNames = ['roomSize', 'damping', 'wetLevel', 'dryLevel', 'width', 'freezeMode']  # Needed to ensure sorting in dict
-    reverbParams = {
-        'roomSize': 0.5,
-        'damping': 0.5,
-        'wetLevel': 0.0,
-        'dryLevel': 1.0,
-        'width': 1.0,
-        'freezeMode': 0.0,
-    }
-    midiInChannel = 0
-
-    if request.method == 'POST':
-        if 'query' in request.form:
-            # New query form was submitted
-            query = request.form['query']
-            numSounds = int(request.form['numSounds'] or '16')
-            maxSoundLength = float(request.form['maxSoundLength'] or '0.5')
-            osc_client.send_message(b'/new_query', [query, numSounds, maxSoundLength])   
-        
-        if 'midiRootNoteOffset' in request.form:
-            # MIDI offset form was submitted
-            midiRootNoteOffset = int(request.form['midiRootNoteOffset']) 
-            osc_client.send_message(b'/set_midi_root_offset', [-1 * midiRootNoteOffset])   
-
-        if 'soundIndex' in request.form:
-            # Setting sound parameters
-            soundIndex = int(request.form['soundIndex'])
-            for parameter_name in list(soundParams.keys()):
-                value = float(request.form[parameter_name])
-                osc_client.send_message(b'/set_sound_parameter', [int(soundIndex), parameter_name, value]) 
-                soundParams[parameter_name] = value
-
-        if 'roomSize' in request.form:
-            # Setting reverb parameters
-            values_list = []
-            for parameter_name in rveerbParamNames:
-                value = float(request.form[parameter_name])
-                reverbParams[parameter_name] = value
-                values_list.append(value)
-            osc_client.send_message(b'/set_reverb_parameters', values_list) 
-
-        if 'presetName' in request.form:
-            # Save current preset
-            index = int(request.form['presetNumber'])
-            osc_client.send_message(b'/save_current_preset', [request.form['presetName'], index]) 
-
-        if 'loadPresetName' in request.form or 'loadPresetNumber' in request.form:
-            # Load preset
-            index = int(request.form['loadPresetNumber'])
-            osc_client.send_message(b'/load_preset', [request.form['loadPresetName'], index]) 
-        
-        if 'midiInChannel' in request.form:
-            # Set midi in filter
-            midiInChannel = int(request.form['midiInChannel']) 
-            osc_client.send_message(b'/set_midi_in_channel', [midiInChannel]) 
-
-        if 'hiddenMidiThru' in request.form:
-            # Set midi thru
-            osc_client.send_message(b'/set_midi_thru', [1 if 'midiThru' in request.form else 0]) 
-            
-            
-    tvars = soundParams.copy()
-    tvars.update(reverbParams)
-    tvars.update({
-        'query': query,
-        'numSounds': numSounds,
-        'maxSoundLength': maxSoundLength,
-        'midiRootNoteOffset': midiRootNoteOffset,
-        'soundIndex': soundIndex,
-        'midiInChannel': midiInChannel,
-    })
+@app.route('/', methods = ['GET'])
+def index():        
+    tvars = {}
     return render_template("index.html", **tvars)
 
 
@@ -128,7 +48,6 @@ def download_sounds():
 def state_from_plugin():
     global plugin_state
     global time_post_state_received
-    print('State from plugin')
     time_post_state_received = time.time()
     plugin_state = request.data
     return 'State received'
@@ -153,15 +72,9 @@ def trigger_post_state():
     return 'Post state triggered'
 
 
-@app.route('/set_sound_parameter_float', methods = ['GET'])
-def set_sound_parameter_float():
-    osc_client.send_message(b'/set_sound_parameter', [int(request.args['soundIdx']), request.args['param'], float(request.args['value'])]) 
-    return 'Parameter set!'
-
-
 @app.route('/get_system_stats', methods = ['GET'])
 def get_system_stats():
-    if do_system_stats:
+    if do_system_stats and sys.platform != 'darwin':
         # Get system stats (only works when running in ELK as for other host(s) the command would be different)
         temp_out = commands.getstatusoutput("sudo vcgencmd measure_temp")[1]
         cpu_usage = commands.getstatusoutput("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[1]
@@ -171,10 +84,15 @@ def get_system_stats():
     else:
         return 'No stats'
 
+@app.route('/send_osc', methods=['POST'])
+def send_osc():
+    address = request.form['address']
+    values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.form['types'].split(';'), request.form['values'].split(';'))]
+    osc_client.send_message(address, values)
+    return 'OSC sent'
 
 
 if __name__ == '__main__':
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default="127.0.0.1", help="The ip to send OSC to")
     parser.add_argument("--osc_port", type=int, default=9000, help="The port to send OSC messages to")

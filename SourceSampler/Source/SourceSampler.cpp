@@ -121,12 +121,12 @@ ValueTree SourceSamplerSound::getState(){
 void SourceSamplerSound::loadState(ValueTree soundState){
     
     // Iterate over parameters and load them
-    for (int i=0; i<soundState.getChildWithName(STATE_SAMPLER_SOUND_PARAMETERS).getNumChildren(); i++){
-        ValueTree parameter = soundState.getChildWithName(STATE_SAMPLER_SOUND_PARAMETERS).getChild(i);
-        String type = soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
-        String name = soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
+    for (int i=0; i<soundState.getNumChildren(); i++){
+        ValueTree parameter = soundState.getChild(i);
+        String type = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
+        String name = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
         if (type == "float"){
-            float value = (float)soundState.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+            float value = (float)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
             setParameterByNameFloat(name, value);
         }
     }

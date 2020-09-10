@@ -61,7 +61,6 @@
 #define STATE_SAMPLER_SOUNDS "SamplerSounds"
 #define STATE_SAMPLER_NSOUNDS "nSounds"
 #define STATE_SAMPLER_SOUND "SamplerSound"
-#define STATE_SAMPLER_SOUND_PARAMETERS "SamplerSoundParameters"
 #define STATE_SAMPLER_SOUND_PARAMETER "SamplerSoundParameter"
 #define STATE_SAMPLER_SOUND_PARAMETER_TYPE "parameter_type"
 #define STATE_SAMPLER_SOUND_PARAMETER_NAME "parameter_name"

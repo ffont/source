@@ -474,7 +474,9 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
+    #if JUCE_DEBUG
     std::cout << "Action message: " << message << std::endl;
+    #endif
     
     if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
         String serializedParameters = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
