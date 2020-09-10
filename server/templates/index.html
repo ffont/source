@@ -22,8 +22,10 @@
 
         var updateStateTimer;
         var updateSystemStatsTimer;
+        var triggerPostStateTimer;
         var lastReceivedStateText;
         var updateStateInterval = 200;
+        var triggerPostStateInterval = 5000;
 
         document.addEventListener("DOMContentLoaded", function () {
             triggerPostState();
@@ -39,14 +41,19 @@
                 updateState();
             }, updateStateInterval);
 
+            triggerPostStateTimer  = setInterval(function () {
+                triggerPostState();
+            }, triggerPostStateInterval);
+
             updateSystemStatsTimer = setInterval(function () {
                 getSystemStats();
             }, 1000);
         }
 
         function stopAutoUpdate() {
-            window.clearInterval(updateStateInterval);
+            window.clearInterval(updateStateTimer);
             window.clearInterval(updateSystemStatsTimer);
+            window.clearInterval(triggerPostStateTimer);
         }
 
         function updateAllSliderLabels(){
