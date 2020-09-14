@@ -171,6 +171,11 @@
             sendOsc('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
         }
 
+        function setNumVoices() {
+            var numVoices = document.getElementsByName('numVoices')[0].value;
+            sendOsc('/set_polyphony', [numVoices], 'int')
+        }
+
         function playSound(soundIdx){
             sendOsc('/play_sound', [soundIdx], 'int')
         }
@@ -376,6 +381,7 @@
 
     <div class="controls_card">
         <b>Global options</b><br>
+        Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
         MIDI root note offset:<input name="midiRootNoteOffset" value="" type="number"
             onchange="setMidiRootNoteOffset()"><br>
         MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>

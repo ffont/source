@@ -40,6 +40,7 @@ public:
             addListener (this, OSC_ADDRESS_POST_STATE);
             addListener (this, OSC_ADDRESS_PLAY_SOUND);
             addListener (this, OSC_ADDRESS_STOP_SOUND);
+            addListener (this, OSC_ADDRESS_SET_POLYPHONY);
         }
     }
     
@@ -149,9 +150,13 @@ public:
                 String actionMessage = String(ACTION_STOP_SOUND) + ":" + (String)soundIndex;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_POLYPHONY){
+            if (message.size() == 1)  {
+                int numVoices = message[0].getInt32();
+                String actionMessage = String(ACTION_SET_POLYPHONY) + ":" + (String)numVoices;
+                sendActionMessage(actionMessage);
+            }
         }
-            
-            
     }
 
 private:

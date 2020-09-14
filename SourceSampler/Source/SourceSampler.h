@@ -187,11 +187,7 @@ public:
     
     SourceSamplerSynthesiser()
     {
-        // Configure sampler voices
-        for (auto i = 0; i < maxNumVoices; ++i)
-            addVoice (new SourceSamplerVoice);
-
-        setNoteStealingEnabled (true);
+        setSamplerVoices(maxNumVoices);
         
         // Configure effects chain
         Reverb::Parameters reverbParameters;
@@ -203,6 +199,16 @@ public:
         reverbParameters.freezeMode = 0.0f;
         auto& reverb = fxChain.get<reverbIndex>();
         reverb.setParameters(reverbParameters);
+    }
+    
+    void setSamplerVoices(int nVoices)
+    {
+        clearVoices();
+        
+        for (auto i = 0; i < jmin(maxNumVoices, nVoices); ++i)
+            addVoice (new SourceSamplerVoice);
+        
+        setNoteStealingEnabled (true);
     }
     
     void setReverbParameters (Reverb::Parameters params) {
@@ -224,6 +230,8 @@ public:
     ValueTree getState(){
         
         ValueTree state = ValueTree(STATE_SAMPLER);
+        
+        state.setProperty(STATE_NUMVOICES, getNumVoices(), nullptr);
         
         // Add reverb settings to state
         ValueTree reverbParameters = ValueTree(STATE_REVERB_PARAMETERS);
@@ -254,6 +262,12 @@ public:
         // This should be called after having called "setSources" with the corresponding sounds
         // This will set the individual sound parameters to the stored ones, but does no deal with
         // loading specific sounds or downloading them. This also set "global" parameters.
+        
+        // Load number of voices
+        if (samplerState.hasProperty(STATE_NUMVOICES)){
+            int numVoices = (int)samplerState.getProperty(STATE_NUMVOICES);
+            setSamplerVoices(numVoices);
+        }
         
         // Load reverb parameters
         ValueTree reveberParametersVT = samplerState.getChildWithName(STATE_REVERB_PARAMETERS);

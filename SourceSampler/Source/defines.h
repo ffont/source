@@ -23,6 +23,7 @@
 #define ACTION_POST_STATE "ACTION_POST_STATE"
 #define ACTION_PLAY_SOUND "ACTION_PLAY_SOUND"
 #define ACTION_STOP_SOUND "ACTION_STOP_SOUND"
+#define ACTION_SET_POLYPHONY "ACTION_SET_POLYPHONY"
 
 #define OSC_ADDRESS_SET_MIDI_ROOT_OFFSET "/set_midi_root_offset"
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
@@ -36,6 +37,7 @@
 #define OSC_ADDRESS_POST_STATE "/post_state"
 #define OSC_ADDRESS_PLAY_SOUND "/play_sound"
 #define OSC_ADDRESS_STOP_SOUND "/stop_sound"
+#define OSC_ADDRESS_SET_POLYPHONY "/set_polyphony"
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"
@@ -55,6 +57,8 @@
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET "onset"
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME "time"
 #define STATE_SOUND_INFO_FS_ANALYSIS_ONSET_TIMES "fsAnalysisOnsetTimes"
+
+#define STATE_NUMVOICES "NumVoices"
 
 #define STATE_REVERB_PARAMETERS "ReverbParameters"
 #define STATE_REVERB_ROOMSIZE "reverb_roomSize"

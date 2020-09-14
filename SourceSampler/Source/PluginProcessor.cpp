@@ -595,7 +595,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int soundIndex = message.substring(String(ACTION_STOP_SOUND).length() + 1).getIntValue();
         addToMidiBuffer(soundIndex, true);
         
+    } else if (message.startsWith(String(ACTION_SET_POLYPHONY))){
+        int numVoices = message.substring(String(ACTION_SET_POLYPHONY).length() + 1).getIntValue();
+        sampler.setSamplerVoices(numVoices);
+        
     }
+    
+    
 }
 
 void SourceSamplerAudioProcessor::sendStateToServer(ValueTree state)
