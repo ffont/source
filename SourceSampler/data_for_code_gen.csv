@@ -12,4 +12,4 @@ startPosition;float;0;1;0;;;;;;;;;;;;;;;
 endPosition;float;0;1;1;;;;;;;;;;;;;;;
 loopStartPosition;float;0;1;0;;;;;;;;;;;;;;;
 loopEndPosition;float;0;1;1;;;;;;;;;;;;;;;
-loopMode;int;0;1;1;;;;;;;;;;;;;;;
+loopMode;int;0;1;0;;;;;;;;;;;;;;;

@@ -208,6 +208,14 @@ void SourceSamplerSound::loadState(ValueTree soundState){
     }
 }
 
+int SourceSamplerSound::getLengthInSamples(){
+    return length;
+}
+
+float SourceSamplerSound::getLengthInSeconds(){
+    return (float)getLengthInSamples()/sourceSampleRate;
+}
+
 
 // --------- implementation of SourceSamplerVoice
 
@@ -232,15 +240,17 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 
 void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
 {
+    // This is called at each processing block of 64 samples
+    
     // Pitch
     pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote) / 12.0) * sound->sourceSampleRate / getSampleRate();
     
     // Looping settings
-    // TODO
-    startPositionSample = 0;
-    endPositionSample = 0;
-    loopStartPositionSample = 0;
-    loopEndPositionSample = 0;
+    int soundLengthInSamples = sound->getLengthInSamples();
+    startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+    endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+    loopStartPositionSample = (int)(sound->loopStartPosition * soundLengthInSamples);
+    loopEndPositionSample = (int)(sound->loopEndPosition * soundLengthInSamples);
     doLoop = sound->loopMode == 1;
     //loopCroosfadeNSamples = 100;
     
@@ -264,13 +274,18 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
 
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
 {
+    // This is called when note on is received
+    
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
         midiNoteCurrentlyPlayed = midiNoteNumber;
         
         // Reset some parameters
+        adsr.reset();
+        adsrFilter.reset();
         pitchRatioMod = 0.0;
         filterCutoffMod = 0.0;
+        isInReleaseADSRStage = false;
         
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (sound->pluginSampleRate);
@@ -279,7 +294,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         
         updateParametersFromSourceSamplerSound(sound);
         
-        sourceSamplePosition = 0.0;
+        sourceSamplePosition = startPositionSample;
         lgain = velocity;
         rgain = velocity;
 
@@ -299,13 +314,13 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
     {
         adsr.noteOff();
         adsrFilter.noteOff();
+        isInReleaseADSRStage = true;
     }
     else
     {
         clearCurrentNote();
-        adsr.reset();
-        adsrFilter.reset();
-        pitchRatioMod = 0;
+        //adsr.reset();
+        //adsrFilter.reset();
     }
 }
 
@@ -400,16 +415,19 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
             sourceSamplePosition += pitchRatio + pitchRatioMod;
             
-            // TODO: do looping logic here?
-            // - if adsr in any stage but r, do loop to loop start position
-            // - else, don't loop any more as it will get until the end (or ADSR gets to 0)
-            
-
-            if (sourceSamplePosition > playingSound->length)
-            {
-                stopNote (0.0f, false);
-                pitchRatioMod = 0;
-                break;
+            if (doLoop && !isInReleaseADSRStage){
+                // If looping is enabled and we're not yet in release stage, check whether we should loop
+                if (sourceSamplePosition > loopEndPositionSample){
+                    sourceSamplePosition = loopStartPositionSample;
+                }
+                
+            } else {
+                // If not looping or looping but already in release stage, check whether we've reached the end of the file
+                if (sourceSamplePosition > endPositionSample)
+                {
+                    stopNote (0.0f, false);
+                    break;
+                }
             }
         }
 

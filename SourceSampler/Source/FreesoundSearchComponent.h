@@ -71,7 +71,7 @@ public:
     }
 
 	void cellClicked(int rowNumber, int columnId, const MouseEvent &) {
-		processor->addToMidiBuffer(rowNumber);
+		processor->addToMidiBuffer(rowNumber, false);
 	}
 
 	void setProcessor(SourceSamplerAudioProcessor* p)

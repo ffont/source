@@ -175,6 +175,10 @@
             sendOsc('/play_sound', [soundIdx], 'int')
         }
 
+        function stopSound(soundIdx){
+            sendOsc('/stop_sound', [soundIdx], 'int')
+        }
+
         function savePreset(){
             var name = document.getElementsByName('presetName')[0].value;
             var idx = document.getElementsByName('presetIdx')[0].value;
@@ -209,7 +213,7 @@
             html += '<input type="range" id="' + soundIdx + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > endPosition: <span id="' + soundIdx + '_endPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopStartPosition: <span id="' + soundIdx + '_loopStartPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopEndPosition: <span id="' + soundIdx + '_loopEndPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopMode" name="loopMode" min="0" max="1" value="1" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopMode: <span id="' + soundIdx + '_loopModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_loopMode" name="loopMode" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopMode: <span id="' + soundIdx + '_loopModeLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
@@ -243,7 +247,7 @@
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var sound = soundInfoElements[i];
                 html = '<div class="controls_card">';
-                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><br>';
+                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><button onclick="stopSound(' + i + ')">stop</button><br>';
                 html += sound.getAttribute('soundName') + '<br>';
                 html += generateSoundEditControls(i);
                 html += '</div>';

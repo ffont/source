@@ -589,7 +589,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         
     } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
         int soundIndex = message.substring(String(ACTION_PLAY_SOUND).length() + 1).getIntValue();
-        addToMidiBuffer(soundIndex);
+        addToMidiBuffer(soundIndex, false);
+        
+    } else if (message.startsWith(String(ACTION_STOP_SOUND))){
+        int soundIndex = message.substring(String(ACTION_STOP_SOUND).length() + 1).getIntValue();
+        addToMidiBuffer(soundIndex, true);
         
     }
 }
@@ -808,7 +812,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
     DBG("Sampler sources configured with " << sampler.getNumSounds() << " sounds and " << sampler.getNumVoices() << " voices");
 }
 
-void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
+void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber, bool doNoteOff)
 {
     
     int nSounds = loadedSoundsInfo.getNumChildren();
@@ -820,7 +824,12 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber)
         if (midiChannel == 0){
             midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
         }
+        
         MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
+        if (doNoteOff){
+            message = MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (uint8)127);
+        }
+        
         double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
         message.setTimeStamp(timestamp);
 

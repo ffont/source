@@ -67,6 +67,10 @@ public:
     //==============================================================================
     ValueTree getState();
     void loadState(ValueTree soundState);
+    
+    //==============================================================================
+    int getLengthInSamples();
+    float getLengthInSeconds();
 
 private:
     //==============================================================================
@@ -76,7 +80,8 @@ private:
     std::unique_ptr<AudioBuffer<float>> data;
     double sourceSampleRate;
     BigInteger midiNotes;
-    int length = 0, midiRootNote = 0;
+    int length = 0;
+    int midiRootNote = 0;
     
     double pluginSampleRate;
     int pluginBlockSize;
@@ -97,7 +102,7 @@ private:
     float endPosition = 1.0f;
     float loopStartPosition = 0.0f;
     float loopEndPosition = 1.0f;
-    int loopMode = 1;
+    int loopMode = 0;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -163,6 +168,7 @@ private:
     int loopEndPositionSample = 0;
     bool doLoop = false;
     int loopCroosfadeNSamples = 100;
+    bool isInReleaseADSRStage = false;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults

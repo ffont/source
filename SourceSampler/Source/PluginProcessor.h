@@ -98,7 +98,7 @@ public:
     void downloadSoundsAndSetSources(ValueTree soundsInfo);
     void setSources(int midiNoteRootOffset);
     
-    void addToMidiBuffer(int soundNumber);
+    void addToMidiBuffer(int soundNumber, bool doNoteOff);
 
     double getStartTime();
     String getQuery();
