@@ -254,9 +254,8 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
     }
 }
 
-void SourceSamplerVoice::pitchWheelMoved (int /*newValue*/) {}
-
-void SourceSamplerVoice::controllerMoved (int /*controllerNumber*/, int /*newValue*/) {}
+void SourceSamplerVoice::pitchWheelMoved (int newValue) {
+}
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
@@ -282,6 +281,21 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
         // Aftertouch also modified filter cutoff
         filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+    }
+}
+
+void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
+    
+    if (controllerNumber == 1){
+        if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+        {
+            // Channel aftertouch modifies the playback speed up to an octave
+            pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
+            
+            // Aftertouch also modified filter cutoff
+            filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
+            processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+        }
     }
 }
 
