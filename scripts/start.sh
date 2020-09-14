@@ -18,4 +18,4 @@ python /home/mind/app.py &
 
 # Start sushi with source plugin
 echo "* Starting sushi..."
-sushi -r -c /home/mind/source_sushi_config.json
+/home/mind/sushi_custom -r -c /home/mind/source_sushi_config.json
