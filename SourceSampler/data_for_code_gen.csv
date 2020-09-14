@@ -7,3 +7,4 @@ gain;float;0;1;0.5;;;;;;;;;;;;;;;
 ampADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;;;;;;;;;;;;;;;
 filterADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;;;;;;;;;;;;;;;
 maxFilterADSRMod;float;0;10;1;;;;;;;;;;;;;;;
+basePitch;float;-36;36;0;;;;;;;;;;;;;;;

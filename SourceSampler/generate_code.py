@@ -94,8 +94,8 @@ def generate_code(controls_data_filename):
             defaultf = float(control_data['default'])
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
-            control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf})
-            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+            control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf, 'step': 1.0 if control_data['name'] == 'basePitch' else 0.01})
+            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         elif control_data['type'] == 'adsr':
             for count, adsr_phase in enumerate(['attack', 'decay', 'sustain', 'release']):  # Note that these names ust match ADSR::Parameters names

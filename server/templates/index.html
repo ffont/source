@@ -199,6 +199,7 @@
             html += '<input type="range" id="' + soundIdx + '_filterADSR.sustain" name="filterADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.sustain: <span id="' + soundIdx + '_filterADSR.sustainLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_filterADSR.release" name="filterADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.release: <span id="' + soundIdx + '_filterADSR.releaseLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxFilterADSRMod" name="maxFilterADSRMod" min="0.0" max="10.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterADSRMod: <span id="' + soundIdx + '_maxFilterADSRModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_basePitch" name="basePitch" min="-36.0" max="36.0" value="0.0" step="1.0" oninput="setSoundParameter(' + soundIdx + ', this)" > basePitch: <span id="' + soundIdx + '_basePitchLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }

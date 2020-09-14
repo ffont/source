@@ -91,6 +91,7 @@ private:
     ADSR::Parameters ampADSR = {0.1f, 0.0f, 1.0f, 1.0f};
     ADSR::Parameters filterADSR = {0.1f, 0.0f, 1.0f, 1.0f};
     float maxFilterADSRMod = 1.0f;
+    float basePitch = 0.0f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -129,6 +130,7 @@ public:
 private:
     //==============================================================================
     // Sample reading and rendering
+    int midiNoteCurrentlyPlayed = 0; 
     double pitchRatio = 0;
     double pitchRatioMod = 0;
     double sourceSamplePosition = 0;

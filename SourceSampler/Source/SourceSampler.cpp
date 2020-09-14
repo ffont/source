@@ -71,6 +71,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
     else if (name == "filterADSR.release") { filterADSR.release = value; }
     else if (name == "maxFilterADSRMod") { maxFilterADSRMod = jlimit(0.0f, 10.0f, value); }
+    else if (name == "basePitch") { basePitch = jlimit(-36.0f, 36.0f, value); }
     // --> End auto-generated code A
 }
 
@@ -148,6 +149,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterADSRMod", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterADSRMod, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "basePitch", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, basePitch, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -191,15 +197,21 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 
 void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
 {
+    // Pitch
+    pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote) / 12.0) * sound->sourceSampleRate / getSampleRate();
+    
+    // ADSRs
     adsr.setParameters (sound->ampADSR);
     adsrFilter.setParameters (sound->filterADSR);
     
+    // Filter
     filterCutoff = sound->filterCutoff;
     filterRessonance = sound->filterRessonance;
     auto& filter = processorChain.get<filterIndex>();
     filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod + sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample()); // Base cutoff + AT mod + ADSR mod
     filter.setResonance (filterRessonance);
     
+    // Amp
     masterGain = sound->gain;
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (masterGain);
@@ -210,6 +222,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
 {
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
+        midiNoteCurrentlyPlayed = midiNoteNumber;
+        
         // Reset some parameters
         pitchRatioMod = 0.0;
         filterCutoffMod = 0.0;
@@ -218,11 +232,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         adsr.setSampleRate (sound->pluginSampleRate);
         // TODO: what should really be the sample rate below?
         adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
-        updateParametersFromSourceSamplerSound(sound);
         
-        // Initialize other variables
-        pitchRatio = std::pow (2.0, (midiNoteNumber - sound->midiRootNote) / 12.0)
-            * sound->sourceSampleRate / getSampleRate();
+        updateParametersFromSourceSamplerSound(sound);
         
         sourceSamplePosition = 0.0;
         lgain = velocity;
