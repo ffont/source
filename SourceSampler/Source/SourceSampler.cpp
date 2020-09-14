@@ -60,7 +60,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     if (name == "filterCutoff") { filterCutoff = jlimit(0.0f, 20000.0f, value); }
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
-    else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 10.0f, value); }
+    else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
     else if (name == "gain") { gain = jlimit(0.0f, 1.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
