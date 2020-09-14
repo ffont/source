@@ -265,6 +265,8 @@
                         var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
                         var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
                         slidersToUpdate.push([i + '_' + name, value])
+                    } else if (type == "int"){
+                        slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
                     }
                 }
             }
