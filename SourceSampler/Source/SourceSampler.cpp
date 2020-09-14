@@ -72,7 +72,17 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterADSR.release") { filterADSR.release = value; }
     else if (name == "maxFilterADSRMod") { maxFilterADSRMod = jlimit(0.0f, 10.0f, value); }
     else if (name == "basePitch") { basePitch = jlimit(-36.0f, 36.0f, value); }
+    else if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
+}
+
+void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
+    // --> Start auto-generated code C
+    if (name == "loopMode") { loopMode = jlimit(0, 1, value); }
+    // --> End auto-generated code C
 }
 
 ValueTree SourceSamplerSound::getState(){
@@ -154,6 +164,31 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "basePitch", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, basePitch, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "startPosition", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, startPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "endPosition", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, endPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopStartPosition", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopStartPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopEndPosition", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopEndPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopMode", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopMode, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -199,6 +234,15 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
 {
     // Pitch
     pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote) / 12.0) * sound->sourceSampleRate / getSampleRate();
+    
+    // Looping settings
+    // TODO
+    startPositionSample = 0;
+    endPositionSample = 0;
+    loopStartPositionSample = 0;
+    loopEndPositionSample = 0;
+    doLoop = sound->loopMode == 1;
+    //loopCroosfadeNSamples = 100;
     
     // ADSRs
     adsr.setParameters (sound->ampADSR);
@@ -355,6 +399,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
 
             sourceSamplePosition += pitchRatio + pitchRatioMod;
+            
+            // TODO: do looping logic here?
+            // - if adsr in any stage but r, do loop to loop start position
+            // - else, don't loop any more as it will get until the end (or ADSR gets to 0)
+            
 
             if (sourceSamplePosition > playingSound->length)
             {

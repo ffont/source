@@ -27,7 +27,7 @@ def generate_code(controls_data_filename):
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameFloat
     current_code = ''
-    for count, control_data in enumerate([control_data for control_data in controls_list]):
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
         iftag = 'else if' if count > 0 else 'if'
         control_data.update({'iftag': iftag})
         if control_data['type'] == 'float':
@@ -46,12 +46,35 @@ def generate_code(controls_data_filename):
     code_dict['SourceSampler.cpp'] = {}
     code_dict['SourceSampler.cpp']['A'] = current_code
 
+    # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
+    current_code = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] == 'int']):
+        iftag = 'else if' if count > 0 else 'if'
+        control_data.update({'iftag': iftag})
+        if control_data['type'] == 'int':
+            mini = int(control_data['min'])
+            maxi = int(control_data['max'])
+            control_data.update({'mini': mini, 'maxi': maxi})
+            current_code += '    {iftag} (name == "{name}") {{ {name} = jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
+        else:
+            # Don't know what to do with other types
+            pass
+    current_code += '    '
+    code_dict['SourceSampler.cpp']['C'] = current_code
+
     # Generate SourceSamplerSound code to save state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         if control_data['type'] == 'float':
             current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, {name}, nullptr),
+                      nullptr);
+""".format(**control_data)
+        elif control_data['type'] == 'int':
+            current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, {name}, nullptr),
                       nullptr);
@@ -78,6 +101,10 @@ def generate_code(controls_data_filename):
             defaultf = float(control_data['default'])
             control_data.update({'defaultf': defaultf})
             current_code += "    float {name} = {defaultf}f;\n".format(**control_data)
+        elif control_data['type'] == 'int':
+            defaulti = int(control_data['default'])
+            control_data.update({'defaulti': defaulti})
+            current_code += "    int {name} = {defaulti};\n".format(**control_data)
         elif control_data['type'] == 'adsr':
             current_code += "    ADSR::Parameters {name} = {{{default}}};\n".format(**control_data)
         else:
@@ -96,6 +123,13 @@ def generate_code(controls_data_filename):
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf, 'step': 1.0 if control_data['name'] == 'basePitch' else 0.01})
             current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+                **control_data)
+        elif control_data['type'] == 'int':
+            defaulti = int(control_data['default'])
+            mini = int(control_data['min'])
+            maxi = int(control_data['max'])
+            control_data.update({'mini': mini, 'maxi': maxi, 'defaulti': defaulti, 'step': 1})
+            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="setSoundParameterInt(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         elif control_data['type'] == 'adsr':
             for count, adsr_phase in enumerate(['attack', 'decay', 'sustain', 'release']):  # Note that these names ust match ADSR::Parameters names

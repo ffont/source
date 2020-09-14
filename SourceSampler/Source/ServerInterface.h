@@ -31,6 +31,7 @@ public:
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
+            addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_INT);
             addListener (this, OSC_ADDRESS_SET_REVERB_PARAMETERS);
             addListener (this, OSC_ADDRESS_SAVE_CURRENT_PRESET);
             addListener (this, OSC_ADDRESS_LOAD_PRESET);
@@ -74,6 +75,17 @@ public:
                                               parameterName + SERIALIZATION_SEPARATOR  +
                                               (String)value + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_SET_SOUND_PARAMETER_FLOAT) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_PARAMETER_INT){
+            if (message.size() == 3)  {
+                int soundIndex = message[0].getInt32();  // Index of the sound in SourceSamplerSynthesiser object (-1 means all sounds)
+                String parameterName = message[1].getString();  // Name of the parameter to change
+                int value = message[2].getInt32();  // Value of the parameter to set
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                              parameterName + SERIALIZATION_SEPARATOR  +
+                                              (String)value + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_SET_SOUND_PARAMETER_INT) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_REVERB_PARAMETERS){

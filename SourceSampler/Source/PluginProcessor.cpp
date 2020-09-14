@@ -512,7 +512,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
         String parameterName = tokens[1];
         float parameterValue = tokens[2].getFloatValue();
-        DBG("Setting parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
+        DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
             if (soundIndex < sampler.getNumSounds() - 1){
                 auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
@@ -522,6 +522,26 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             for (int i=0; i<sampler.getNumSounds(); i++){
                 auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(i).get());
                 sound->setParameterByNameFloat(parameterName, parameterValue);
+            }
+        }
+        
+    } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_INT))){
+        String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_INT).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
+        String parameterName = tokens[1];
+        int parameterValue = tokens[2].getIntValue();
+        DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
+        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
+            if (soundIndex < sampler.getNumSounds() - 1){
+                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
+                sound->setParameterByNameInt(parameterName, parameterValue);
+            }
+        } else {
+            for (int i=0; i<sampler.getNumSounds(); i++){
+                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(i).get());
+                sound->setParameterByNameInt(parameterName, parameterValue);
             }
         }
         

@@ -62,6 +62,7 @@ public:
     
     //==============================================================================
     void setParameterByNameFloat(const String& name, float value);
+    void setParameterByNameInt(const String& name, int value);
     
     //==============================================================================
     ValueTree getState();
@@ -92,6 +93,11 @@ private:
     ADSR::Parameters filterADSR = {0.1f, 0.0f, 1.0f, 1.0f};
     float maxFilterADSRMod = 1.0f;
     float basePitch = 0.0f;
+    float startPosition = 0.0f;
+    float endPosition = 1.0f;
+    float loopStartPosition = 0.0f;
+    float loopEndPosition = 1.0f;
+    int loopMode = 1;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -150,6 +156,13 @@ private:
     float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;
     float masterGain = 1.0f;
+    
+    int startPositionSample = 0;
+    int endPositionSample = 0;
+    int loopStartPositionSample = 0;
+    int loopEndPositionSample = 0;
+    bool doLoop = false;
+    int loopCroosfadeNSamples = 100;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
