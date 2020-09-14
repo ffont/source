@@ -13,3 +13,5 @@ endPosition;float;0;1;1;;;;;;;;;;;;;;;
 loopStartPosition;float;0;1;0;;;;;;;;;;;;;;;
 loopEndPosition;float;0;1;1;;;;;;;;;;;;;;;
 loopMode;int;0;1;0;;;;;;;;;;;;;;;
+maxGainVelMod;float;0;1;0.5;;;;;;;;;;;;;;;
+pan;float;-1;1;0.0;;;;;;;;;;;;;;;

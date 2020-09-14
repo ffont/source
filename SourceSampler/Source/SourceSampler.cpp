@@ -76,6 +76,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "maxGainVelMod") { maxGainVelMod = jlimit(0.0f, 1.0f, value); }
+    else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
     // --> End auto-generated code A
 }
 
@@ -189,6 +191,16 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopMode", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopMode, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxGainVelMod", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxGainVelMod, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -295,8 +307,9 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         updateParametersFromSourceSamplerSound(sound);
         
         sourceSamplePosition = startPositionSample;
-        lgain = velocity;
-        rgain = velocity;
+        float velocityGain = (sound->maxGainVelMod * velocity) + (1 - sound->maxGainVelMod);
+        lgain = velocityGain;
+        rgain = velocityGain;
 
         // Trigger ADSR
         adsr.noteOn();
@@ -386,6 +399,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
         float* outL = outputBuffer.getWritePointer (0, startSample);
         float* outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getWritePointer (1, startSample) : nullptr;
+        
+        // Compute panner gain
+        float rgainPan = jmin (1 - playingSound->pan, 1.0f);
+        float lgainPan = jmin (1 + playingSound->pan, 1.0f);
 
         while (--numSamples >= 0)
         {
@@ -400,8 +417,8 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
             auto envelopeValue = adsr.getNextSample();
 
-            l *= lgain * envelopeValue;
-            r *= rgain * envelopeValue;
+            l *= lgain * lgainPan * envelopeValue;
+            r *= rgain * rgainPan * envelopeValue;
 
             if (outR != nullptr)
             {

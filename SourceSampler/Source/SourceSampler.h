@@ -103,6 +103,8 @@ private:
     float loopStartPosition = 0.0f;
     float loopEndPosition = 1.0f;
     int loopMode = 0;
+    float maxGainVelMod = 0.5f;
+    float pan = 0.0f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -150,7 +152,7 @@ private:
     ADSR adsrFilter;
     
     //==============================================================================
-    // ProcessorChain (filter and master gain)
+    // ProcessorChain (filter, pan and master gain)
     enum
     {
         filterIndex,
