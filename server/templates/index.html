@@ -357,45 +357,29 @@
                 }
             }
 
-            // Update sound sliders if changed
+            // Update sound sliders if slider was not moved recently
             var slidersToUpdate = [];
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var samplerSound = samplerSoundElements[i];
-                var oldSamplerSound = undefined;
-                if (OldStateSamplerSoundElements !== undefined){
-                    oldSamplerSound = OldStateSamplerSoundElements[i];
-                }
-                 
                 var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
-                var oldStateSamplerSoundParameters = undefined;
-                if (oldSamplerSound !== undefined){
-                    oldStateSamplerSoundParameters = oldSamplerSound.getElementsByTagName('SamplerSoundParameter');
-                }
-
                 for (var j = 0; j < samplerSoundParameters.length; j++) {
                     var parameter = samplerSoundParameters[j];
                     var name = parameter.getAttribute('parameter_name');
                     var type = parameter.getAttribute('parameter_type');
                     var rawValue = parameter.getAttribute('parameter_value');
-                    var oldRawValue = undefined;
-                    if ((oldStateSamplerSoundParameters !== undefined) && (j < oldStateSamplerSoundParameters.length)){
-                        oldRawValue = oldStateSamplerSoundParameters[j].getAttribute('parameter_value');
-                    }
-                    if (rawValue !== oldRawValue){
-                        if (type == "float"){
-                            var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
-                            var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
-                            slidersToUpdate.push([i + '_' + name, value])
-                        } else if (type == "int"){
-                            slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
-                        }
+                    if (type == "float"){
+                        var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
+                        var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
+                        slidersToUpdate.push([i + '_' + name, value])
+                    } else if (type == "int"){
+                        slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
                     }
                 }
             }
             for (var i=0; i<slidersToUpdate.length; i++){
                 var sliderElement = document.getElementById(slidersToUpdate[i][0]);
                 var sliderLastMoved = sliderElement.getAttribute("data-lastMoved");
-                if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 1)){
+                if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 0.25)){
                     // Only update sliders if they are being moved in the last 1 sec
                     sliderElement.value = slidersToUpdate[i][1];
                 }

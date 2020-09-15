@@ -153,7 +153,6 @@ public:
 private:
     //==============================================================================
     // Sample reading and rendering
-    int midiNoteCurrentlyPlayed = 0; 
     double pitchRatio = 0;
     double pitchRatioMod = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;
@@ -181,7 +180,7 @@ private:
     int loopEndPositionSample = 0;
     bool doLoop = false;
     bool hasNotYetPassedLoopStartPositionForTheFirstTime = true;
-    int loopCrossfadeNSamples = 5000;
+    int loopCrossfadeNSamples = 0;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
@@ -194,7 +193,7 @@ class SourceSamplerSynthesiser: public Synthesiser,
                                 public ActionBroadcaster
 {
 public:
-    static constexpr auto maxNumVoices = 16;
+    static constexpr auto maxNumVoices = 32;
     
     SourceSamplerSynthesiser()
     {
@@ -219,7 +218,7 @@ public:
         for (auto i = 0; i < jmin(maxNumVoices, nVoices); ++i)
             addVoice (new SourceSamplerVoice);
         
-        setNoteStealingEnabled (true);
+        setNoteStealingEnabled (false);
     }
     
     void setReverbParameters (Reverb::Parameters params) {

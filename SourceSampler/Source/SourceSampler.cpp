@@ -83,6 +83,18 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
     // --> End auto-generated code A
+    
+    // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
+    if (endPosition < startPosition){
+        endPosition = startPosition;
+    }
+    if (loopStartPosition < startPosition){
+        loopStartPosition = startPosition;
+    }
+    if (loopEndPosition > endPosition){
+        loopEndPosition = endPosition;
+    }
+    
 }
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
@@ -253,14 +265,6 @@ int SourceSamplerSound::getIdx(){
 
 
 SourceSamplerVoice::SourceSamplerVoice() {
-    
-    auto& filter = processorChain.get<filterIndex>();
-    filter.setCutoffFrequencyHz (filterCutoff);
-    filter.setResonance (filterRessonance);
-    
-    auto& gain = processorChain.get<masterGainIndex>();
-    gain.setGainLinear (1.0); // This gain we don't really use it
-    
 }
 
 SourceSamplerVoice::~SourceSamplerVoice() {}
@@ -275,7 +279,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // This is called at each processing block of 64 samples
     
     // Pitch
-    pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote + pitchBendModSemitones) / 12.0) * sound->sourceSampleRate / getSampleRate();
+    pitchRatio = std::pow (2.0, (sound->basePitch + getCurrentlyPlayingNote() - sound->midiRootNote + pitchBendModSemitones) / 12.0) * sound->sourceSampleRate / getSampleRate();
     
     // Looping settings
     int soundLengthInSamples = sound->getLengthInSamples();
@@ -298,6 +302,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     
     // Amp
     masterGain = sound->gain;
+    auto& gain = processorChain.get<masterGainIndex>();
+    gain.setGainLinear (1.0); // This gain we don't really use it
 }
 
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
@@ -305,7 +311,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
     // This is called when note on is received
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
-        midiNoteCurrentlyPlayed = midiNoteNumber;
+        // Reset processor chain internal state
+        processorChain.reset();
         
         // Reset some parameters
         adsr.reset();
@@ -439,7 +446,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float r = (inR != nullptr) ? (inR[pos] * invAlpha + inR[pos + 1] * alpha)
                                        : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if (doLoop && !isPlayingButReleased() && loopCrossfadeNSamples > 0){
+            if (doLoop && loopCrossfadeNSamples > 0){
                 int samplesToLoopEndPositionSample = loopEndPositionSample - sourceSamplePosition;
                 //int samplesFromLoopStartPositionSample = sourceSamplePosition - loopStartPositionSample;
                 
@@ -451,15 +458,17 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                     int crossfadePos = loopStartPositionSample - samplesToLoopEndPositionSample;
                     if (crossfadePos > 0){
                         lcrossfadeSample = inL[crossfadePos];
-                        rcrossfadeSample = inR[crossfadePos];
+                        rcrossfadeSample = (inR != nullptr) ? inR[crossfadePos]
+                                                            : inL[crossfadePos];
                     } else {
                         // If position is negative, wrap buffer
                         lcrossfadeSample = inL[endPositionSample - crossfadePos];
-                        rcrossfadeSample = inR[endPositionSample - crossfadePos];
+                        rcrossfadeSample = (inR != nullptr) ? inR[endPositionSample - crossfadePos]
+                                                            : inL[endPositionSample - crossfadePos];
                     }
                     crossfadeGain = (float)samplesToLoopEndPositionSample/loopCrossfadeNSamples;
-                    l = l * crossfadeGain + lcrossfadeSample * (1.0f - crossfadeGain);
-                    r = r * crossfadeGain + rcrossfadeSample * (1.0f - crossfadeGain);
+                    l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
+                    r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                 } else {
                     // Do nothing because we're not in crossfade zone
                 }
@@ -486,7 +495,8 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             sourceSamplePosition += pitchRatio + pitchRatioMod;
             
             // Check if we're reaching the end of the sound
-            if (doLoop && !isPlayingButReleased()){
+            bool noteStoppedHard = false;
+            if (doLoop){
                 // If looping is enabled and we're not yet in release stage, check whether we should loop
                 if (sourceSamplePosition > loopEndPositionSample){
                     sourceSamplePosition = loopStartPositionSample;
@@ -496,8 +506,13 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 if (sourceSamplePosition > endPositionSample)
                 {
                     stopNote (0.0f, false);
+                    noteStoppedHard = true;
                     break;
                 }
+            }
+            
+            if (!adsr.isActive() && !noteStoppedHard){
+                stopNote (0.0f, false);
             }
         }
 
