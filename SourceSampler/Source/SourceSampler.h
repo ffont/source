@@ -105,6 +105,8 @@ private:
     int loopMode = 0;
     float maxGainVelMod = 0.5f;
     float pan = 0.0f;
+    float pitchBendRangeUp = 12.0f;
+    float pitchBendRangeDown = 12.0f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -145,7 +147,8 @@ private:
     // Sample reading and rendering
     int midiNoteCurrentlyPlayed = 0; 
     double pitchRatio = 0;
-    double pitchRatioMod = 0;
+    double pitchRatioMod = 0;  // For aftertouch, modulation wheel
+    double pitchBendModSemitones = 0;
     double sourceSamplePosition = 0;
     float lgain = 0, rgain = 0;
     ADSR adsr;

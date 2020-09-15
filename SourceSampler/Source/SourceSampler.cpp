@@ -57,7 +57,7 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
     // --> Start auto-generated code A
-    if (name == "filterCutoff") { filterCutoff = jlimit(0.0f, 20000.0f, value); }
+    if (name == "filterCutoff") { filterCutoff = jlimit(10.0f, 20000.0f, value); }
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
     else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
@@ -78,6 +78,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxGainVelMod") { maxGainVelMod = jlimit(0.0f, 1.0f, value); }
     else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
+    else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
+    else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
     // --> End auto-generated code A
 }
 
@@ -201,6 +203,16 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeUp", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeUp, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeDown", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeDown, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -255,7 +267,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // This is called at each processing block of 64 samples
     
     // Pitch
-    pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote) / 12.0) * sound->sourceSampleRate / getSampleRate();
+    pitchRatio = std::pow (2.0, (sound->basePitch + midiNoteCurrentlyPlayed - sound->midiRootNote + pitchBendModSemitones) / 12.0) * sound->sourceSampleRate / getSampleRate();
     
     // Looping settings
     int soundLengthInSamples = sound->getLengthInSamples();
@@ -296,6 +308,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         adsr.reset();
         adsrFilter.reset();
         pitchRatioMod = 0.0;
+        pitchBendModSemitones = 0.0;
         filterCutoffMod = 0.0;
         isInReleaseADSRStage = false;
         
@@ -338,6 +351,17 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
 }
 
 void SourceSamplerVoice::pitchWheelMoved (int newValue) {
+    // 8192 = middle value
+    // 16383 = max
+    // 0 = min
+    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    {
+        if (newValue >= 8192){
+            pitchBendModSemitones = (double)(((float)newValue - 8192.0f)/8192.0f) * playingSound->pitchBendRangeUp;
+        } else {
+            pitchBendModSemitones = (double)((8192.0f - (float)newValue)/8192.0f) * playingSound->pitchBendRangeDown * -1;
+        }
+    }
 }
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
@@ -347,7 +371,7 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
         // Aftertouch modifies the playback speed up to an octave
         pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
         
-        // Aftertouch also modified filter cutoff
+        // Aftertouch also modifies filter cutoff
         filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
     }
@@ -361,7 +385,7 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
         // Channel aftertouch modifies the playback speed up to an octave
         pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
         
-        // Aftertouch also modified filter cutoff
+        // Aftertouch also modifies filter cutoff
         filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
     }
@@ -375,7 +399,7 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
             // Channel aftertouch modifies the playback speed up to an octave
             pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
             
-            // Aftertouch also modified filter cutoff
+            // Aftertouch also modifies filter cutoff
             filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
             processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
         }
