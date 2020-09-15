@@ -70,11 +70,14 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     void saveCurrentPresetToFile(const String& presetName, int index);
     bool loadPresetFromFile (const String& fileName);
+    
     ValueTree collectGlobalSettingsStateInformation ();
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
     void updatePresetNumberMapping(const String& presetName, int index);
     void sendStateToServer(ValueTree state);
+    
+    ValueTree collectVolatileStateInformation ();
     
     //==============================================================================
     // Action listener

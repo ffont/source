@@ -16,6 +16,27 @@
             background-color:#eeeeee;
             margin:5px;
         }
+        
+        .voice {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 1px solid black;
+        }
+
+        .voice_progress {
+            overflow: hidden;
+            background-color: greenyellow;
+            height: 100%;
+        }
+
+        #individualSoundEditors{
+            display: inline-block;
+        }
+
+        #allSoundsEditor{
+            display: inline-block;
+        }
     </style>
 
     <script>
@@ -24,8 +45,9 @@
         var updateSystemStatsTimer;
         var triggerPostStateTimer;
         var lastReceivedStateText;
-        var updateStateInterval = 200;
-        var triggerPostStateInterval = 5000;
+        var lastReceivedStateXml;
+        var updateStateInterval = 50;
+        var triggerPostStateInterval = 50;
 
         document.addEventListener("DOMContentLoaded", function () {
             triggerPostState();
@@ -129,11 +151,13 @@
         }
 
         function setSoundParameter(soundIdx, sliderElement){
+            sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
             sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'int;str;float')
         }
 
         function setSoundParameterInt(soundIdx, sliderElement){
+            sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
             sendOsc('/set_sound_parameter_int', [soundIdx, sliderElement.name, sliderElement.value], 'int;str;int')
         }
@@ -227,60 +251,154 @@
             return html;
         }
 
+        function updateElementValueFromXmlStates(element, attrName, newState, oldState){
+            if (oldState !== undefined){
+                if (oldState.getAttribute(attrName) != newState.getAttribute(attrName)){
+                    element.value = newState.getAttribute(attrName);
+                }
+            } else {
+                element.value = newState.getAttribute(attrName);
+            }
+        }
+
+        function createCardForSound(i, sound){ //sound, samplerSound = xml elements
+            var cardElementId = i + "_" + sound.getAttribute('soundId');
+            html = '<div class="controls_card" id="' + cardElementId + '">';
+            html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><button onclick="stopSound(' + i + ')">stop</button><br>';
+            html += sound.getAttribute('soundName') + '<br>';
+            html += generateSoundEditControls(i);
+            html += '</div>';
+            return html;
+        }
+
         function syncUIWithState(xmlState){
             
             var SourcePresetState = xmlState.getElementsByTagName('SourcePresetState')[0];
             var GlobalSettings = xmlState.getElementsByTagName('GlobalSettings')[0];
-            
-            // Update global values
-            document.getElementsByName('query')[0].value = SourcePresetState.getAttribute('query');
-            document.getElementsByName('presetName')[0].value = SourcePresetState.getAttribute('presetName');
-            
-            document.getElementsByName('midiThru')[0].value = GlobalSettings.getAttribute('midiThru');
-            document.getElementsByName('midiInChannel')[0].value = GlobalSettings.getAttribute('midiInChannel');
-
+            var SamplerState = xmlState.getElementsByTagName('Sampler')[0];
+            var OldStateSourcePresetState, OldStateGlobalSettings, OldStateSamplerState, OldStateReverbParameters = undefined; 
             var ReverbParameters = xmlState.getElementsByTagName('ReverbParameters')[0];
-            document.getElementById('0_roomSize').value = ReverbParameters.getAttribute('reverb_roomSize');
-            document.getElementById('0_damping').value = ReverbParameters.getAttribute('reverb_damping');
-            document.getElementById('0_wetLevel').value = ReverbParameters.getAttribute('reverb_wetLevel');
-            document.getElementById('0_dryLevel').value = ReverbParameters.getAttribute('reverb_dryLevel');
-            document.getElementById('0_width').value = ReverbParameters.getAttribute('reverb_width');
-            document.getElementById('0_freezeMode').value = ReverbParameters.getAttribute('reverb_freezeMode');
+            if (lastReceivedStateXml !== undefined){
+                OldStateSourcePresetState = lastReceivedStateXml.getElementsByTagName('SourcePresetState')[0];
+                OldStateGlobalSettings = lastReceivedStateXml.getElementsByTagName('GlobalSettings')[0];
+                OldStateSamplerState = lastReceivedStateXml.getElementsByTagName('Sampler')[0];
+                OldStateReverbParameters = lastReceivedStateXml.getElementsByTagName('ReverbParameters')[0];
+            }
+            
+            // Update main preset settings and global settings (only update if state has changed)
+            updateElementValueFromXmlStates(document.getElementsByName('query')[0], 'query', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'presetName', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiThru', GlobalSettings, OldStateGlobalSettings);
+            updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'midiInChannel', GlobalSettings, OldStateGlobalSettings);
+            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'NumVoices', SamplerState, OldStateSamplerState);
+            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverb_roomSize', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverb_damping', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverb_wetLevel', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverb_dryLevel', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverb_width', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverb_freezeMode', ReverbParameters, OldStateReverbParameters);
+            
+            // Update volatile state
+            var volatileStateElement = document.getElementById('volatileState');
+            var VolatileState = xmlState.getElementsByTagName('VolatileState')[0];
+            var html = '<div class="voices">';
+            if (VolatileState !== undefined){
+                var voiceActivations = VolatileState.getAttribute('voiceActivations').split(',').slice(0, -1);
+                var voiceSoundIdxs = VolatileState.getAttribute('voiceSoundIdxs').split(',').slice(0, -1);
+                var voiceSoundPlayPosition = VolatileState.getAttribute('voiceSoundPlayPosition').split(',').slice(0, -1);
+                
+                for (var i=0; i<voiceSoundIdxs.length; i++){
+                    if (voiceSoundIdxs[i] == "-1"){
+                        // Draw empty square
+                        html += '<div class="voice"><div class="voice_progress" style="width:0%;">&nbsp;</div></div>'
+                    } else {
+                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + voiceSoundIdxs[i] + '</div></div>'
+                    }
+                }
+            }
+            html += "</div>";
+            volatileStateElement.innerHTML = html;
  
             // Update individual sound editors
-            var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
-            individualSoundEditorsElement.innerHTML = '';
+
+            // Check if the sound listing has changed
+            var shouldRedoCards = false;
             var soundInfoElements = xmlState.getElementsByTagName('soundInfo');
             var samplerSoundElements = xmlState.getElementsByTagName('SamplerSound');
+            var OldStateSoundInfoElements, OldStateSamplerSoundElements = undefined;
+
+            if (lastReceivedStateXml === undefined){
+                shouldRedoCards = true;
+            } else {
+                OldStateSoundInfoElements = lastReceivedStateXml.getElementsByTagName('soundInfo');
+                OldStateSamplerSoundElements = lastReceivedStateXml.getElementsByTagName('SamplerSound');
+                
+                var newStateIds = "";
+                var oldStateIds = "";
+                for (var i=0; i<soundInfoElements.length; i++){
+                    newStateIds += soundInfoElements[i].getAttribute('soundId') + ',';
+                }
+                for (var i=0; i<OldStateSoundInfoElements.length; i++){
+                    oldStateIds += OldStateSoundInfoElements[i].getAttribute('soundId') + ',';
+                }
+                if (newStateIds != oldStateIds){
+                    shouldRedoCards = true;
+                }
+            }
+
+            // Re-create sound cards if needed
+            if (shouldRedoCards){
+                var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
+                individualSoundEditorsElement.innerHTML = '';
+                for (var i = 0; i < soundInfoElements.length; i++) {
+                    var sound = soundInfoElements[i];
+                    var soundCardHtml = createCardForSound(i, sound);
+                    individualSoundEditorsElement.innerHTML += soundCardHtml;
+                }
+            }
+
+            // Update sound sliders if changed
             var slidersToUpdate = [];
             for (var i = 0; i < soundInfoElements.length; i++) {
-                var sound = soundInfoElements[i];
-                html = '<div class="controls_card">';
-                html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><button onclick="stopSound(' + i + ')">stop</button><br>';
-                html += sound.getAttribute('soundName') + '<br>';
-                html += generateSoundEditControls(i);
-                html += '</div>';
-                individualSoundEditorsElement.innerHTML += html;
-
                 var samplerSound = samplerSoundElements[i];
+                var oldSamplerSound = undefined;
+                if (OldStateSamplerSoundElements !== undefined){
+                    oldSamplerSound = OldStateSamplerSoundElements[i];
+                }
+                 
                 var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
+                var oldStateSamplerSoundParameters = undefined;
+                if (oldSamplerSound !== undefined){
+                    oldStateSamplerSoundParameters = oldSamplerSound.getElementsByTagName('SamplerSoundParameter');
+                }
+
                 for (var j = 0; j < samplerSoundParameters.length; j++) {
                     var parameter = samplerSoundParameters[j];
                     var name = parameter.getAttribute('parameter_name');
                     var type = parameter.getAttribute('parameter_type');
                     var rawValue = parameter.getAttribute('parameter_value');
-                    
-                    if (type == "float"){
-                        var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
-                        var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
-                        slidersToUpdate.push([i + '_' + name, value])
-                    } else if (type == "int"){
-                        slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
+                    var oldRawValue = undefined;
+                    if ((oldStateSamplerSoundParameters !== undefined) && (j < oldStateSamplerSoundParameters.length)){
+                        oldRawValue = oldStateSamplerSoundParameters[j].getAttribute('parameter_value');
+                    }
+                    if (rawValue !== oldRawValue){
+                        if (type == "float"){
+                            var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
+                            var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
+                            slidersToUpdate.push([i + '_' + name, value])
+                        } else if (type == "int"){
+                            slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
+                        }
                     }
                 }
             }
             for (var i=0; i<slidersToUpdate.length; i++){
-                document.getElementById(slidersToUpdate[i][0]).value = slidersToUpdate[i][1];
+                var sliderElement = document.getElementById(slidersToUpdate[i][0]);
+                var sliderLastMoved = sliderElement.getAttribute("data-lastMoved");
+                if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 1)){
+                    // Only update sliders if they are being moved in the last 1 sec
+                    sliderElement.value = slidersToUpdate[i][1];
+                }
             }
             updateAllSliderLabels();
         }
@@ -298,10 +416,9 @@
                         if (this.responseXML != undefined){
                             document.getElementById("errorIndicator").innerHTML = '';
                             document.getElementById("state").value = this.responseText;
-                            if (this.responseText != lastReceivedStateText){
-                                syncUIWithState(this.responseXML);
-                            }
+                            syncUIWithState(this.responseXML);
                             lastReceivedStateText = this.responseText;
+                            lastReceivedStateXml = this.responseXML;
                         }
                     }
                 } else {
@@ -361,17 +478,17 @@
 
     <div class="controls_card">
         <b>Reverb</b><br>
-        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setReverbParameters()">
         roomSize: <span id="0_roomSizeLabel"></span><br>
-        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setReverbParameters()">
         damping: <span id="0_dampingLabel"></span><br>
-        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setReverbParameters()">
         wetLevel: <span id="0_wetLevelLabel"></span><br>
-        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setReverbParameters()">
         dryLevel: <span id="0_dryLevelLabel"></span><br>
-        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setReverbParameters()">
         width: <span id="0_widthLabel"></span><br>
-        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.1" oninput="setReverbParameters()">
+        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setReverbParameters()">
         freezeMode: <span id="0_freezeModeLabel"></span>
     </div>
 
@@ -389,9 +506,16 @@
         MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
         MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
     </div>
+
+    <div class="controls_card">
+        <b>Volatile state</b><br>
+        <div id="volatileState"></div>
+    </div>
     
-    <div id="allSoundsEditor" class="controls_card"></div>
-    <div id="individualSoundEditors" class="cards_container_slide"></div>
+    <div class="cards_container_slide">
+        <div id="allSoundsEditor" style="background-color: honeydew;"></div>
+        <div id="individualSoundEditors"></div>
+    </div>
 
     <h3>State</h3>
     <button onclick="triggerPostState();">Trigger post state</button><button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button>

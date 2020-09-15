@@ -484,6 +484,38 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
     return sourceDataLocation.getChildFile("settings").withFileExtension("xml");
 }
 
+ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
+    ValueTree state = ValueTree(STATE_VOLATILE_IDENTIFIER);
+    
+    String voiceActivations = "";
+    String voiceSoundIdxs = "";
+    String voiceSoundPlayPositions = "";
+    
+    for (int i=0; i<sampler.getNumVoices(); i++){
+        SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
+        if (voice->isVoiceActive()){
+            voiceActivations += "1,";
+            if (auto* playingSound = static_cast<SourceSamplerSound*> (voice->getCurrentlyPlayingSound().get()))
+            {
+                voiceSoundIdxs += (String)playingSound->getIdx() + ",";
+            } else {
+                voiceSoundIdxs += "-1,";
+            }
+            voiceSoundPlayPositions += (String)voice->getPlayingPositionPercentage() + ",";
+        } else {
+            voiceActivations += "0,";
+            voiceSoundIdxs += "-1,";
+            voiceSoundPlayPositions += "-1,";
+        }
+    }
+    
+    state.setProperty(STATE_VOLATILE_VOICE_ACTIVATIONS, voiceActivations, nullptr);
+    state.setProperty(STATE_VOLATILE_VOICE_SOUND_IDXS, voiceSoundIdxs, nullptr);
+    state.setProperty(STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION, voiceSoundPlayPositions, nullptr);
+    
+    return state;
+}
+
 //==============================================================================
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
@@ -582,9 +614,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_POST_STATE))){
         ValueTree presetState = collectPresetStateInformation();
         ValueTree globalSettings = collectGlobalSettingsStateInformation();
+        ValueTree volatileState = collectVolatileStateInformation();
         ValueTree fullState = ValueTree("SourceFullState");
         fullState.appendChild(presetState, nullptr);
         fullState.appendChild(globalSettings, nullptr);
+        fullState.appendChild(volatileState, nullptr);
         sendStateToServer(fullState);
         
     } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
@@ -809,7 +843,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                 DBG("- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch);
-                sampler.addSound(new SourceSamplerSound(String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength, getSampleRate(), getBlockSize()));
+                sampler.addSound(new SourceSamplerSound(i, String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength, getSampleRate(), getBlockSize()));
             } else {
                 DBG("- Skipping sound " << soundID << " (no file found or file is empty)");
             }

@@ -14,14 +14,16 @@
 // --------- implementation of SourceSamplerSound
 
 
-SourceSamplerSound::SourceSamplerSound (const String& soundName,
+SourceSamplerSound::SourceSamplerSound (int _idx,
+                                        const String& soundName,
                                         AudioFormatReader& source,
                                         const BigInteger& notes,
                                         int midiNoteForNormalPitch,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
-    : name (soundName),
+    : idx (_idx),
+      name (soundName),
       sourceSampleRate (source.sampleRate),
       midiNotes (notes),
       midiRootNote (midiNoteForNormalPitch),
@@ -228,6 +230,9 @@ void SourceSamplerSound::loadState(ValueTree soundState){
         if (type == "float"){
             float value = (float)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
             setParameterByNameFloat(name, value);
+        } else if (type == "int"){
+            int value = (int)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+            setParameterByNameInt(name, value);
         }
     }
 }
@@ -240,6 +245,9 @@ float SourceSamplerSound::getLengthInSeconds(){
     return (float)getLengthInSamples()/sourceSampleRate;
 }
 
+int SourceSamplerSound::getIdx(){
+    return idx;
+}
 
 // --------- implementation of SourceSamplerVoice
 
@@ -483,4 +491,13 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 {
     processorChain.prepare (spec);
+}
+
+float SourceSamplerVoice::getPlayingPositionPercentage()
+{
+    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    {
+        return (float)sourceSamplePosition/(float)playingSound->getLengthInSamples();
+    }
+    return -1.0;
 }

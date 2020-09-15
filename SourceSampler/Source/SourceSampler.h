@@ -36,7 +36,8 @@ public:
         @param maxSampleLengthSeconds   a maximum length of audio to read from the audio
                                         source, in seconds
     */
-    SourceSamplerSound (const String& name,
+    SourceSamplerSound (int _idx,
+                        const String& name,
                         AudioFormatReader& source,
                         const BigInteger& midiNotes,
                         int midiNoteForNormalPitch,
@@ -71,10 +72,14 @@ public:
     //==============================================================================
     int getLengthInSamples();
     float getLengthInSeconds();
+    int getIdx();
+    float getPlayingPositionPercentage();
 
 private:
     //==============================================================================
     friend class SourceSamplerVoice;
+    
+    int idx = -1;
 
     String name;
     std::unique_ptr<AudioBuffer<float>> data;
@@ -141,6 +146,9 @@ public:
     
     //==============================================================================
     void prepare (const juce::dsp::ProcessSpec& spec);
+    
+    float getPlayingPositionPercentage();
+
 
 private:
     //==============================================================================
