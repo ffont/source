@@ -284,7 +284,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     loopStartPositionSample = (int)(sound->loopStartPosition * soundLengthInSamples);
     loopEndPositionSample = (int)(sound->loopEndPosition * soundLengthInSamples);
     doLoop = sound->loopMode == 1;
-    //loopCroosfadeNSamples = 100;
+    //loopCrossfadeNSamples = 100;
     
     // ADSRs
     adsr.setParameters (sound->ampADSR);
@@ -318,7 +318,6 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         pitchRatioMod = 0.0;
         pitchBendModSemitones = 0.0;
         filterCutoffMod = 0.0;
-        isInReleaseADSRStage = false;
         
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (sound->pluginSampleRate);
@@ -348,7 +347,6 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
     {
         adsr.noteOff();
         adsrFilter.noteOff();
-        isInReleaseADSRStage = true;
     }
     else
     {
@@ -438,20 +436,50 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
         while (--numSamples >= 0)
         {
+            // Calculate current sample position and alpha (used for interpolation)
             auto pos = (int) sourceSamplePosition;
             auto alpha = (float) (sourceSamplePosition - pos);
             auto invAlpha = 1.0f - alpha;
 
-            // just using a very simple linear interpolation here..
+            // Calculate L and R samples using basic interpolation
             float l = (inL[pos] * invAlpha + inL[pos + 1] * alpha);
             float r = (inR != nullptr) ? (inR[pos] * invAlpha + inR[pos + 1] * alpha)
                                        : l;
-
+            
+            // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
+            if (doLoop && !isPlayingButReleased() && loopCrossfadeNSamples > 0){
+                int samplesToLoopEndPositionSample = loopEndPositionSample - sourceSamplePosition;
+                int samplesFromLoopStartPositionSample = sourceSamplePosition - loopStartPositionSample;
+                
+                if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < loopCrossfadeNSamples)){
+                    // We are approaching loopEndPositionSample and are closer than loopCrossfadeNSamples / 2 samples
+                    float lcrossfadeSample = 0.0;
+                    float rcrossfadeSample = 0.0;
+                    float crossfadeGain = 0.0;
+                    int crossfadePos = loopStartPositionSample - samplesToLoopEndPositionSample;
+                    if (crossfadePos > 0){
+                        lcrossfadeSample = inL[crossfadePos];
+                        rcrossfadeSample = inR[crossfadePos];
+                    } else {
+                        // If position is negative, wrap buffer
+                        lcrossfadeSample = inL[endPositionSample - crossfadePos];
+                        rcrossfadeSample = inR[endPositionSample - crossfadePos];
+                    }
+                    crossfadeGain = (float)samplesToLoopEndPositionSample/loopCrossfadeNSamples;
+                    l = l * crossfadeGain + lcrossfadeSample * (1.0f - crossfadeGain);
+                    r = r * crossfadeGain + rcrossfadeSample * (1.0f - crossfadeGain);
+                } else {
+                    // Do nothing because we're not in crossfade zone
+                }
+            }
+            // TODO: is this crossfading really working?
+            
+            // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
             auto envelopeValue = adsr.getNextSample();
-
             l *= lgain * lgainPan * envelopeValue;
             r *= rgain * rgainPan * envelopeValue;
 
+            // Update output buffer with L and R samples
             if (outR != nullptr)
             {
                 *outL++ += l;
@@ -462,16 +490,17 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 *outL++ += (l + r) * 0.5f;
             }
 
+            // Advance source sample position for next iteration
             sourceSamplePosition += pitchRatio + pitchRatioMod;
             
-            if (doLoop && !isInReleaseADSRStage){
+            // Check if we're reaching the end of the sound
+            if (doLoop && !isPlayingButReleased()){
                 // If looping is enabled and we're not yet in release stage, check whether we should loop
                 if (sourceSamplePosition > loopEndPositionSample){
                     sourceSamplePosition = loopStartPositionSample;
                 }
-                
             } else {
-                // If not looping or looping but already in release stage, check whether we've reached the end of the file
+                // If not looping but already in release stage, check whether we've reached the end of the file
                 if (sourceSamplePosition > endPositionSample)
                 {
                     stopNote (0.0f, false);

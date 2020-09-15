@@ -180,8 +180,8 @@ private:
     int loopStartPositionSample = 0;
     int loopEndPositionSample = 0;
     bool doLoop = false;
-    int loopCroosfadeNSamples = 100;
-    bool isInReleaseADSRStage = false;
+    bool hasNotYetPassedLoopStartPositionForTheFirstTime = true;
+    int loopCrossfadeNSamples = 5000;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
