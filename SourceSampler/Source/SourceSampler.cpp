@@ -274,6 +274,27 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
 }
 
+int findNearestPositiveZeroCrossing (int position, const float* const signal, int maxSamplesSearch)
+{
+    if (maxSamplesSearch > 0){
+        // Search forward
+        for (int i=position; i<position + maxSamplesSearch; i++){
+            if ((signal[i] < 0) && (signal[i+1] >= 0)){
+                return i;
+            }
+        }
+    } else {
+        // Search backwards
+        for (int i=position; i<position - maxSamplesSearch; i--){
+            if ((signal[i-1] < 0) && (signal[i] >= 0)){
+                return i;
+            }
+        }
+    }
+    
+    return position;
+}
+
 void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
 {
     // This is called at each processing block of 64 samples
@@ -285,8 +306,25 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     int soundLengthInSamples = sound->getLengthInSamples();
     startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
     endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
-    loopStartPositionSample = (int)(sound->loopStartPosition * soundLengthInSamples);
-    loopEndPositionSample = (int)(sound->loopEndPosition * soundLengthInSamples);
+    int soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
+    int soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
+    if ((soundLoopStartPosition != loopStartPositionSample) || (soundLoopEndPosition != loopEndPositionSample)){
+        // Either loop start or end has changed in the sound object
+        auto& data = *sound->data;
+        const float* const signal = data.getReadPointer (0);  // use first audio channel to detect 0 crossing
+        if (soundLoopStartPosition != loopStartPositionSample){
+            // If the loop start position has changed, process it to move it to the next positive zero crossing
+            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
+            std::cout << "Fixed loop START position by " << fixedLoopStartPositionSample - soundLoopStartPosition << " samples" << std::endl;
+        }
+        if (soundLoopEndPosition != loopEndPositionSample){
+            // If the loop end position has changed, process it to move it to the next positive zero crossing
+            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
+            std::cout << "Fixed loop END position by " << fixedLoopEndPositionSample - soundLoopEndPosition << " samples" << std::endl;
+        }
+    }
+    loopStartPositionSample = soundLoopStartPosition;
+    loopEndPositionSample = soundLoopEndPosition;
     doLoop = sound->loopMode == 1;
     
     // ADSRs
@@ -412,6 +450,13 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     }
 }
 
+float interpolateSample (float samplePosition, const float* const signal)
+{
+    auto pos = (int) samplePosition;
+    auto alpha = (float) (samplePosition - pos);
+    auto invAlpha = 1.0f - alpha;
+    return (signal[pos] * invAlpha + signal[pos + 1] * alpha);
+}
 
 //==============================================================================
 void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
@@ -436,35 +481,30 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
         while (--numSamples >= 0)
         {
-            // Calculate current sample position and alpha (used for interpolation)
-            auto pos = (int) sourceSamplePosition;
-            auto alpha = (float) (sourceSamplePosition - pos);
-            auto invAlpha = 1.0f - alpha;
 
             // Calculate L and R samples using basic interpolation
-            float l = (inL[pos] * invAlpha + inL[pos + 1] * alpha);
-            float r = (inR != nullptr) ? (inR[pos] * invAlpha + inR[pos + 1] * alpha)
+            float l = interpolateSample(sourceSamplePosition, inL);
+            float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR)
                                        : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
             if (doLoop && loopCrossfadeNSamples > 0){
-                int samplesToLoopEndPositionSample = loopEndPositionSample - sourceSamplePosition;
-                //int samplesFromLoopStartPositionSample = sourceSamplePosition - loopStartPositionSample;
+                int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
                 
                 if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < loopCrossfadeNSamples)){
                     // We are approaching loopEndPositionSample and are closer than loopCrossfadeNSamples / 2 samples
                     float lcrossfadeSample = 0.0;
                     float rcrossfadeSample = 0.0;
                     float crossfadeGain = 0.0;
-                    int crossfadePos = loopStartPositionSample - samplesToLoopEndPositionSample;
+                    int crossfadePos = fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
                     if (crossfadePos > 0){
-                        lcrossfadeSample = inL[crossfadePos];
-                        rcrossfadeSample = (inR != nullptr) ? inR[crossfadePos]
-                                                            : inL[crossfadePos];
+                        lcrossfadeSample = interpolateSample(crossfadePos, inL);
+                        rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR)
+                                                            : lcrossfadeSample;
                     } else {
                         // If position is negative, wrap buffer
-                        lcrossfadeSample = inL[endPositionSample - crossfadePos];
-                        rcrossfadeSample = (inR != nullptr) ? inR[endPositionSample - crossfadePos]
-                                                            : inL[endPositionSample - crossfadePos];
+                        lcrossfadeSample = interpolateSample(endPositionSample - crossfadePos, inL);
+                        rcrossfadeSample = (inR != nullptr) ? interpolateSample(endPositionSample - crossfadePos, inR)
+                                                            : lcrossfadeSample;
                     }
                     crossfadeGain = (float)samplesToLoopEndPositionSample/loopCrossfadeNSamples;
                     l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
@@ -498,8 +538,8 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             bool noteStoppedHard = false;
             if (doLoop){
                 // If looping is enabled and we're not yet in release stage, check whether we should loop
-                if (sourceSamplePosition > loopEndPositionSample){
-                    sourceSamplePosition = loopStartPositionSample;
+                if (sourceSamplePosition > fixedLoopEndPositionSample){
+                    sourceSamplePosition = fixedLoopStartPositionSample;
                 }
             } else {
                 // If not looping but already in release stage, check whether we've reached the end of the file

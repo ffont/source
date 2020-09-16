@@ -177,10 +177,12 @@ private:
     int startPositionSample = 0;
     int endPositionSample = 0;
     int loopStartPositionSample = 0;
+    int fixedLoopStartPositionSample = 0;
     int loopEndPositionSample = 0;
+    int fixedLoopEndPositionSample = 0;
     bool doLoop = false;
     bool hasNotYetPassedLoopStartPositionForTheFirstTime = true;
-    int loopCrossfadeNSamples = 0;
+    int loopCrossfadeNSamples = 500;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
