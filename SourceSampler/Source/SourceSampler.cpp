@@ -99,7 +99,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
-    if (name == "loopMode") { loopMode = jlimit(0, 1, value); }
+    if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 10000, value); }
+    else if (name == "loopMode") { loopMode = jlimit(0, 1, value); }
     // --> End auto-generated code C
 }
 
@@ -201,6 +202,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopEndPosition", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopEndPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopXFadeNSamples", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopXFadeNSamples, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
@@ -314,13 +320,11 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         const float* const signal = data.getReadPointer (0);  // use first audio channel to detect 0 crossing
         if (soundLoopStartPosition != loopStartPositionSample){
             // If the loop start position has changed, process it to move it to the next positive zero crossing
-            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
-            std::cout << "Fixed loop START position by " << fixedLoopStartPositionSample - soundLoopStartPosition << " samples" << std::endl;
+            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 10000);
         }
         if (soundLoopEndPosition != loopEndPositionSample){
             // If the loop end position has changed, process it to move it to the next positive zero crossing
-            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
-            std::cout << "Fixed loop END position by " << fixedLoopEndPositionSample - soundLoopEndPosition << " samples" << std::endl;
+            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -10000);
         }
     }
     loopStartPositionSample = soundLoopStartPosition;
@@ -487,11 +491,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR)
                                        : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if (doLoop && loopCrossfadeNSamples > 0){
+            if (doLoop && playingSound->loopXFadeNSamples > 0){
                 int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
                 
-                if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < loopCrossfadeNSamples)){
-                    // We are approaching loopEndPositionSample and are closer than loopCrossfadeNSamples / 2 samples
+                if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
+                    // We are approaching loopEndPositionSample and are closer than playingSound->loopXFadeNSamples
                     float lcrossfadeSample = 0.0;
                     float rcrossfadeSample = 0.0;
                     float crossfadeGain = 0.0;
@@ -506,7 +510,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         rcrossfadeSample = (inR != nullptr) ? interpolateSample(endPositionSample - crossfadePos, inR)
                                                             : lcrossfadeSample;
                     }
-                    crossfadeGain = (float)samplesToLoopEndPositionSample/loopCrossfadeNSamples;
+                    crossfadeGain = (float)samplesToLoopEndPositionSample/playingSound->loopXFadeNSamples;
                     l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
                     r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                 } else {

@@ -107,6 +107,7 @@ private:
     float endPosition = 1.0f;
     float loopStartPosition = 0.0f;
     float loopEndPosition = 1.0f;
+    int loopXFadeNSamples = 500;
     int loopMode = 0;
     float maxGainVelMod = 0.5f;
     float pan = 0.0f;
@@ -182,7 +183,6 @@ private:
     int fixedLoopEndPositionSample = 0;
     bool doLoop = false;
     bool hasNotYetPassedLoopStartPositionForTheFirstTime = true;
-    int loopCrossfadeNSamples = 500;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
