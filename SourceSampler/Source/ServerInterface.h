@@ -29,7 +29,6 @@ public:
             DBG("Listening for OSC messages");
             oscReveiverInitialized = true;
             addListener (this, OSC_ADDRESS_NEW_QUERY);
-            addListener (this, OSC_ADDRESS_SET_MIDI_ROOT_OFFSET);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_INT);
             addListener (this, OSC_ADDRESS_SET_REVERB_PARAMETERS);
@@ -60,12 +59,6 @@ public:
                                               (String)numSounds + SERIALIZATION_SEPARATOR  +
                                               (String)maxLength + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER) + ":" + serializedParameters;
-                sendActionMessage(actionMessage);
-            }
-        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_MIDI_ROOT_OFFSET){
-            if (message.size() == 1 && message[0].isInt32())  {
-                int newOffset = message[0].getInt32();
-                String actionMessage = String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET) + ":" + (String)newOffset;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT){

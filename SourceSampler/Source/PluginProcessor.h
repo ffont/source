@@ -99,7 +99,7 @@ public:
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     void downloadSoundsAndSetSources(ValueTree soundsInfo);
-    void setSources(int midiNoteRootOffset);
+    void setSources();
     
     void addToMidiBuffer(int soundNumber, bool doNoteOff);
 

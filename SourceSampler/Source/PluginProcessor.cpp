@@ -544,11 +544,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         DBG("New query triggered from server: " << query << " " << numSounds << " " << maxSoundLength);
         makeQueryAndLoadSounds(query, numSounds, maxSoundLength);
         
-    } else if (message.startsWith(String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET))){
-        int newOffset = message.substring(String(ACTION_SET_MIDI_ROOT_NOTE_OFFSET).length() + 1).getIntValue();
-        DBG("Offsetting midi root note by: " << newOffset);
-        setSources(newOffset);
-        
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
         String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
         StringArray tokens;
@@ -827,12 +822,12 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
     // Load the sounds in the sampler
-    setSources(0);
+    setSources();
     
     isQueryinAndDownloadingSounds = false;
 }
 
-void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
+void SourceSamplerAudioProcessor::setSources()
 {
     sampler.clearSounds();
     
@@ -851,7 +846,7 @@ void SourceSamplerAudioProcessor::setSources(int midiNoteRootOffset)
             File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
                 std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
-                int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2 + midiNoteRootOffset;
+                int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2;
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                 DBG("- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch);
