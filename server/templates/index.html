@@ -169,11 +169,6 @@
             sendOsc('/new_query', [query, numSounds, maxSoundLength], 'str;int;float')
         }
 
-        function setMidiRootNoteOffset(){
-            var offset = document.getElementsByName('midiRootNoteOffset')[0].value;
-            sendOsc('/set_midi_root_offset', [offset * -1], 'int')
-        }
-
         function setMidiInChannel() {
             var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
             sendOsc('/set_midi_in_channel', [midiInChannel], 'int')
@@ -521,8 +516,6 @@
     <div class="controls_card">
         <b>Global options</b><br>
         Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
-        MIDI root note offset:<input name="midiRootNoteOffset" value="" type="number"
-            onchange="setMidiRootNoteOffset()"><br>
         MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
         MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
     </div>
