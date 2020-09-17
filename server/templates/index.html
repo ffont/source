@@ -30,6 +30,10 @@
             height: 100%;
         }
 
+        #volatileState{
+            max-width: 260px;
+        }
+
         #individualSoundEditors{
             display: inline-block;
         }
@@ -482,8 +486,9 @@
         <button onclick="loadPreset()">Load</button><br>
         Preset name:</label><input name="presetName" value="" type="text">
         <button onclick="previousPreset()"><<</button><button onclick="nextPreset()">>></button>
+    </div>
 
-        <br><br>
+    <div class="controls_card">
         <b>Query</b><br>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
         Num sounds:<input name="numSounds" value="" type="text" placeholder="16"><br>

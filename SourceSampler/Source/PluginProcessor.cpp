@@ -155,6 +155,7 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
         loadedSoundsInfo = {};
         sampler.clearSounds();
         sampler.clearVoices();
+        sampler.setSamplerVoices(32);
     }
 }
 
