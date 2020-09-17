@@ -552,8 +552,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String parameterName = tokens[1];
         float parameterValue = tokens[2].getFloatValue();
         DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
-            if (soundIndex < sampler.getNumSounds() - 1){
+        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
+            if (soundIndex < sampler.getNumSounds()){
                 auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
                 sound->setParameterByNameFloat(parameterName, parameterValue);
             }
@@ -572,8 +572,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String parameterName = tokens[1];
         int parameterValue = tokens[2].getIntValue();
         DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds() - 1)){
-            if (soundIndex < sampler.getNumSounds() - 1){
+        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
+            if (soundIndex < sampler.getNumSounds()){
                 auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
                 sound->setParameterByNameInt(parameterName, parameterValue);
             }

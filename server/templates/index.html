@@ -155,6 +155,7 @@
         }
 
         function setSoundParameter(soundIdx, sliderElement){
+            console.log(soundIdx)
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
             sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'int;str;float')
@@ -271,7 +272,7 @@
             html += '<input type="range" id="' + soundIdx + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > endPosition: <span id="' + soundIdx + '_endPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopStartPosition: <span id="' + soundIdx + '_loopStartPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopEndPosition: <span id="' + soundIdx + '_loopEndPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="10000" value="500" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopXFadeNSamples: <span id="' + soundIdx + '_loopXFadeNSamplesLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopXFadeNSamples: <span id="' + soundIdx + '_loopXFadeNSamplesLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_launchMode" name="launchMode" min="0" max="2" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > launchMode: <span id="' + soundIdx + '_launchModeLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > reverse: <span id="' + soundIdx + '_reverseLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxGainVelMod" name="maxGainVelMod" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxGainVelMod: <span id="' + soundIdx + '_maxGainVelModLabel"></span><br>'

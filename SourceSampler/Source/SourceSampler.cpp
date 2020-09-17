@@ -101,7 +101,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
-    if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 10000, value); }
+    if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
     else if (name == "launchMode") { launchMode = jlimit(0, 2, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     // --> End auto-generated code C
