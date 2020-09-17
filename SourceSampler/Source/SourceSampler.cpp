@@ -347,7 +347,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod + sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample()); // Base cutoff + AT mod + ADSR mod
     filter.setResonance (filterRessonance);
     
-    // Amp
+    // Amp and pan
+    pan = sound->pan;
     masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (1.0); // This gain we don't really use it
@@ -484,6 +485,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
     {
         // Do some preparation
         int originalNumSamples = numSamples; // user later for filter processing
+        float previousMasterGain = masterGain;
+        float previousPitchRatioMod = pitchRatioMod;
+        float previousPan = pan;
         updateParametersFromSourceSamplerSound(playingSound);
         
         // Sampler reading and rendering
@@ -493,10 +497,6 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
         float* outL = outputBuffer.getWritePointer (0, startSample);
         float* outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getWritePointer (1, startSample) : nullptr;
-        
-        // Compute panner gain
-        float rgainPan = jmin (1 - playingSound->pan, 1.0f);
-        float lgainPan = jmin (1 + playingSound->pan, 1.0f);
 
         while (--numSamples >= 0)
         {
@@ -553,9 +553,17 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
             
             // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
+            float interpolatedMasterGain = (previousMasterGain * ((float)numSamples/originalNumSamples) + masterGain * (1.0f - (float)numSamples/originalNumSamples));
+            float rGainPan = jmin (1 - pan, 1.0f);
+            float lGainPan = jmin (1 + pan, 1.0f);
+            float previousRGainPan = jmin (1 - previousPan, 1.0f);
+            float previousLGainPan = jmin (1 + previousPan, 1.0f);
+            float interpolatedRGainPan = (previousRGainPan * ((float)numSamples/originalNumSamples) + rGainPan * (1.0f - (float)numSamples/originalNumSamples));
+            float interpolatedLGainPan = (previousLGainPan * ((float)numSamples/originalNumSamples) + lGainPan * (1.0f - (float)numSamples/originalNumSamples));
             auto envelopeValue = adsr.getNextSample();
-            l *= lgain * lgainPan * envelopeValue * masterGain;
-            r *= rgain * rgainPan * envelopeValue * masterGain;
+            
+            l *= lgain * interpolatedLGainPan * envelopeValue * interpolatedMasterGain;
+            r *= rgain * interpolatedRGainPan * envelopeValue * interpolatedMasterGain;
 
             // Update output buffer with L and R samples
             if (outR != nullptr) {
@@ -566,10 +574,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
 
             // Advance source sample position for next iteration
+            float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));;
             if (playingSound->reverse == 0){
-                sourceSamplePosition += pitchRatio + pitchRatioMod;
+                sourceSamplePosition += pitchRatio + interpolatedPitchRatioMod;
             } else {
-                sourceSamplePosition -= pitchRatio + pitchRatioMod;
+                sourceSamplePosition -= pitchRatio + interpolatedPitchRatioMod;
             }
             
             // Check if we're reaching the end of the sound

@@ -159,6 +159,7 @@ private:
     double pitchRatioMod = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;
     double sourceSamplePosition = 0;
+    float pan = 0;
     float lgain = 0, rgain = 0;
     ADSR adsr;
     ADSR adsrFilter;
