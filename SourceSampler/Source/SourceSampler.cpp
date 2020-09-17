@@ -509,6 +509,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                     // Normal playing mode: do loop when reahing fixedLoopEndPositionSample
                     int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
                     if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
+                        if (ENABLE_DEBUG_BUFFER == 1){
+                            startRecordingToDebugBuffer((int)playingSound->loopXFadeNSamples * 2);
+                        }
+                        
                         // We are approaching loopEndPositionSample and are closer than playingSound->loopXFadeNSamples
                         float lcrossfadeSample = 0.0;
                         float rcrossfadeSample = 0.0;
@@ -549,6 +553,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         // Do nothing because we're not in crossfade zone
                     }
                 }
+            }
+            
+            if (ENABLE_DEBUG_BUFFER == 1){
+                writeToDebugBuffer(l);
             }
             
             // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
@@ -640,3 +648,46 @@ float SourceSamplerVoice::getPlayingPositionPercentage()
     }
     return -1.0;
 }
+
+
+void SourceSamplerVoice::startRecordingToDebugBuffer(int bufferSize){
+    if (!isRecordingToDebugBuffer && !debugBufferFinishedRecording){
+        DBG("Started writing to buffer...");
+        debugBuffer = AudioBuffer<float>(1, bufferSize);
+        isRecordingToDebugBuffer = true;
+    }
+}
+
+void SourceSamplerVoice::writeToDebugBuffer(float sample){
+    if (isRecordingToDebugBuffer){
+        auto ptr = debugBuffer.getWritePointer(0);
+        ptr[debugBufferCurrentPosition] = sample;
+        debugBufferCurrentPosition += 1;
+        if (debugBufferCurrentPosition >= debugBuffer.getNumSamples()){
+            endRecordingToDebugBuffer("debugRecording");
+        }
+    }
+}
+
+void SourceSamplerVoice::endRecordingToDebugBuffer(String outFilename){
+    if (isRecordingToDebugBuffer){
+        isRecordingToDebugBuffer = false;
+        debugBufferCurrentPosition = 0;
+        WavAudioFormat format;
+        std::unique_ptr<AudioFormatWriter> writer;
+        File file = File::getSpecialLocation(File::userDesktopDirectory).getChildFile(outFilename).withFileExtension("wav");
+        writer.reset (format.createWriterFor (new FileOutputStream (file),
+                                              getSampleRate(),
+                                              debugBuffer.getNumChannels(),
+                                              24,
+                                              {},
+                                              0));
+        if (writer != nullptr){
+            writer->writeFromAudioSampleBuffer (debugBuffer, 0, debugBuffer.getNumSamples());
+            debugBufferFinishedRecording = true;
+            DBG("Writing buffer to file...");
+        }
+    }
+}
+
+

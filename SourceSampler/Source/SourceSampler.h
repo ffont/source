@@ -186,7 +186,16 @@ private:
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
-
+    
+    
+    AudioBuffer<float> debugBuffer;  // Used only to store samples for debugging purposes
+    int debugBufferCurrentPosition = 0;
+    bool isRecordingToDebugBuffer = false;
+    void startRecordingToDebugBuffer(int bufferSize);
+    void writeToDebugBuffer(float sample);
+    void endRecordingToDebugBuffer(String outFilename);
+    bool debugBufferFinishedRecording = false;
+    
     JUCE_LEAK_DETECTOR (SourceSamplerVoice)
 };
 
