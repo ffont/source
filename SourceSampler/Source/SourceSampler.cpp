@@ -331,7 +331,6 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if (soundLoopEndPosition != loopEndPositionSample){
             // If the loop end position has changed, process it to move it to the next positive zero crossing
             fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -10000);
-            std::cout << "Fixed loop end " << soundLoopEndPosition - fixedLoopEndPositionSample << std::endl;
         }
     }
     loopStartPositionSample = soundLoopStartPosition;
