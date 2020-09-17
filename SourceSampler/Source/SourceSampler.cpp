@@ -94,7 +94,9 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     if (loopEndPosition > endPosition){
         loopEndPosition = endPosition;
     }
-    
+    if (loopStartPosition > loopEndPosition){
+        loopStartPosition = loopEndPosition;
+    }
 }
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
@@ -288,23 +290,18 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 
 int findNearestPositiveZeroCrossing (int position, const float* const signal, int maxSamplesSearch)
 {
-    if (maxSamplesSearch > 0){
-        // Search forward
-        for (int i=position; i<position + maxSamplesSearch; i++){
-            if ((signal[i] < 0) && (signal[i+1] >= 0)){
-                return i;
-            }
-        }
-    } else {
-        // Search backwards
-        for (int i=position; i<position - maxSamplesSearch; i--){
-            if ((signal[i-1] < 0) && (signal[i] >= 0)){
-                return i;
-            }
+    int initialPosition = position;
+    int endPosition = position + maxSamplesSearch;
+    if (maxSamplesSearch < 0){
+        initialPosition = position + maxSamplesSearch;  // maxSamplesSearch is negative!
+        endPosition = position;
+    }
+    for (int i=initialPosition; i<endPosition; i++){
+        if ((signal[i] < 0) && (signal[i+1] >= 0)){
+            return i;
         }
     }
-    
-    return position;
+    return position;  // If none found, return original
 }
 
 void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
@@ -326,11 +323,13 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         const float* const signal = data.getReadPointer (0);  // use first audio channel to detect 0 crossing
         if (soundLoopStartPosition != loopStartPositionSample){
             // If the loop start position has changed, process it to move it to the next positive zero crossing
-            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 10000);
+            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
+            DBG("Fixed start sample position by " << fixedLoopStartPositionSample - soundLoopStartPosition);
         }
         if (soundLoopEndPosition != loopEndPositionSample){
             // If the loop end position has changed, process it to move it to the next positive zero crossing
-            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -10000);
+            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
+            DBG("Fixed end sample position by " << fixedLoopEndPositionSample - soundLoopEndPosition);
         }
     }
     loopStartPositionSample = soundLoopStartPosition;

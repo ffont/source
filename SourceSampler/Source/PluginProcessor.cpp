@@ -533,7 +533,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    DBG("Action message: " << message);
+    //DBG("Action message: " << message);
     
     if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
         String serializedParameters = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
@@ -542,7 +542,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String query = tokens[0];
         int numSounds = tokens[1].getIntValue();
         float maxSoundLength = tokens[2].getFloatValue();
-        DBG("New query triggered from server: " << query << " " << numSounds << " " << maxSoundLength);
         makeQueryAndLoadSounds(query, numSounds, maxSoundLength);
         
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
@@ -596,7 +595,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reverbParameters.dryLevel = tokens[3].getFloatValue();
         reverbParameters.width = tokens[4].getFloatValue();
         reverbParameters.freezeMode = tokens[5].getFloatValue();
-        DBG("Setting new reverb parameters ");
         sampler.setReverbParameters(reverbParameters);
         
     } else if (message.startsWith(String(ACTION_SAVE_CURRENT_PRESET))){
