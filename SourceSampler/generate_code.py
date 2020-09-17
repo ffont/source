@@ -15,7 +15,7 @@ def generate_code(controls_data_filename):
 
     # Read controls data from CSV file
     controls_list = list()
-    for count, row in enumerate(csv.DictReader(open(controls_data_filename, 'r'), delimiter=',')):
+    for count, row in enumerate(csv.DictReader(open(controls_data_filename, 'r'), delimiter=';')):
         control_data = {
             'name': row.get('name', ''),
             'type': row.get('type', None),

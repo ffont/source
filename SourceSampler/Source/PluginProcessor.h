@@ -119,7 +119,7 @@ private:
     bool aconnectWasRun = false;
     
     String query = "";
-    String presetName = "unnamed";
+    String presetName = "empty";
     ValueTree loadedSoundsInfo;
     bool midiOutForwardsMidiIn = true;
     

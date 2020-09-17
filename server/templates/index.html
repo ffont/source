@@ -219,6 +219,36 @@
             sendOsc('/load_preset', [idx], 'int')
         }
 
+        function nextPreset(){
+            var idx = document.getElementsByName('presetIdx')[0].value;
+            if (idx == undefined){
+                idx = -1;
+            } else {
+                idx = parseInt(idx, 10);
+                if (isNaN(idx)){
+                    idx = -1;
+                }
+            }
+            sendOsc('/load_preset', [idx + 1], 'int')
+        }
+
+        function previousPreset(){
+            var idx = document.getElementsByName('presetIdx')[0].value;
+            if (idx == undefined){
+                idx = 1;
+            } else {
+                idx = parseInt(idx, 10);
+
+                if (isNaN(idx)){
+                    idx = 1;
+                }
+            }
+            if (idx < 1){
+                idx = 1; //Will become 0 when subtracted 1
+            }
+            sendOsc('/load_preset', [idx - 1], 'int')
+        }
+
         // UI generation
         function generateSoundEditControls(soundIdx){
             html = '';
@@ -227,7 +257,7 @@
             html += '<input type="range" id="' + soundIdx + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterRessonance: <span id="' + soundIdx + '_filterRessonanceLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxPitchRatioMod" name="maxPitchRatioMod" min="0.0" max="2.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxPitchRatioMod: <span id="' + soundIdx + '_maxPitchRatioModLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxFilterCutoffMod" name="maxFilterCutoffMod" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterCutoffMod: <span id="' + soundIdx + '_maxFilterCutoffModLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
@@ -243,7 +273,8 @@
             html += '<input type="range" id="' + soundIdx + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopStartPosition: <span id="' + soundIdx + '_loopStartPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopEndPosition: <span id="' + soundIdx + '_loopEndPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="10000" value="500" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopXFadeNSamples: <span id="' + soundIdx + '_loopXFadeNSamplesLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopMode" name="loopMode" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopMode: <span id="' + soundIdx + '_loopModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_launchMode" name="launchMode" min="0" max="2" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > launchMode: <span id="' + soundIdx + '_launchModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > reverse: <span id="' + soundIdx + '_reverseLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxGainVelMod" name="maxGainVelMod" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxGainVelMod: <span id="' + soundIdx + '_maxGainVelModLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pan: <span id="' + soundIdx + '_panLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeUp: <span id="' + soundIdx + '_pitchBendRangeUpLabel"></span><br>'
@@ -288,6 +319,7 @@
             
             // Update main preset settings and global settings (only update if state has changed)
             updateElementValueFromXmlStates(document.getElementsByName('query')[0], 'query', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementsByName('presetIdx')[0], 'presetNumber', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'presetName', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiThru', GlobalSettings, OldStateGlobalSettings);
             updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'midiInChannel', GlobalSettings, OldStateGlobalSettings);
@@ -379,10 +411,12 @@
             }
             for (var i=0; i<slidersToUpdate.length; i++){
                 var sliderElement = document.getElementById(slidersToUpdate[i][0]);
-                var sliderLastMoved = sliderElement.getAttribute("data-lastMoved");
-                if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 0.25)){
-                    // Only update sliders if they are being moved in the last 1 sec
-                    sliderElement.value = slidersToUpdate[i][1];
+                if (sliderElement !== undefined){
+                    var sliderLastMoved = sliderElement.getAttribute("data-lastMoved");
+                    if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 0.25)){
+                        // Only update sliders if they are being moved in the last 1 sec
+                        sliderElement.value = slidersToUpdate[i][1];
+                    }
                 }
             }
             updateAllSliderLabels();
@@ -452,6 +486,7 @@
         <button onclick="savePreset()">Save</button>
         <button onclick="loadPreset()">Load</button><br>
         Preset name:</label><input name="presetName" value="" type="text">
+        <button onclick="previousPreset()"><<</button><button onclick="nextPreset()">>></button>
 
         <br><br>
         <b>Query</b><br>

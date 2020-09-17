@@ -63,7 +63,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
     else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
-    else if (name == "gain") { gain = jlimit(0.0f, 1.0f, value); }
+    else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
     else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
@@ -100,7 +100,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
     if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 10000, value); }
-    else if (name == "loopMode") { loopMode = jlimit(0, 1, value); }
+    else if (name == "launchMode") { launchMode = jlimit(0, 2, value); }
+    else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     // --> End auto-generated code C
 }
 
@@ -210,8 +211,13 @@ ValueTree SourceSamplerSound::getState(){
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopMode", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopMode, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "launchMode", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, launchMode, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "reverse", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, reverse, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
@@ -325,11 +331,11 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if (soundLoopEndPosition != loopEndPositionSample){
             // If the loop end position has changed, process it to move it to the next positive zero crossing
             fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -10000);
+            std::cout << "Fixed loop end " << soundLoopEndPosition - fixedLoopEndPositionSample << std::endl;
         }
     }
     loopStartPositionSample = soundLoopStartPosition;
     loopEndPositionSample = soundLoopEndPosition;
-    doLoop = sound->loopMode == 1;
     
     // ADSRs
     adsr.setParameters (sound->ampADSR);
@@ -343,7 +349,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     filter.setResonance (filterRessonance);
     
     // Amp
-    masterGain = sound->gain;
+    masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (1.0); // This gain we don't really use it
 }
@@ -370,7 +376,12 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         
         updateParametersFromSourceSamplerSound(sound);
         
-        sourceSamplePosition = startPositionSample;
+        if (sound->reverse == 0){
+            sourceSamplePosition = startPositionSample;
+        } else {
+            sourceSamplePosition = endPositionSample;
+        }
+        
         float velocityGain = (sound->maxGainVelMod * velocity) + (1 - sound->maxGainVelMod);
         lgain = velocityGain;
         rgain = velocityGain;
@@ -387,13 +398,18 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
 
 void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
 {
-    if (allowTailOff)
-    {
-        adsr.noteOff();
-        adsrFilter.noteOff();
-    }
-    else
-    {
+    if (allowTailOff) {
+        // This is the case when receiving a note off event
+        if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get())){
+            if (playingSound->launchMode == LAUNCH_MODE_TRIGGER){
+                // We only trigger ADSRs release phase if we're in gate or loop launch modes, otherwise continue playing normally
+            } else {
+                adsr.noteOff();
+                adsrFilter.noteOff();
+            }
+        }
+    } else {
+        // This is the case when we reached the end of the sound (or the end of the release stage) or for some other reason we want to cut abruptly
         clearCurrentNote();
     }
 }
@@ -485,39 +501,57 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
         while (--numSamples >= 0)
         {
-
             // Calculate L and R samples using basic interpolation
             float l = interpolateSample(sourceSamplePosition, inL);
             float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR)
                                        : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if (doLoop && playingSound->loopXFadeNSamples > 0){
-                int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
-                
-                if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
-                    // We are approaching loopEndPositionSample and are closer than playingSound->loopXFadeNSamples
-                    float lcrossfadeSample = 0.0;
-                    float rcrossfadeSample = 0.0;
-                    float crossfadeGain = 0.0;
-                    int crossfadePos = fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
-                    if (crossfadePos > 0){
-                        lcrossfadeSample = interpolateSample(crossfadePos, inL);
-                        rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR)
-                                                            : lcrossfadeSample;
+            if (playingSound->launchMode == LAUNCH_MODE_LOOP && playingSound->loopXFadeNSamples > 0){
+                if (playingSound->reverse == 0){
+                    // Normal playing mode: do loop when reahing fixedLoopEndPositionSample
+                    int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
+                    if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
+                        // We are approaching loopEndPositionSample and are closer than playingSound->loopXFadeNSamples
+                        float lcrossfadeSample = 0.0;
+                        float rcrossfadeSample = 0.0;
+                        float crossfadeGain = 0.0;
+                        int crossfadePos = fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
+                        if (crossfadePos > 0){
+                            lcrossfadeSample = interpolateSample(crossfadePos, inL);
+                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR)
+                                                                : lcrossfadeSample;
+                            crossfadeGain = (float)samplesToLoopEndPositionSample/playingSound->loopXFadeNSamples;
+                        } else {
+                            // If position is negative, there is no data to do the crossfade
+                        }
+                        l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
+                        r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                     } else {
-                        // If position is negative, wrap buffer
-                        lcrossfadeSample = interpolateSample(endPositionSample - crossfadePos, inL);
-                        rcrossfadeSample = (inR != nullptr) ? interpolateSample(endPositionSample - crossfadePos, inR)
-                                                            : lcrossfadeSample;
+                        // Do nothing because we're not in crossfade zone
                     }
-                    crossfadeGain = (float)samplesToLoopEndPositionSample/playingSound->loopXFadeNSamples;
-                    l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
-                    r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                 } else {
-                    // Do nothing because we're not in crossfade zone
+                    // Reverse playing mode: do loop when reahing fixedLoopEndPositionSample
+                    int samplesToLoopStartPositionSample = sourceSamplePosition - fixedLoopStartPositionSample;
+                    if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < playingSound->loopXFadeNSamples)){
+                        // We are approaching loopStartPositionSample (going backwards) and are closer than playingSound->loopXFadeNSamples
+                        float lcrossfadeSample = 0.0;
+                        float rcrossfadeSample = 0.0;
+                        float crossfadeGain = 0.0;
+                        int crossfadePos = fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
+                        if (crossfadePos < playingSound->length){
+                            lcrossfadeSample = interpolateSample(crossfadePos, inL);
+                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
+                            crossfadeGain = (float)samplesToLoopStartPositionSample/playingSound->loopXFadeNSamples;
+                        } else {
+                            // If position is above playing sound length, there is no data to do the crossfade
+                        }
+                        l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
+                        r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
+                    } else {
+                        // Do nothing because we're not in crossfade zone
+                    }
                 }
             }
-            // TODO: is this crossfading really working?
             
             // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
             auto envelopeValue = adsr.getNextSample();
@@ -525,29 +559,47 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             r *= rgain * rgainPan * envelopeValue * masterGain;
 
             // Update output buffer with L and R samples
-            if (outR != nullptr)
-            {
+            if (outR != nullptr) {
                 *outL++ += l;
                 *outR++ += r;
-            }
-            else
-            {
+            } else {
                 *outL++ += (l + r) * 0.5f;
             }
 
             // Advance source sample position for next iteration
-            sourceSamplePosition += pitchRatio + pitchRatioMod;
+            if (playingSound->reverse == 0){
+                sourceSamplePosition += pitchRatio + pitchRatioMod;
+            } else {
+                sourceSamplePosition -= pitchRatio + pitchRatioMod;
+            }
             
             // Check if we're reaching the end of the sound
             bool noteStoppedHard = false;
-            if (doLoop){
-                // If looping is enabled and we're not yet in release stage, check whether we should loop
-                if (sourceSamplePosition > fixedLoopEndPositionSample){
-                    sourceSamplePosition = fixedLoopStartPositionSample;
+            if (playingSound->launchMode == LAUNCH_MODE_LOOP){
+                // If looping is enabled, check whether we should loop
+                if (playingSound->reverse == 0){
+                    if (sourceSamplePosition > fixedLoopEndPositionSample){
+                        sourceSamplePosition = fixedLoopStartPositionSample;
+                    }
+                } else {
+                    if (sourceSamplePosition < fixedLoopStartPositionSample){
+                        sourceSamplePosition = fixedLoopEndPositionSample;
+                    }
                 }
             } else {
-                // If not looping but already in release stage, check whether we've reached the end of the file
-                if (sourceSamplePosition > endPositionSample)
+                // If not looping, check whether we've reached the end of the file
+                bool endReached = false;
+                if (playingSound->reverse == 0){
+                    if (sourceSamplePosition > endPositionSample){
+                        endReached = true;
+                    }
+                } else {
+                    if (sourceSamplePosition < startPositionSample){
+                        endReached = true;
+                    }
+                }
+                
+                if (endReached)
                 {
                     stopNote (0.0f, false);
                     noteStoppedHard = true;

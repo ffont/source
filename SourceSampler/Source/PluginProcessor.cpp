@@ -147,6 +147,14 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
     bool loaded = loadPresetFromFile(getPresetFilenameByIndex(index));
     if (loaded){
         currentPresetIndex = index;
+    } else {
+        // No preset exists at that number, create a new empty one
+        currentPresetIndex = index;
+        presetName = "empty";
+        query = "";
+        loadedSoundsInfo = {};
+        sampler.clearSounds();
+        sampler.clearVoices();
     }
 }
 
@@ -293,6 +301,7 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     
     // Add general stuff
     state.setProperty(STATE_PRESET_NAME, presetName, nullptr);
+    state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
     state.setProperty(STATE_QUERY, query, nullptr);
     
     // Add sounds info
@@ -373,6 +382,9 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     }
     if (state.hasProperty(STATE_PRESET_NAME)){
         presetName = state.getProperty(STATE_PRESET_NAME).toString();
+    }
+    if (state.hasProperty(STATE_PRESET_NUMBER)){
+        currentPresetIndex = (int)state.getProperty(STATE_PRESET_NUMBER);
     }
     
     // Load loaded sounds info and download them

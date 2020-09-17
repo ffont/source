@@ -39,9 +39,14 @@
 #define OSC_ADDRESS_STOP_SOUND "/stop_sound"
 #define OSC_ADDRESS_SET_POLYPHONY "/set_polyphony"
 
+#define LAUNCH_MODE_GATE 0
+#define LAUNCH_MODE_LOOP 1
+#define LAUNCH_MODE_TRIGGER 2
+
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"
 #define STATE_PRESET_NAME "presetName"
+#define STATE_PRESET_NUMBER "presetNumber"
 
 #define STATE_QUERY "query"
 

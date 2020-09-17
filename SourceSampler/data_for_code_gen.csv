@@ -1,20 +1,21 @@
-name,type,min,max,default
-filterCutoff,float,10,20000,20000
-filterRessonance,float,0,1,0
-maxPitchRatioMod,float,0,2,0.1
-maxFilterCutoffMod,float,0,100,10
-gain,float,0,1,0.5
-ampADSR,adsr,,,"0.1f, 0.0f, 1.0f, 1.0f"
-filterADSR,adsr,,,"0.1f, 0.0f, 1.0f, 1.0f"
-maxFilterADSRMod,float,0,10,1
-basePitch,float,-36,36,0
-startPosition,float,0,1,0
-endPosition,float,0,1,1
-loopStartPosition,float,0,1,0
-loopEndPosition,float,0,1,1
-loopXFadeNSamples,int,10,10000,500
-loopMode,int,0,1,0
-maxGainVelMod,float,0,1,0.5
-pan,float,-1,1,0
-pitchBendRangeUp,float,0,36,12
-pitchBendRangeDown,float,0,36,12
+name;type;min;max;default;
+filterCutoff;float;10;20000;20000;
+filterRessonance;float;0;1;0;
+maxPitchRatioMod;float;0;2;0.1;semitones
+maxFilterCutoffMod;float;0;100;10;
+gain;float;-80;12;-10;db
+ampADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;
+filterADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;
+maxFilterADSRMod;float;0;10;1;
+basePitch;float;-36;36;0;semitones
+startPosition;float;0;1;0;percentage position
+endPosition;float;0;1;1;percentage position
+loopStartPosition;float;0;1;0;percentage position
+loopEndPosition;float;0;1;1;percentage position
+loopXFadeNSamples;int;10;10000;500;n samples
+launchMode;int;0;2;0;gate,loop,trigger
+reverse;int;0;1;0;1=reverse
+maxGainVelMod;float;0;1;0.5;
+pan;float;-1;1;0;
+pitchBendRangeUp;float;0;36;12;semitones
+pitchBendRangeDown;float;0;36;12;semitones

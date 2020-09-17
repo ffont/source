@@ -98,7 +98,7 @@ private:
     float filterRessonance = 0.0f;
     float maxPitchRatioMod = 0.1f;
     float maxFilterCutoffMod = 10.0f;
-    float gain = 0.5f;
+    float gain = -10.0f;
     ADSR::Parameters ampADSR = {0.1f, 0.0f, 1.0f, 1.0f};
     ADSR::Parameters filterADSR = {0.1f, 0.0f, 1.0f, 1.0f};
     float maxFilterADSRMod = 1.0f;
@@ -108,7 +108,8 @@ private:
     float loopStartPosition = 0.0f;
     float loopEndPosition = 1.0f;
     int loopXFadeNSamples = 500;
-    int loopMode = 0;
+    int launchMode = 0;
+    int reverse = 0;
     float maxGainVelMod = 0.5f;
     float pan = 0.0f;
     float pitchBendRangeUp = 12.0f;
@@ -173,15 +174,13 @@ private:
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;
-    float masterGain = 1.0f;
-    
+    float masterGain = 0.5f;
     int startPositionSample = 0;
     int endPositionSample = 0;
     int loopStartPositionSample = 0;
     int fixedLoopStartPositionSample = 0;
     int loopEndPositionSample = 0;
     int fixedLoopEndPositionSample = 0;
-    bool doLoop = false;
     bool hasNotYetPassedLoopStartPositionForTheFirstTime = true;
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
