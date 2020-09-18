@@ -93,6 +93,10 @@
 			isa = PBXBuildFile;
 			fileRef = 81C399931B0DB13A690E16D7;
 		};
+		414378BB8B3C4615A3496A83 = {
+			isa = PBXBuildFile;
+			fileRef = 52FC223D99D392F5E2640A31;
+		};
 		1A1186452CA817A639F17376 = {
 			isa = PBXBuildFile;
 			fileRef = 2BA4D99B69EAE02FB77A8D14;
@@ -237,11 +241,25 @@
 			path = ../../Source/defines.h;
 			sourceTree = "SOURCE_ROOT";
 		};
+		14499A009F94D1997423F950 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.html;
+			name = index.html;
+			path = ../../Source/www/index.html;
+			sourceTree = "SOURCE_ROOT";
+		};
 		160F33129C21F39682D768BC = {
 			isa = PBXFileReference;
 			lastKnownFileType = text.plist.xml;
 			name = "Info-AU.plist";
 			path = "Info-AU.plist";
+			sourceTree = "SOURCE_ROOT";
+		};
+		16A35265B8CC2F69D88FEF61 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = BinaryData.h;
+			path = ../../JuceLibraryCode/BinaryData.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		1A7AF2A325793DD35881025F = {
@@ -356,6 +374,13 @@
 			path = "../../JuceLibraryCode/include_juce_osc.cpp";
 			sourceTree = "SOURCE_ROOT";
 		};
+		52FC223D99D392F5E2640A31 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			name = BinaryData.cpp;
+			path = ../../JuceLibraryCode/BinaryData.cpp;
+			sourceTree = "SOURCE_ROOT";
+		};
 		546E5C94581589536369E97E = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.objcpp;
@@ -424,13 +449,6 @@
 			lastKnownFileType = file.nib;
 			name = RecentFilesMenuTemplate.nib;
 			path = RecentFilesMenuTemplate.nib;
-			sourceTree = "SOURCE_ROOT";
-		};
-		7BD35529F57CE0DF99D259DC = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.c.h;
-			name = FreesoundSearchComponent.h;
-			path = ../../Source/FreesoundSearchComponent.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		7EA54F98BDA2739089629A6C = {
@@ -707,7 +725,6 @@
 				A2685F1639A6FDB636BE458D,
 				CA7E3E2A594B692989FA319E,
 				A0D94CD81D7A0528B6351D81,
-				7BD35529F57CE0DF99D259DC,
 				0093CD2C1A4C423E37B299BC,
 				042B13F5D6A591E5AA8E1FF6,
 				3CAABA94EAA743182819A1D8,
@@ -719,10 +736,19 @@
 			name = Source;
 			sourceTree = "<group>";
 		};
+		110819FC630F617A4A396A06 = {
+			isa = PBXGroup;
+			children = (
+				14499A009F94D1997423F950,
+			);
+			name = www;
+			sourceTree = "<group>";
+		};
 		B581CF0AC49AC7944C3677B3 = {
 			isa = PBXGroup;
 			children = (
 				D6F4544776E0B949F646A967,
+				110819FC630F617A4A396A06,
 			);
 			name = SourceSampler;
 			sourceTree = "<group>";
@@ -753,6 +779,8 @@
 			isa = PBXGroup;
 			children = (
 				A7BEB4349A7BB9ABC1A11602,
+				52FC223D99D392F5E2640A31,
+				16A35265B8CC2F69D88FEF61,
 				2BA4D99B69EAE02FB77A8D14,
 				4AA605BB6A5FDA9F4F543C4F,
 				5CF30F550442F175107D86F0,
@@ -1783,6 +1811,7 @@
 				DF8FB1342E15E248CF2BB8FB,
 				A4FB6FE8FE17AF5967D16FB6,
 				332C87C6F36E349E37C4E660,
+				414378BB8B3C4615A3496A83,
 				1A1186452CA817A639F17376,
 				39A0A3E4216481B5D1B8E5D5,
 				8C932076F004C8FABE6B6076,

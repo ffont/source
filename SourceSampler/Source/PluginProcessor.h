@@ -22,7 +22,8 @@
 */
 class SourceSamplerAudioProcessor  : public AudioProcessor,
                                      public ActionBroadcaster,
-                                     public ActionListener
+                                     public ActionListener,
+                                     public Timer
 {
 public:
     //==============================================================================
@@ -75,7 +76,6 @@ public:
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
     void updatePresetNumberMapping(const String& presetName, int index);
-    void sendStateToServer(ValueTree state);
     
     ValueTree collectVolatileStateInformation ();
     
@@ -106,6 +106,9 @@ public:
     double getStartTime();
     String getQuery();
     ValueTree getLoadedSoundsInfo();
+    
+    void timerCallback() override;
+    int getServerInterfaceHttpPort();
     
 private:
     SourceSamplerSynthesiser sampler;

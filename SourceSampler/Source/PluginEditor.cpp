@@ -11,13 +11,19 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+
 //==============================================================================
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    freesoundSearchComponent.setProcessor(&processor);
-    addAndMakeVisible (freesoundSearchComponent);
-    setSize (10, 10);  // Is re-set when running resize()
+    #if !ELK_BUILD
+    addAndMakeVisible(browser);
+    int port = processor.getServerInterfaceHttpPort() - 1;
+    browser.goToURL("http://localhost:" + (String)port  + "/index");
+    #endif
+    float width = 1000;
+    float height = 800;
+    setSize(width, height);
     setResizable(false, false);
 }
 
@@ -33,11 +39,7 @@ void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
 
 void SourceSamplerAudioProcessorEditor::resized()
 {
-    float width = 450;
-    float height = 450;
-    float unitMargin = 10;
-    
-    freesoundSearchComponent.setBounds (unitMargin,  unitMargin, width - (unitMargin * 2), height - 2 * unitMargin);
-    
-    setSize(width, height);
+    #if !ELK_BUILD
+    browser.setBounds(getLocalBounds());
+    #endif
 }

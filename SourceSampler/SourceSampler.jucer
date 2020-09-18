@@ -15,8 +15,6 @@
       <FILE id="NVOE4I" name="FreesoundAPI.cpp" compile="1" resource="0"
             file="Source/FreesoundAPI.cpp"/>
       <FILE id="P6tAZZ" name="FreesoundAPI.h" compile="0" resource="0" file="Source/FreesoundAPI.h"/>
-      <FILE id="UyfGeE" name="FreesoundSearchComponent.h" compile="0" resource="0"
-            file="Source/FreesoundSearchComponent.h"/>
       <FILE id="NeAMrM" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="soXJt9" name="PluginProcessor.h" compile="0" resource="0"
@@ -29,6 +27,9 @@
       <FILE id="zEQRKD" name="SourceSampler.cpp" compile="1" resource="0"
             file="Source/SourceSampler.cpp"/>
       <FILE id="tcetRZ" name="SourceSampler.h" compile="0" resource="0" file="Source/SourceSampler.h"/>
+    </GROUP>
+    <GROUP id="{B28867AB-D8B6-A901-F894-36AB76036C88}" name="www">
+      <FILE id="e5c8Wq" name="index.html" compile="0" resource="1" file="Source/www/index.html"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
@@ -105,5 +106,5 @@
     <OSX/>
   </LIVE_SETTINGS>
   <JUCEOPTIONS JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_STRICT_REFCOUNTEDPOINTER="1"
-               JUCE_WEB_BROWSER="0" JUCE_USE_CURL="1"/>
+               JUCE_WEB_BROWSER="1" JUCE_USE_CURL="1"/>
 </JUCERPROJECT>

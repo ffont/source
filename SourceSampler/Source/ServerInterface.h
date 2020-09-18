@@ -12,6 +12,47 @@
 
 #include "JuceHeader.h"
 #include "defines.h"
+#include "httplib.h"
+
+
+class ServerInterface;
+
+
+class HTTPServer: public Thread
+{
+public:
+    HTTPServer(): Thread ("SourceHttpServer"){
+    }
+    
+    ~HTTPServer(){
+    }
+    
+    void setInterfacePointer(ServerInterface* _interface){
+        interface.reset(_interface);
+    }
+    
+    std::string exec(const char* cmd) {
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+        if (!pipe) {
+            throw std::runtime_error("popen() failed!");
+        }
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
+    }
+    
+    inline void run(); // Defined below
+    
+    httplib::Server svr;
+    bool connected = false;
+    int port = 8124;  // Will start attempting at this port and continue with the subsequent if can't connect
+    
+    std::unique_ptr<ServerInterface> interface;
+    
+};
 
 
 class ServerInterface: private OSCReceiver,
@@ -21,6 +62,8 @@ class ServerInterface: private OSCReceiver,
 public:
     ServerInterface ()
     {
+        httpServer.startThread(0); // Lowest priority
+         
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
             DBG("ERROR setting OSC receiver");
@@ -36,7 +79,6 @@ public:
             addListener (this, OSC_ADDRESS_LOAD_PRESET);
             addListener (this, OSC_ADDRESS_SET_MIDI_IN_CHANNEL);
             addListener (this, OSC_ADDRESS_SET_MIDI_THRU);
-            addListener (this, OSC_ADDRESS_POST_STATE);
             addListener (this, OSC_ADDRESS_PLAY_SOUND);
             addListener (this, OSC_ADDRESS_STOP_SOUND);
             addListener (this, OSC_ADDRESS_SET_POLYPHONY);
@@ -45,6 +87,13 @@ public:
     
     ~ServerInterface ()
     {
+        httpServer.interface.release();
+        httpServer.svr.stop();
+        httpServer.stopThread(5000);  // Give it enough time to stop the http server...
+    }
+    
+    void log(String message){
+        DBG(message);
     }
         
     void oscMessageReceived (const OSCMessage& message) override
@@ -127,10 +176,6 @@ public:
                 String actionMessage = String(ACTION_SET_MIDI_THRU) + ":" + (String)midiThru;
                 sendActionMessage(actionMessage);
             }
-        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_POST_STATE){
-            String actionMessage = String(ACTION_POST_STATE);
-            sendActionMessage(actionMessage);
-            
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_PLAY_SOUND){
             if (message.size() == 1)  {
                 int soundIndex = message[0].getInt32();
@@ -151,9 +196,84 @@ public:
             }
         }
     }
-
+    
+    HTTPServer httpServer;
+    String serializedAppState;
+    
 private:
         
     bool oscReveiverInitialized = false;
         
 };
+
+
+void HTTPServer::run() {
+    
+    svr.Get("/index", [](const httplib::Request &, httplib::Response &res) {
+        String contents = String::fromUTF8 (BinaryData::index_html, BinaryData::index_htmlSize);
+        res.set_content(contents.toStdString(), "text/html");
+    });
+    
+    svr.Get("/send_osc", [this](const httplib::Request &req, httplib::Response &res) {
+        
+        if (interface != nullptr){
+            // Parse get parameters and transform to OSC message that we feed to the
+            // ServerInterface as if we received OSC. In this way the interface is unified
+            String oscAddress = "";
+            StringArray types;
+            StringArray values;
+            
+            std::multimap<std::string, std::string>::const_iterator it;
+            for (it = req.params.begin(); it != req.params.end(); ++it){
+                if ((String)it->first == "address"){
+                    oscAddress = (String)it->second;
+                } else if ((String)it->first == "values"){
+                    values.addTokens ((String)it->second, ";", "");
+                } else if ((String)it->first == "types"){
+                    types.addTokens ((String)it->second, ";", "");
+                }
+            }
+            OSCMessage message = OSCMessage(oscAddress);
+            for (int i=0; i<types.size(); i++){
+                if (types[i] == "int"){
+                    message.addInt32(values[i].getIntValue());
+                } else if (types[i] == "float"){
+                    message.addFloat32(values[i].getFloatValue());
+                } else if (types[i] == "str"){
+                    message.addString(values[i]);
+                }
+            }
+            interface->oscMessageReceived(message);
+        }
+        
+    });
+    
+    svr.Get("/get_system_stats", [this](const httplib::Request &, httplib::Response &res) {
+        std::string stats = "";
+        #if ELK_BUILD
+            stats += "----------- System stats:\n";
+            stats += "CPU temp: " + exec("sudo vcgencmd measure_temp") + "\n";
+            stats += "Memory used (%): " + exec("free | grep Mem | awk '{print $3/$2 * 100.0}'");
+            stats += "CPU used (%): " + exec("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'") + "\n";
+            stats += "MSW:\nCPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + exec("more /proc/xenomai/sched/stat | grep sushi_b64") + "\n";
+            stats += "-----------\n";
+        #else
+            stats += "No system stats for this platform";
+        #endif
+        res.set_content(stats, "text/html");
+    });
+    
+    svr.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {
+        if (interface != nullptr){
+            res.set_content((interface->serializedAppState).toStdString(), "text/xml");
+        } else {
+            res.set_content("", "text/xml");
+        }
+    });
+    
+    while (!connected){
+        port += 1;
+        connected = svr.listen("0.0.0.0", port - 1);
+    }
+    DBG("Started HTTP server, listening at 0.0.0.0:" << port - 1);  // Not printed to the std out...
+}

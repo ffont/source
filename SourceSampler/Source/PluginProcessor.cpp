@@ -54,11 +54,16 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     serverInterface.addActionListener(this);
     sampler.addActionListener(this);
     
+    serverInterface.httpServer.setInterfacePointer(&serverInterface);
+    
     // Load global settings
     loadGlobalPersistentStateFromFile();
     
     // Set default program 0
     setCurrentProgram(0);
+    
+    // Start timer to collect state and pass it to the UI
+    startTimerHz(20);
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -306,7 +311,7 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     state.setProperty(STATE_QUERY, query, nullptr);
     
     // Add sounds info
-    state.appendChild(loadedSoundsInfo, nullptr);
+    state.appendChild(loadedSoundsInfo.createCopy(), nullptr);
     
     // Add sampler state (includes main settings and individual sampler sounds parameters)
     state.appendChild(sampler.getState(), nullptr);
@@ -358,14 +363,6 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
         if (xmlState.get() != nullptr){
             ValueTree presetState = ValueTree::fromXml(*xmlState.get());
             loadPresetFromStateInformation(presetState);
-            
-            // Now post state to the server as well
-            ValueTree globalSettings = collectGlobalSettingsStateInformation();
-            ValueTree fullState = ValueTree("SourceFullState");
-            fullState.appendChild(presetState, nullptr);
-            fullState.appendChild(globalSettings, nullptr);
-            sendStateToServer(fullState);
-            
             return true;
         }
     }
@@ -416,7 +413,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
-    settings.appendChild(presetNumberMapping, nullptr);
+    settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
 
@@ -617,16 +614,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         bool midiThru = message.substring(String(ACTION_SET_MIDI_THRU).length() + 1).getIntValue() == 1;
         setMidiThru(midiThru);
         
-    } else if (message.startsWith(String(ACTION_POST_STATE))){
-        ValueTree presetState = collectPresetStateInformation();
-        ValueTree globalSettings = collectGlobalSettingsStateInformation();
-        ValueTree volatileState = collectVolatileStateInformation();
-        ValueTree fullState = ValueTree("SourceFullState");
-        fullState.appendChild(presetState, nullptr);
-        fullState.appendChild(globalSettings, nullptr);
-        fullState.appendChild(volatileState, nullptr);
-        sendStateToServer(fullState);
-        
     } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
         int soundIndex = message.substring(String(ACTION_PLAY_SOUND).length() + 1).getIntValue();
         addToMidiBuffer(soundIndex, false);
@@ -644,23 +631,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     
 }
 
-void SourceSamplerAudioProcessor::sendStateToServer(ValueTree state)
-{
-    URL url = URL("http://localhost:8123/state_from_plugin");
-    String header = "Content-Type: text/xml";
-    int statusCode = -1;
-    StringPairArray responseHeaders;
-    String data = state.toXmlString();
-    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-    bool postLikeRequest = true;
-    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-        &responseHeaders, &statusCode)))
-    {
-        // No need to read response really
-        //String resp = stream->readEntireStreamAsString();
-    }
-}
 
 //==============================================================================
 
@@ -735,11 +705,6 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
 
 void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsInfo)
 {
-    // This method is called by the FreesoundSearchComponent when a new query has
-    // been made and new sounda have been selected for loading into the sampler.
-    // This methods downloads the sounds, sotres in tmp directory and...
-
-    
     #if !ELK_BUILD
     
     // Download the sounds within the plugin
@@ -818,7 +783,6 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
     
     // Store info about the loaded sounds and tell UI components to update
     loadedSoundsInfo = soundsInfoDownloadedOk;
-    sendActionMessage(String(ACTION_SHOULD_UPDATE_SOUNDS_TABLE));
     
     // Load the sounds in the sampler
     setSources();
@@ -898,6 +862,26 @@ ValueTree SourceSamplerAudioProcessor::getLoadedSoundsInfo()
 {
     return loadedSoundsInfo;
 }
+
+void SourceSamplerAudioProcessor::timerCallback()
+{
+    // Collect the state and update the serverInterface object with that state information so it can be used by the http server
+    ValueTree presetState = collectPresetStateInformation();
+    ValueTree globalSettings = collectGlobalSettingsStateInformation();
+    ValueTree volatileState = collectVolatileStateInformation();
+    ValueTree fullState = ValueTree("SourceFullState");
+    fullState.appendChild(presetState, nullptr);
+    fullState.appendChild(globalSettings, nullptr);
+    fullState.appendChild(volatileState, nullptr);
+    serverInterface.serializedAppState = fullState.toXmlString();
+}
+
+
+int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
+{
+    return serverInterface.httpServer.port;
+}
+
 
 //==============================================================================
 // This creates new instances of the plugin..
