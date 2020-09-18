@@ -43,11 +43,47 @@ def send_elk(ctx):
 @task
 def compile_elk(ctx):
 
+    # When compiling in ELK, the JUCE_WEB_BROWSER option of juce_gui_extra needs to be disabled, but we do want it to be
+    # enabled when compiling the plugin for other platforms. The solution we adopt is that here we live modify the source files
+    # needed to disable the JUCE_WEB_BROWSER option, and then undo the changes
+
+    def replace_in_file(path, text_to_replace="", replacement=""):
+        file_contents = open(path, 'r').read()
+        if text_to_replace != "":
+            new_file_contents = file_contents.replace(text_to_replace,  replacement)
+        else:
+            new_file_contents = replacement  # If no text_to_replace is specified, replace the whole file with new contents
+        open(path, 'w').write(new_file_contents)
+        return file_contents
+
+    old_appconfig_file_contents = replace_in_file("../SourceSampler/JuceLibraryCode/AppConfig.h", 
+        text_to_replace="#define   JUCE_WEB_BROWSER 1", 
+        replacement="#define   JUCE_WEB_BROWSER 0")
+
+    old_makefile_file_contents = replace_in_file("../SourceSampler/Builds/ELKAudioOS/Makefile", 
+        text_to_replace="@pkg-config --print-errors alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl", 
+        replacement="@pkg-config --print-errors alsa freetype2 libcurl")
+
+    replace_in_file("../SourceSampler/Builds/ELKAudioOS/Makefile", 
+        text_to_replace="JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -L/workdir/sysroots/aarch64-elk-linux/usr/lib/ $(shell pkg-config --libs alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl) -fvisibility=hidden -lrt -ldl -lpthread $(LDFLAGS)", 
+        replacement="JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -L/workdir/sysroots/aarch64-elk-linux/usr/lib/ $(shell pkg-config --libs alsa freetype2 libcurl) -fvisibility=hidden -lrt -ldl -lpthread $(LDFLAGS)")
+    
+    replace_in_file("../SourceSampler/Builds/ELKAudioOS/Makefile", 
+        text_to_replace="JUCE_CPPFLAGS := $(DEPFLAGS) -DLINUX=1 -DNDEBUG=1 -DJUCER_LINUX_MAKE_84E12380=1 -DJUCE_APP_VERSION=0.0.1 -DJUCE_APP_VERSION_HEX=0x1 $(shell pkg-config --cflags alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ $(CPPFLAGS)", 
+        replacement="JUCE_CPPFLAGS := $(DEPFLAGS) -DLINUX=1 -DNDEBUG=1 -DJUCER_LINUX_MAKE_84E12380=1 -DJUCE_APP_VERSION=0.0.1 -DJUCE_APP_VERSION_HEX=0x1 $(shell pkg-config --cflags alsa freetype2 libcurl) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ $(CPPFLAGS)")
+    
+
     # Cross-compile Source
     print('Coss-compiling Source for ELK platform...')
     print('*********************************************\n')
     os.system("find ../SourceSampler/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
     os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/../:/code/source -v ${PWD}/../SourceSampler/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/../../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
+
+
+    # Undo file replacements
+    replace_in_file("../SourceSampler/JuceLibraryCode/AppConfig.h", replacement=old_appconfig_file_contents)
+    replace_in_file("../SourceSampler/Builds/ELKAudioOS/Makefile", replacement=old_makefile_file_contents)
+    
 
     print('\nAll done!')
 
