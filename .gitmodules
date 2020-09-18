@@ -4,3 +4,6 @@
 [submodule "SourceSampler/3rdParty/JUCE_ELK"]
 	path = SourceSampler/3rdParty/JUCE_ELK
 	url = https://github.com/ffont/JUCE_ELK
+[submodule "SourceSampler/3rdParty/cpp-httplib"]
+	path = SourceSampler/3rdParty/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib
