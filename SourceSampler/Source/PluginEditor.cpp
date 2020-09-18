@@ -62,6 +62,4 @@ void SourceSamplerAudioProcessorEditor::resized()
             #endif
         #endif
     }
-    
-    
 }

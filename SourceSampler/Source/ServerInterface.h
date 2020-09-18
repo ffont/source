@@ -61,11 +61,7 @@ class ServerInterface: private OSCReceiver,
 {
 public:
     ServerInterface ()
-    {
-        # if ENABLE_HTTP_SERVER
-        httpServer.startThread(0); // Lowest priority
-        #endif
-         
+    {         
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
             DBG("ERROR setting OSC receiver");

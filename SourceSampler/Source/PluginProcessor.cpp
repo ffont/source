@@ -63,9 +63,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     setCurrentProgram(0);
     
     // Start timer to collect state and pass it to the UI
-    # if ENABLE_HTTP_SERVER
+    #if ENABLE_HTTP_SERVER
     startTimerHz(STATE_UPDATE_HZ);
-    # endif
+    serverInterface.httpServer.startThread(0); // Lowest priority
+    #endif
+
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -221,6 +223,10 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     DBG("Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock);
+    
+    #if ENABLE_HTTP_SERVER
+    DBG("HTTPServer is running at port " << serverInterface.httpServer.port - 1);
+    #endif
     
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
