@@ -21,6 +21,13 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     int port = processor.getServerInterfaceHttpPort() - 1;
     browser.goToURL("http://localhost:" + (String)port  + "/index");
     #endif
+    
+    #if JUCE_MAC
+    uiNote.setJustificationType (Justification::left);
+    uiNote.setText("Please point your browser at 'http://localhost:" + (String)port + "/index' to see the UI of the plugin", dontSendNotification);
+    addAndMakeVisible (uiNote);
+    #endif
+    
     float width = 1000;
     float height = 800;
     setSize(width, height);
@@ -39,7 +46,22 @@ void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
 
 void SourceSamplerAudioProcessorEditor::resized()
 {
-    #if !ELK_BUILD
-    browser.setBounds(getLocalBounds());
-    #endif
+    
+    if (juce::JUCEApplicationBase::isStandaloneApp()){
+        #if !ELK_BUILD
+        browser.setBounds(getLocalBounds());
+        #endif
+        
+    } else {
+        #if JUCE_MAC
+        uiNote.setBounds(getLocalBounds());
+        setSize(600, 100);
+        #else
+            #if !ELK_BUILD
+            browser.setBounds(getLocalBounds());
+            #endif
+        #endif
+    }
+    
+    
 }

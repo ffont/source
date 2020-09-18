@@ -72,7 +72,7 @@ Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html
 
 1) Modify `sushi` service to point to `/home/mind/source_sushi_config.json`
 
-2) Create new service for python server at `/lib/systemd/system/source-server.service` (use `sudo`)
+2) Create new service for python server at `/lib/systemd/system/source-server.service` (use `sudo`). This server is used to download audio files outside the plugin because it seems to be much much faster this way.
 
 ```
 [Unit]

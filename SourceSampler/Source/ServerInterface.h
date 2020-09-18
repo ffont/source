@@ -48,7 +48,7 @@ public:
     
     httplib::Server svr;
     bool connected = false;
-    int port = 8124;  // Will start attempting at this port and continue with the subsequent if can't connect
+    int port = HTTP_SERVER_LISTEN_PORT;  // Will start attempting at this port and continue with the subsequent if can't connect
     
     std::unique_ptr<ServerInterface> interface;
     
@@ -62,7 +62,9 @@ class ServerInterface: private OSCReceiver,
 public:
     ServerInterface ()
     {
+        # if ENABLE_HTTP_SERVER
         httpServer.startThread(0); // Lowest priority
+        #endif
          
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
@@ -87,9 +89,11 @@ public:
     
     ~ServerInterface ()
     {
+        # if ENABLE_HTTP_SERVER
         httpServer.interface.release();
         httpServer.svr.stop();
         httpServer.stopThread(5000);  // Give it enough time to stop the http server...
+        # endif
     }
     
     void log(String message){
@@ -275,5 +279,8 @@ void HTTPServer::run() {
         port += 1;
         connected = svr.listen("0.0.0.0", port - 1);
     }
-    DBG("Started HTTP server, listening at 0.0.0.0:" << port - 1);  // Not printed to the std out...
+    if (interface != nullptr){
+        interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port - 1));
+    }
+    
 }

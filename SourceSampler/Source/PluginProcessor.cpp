@@ -63,7 +63,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     setCurrentProgram(0);
     
     // Start timer to collect state and pass it to the UI
-    startTimerHz(20);
+    # if ENABLE_HTTP_SERVER
+    startTimerHz(STATE_UPDATE_HZ);
+    # endif
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -737,12 +739,12 @@ void SourceSamplerAudioProcessor::downloadSoundsAndSetSources (ValueTree soundsI
             allFinished = true;
         }
     }
-    
 
     #else
+
     // If inside ELK build, download the sounds with the python server as it seems to be much much faster
     DBG("Sending download task to python server...");
-    URL url = URL("http://localhost:8123/download_sounds");
+    URL url = URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds");
     
     String urlsParam = "";
     for (int i=0; i<soundsInfo.getNumChildren(); i++){

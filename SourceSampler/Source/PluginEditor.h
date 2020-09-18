@@ -36,6 +36,7 @@ private:
     #if !ELK_BUILD
     WebBrowserComponent browser;
     #endif
+    Label uiNote; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };
