@@ -501,13 +501,12 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         {
             // Calculate L and R samples using basic interpolation
             float l = interpolateSample(sourceSamplePosition, inL);
-            float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR)
-                                       : l;
+            float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR) : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
             if (playingSound->launchMode == LAUNCH_MODE_LOOP && playingSound->loopXFadeNSamples > 0){
                 if (playingSound->reverse == 0){
                     // Normal playing mode: do loop when reahing fixedLoopEndPositionSample
-                    int samplesToLoopEndPositionSample = fixedLoopEndPositionSample - sourceSamplePosition;
+                    float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
                     if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
                         if (ENABLE_DEBUG_BUFFER == 1){
                             startRecordingToDebugBuffer((int)playingSound->loopXFadeNSamples * 2);
@@ -517,11 +516,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         float lcrossfadeSample = 0.0;
                         float rcrossfadeSample = 0.0;
                         float crossfadeGain = 0.0;
-                        int crossfadePos = fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
+                        float crossfadePos = (float)fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
                         if (crossfadePos > 0){
                             lcrossfadeSample = interpolateSample(crossfadePos, inL);
-                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR)
-                                                                : lcrossfadeSample;
+                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
                             crossfadeGain = (float)samplesToLoopEndPositionSample/playingSound->loopXFadeNSamples;
                         } else {
                             // If position is negative, there is no data to do the crossfade
@@ -533,13 +531,13 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                     }
                 } else {
                     // Reverse playing mode: do loop when reahing fixedLoopEndPositionSample
-                    int samplesToLoopStartPositionSample = sourceSamplePosition - fixedLoopStartPositionSample;
+                    int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
                     if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < playingSound->loopXFadeNSamples)){
                         // We are approaching loopStartPositionSample (going backwards) and are closer than playingSound->loopXFadeNSamples
                         float lcrossfadeSample = 0.0;
                         float rcrossfadeSample = 0.0;
                         float crossfadeGain = 0.0;
-                        int crossfadePos = fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
+                        float crossfadePos = (float)fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
                         if (crossfadePos < playingSound->length){
                             lcrossfadeSample = interpolateSample(crossfadePos, inL);
                             rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
