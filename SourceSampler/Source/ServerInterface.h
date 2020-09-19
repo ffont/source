@@ -13,6 +13,7 @@
 #include "JuceHeader.h"
 #include "defines.h"
 #include "httplib.h"
+#include "BinaryData.h"
 
 
 class ServerInterface;

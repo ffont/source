@@ -12,6 +12,8 @@
       <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
             file="Source/api_key.example.h"/>
       <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>
+      <FILE id="wyWwO7" name="BinaryData.cpp" compile="1" resource="0" file="Source/BinaryData.cpp"/>
+      <FILE id="xoVRFs" name="BinaryData.h" compile="0" resource="0" file="Source/BinaryData.h"/>
       <FILE id="NVOE4I" name="FreesoundAPI.cpp" compile="1" resource="0"
             file="Source/FreesoundAPI.cpp"/>
       <FILE id="P6tAZZ" name="FreesoundAPI.h" compile="0" resource="0" file="Source/FreesoundAPI.h"/>
@@ -28,13 +30,14 @@
             file="Source/SourceSampler.cpp"/>
       <FILE id="tcetRZ" name="SourceSampler.h" compile="0" resource="0" file="Source/SourceSampler.h"/>
     </GROUP>
-    <GROUP id="{B28867AB-D8B6-A901-F894-36AB76036C88}" name="www">
-      <FILE id="e5c8Wq" name="index.html" compile="0" resource="1" file="Source/www/index.html"/>
+    <GROUP id="{25557E26-6D9E-17DA-4894-2F58087073FD}" name="Resources">
+      <FILE id="xFci8w" name="index.html" compile="0" resource="0" file="Resources/index.html"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" vstLegacyFolder="../../VST_SDK/VST2_SDK"
-               customPList="&lt;plist&gt;&#10;&lt;dict&gt;&#10;&lt;key&gt;NSAppTransportSecurity&lt;/key&gt;&#10;&lt;dict&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoads&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsForMedia&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsInWebContent&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsLocalNetworking&lt;/key&gt;&#10;    &lt;true/&gt;&#10;&lt;/dict&gt;&#10;&lt;/dict&gt;&#10;&lt;/plist&gt;">
+               customPList="&lt;plist&gt;&#10;&lt;dict&gt;&#10;&lt;key&gt;NSAppTransportSecurity&lt;/key&gt;&#10;&lt;dict&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoads&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsForMedia&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsInWebContent&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsLocalNetworking&lt;/key&gt;&#10;    &lt;true/&gt;&#10;&lt;/dict&gt;&#10;&lt;/dict&gt;&#10;&lt;/plist&gt;"
+               prebuildCommand="if [[ $TARGET_NAME == *&quot;Shared Code&quot;* ]]; then&#10;    ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Debug/BinaryBuilder ../../Resources ../../Source/ BinaryData&#10;fi">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug"/>
         <CONFIGURATION isDebug="0" name="Release"/>
