@@ -23,6 +23,8 @@ fab compile-macos
 
 This will create *Release* versions of Source (VST3, VST2, AU and Standalone) ready to work on the mac.
 
+**NOTE**: macos build targets include a *pre-build shell script* phase which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). For this script to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/`.
+
 
 ### Build plugin for ELK platform
 
@@ -50,7 +52,9 @@ cd scripts
 fab compile-elk
 ```
 
-This will take a while, specially the first time it runs. When it finished, it should have generated an `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/` which is the VST2 plugin that you can run in ELK platform.
+This will take a while, specially the first time it runs. When it finished, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/` which is the VST2 plugin that you can run in ELK platform.
+
+**NOTE**: the build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/`.
 
 
 #### Loading the built plugin in the ELK board

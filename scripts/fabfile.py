@@ -43,9 +43,18 @@ def send_elk(ctx):
 @task
 def compile_elk(ctx):
 
+    print('Coss-compiling Source for ELK platform...')
+    print('*********************************************')
+
+    # Generate binary files
+    print('\n* Building BinaryData')
+    os.system("../SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Debug/BinaryBuilder ../SourceSampler/Resources ../SourceSampler/Source/ BinaryData")
+
     # When compiling in ELK, the JUCE_WEB_BROWSER option of juce_gui_extra needs to be disabled, but we do want it to be
     # enabled when compiling the plugin for other platforms. The solution we adopt is that here we live modify the source files
     # needed to disable the JUCE_WEB_BROWSER option, and then undo the changes
+
+    print('\n* Temporarily altering build files')
 
     def replace_in_file(path, text_to_replace="", replacement=""):
         file_contents = open(path, 'r').read()
@@ -74,13 +83,13 @@ def compile_elk(ctx):
     
 
     # Cross-compile Source
-    print('Coss-compiling Source for ELK platform...')
-    print('*********************************************\n')
+    print('\n* Cross-compiling')
     os.system("find ../SourceSampler/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
     os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/../:/code/source -v ${PWD}/../SourceSampler/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/../../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
 
 
     # Undo file replacements
+    print('\n* Restoring build files')
     replace_in_file("../SourceSampler/JuceLibraryCode/AppConfig.h", replacement=old_appconfig_file_contents)
     replace_in_file("../SourceSampler/Builds/ELKAudioOS/Makefile", replacement=old_makefile_file_contents)
     
