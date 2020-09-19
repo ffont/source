@@ -54,7 +54,7 @@ def compile_elk(ctx):
     # enabled when compiling the plugin for other platforms. The solution we adopt is that here we live modify the source files
     # needed to disable the JUCE_WEB_BROWSER option, and then undo the changes
 
-    print('\n* Temporarily altering build files')
+    print('\n* Temporarily modifying makefile')
 
     def replace_in_file(path, text_to_replace="", replacement=""):
         file_contents = open(path, 'r').read()
