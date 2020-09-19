@@ -17,11 +17,14 @@
 /**
 */
 
-class SourceSamplerAudioProcessorEditor  : public AudioProcessorEditor
+class SourceSamplerAudioProcessorEditor  : public AudioProcessorEditor,
+                                           public Button::Listener
 {
 public:
     SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor&);
     ~SourceSamplerAudioProcessorEditor();
+    
+    void buttonClicked (Button* button) override;
 
     //==============================================================================
     void paint (Graphics&) override;
@@ -36,7 +39,7 @@ private:
     #if !ELK_BUILD
     WebBrowserComponent browser;
     #endif
-    Label uiNote; 
+    TextButton openInBrowser; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };

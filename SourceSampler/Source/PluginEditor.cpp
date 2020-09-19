@@ -18,14 +18,14 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
 {
     #if !ELK_BUILD
     addAndMakeVisible(browser);
-    int port = processor.getServerInterfaceHttpPort() - 1;
+    int port = processor.getServerInterfaceHttpPort();
     browser.goToURL("http://localhost:" + (String)port  + "/index");
     #endif
     
     #if JUCE_MAC
-    uiNote.setJustificationType (Justification::left);
-    uiNote.setText("Please point your browser at 'http://localhost:" + (String)port + "/index' to see the UI of the plugin", dontSendNotification);
-    addAndMakeVisible (uiNote);
+    openInBrowser.addListener(this);
+    openInBrowser.setButtonText("Open UI in browser");
+    addAndMakeVisible (openInBrowser);
     #endif
     
     float width = 1000;
@@ -38,6 +38,14 @@ SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
 {
 }
 
+void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
+    if (button == &openInBrowser)
+    {
+        int port = processor.getServerInterfaceHttpPort();
+        URL("http://localhost:" + (String)port + "/index").launchInDefaultBrowser();
+    }
+}
+
 //==============================================================================
 void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
 {
@@ -46,7 +54,6 @@ void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
 
 void SourceSamplerAudioProcessorEditor::resized()
 {
-    
     if (juce::JUCEApplicationBase::isStandaloneApp()){
         #if !ELK_BUILD
         browser.setBounds(getLocalBounds());
@@ -54,7 +61,7 @@ void SourceSamplerAudioProcessorEditor::resized()
         
     } else {
         #if JUCE_MAC
-        uiNote.setBounds(getLocalBounds());
+        openInBrowser.setBounds(10, 10, 120, 20);
         setSize(600, 100);
         #else
             #if !ELK_BUILD

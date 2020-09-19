@@ -220,11 +220,6 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     DBG("Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock);
-    
-    #if ENABLE_HTTP_SERVER
-    DBG("HTTPServer is running at port " << serverInterface.httpServer.port - 1);
-    #endif
-    
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
 }
 

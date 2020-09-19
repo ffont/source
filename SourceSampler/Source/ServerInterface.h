@@ -49,7 +49,7 @@ public:
     
     httplib::Server svr;
     bool connected = false;
-    int port = HTTP_SERVER_LISTEN_PORT;  // Will start attempting at this port and continue with the subsequent if can't connect
+    int port = HTTP_SERVER_LISTEN_PORT;
     
     std::unique_ptr<ServerInterface> interface;
     
@@ -274,7 +274,6 @@ void HTTPServer::run()
             }
             interface->processActionFromOSCMessage(message);
         }
-        
     });
     
     svr.Get("/get_system_stats", [this](const httplib::Request &, httplib::Response &res) {
@@ -300,14 +299,18 @@ void HTTPServer::run()
         }
     });
     
-    while (!connected){
-        port += 1;
-        connected = svr.listen("0.0.0.0", port - 1);
-    }
+    #if !ELK_BUILD
+    // In desktop builds we want each instace to use a separate port so that each instance has its own interface
+    port = svr.bind_to_any_port("0.0.0.0");
+    #else
+    // In ELK build there will allways going to be a single instance for the plugin, run it at a port known to be free
+    svr.bind_to_port("0.0.0.0", port);
+    #endif
     if (interface != nullptr){
-        interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port - 1));
+        interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port));
     }
-    
+    connected = true;
+    svr.listen_after_bind();
 }
 
 
