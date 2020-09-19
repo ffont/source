@@ -11,7 +11,11 @@
 #pragma once
 
 #define ENABLE_HTTP_SERVER 1
-#define ENABLE_OSC_SERVER 1
+#if ELK_BUILD
+    #define ENABLE_OSC_SERVER 1
+#else
+    #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface
+#endif
 #define ENABLE_DEBUG_BUFFER 0
 #define STATE_UPDATE_HZ 15
 

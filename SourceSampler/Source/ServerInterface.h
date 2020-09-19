@@ -63,9 +63,9 @@ public:
     OSCServer(){
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
-            DBG("ERROR setting OSC receiver");
+            DBG("ERROR starting OSC server");
         } else {
-            DBG("Listening for OSC messages");
+            DBG("Started OSC server, listening at 0.0.0.0:" << OSC_LISTEN_PORT);
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_INT);
