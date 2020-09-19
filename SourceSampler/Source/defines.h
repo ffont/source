@@ -11,6 +11,7 @@
 #pragma once
 
 #define ENABLE_HTTP_SERVER 1
+#define ENABLE_OSC_SERVER 1
 #define ENABLE_DEBUG_BUFFER 0
 #define STATE_UPDATE_HZ 15
 

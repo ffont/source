@@ -54,8 +54,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     serverInterface.addActionListener(this);
     sampler.addActionListener(this);
     
-    serverInterface.httpServer.setInterfacePointer(&serverInterface);
-    
     // Load global settings
     loadGlobalPersistentStateFromFile();
     

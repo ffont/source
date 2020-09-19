@@ -55,21 +55,17 @@ public:
     
 };
 
-
-class ServerInterface: private OSCReceiver,
-                       private OSCReceiver::ListenerWithOSCAddress<OSCReceiver::MessageLoopCallback>,
-                       public ActionBroadcaster
+class OSCServer: private OSCReceiver,
+                 private OSCReceiver::ListenerWithOSCAddress<OSCReceiver::MessageLoopCallback>
 {
 public:
-    ServerInterface ()
-    {         
+    
+    OSCServer(){
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
             DBG("ERROR setting OSC receiver");
-            oscReveiverInitialized = false;
         } else {
             DBG("Listening for OSC messages");
-            oscReveiverInitialized = true;
             addListener (this, OSC_ADDRESS_NEW_QUERY);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT);
             addListener (this, OSC_ADDRESS_SET_SOUND_PARAMETER_INT);
@@ -84,20 +80,52 @@ public:
         }
     }
     
+    ~OSCServer(){
+    }
+    
+    void setInterfacePointer(ServerInterface* _interface){
+        interface.reset(_interface);
+    }
+    
+    inline void oscMessageReceived (const OSCMessage& message) override;
+    
+    std::unique_ptr<ServerInterface> interface;
+    
+};
+
+
+class ServerInterface: public ActionBroadcaster
+{
+public:
+    ServerInterface ()
+    {
+        #if ENABLE_HTTP_SERVER
+        httpServer.setInterfacePointer(this);
+        #endif
+        
+        #if ENABLE_OSC_SERVER
+        oscServer.setInterfacePointer(this);
+        #endif
+    }
+    
     ~ServerInterface ()
     {
-        # if ENABLE_HTTP_SERVER
+        #if ENABLE_HTTP_SERVER
         httpServer.interface.release();
         httpServer.svr.stop();
         httpServer.stopThread(5000);  // Give it enough time to stop the http server...
-        # endif
+        #endif
+        
+        #if ENABLE_OSC_SERVER
+        oscServer.interface.release();
+        #endif
     }
     
     void log(String message){
         DBG(message);
     }
         
-    void oscMessageReceived (const OSCMessage& message) override
+    void processActionFromOSCMessage (const OSCMessage& message)
     {
         if (message.getAddressPattern().toString() == OSC_ADDRESS_NEW_QUERY){
             if (message.size() == 3)  {
@@ -197,19 +225,18 @@ public:
             }
         }
     }
-    
+    #if ENABLE_HTTP_SERVER
     HTTPServer httpServer;
+    #endif
+    #if ENABLE_OSC_SERVER
+    OSCServer oscServer;
+    #endif
     String serializedAppState;
-    
-private:
-        
-    bool oscReveiverInitialized = false;
-        
 };
 
 
-void HTTPServer::run() {
-    
+void HTTPServer::run()
+{
     svr.Get("/index", [](const httplib::Request &, httplib::Response &res) {
         String contents = String::fromUTF8 (BinaryData::index_html, BinaryData::index_htmlSize);
         res.set_content(contents.toStdString(), "text/html");
@@ -244,7 +271,7 @@ void HTTPServer::run() {
                     message.addString(values[i]);
                 }
             }
-            interface->oscMessageReceived(message);
+            interface->processActionFromOSCMessage(message);
         }
         
     });
@@ -280,4 +307,12 @@ void HTTPServer::run() {
         interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port - 1));
     }
     
+}
+
+
+void OSCServer::oscMessageReceived (const OSCMessage& message)
+{
+    if (interface != nullptr){
+        interface->processActionFromOSCMessage(message);
+    }
 }
