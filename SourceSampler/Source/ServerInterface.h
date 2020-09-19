@@ -101,6 +101,7 @@ public:
     {
         #if ENABLE_HTTP_SERVER
         httpServer.setInterfacePointer(this);
+        httpServer.startThread(0); // Lowest priority
         #endif
         
         #if ENABLE_OSC_SERVER

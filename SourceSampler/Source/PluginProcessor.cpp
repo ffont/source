@@ -63,7 +63,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // Start timer to collect state and pass it to the UI
     #if ENABLE_HTTP_SERVER
     startTimerHz(STATE_UPDATE_HZ);
-    serverInterface.httpServer.startThread(0); // Lowest priority
     #endif
 
 }
