@@ -62,7 +62,7 @@ public:
     const String getProgramName (int index) override;
     void changeProgramName (int index, const String& newName) override;
     String getPresetFilenameByIndex(int index);
-    int currentPresetIndex = 0;
+    int currentPresetIndex = -1;
 
     //==============================================================================
     ValueTree collectPresetStateInformation ();

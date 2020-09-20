@@ -58,7 +58,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     loadGlobalPersistentStateFromFile();
     
     // Set default program 0
-    setCurrentProgram(0);
+    //setCurrentProgram(0);
     
     // Start timer to collect state and pass it to the UI
     #if ENABLE_HTTP_SERVER
