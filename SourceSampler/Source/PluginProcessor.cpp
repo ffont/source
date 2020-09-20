@@ -57,9 +57,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // Load global settings
     loadGlobalPersistentStateFromFile();
     
-    // Set default program 0
-    //setCurrentProgram(0);
-    
     // Start timer to collect state and pass it to the UI
     #if ENABLE_HTTP_SERVER
     startTimerHz(STATE_UPDATE_HZ);
@@ -879,7 +876,11 @@ void SourceSamplerAudioProcessor::timerCallback()
 
 int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 {
+    #if ENABLE_HTTP_SERVER
     return serverInterface.httpServer.port;
+    #else
+    return 0;
+    #endif
 }
 
 

@@ -372,11 +372,8 @@ public:
         }
         else if (m.isProgramChange())
         {
-            String presetName = ""; // We use program index
             int index = m.getProgramChangeNumber();  // Preset index, this is 0-based so MIDI value 0 will be also 0 here
-            String serializedParameters = presetName + SERIALIZATION_SEPARATOR +
-                                          (String)index + SERIALIZATION_SEPARATOR;
-            String actionMessage = String(ACTION_LOAD_PRESET) + ":" + serializedParameters;
+            String actionMessage = String(ACTION_LOAD_PRESET) + ":" + (String)index;
             sendActionMessage(actionMessage);
         }
     }
