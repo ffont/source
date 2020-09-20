@@ -10,6 +10,9 @@
 
 #pragma once
 
+#define SERVER_CERT_FILE "/Users/ffont/Developer/source/SourceSampler/Resources/localhost.crt"
+#define SERVER_PRIVATE_KEY_FILE "/Users/ffont/Developer/source/SourceSampler/Resources/localhost.key"
+
 #define ENABLE_HTTP_SERVER 1
 #if ELK_BUILD
     #define ENABLE_OSC_SERVER 1

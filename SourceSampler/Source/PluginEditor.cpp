@@ -19,7 +19,8 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     #if !ELK_BUILD
     addAndMakeVisible(browser);
     int port = processor.getServerInterfaceHttpPort();
-    browser.goToURL("http://localhost:" + (String)port  + "/index");
+    //browser.goToURL("http://localhost:" + (String)port  + "/index");
+    browser.goToURL("https://localhost:" + (String)port  + "/index");
     #endif
     
     #if JUCE_MAC

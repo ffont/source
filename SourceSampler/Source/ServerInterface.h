@@ -22,8 +22,11 @@ class ServerInterface;
 class HTTPServer: public Thread
 {
 public:
-    HTTPServer(): Thread ("SourceHttpServer"){
-    }
+    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+    HTTPServer(): Thread ("SourceHttpServer"), svr(SERVER_CERT_FILE, SERVER_PRIVATE_KEY_FILE){}
+    #else
+    HTTPServer(): Thread ("SourceHttpServer"){}
+    #endif
     
     ~HTTPServer(){
     }
@@ -47,9 +50,16 @@ public:
     
     inline void run(); // Defined below
     
+    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+    httplib::SSLServer svr;
+    #else
     httplib::Server svr;
+    #endif
+    
     bool connected = false;
     int port = HTTP_SERVER_LISTEN_PORT;
+    
+    std::thread httpThread;
     
     std::unique_ptr<ServerInterface> interface;
     
