@@ -63,6 +63,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if ENABLE_HTTP_SERVER
     startTimerHz(STATE_UPDATE_HZ);
     #endif
+    
+    // If on ELK build, start loading preset 0
+    #if ELK_BUILD
+    setCurrentProgram(0);
+    #endif
 
 }
 
@@ -70,11 +75,6 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
 {
     // Save current global persistent state (global settings)
     saveGlobalPersistentStateToFile();
-    
-    // Delete download task objects
-    for (int i = 0; i < downloadTasks.size(); i++) {
-        downloadTasks.at(i).reset();
-    }
     
     // Remove listeners
     serverInterface.removeActionListener(this);

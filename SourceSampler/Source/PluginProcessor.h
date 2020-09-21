@@ -119,7 +119,6 @@ private:
     
     MidiBuffer midiFromEditor;
     long midicounter;
-    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool isQueryDownloadingAndLoadingSounds = false;
     double startTime;
     bool aconnectWasRun = false;
