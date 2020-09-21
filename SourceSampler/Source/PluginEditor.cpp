@@ -52,7 +52,9 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
 
 SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
 {
+    #if !ELK_BUILD
     browser.editor.release();
+    #endif
 }
 
 void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
@@ -66,14 +68,16 @@ void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
         #endif
     } else if (button == &reloadUI)
     {
-        hadBrowserError = false; // Reset browser error property
-        int port = processor.getServerInterfaceHttpPort();
-        #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-        browser.goToURL("https://localhost:" + (String)port  + "/index");
-        #else
-        browser.goToURL("http://localhost:" + (String)port  + "/index");
+        #if !ELK_BUILD
+            hadBrowserError = false; // Reset browser error property
+            int port = processor.getServerInterfaceHttpPort();
+            #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            browser.goToURL("https://localhost:" + (String)port  + "/index");
+            #else
+            browser.goToURL("http://localhost:" + (String)port  + "/index");
+            #endif
+            resized();
         #endif
-        resized();
     }
 }
 

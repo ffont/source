@@ -19,7 +19,7 @@
 
 class SourceSamplerAudioProcessorEditor;
 
-
+#if !ELK_BUILD
 class CustomWebBrowserComponent: public WebBrowserComponent
 {
 public:
@@ -33,6 +33,7 @@ public:
     
     std::unique_ptr<SourceSamplerAudioProcessorEditor> editor;
 };
+#endif
 
 
 class SourceSamplerAudioProcessorEditor  : public AudioProcessorEditor,
@@ -67,6 +68,7 @@ private:
 };
 
 
+#if !ELK_BUILD
 bool CustomWebBrowserComponent::pageLoadHadNetworkError (const String& errorInfo)
 {
     if (editor != nullptr){
@@ -75,3 +77,4 @@ bool CustomWebBrowserComponent::pageLoadHadNetworkError (const String& errorInfo
     }
     return true;
 }
+#endif

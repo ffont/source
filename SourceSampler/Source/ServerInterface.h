@@ -55,12 +55,8 @@ public:
     #else
     std::unique_ptr<httplib::Server> serverPtr;
     #endif
-    
     bool connected = false;
     int port = HTTP_SERVER_LISTEN_PORT;
-    
-    std::thread httpThread;
-    
     std::unique_ptr<ServerInterface> interface;
     
 };
@@ -264,7 +260,7 @@ void HTTPServer::run()
     }
     httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
-    httplib::Server server();
+    httplib::Server server;
     #endif
     
     server.Get("/index", [](const httplib::Request &, httplib::Response &res) {
