@@ -22,28 +22,14 @@ class ServerInterface;
 class HTTPServer: public Thread
 {
 public:
-    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    HTTPServer(): Thread ("SourceHttpServer"), svr(SERVER_CERT_FILE, SERVER_PRIVATE_KEY_FILE){
-        /*
-        File sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
-        File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
-        if (!certFile.existsAsFile()){
-            // Write bundled binary resource to file so https server can load it
-            certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
-        }
-        File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
-        if (!keyFile.existsAsFile()){
-            // Write bundled binary resource to file so https server can load it
-            keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
-        }
-        httplib::SSLServer sslServer(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
-        */
-    }
-    #else
+   
     HTTPServer(): Thread ("SourceHttpServer"){}
-    #endif
-    
-    ~HTTPServer(){}
+   
+    ~HTTPServer(){
+        if (serverPtr != nullptr){
+            serverPtr.release();
+        }
+    }
     
     void setInterfacePointer(ServerInterface* _interface){
         interface.reset(_interface);
@@ -65,9 +51,9 @@ public:
     inline void run(); // Defined below
     
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    httplib::SSLServer svr;
+    std::unique_ptr<httplib::SSLServer> serverPtr;
     #else
-    httplib::Server svr;
+    std::unique_ptr<httplib::Server> serverPtr;
     #endif
     
     bool connected = false;
@@ -137,7 +123,9 @@ public:
     {
         #if ENABLE_HTTP_SERVER
         httpServer.interface.release();
-        httpServer.svr.stop();
+        if (httpServer.serverPtr != nullptr){
+            httpServer.serverPtr->stop();
+        }
         httpServer.stopThread(5000);  // Give it enough time to stop the http server...
         #endif
         
@@ -262,12 +250,35 @@ public:
 
 void HTTPServer::run()
 {
-    svr.Get("/index", [](const httplib::Request &, httplib::Response &res) {
+    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+    File sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
+    if (!certFile.existsAsFile()){
+        // Write bundled binary resource to file so https server can load it
+        certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
+    }
+    File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
+    if (!keyFile.existsAsFile()){
+        // Write bundled binary resource to file so https server can load it
+        keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
+    }
+    httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
+    #else
+    httplib::Server server();
+    #endif
+    
+    server.Get("/index", [](const httplib::Request &, httplib::Response &res) {
         String contents = String::fromUTF8 (BinaryData::index_html, BinaryData::index_htmlSize);
         res.set_content(contents.toStdString(), "text/html");
     });
     
-    svr.Get("/send_osc", [this](const httplib::Request &req, httplib::Response &res) {
+    server.Get("/send_osc", [this](const httplib::Request &req, httplib::Response &res) {
+        // NOTE: this method is named like that for legacy reasons. It does not actually send any OSC messages.
+        // Before having an http server intergated with the plugin, there was an external http server that would
+        // send OSC messages to the plugin. The way we do it now is that the http server embeded in the plugin
+        // simulates sending OSC messages to the plugin (so the same control API is used). We don't really send
+        // OSC messages through the network, but we generate a "fake" OSC message and call the same plugin method
+        // that would be called by the OSC receiver.
         
         if (interface != nullptr){
             // Parse get parameters and transform to OSC message that we feed to the
@@ -300,7 +311,7 @@ void HTTPServer::run()
         }
     });
     
-    svr.Get("/get_system_stats", [this](const httplib::Request &, httplib::Response &res) {
+    server.Get("/get_system_stats", [this](const httplib::Request &, httplib::Response &res) {
         std::string stats = "";
         #if ELK_BUILD
             stats += "----------- System stats:\n";
@@ -315,7 +326,7 @@ void HTTPServer::run()
         res.set_content(stats, "text/html");
     });
     
-    svr.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {
+    server.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {
         if (interface != nullptr){
             res.set_content((interface->serializedAppState).toStdString(), "text/xml");
         } else {
@@ -325,16 +336,17 @@ void HTTPServer::run()
     
     #if !ELK_BUILD
     // In desktop builds we want each instace to use a separate port so that each instance has its own interface
-    port = svr.bind_to_any_port("0.0.0.0");
+    port = server.bind_to_any_port("0.0.0.0");
     #else
     // In ELK build there will allways going to be a single instance for the plugin, run it at a port known to be free
-    svr.bind_to_port("0.0.0.0", port);
+    server.bind_to_port("0.0.0.0", port);
     #endif
     if (interface != nullptr){
         interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port));
     }
     connected = true;
-    svr.listen_after_bind();
+    serverPtr.reset(&server);
+    server.listen_after_bind();
 }
 
 
