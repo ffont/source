@@ -25,6 +25,8 @@ This will create *Release* versions of Source (VST3, VST2, AU and Standalone) re
 
 **NOTE**: macos build targets include a *pre-build shell script* phase which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). For this script to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/`.
 
+**NOTE 2**: macos build targets require `openssl` to implement the HTTPS sevrer that hosts the plugin UI. Install by using `brew install openssl`.
+
 
 ### Build plugin for ELK platform
 

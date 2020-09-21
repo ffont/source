@@ -23,13 +23,27 @@ class HTTPServer: public Thread
 {
 public:
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    HTTPServer(): Thread ("SourceHttpServer"), svr(SERVER_CERT_FILE, SERVER_PRIVATE_KEY_FILE){}
+    HTTPServer(): Thread ("SourceHttpServer"), svr(SERVER_CERT_FILE, SERVER_PRIVATE_KEY_FILE){
+        /*
+        File sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
+        File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
+        if (!certFile.existsAsFile()){
+            // Write bundled binary resource to file so https server can load it
+            certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
+        }
+        File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
+        if (!keyFile.existsAsFile()){
+            // Write bundled binary resource to file so https server can load it
+            keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
+        }
+        httplib::SSLServer sslServer(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
+        */
+    }
     #else
     HTTPServer(): Thread ("SourceHttpServer"){}
     #endif
     
-    ~HTTPServer(){
-    }
+    ~HTTPServer(){}
     
     void setInterfacePointer(ServerInterface* _interface){
         interface.reset(_interface);
