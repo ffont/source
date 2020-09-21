@@ -330,7 +330,7 @@ void HTTPServer::run()
         }
     });
     
-    #if !ELK_BUILD
+    #if !ELK_BUILD && !JUCE_DEBUG
     // In desktop builds we want each instace to use a separate port so that each instance has its own interface
     port = server.bind_to_any_port("0.0.0.0");
     #else

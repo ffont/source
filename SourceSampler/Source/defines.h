@@ -101,6 +101,7 @@
 #define STATE_VOLATILE_VOICE_ACTIVATIONS "voiceActivations"
 #define STATE_VOLATILE_VOICE_SOUND_IDXS "voiceSoundIdxs"
 #define STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION "voiceSoundPlayPosition"
+#define STATE_VOLATILE_AUDIO_LEVELS "audioLevels"
 
 #define SERIALIZATION_SEPARATOR ";"
 

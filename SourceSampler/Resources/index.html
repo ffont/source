@@ -29,8 +29,25 @@
             background-color: greenyellow;
             height: 100%;
         }
+    
+        .channel_meter{
+            display: inline-block;
+            width: 30px;
+            height: 80px;
+            border: 1px solid black;
+            position: relative;
+        }
+    
+        .channel_level{
+            width: 100%;
+            overflow: hidden;
+            background-color: greenyellow;
+            position:absolute;
+            bottom:0;
+            left:0;
+        }
 
-        #volatileState{
+        #voicesState{
             max-width: 260px;
         }
 
@@ -318,8 +335,9 @@
             updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverb_freezeMode', ReverbParameters, OldStateReverbParameters);
             
             // Update volatile state
-            var volatileStateElement = document.getElementById('volatileState');
             var VolatileState = xmlState.getElementsByTagName('VolatileState')[0];
+
+            var voicesStateElement = document.getElementById('voicesState');
             var html = '<div class="voices">';
             if (VolatileState !== undefined){
                 var voiceActivations = VolatileState.getAttribute('voiceActivations').split(',').slice(0, -1);
@@ -336,7 +354,18 @@
                 }
             }
             html += "</div>";
-            volatileStateElement.innerHTML = html;
+            voicesStateElement.innerHTML = html;
+            
+            var metersStateElement = document.getElementById('metersState');
+            var html = '<div class="meters">';
+            if (VolatileState !== undefined){
+                var audioLevels = VolatileState.getAttribute('audioLevels').split(',').slice(0, -1);
+                for (var i=0; i<audioLevels.length; i++){
+                    html += '<div class="channel_meter"><div class="channel_level" style="height:' + 100 * parseFloat(audioLevels[i], 10) + '%;"></div></div>'
+                }
+            }
+            html += "</div>";
+            metersStateElement.innerHTML = html;
  
             // Update individual sound editors
 
@@ -501,8 +530,13 @@
     </div>
 
     <div class="controls_card">
-        <b>Volatile state</b><br>
-        <div id="volatileState"></div>
+        <b>Voices</b><br>
+        <div id="voicesState"></div>
+    </div>
+    
+    <div class="controls_card">
+        <b>Meters</b><br>
+        <div id="metersState"></div>
     </div>
     
     <div class="cards_container_slide">

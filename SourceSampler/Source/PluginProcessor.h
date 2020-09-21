@@ -130,6 +130,8 @@ private:
     
     ServerInterface serverInterface;
     
+    foleys::LevelMeterSource lms;  // Object to measure audio output levels
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };

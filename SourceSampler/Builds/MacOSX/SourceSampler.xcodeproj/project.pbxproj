@@ -97,6 +97,10 @@
 			isa = PBXBuildFile;
 			fileRef = 81C399931B0DB13A690E16D7;
 		};
+		B153DAC8F984761EDA3C42AD = {
+			isa = PBXBuildFile;
+			fileRef = 54791D860FF578FEB6E76286;
+		};
 		1A1186452CA817A639F17376 = {
 			isa = PBXBuildFile;
 			fileRef = 2BA4D99B69EAE02FB77A8D14;
@@ -353,6 +357,13 @@
 			path = "Info-VST3.plist";
 			sourceTree = "SOURCE_ROOT";
 		};
+		48D035022DBCC61AA9346AED = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "ff_meters";
+			path = "../../3rdParty/ff_meters";
+			sourceTree = "SOURCE_ROOT";
+		};
 		4AA605BB6A5FDA9F4F543C4F = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.objcpp;
@@ -379,6 +390,13 @@
 			lastKnownFileType = sourcecode.cpp.objcpp;
 			name = "include_juce_audio_plugin_client_AU_2.mm";
 			path = "../../JuceLibraryCode/include_juce_audio_plugin_client_AU_2.mm";
+			sourceTree = "SOURCE_ROOT";
+		};
+		54791D860FF578FEB6E76286 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			name = "include_ff_meters.cpp";
+			path = "../../JuceLibraryCode/include_ff_meters.cpp";
 			sourceTree = "SOURCE_ROOT";
 		};
 		5B679FDC2FB9A717B0B91CDC = {
@@ -758,6 +776,7 @@
 		00981B75DE8694D1E4B5D85E = {
 			isa = PBXGroup;
 			children = (
+				48D035022DBCC61AA9346AED,
 				1A7AF2A325793DD35881025F,
 				1023B2FA4FC4EF0DEA2CECDC,
 				2927B4EDC2E8A3AB2F32598A,
@@ -781,6 +800,7 @@
 			isa = PBXGroup;
 			children = (
 				A7BEB4349A7BB9ABC1A11602,
+				54791D860FF578FEB6E76286,
 				2BA4D99B69EAE02FB77A8D14,
 				4AA605BB6A5FDA9F4F543C4F,
 				5CF30F550442F175107D86F0,
@@ -915,6 +935,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -969,6 +990,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1024,6 +1046,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1078,6 +1101,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1133,6 +1157,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1188,6 +1213,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1241,6 +1267,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1289,6 +1316,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1339,6 +1367,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1388,6 +1417,7 @@
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_processors/format_types/VST3_SDK",
 					"../../../../VST_SDK/VST2_SDK",
 					"../../JuceLibraryCode",
+					"../../3rdParty",
 					"../../3rdParty/JUCE_ELK/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/JUCE_ELK/modules/juce_audio_plugin_client",
@@ -1884,6 +1914,7 @@
 				DF8FB1342E15E248CF2BB8FB,
 				A4FB6FE8FE17AF5967D16FB6,
 				332C87C6F36E349E37C4E660,
+				B153DAC8F984761EDA3C42AD,
 				1A1186452CA817A639F17376,
 				39A0A3E4216481B5D1B8E5D5,
 				8C932076F004C8FABE6B6076,

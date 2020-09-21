@@ -60,6 +60,7 @@
         <MODULEPATH id="juce_gui_extra" path="3rdParty/JUCE_ELK/modules"/>
         <MODULEPATH id="juce_osc" path="3rdParty/JUCE_ELK/modules"/>
         <MODULEPATH id="juce_dsp" path="3rdParty/JUCE_ELK/modules"/>
+        <MODULEPATH id="ff_meters" path="3rdParty"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <LINUX_MAKE targetFolder="Builds/ELKAudioOS" vstLegacyFolder="/code/VST2_SDK"
@@ -86,10 +87,12 @@
         <MODULEPATH id="juce_audio_basics"/>
         <MODULEPATH id="juce_osc" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_dsp" path="~/JUCE/modules"/>
+        <MODULEPATH id="ff_meters" path="3rdParty"/>
       </MODULEPATHS>
     </LINUX_MAKE>
   </EXPORTFORMATS>
   <MODULES>
+    <MODULE id="ff_meters" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
@@ -111,5 +114,5 @@
     <OSX/>
   </LIVE_SETTINGS>
   <JUCEOPTIONS JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_STRICT_REFCOUNTEDPOINTER="1"
-               JUCE_WEB_BROWSER="1" JUCE_USE_CURL="1"/>
+               JUCE_WEB_BROWSER="1" JUCE_USE_CURL="1" FF_AUDIO_ALLOW_ALLOCATIONS_IN_MEASURE_BLOCK="0"/>
 </JUCERPROJECT>

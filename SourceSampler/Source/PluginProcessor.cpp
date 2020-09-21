@@ -218,6 +218,9 @@ void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesP
 {
     DBG("Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock);
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
+    
+    // Configure level measurer
+    lms.resize(getTotalNumOutputChannels(), 200 * 0.001f * sampleRate / samplesPerBlock); // 200ms average window
 }
 
 void SourceSamplerAudioProcessor::releaseResources()
@@ -270,8 +273,12 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
+    // Measure audio levels (will be store in lms object itself)
+    lms.measureBlock (buffer);
+    
+    // Remove midi messages from buffer if these should not be forwarded
     if (!midiOutForwardsMidiIn){
-        midiMessages.clear();  // Clear messages from buffer so we don't forward them to the output
+        midiMessages.clear();
     }
     
     /*
@@ -519,6 +526,12 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     state.setProperty(STATE_VOLATILE_VOICE_ACTIVATIONS, voiceActivations, nullptr);
     state.setProperty(STATE_VOLATILE_VOICE_SOUND_IDXS, voiceSoundIdxs, nullptr);
     state.setProperty(STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION, voiceSoundPlayPositions, nullptr);
+    
+    String audioLevels = "";
+    for (int i=0; i<getTotalNumOutputChannels(); i++){
+        audioLevels += (String)lms.getRMSLevel(i) + ",";
+    }
+    state.setProperty(STATE_VOLATILE_AUDIO_LEVELS, audioLevels, nullptr);
     
     return state;
 }
