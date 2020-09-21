@@ -229,7 +229,7 @@ public:
         for (auto i = 0; i < jmin(maxNumVoices, nVoices); ++i)
             addVoice (new SourceSamplerVoice);
         
-        setNoteStealingEnabled (false);
+        setNoteStealingEnabled (true);
     }
     
     void setReverbParameters (Reverb::Parameters params) {
