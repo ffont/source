@@ -17,6 +17,24 @@
 /**
 */
 
+class SourceSamplerAudioProcessorEditor;
+
+
+class CustomWebBrowserComponent: public WebBrowserComponent
+{
+public:
+    ~CustomWebBrowserComponent(){}
+    
+    void setEditorPointer(SourceSamplerAudioProcessorEditor* _editor){
+         editor.reset(_editor);
+    }
+    
+    inline bool pageLoadHadNetworkError (const String& errorInfo) override;
+    
+    std::unique_ptr<SourceSamplerAudioProcessorEditor> editor;
+};
+
+
 class SourceSamplerAudioProcessorEditor  : public AudioProcessorEditor,
                                            public Button::Listener
 {
@@ -30,6 +48,8 @@ public:
     void paint (Graphics&) override;
     void resized() override;
     
+    bool hadBrowserError = false;
+    
     
 
 private:
@@ -37,9 +57,21 @@ private:
     // access the processor object that created it.
     SourceSamplerAudioProcessor& processor;
     #if !ELK_BUILD
-    WebBrowserComponent browser;
+    CustomWebBrowserComponent browser;  // ELK compialtion fails if using WebBrowserComponent
     #endif
-    TextButton openInBrowser; 
+    TextButton openInBrowser;
+    TextButton reloadUI;
+    Label explanation;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };
+
+
+bool CustomWebBrowserComponent::pageLoadHadNetworkError (const String& errorInfo)
+{
+    if (editor != nullptr){
+        editor->hadBrowserError = true;
+        editor->resized();
+    }
+    return true;
+}
