@@ -290,10 +290,10 @@ void HTTPServer::run()
         std::string stats = "";
         #if ELK_BUILD
             stats += "----------- System stats:\n";
-            stats += "CPU temp: " + exec("sudo vcgencmd measure_temp") + "\n";
+            stats += "CPU temp: " + exec("sudo vcgencmd measure_temp");
             stats += "Memory used (%): " + exec("free | grep Mem | awk '{print $3/$2 * 100.0}'");
-            stats += "CPU used (%): " + exec("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'") + "\n";
-            stats += "MSW:\nCPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + exec("more /proc/xenomai/sched/stat | grep sushi_b64") + "\n";
+            stats += "CPU used (%): " + exec("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'");
+            stats += "MSW:\nCPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + exec("more /proc/xenomai/sched/stat | grep sushi") + "\n";
             stats += "-----------\n";
         #else
             stats += "No system stats for this platform";
