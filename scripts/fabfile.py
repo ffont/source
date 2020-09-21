@@ -28,7 +28,6 @@ def send_elk(ctx):
             ("source_sushi_config.json", remote_dir),
             ("../server/app.py", remote_dir),
             ("../server/requirements.txt", remote_dir),
-            ("../server/templates/index.html", remote_dir + 'templates/'),
             ("../SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
         ]:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
