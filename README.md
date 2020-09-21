@@ -115,7 +115,7 @@ sudo journalctl -fu source-server
     
 ## Licenses
 
-Source is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/octopush/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
+Source is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/source/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
 
 * [juce](https://juce.com), available under GPLv3 license ([@76910b0](https://github.com/juce-framework/JUCE/tree/76910b0ebd7fd00d7d03b64beb6f5c96746cf8ce), v5.4.6)
 * [cpp-httplib](https://github.com/yhirose/cpp-httplib), available under MIT license ([@3da4a0a](https://github.com/yhirose/cpp-httplib/tree/3da4a0a))
