@@ -17,15 +17,16 @@
       <FILE id="NVOE4I" name="FreesoundAPI.cpp" compile="1" resource="0"
             file="Source/FreesoundAPI.cpp"/>
       <FILE id="P6tAZZ" name="FreesoundAPI.h" compile="0" resource="0" file="Source/FreesoundAPI.h"/>
+      <FILE id="wHELQH" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="IeSbhf" name="Downloader.h" compile="0" resource="0" file="Source/Downloader.h"/>
+      <FILE id="wRsXOS" name="ServerInterface.h" compile="0" resource="0"
+            file="Source/ServerInterface.h"/>
       <FILE id="NeAMrM" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="soXJt9" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
-      <FILE id="wHELQH" name="PluginEditor.cpp" compile="1" resource="0"
-            file="Source/PluginEditor.cpp"/>
-      <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
-      <FILE id="wRsXOS" name="ServerInterface.h" compile="0" resource="0"
-            file="Source/ServerInterface.h"/>
       <FILE id="zEQRKD" name="SourceSampler.cpp" compile="1" resource="0"
             file="Source/SourceSampler.cpp"/>
       <FILE id="tcetRZ" name="SourceSampler.h" compile="0" resource="0" file="Source/SourceSampler.h"/>

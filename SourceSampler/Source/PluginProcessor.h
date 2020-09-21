@@ -14,6 +14,7 @@
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
 #include "SourceSampler.h"
+#include "Downloader.h"
 #include "defines.h"
 
 
@@ -98,7 +99,8 @@ public:
     
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
-    void downloadSoundsAndSetSources(ValueTree soundsInfo);
+    void downloadSounds();
+    void loadDownloadedSoundsIntoSampler();
     void setSources();
     
     void addToMidiBuffer(int soundNumber, bool doNoteOff);
@@ -117,12 +119,13 @@ private:
     MidiBuffer midiFromEditor;
     long midicounter;
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
-    bool isQueryinAndDownloadingSounds = false;
+    bool isQueryDownloadingAndLoadingSounds = false;
     double startTime;
     bool aconnectWasRun = false;
     
     String query = "";
     String presetName = "empty";
+    ValueTree soundsToLoadInfo;
     ValueTree loadedSoundsInfo;
     bool midiOutForwardsMidiIn = true;
     
@@ -131,6 +134,8 @@ private:
     ServerInterface serverInterface;
     
     foleys::LevelMeterSource lms;  // Object to measure audio output levels
+    
+    Downloader downloader; // Object to download sounds in the background (or synchrounously)
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
