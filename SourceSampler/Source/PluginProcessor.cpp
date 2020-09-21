@@ -728,17 +728,17 @@ void SourceSamplerAudioProcessor::downloadSounds ()
     
     // Download the sounds within the plugin
     
-    std::vector<std::pair<String, String>> soudnIDsUrlsToDownload = {};
+    std::vector<std::pair<String, String>> soundIDsUrlsToDownload = {};
     for (int i=0; i<soundsToLoadInfo.getNumChildren(); i++){
         ValueTree soundInfo = soundsToLoadInfo.getChild(i);
         String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
         String url = soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL);
-        soudnIDsUrlsToDownload.emplace_back(soundID, url);
+        soundIDsUrlsToDownload.emplace_back(soundID, url);
     }
     
     // Download the sounds (if not already downloaded)
     DBG("Downloading new sounds...");
-    downloader.setSoundsToDownload(soudnIDsUrlsToDownload);
+    downloader.setSoundsToDownload(soundIDsUrlsToDownload);
     downloader.startThread(0);
     //loadDownloadedSoundsIntoSampler(); // No need to call this directly as the downloader will trigger an action when finished and sounds will be loaded
 

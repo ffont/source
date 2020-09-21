@@ -32,7 +32,7 @@ public:
    }
     
     void setSoundsToDownload(std::vector<std::pair<String, String>> _soundIdsUrlsToDownload){
-        soudnIDsUrlsToDownload = _soundIdsUrlsToDownload;
+        soundIDsUrlsToDownload = _soundIdsUrlsToDownload;
     }
     
     void run(){
@@ -42,9 +42,9 @@ public:
     
     void downloadAllSounds(){
         if (baseDownloadLocation.isDirectory()){
-            for (int i=0; i<soudnIDsUrlsToDownload.size();i++){
-                String soundID = soudnIDsUrlsToDownload[i].first;
-                String url = soudnIDsUrlsToDownload[i].second;
+            for (int i=0; i<soundIDsUrlsToDownload.size();i++){
+                String soundID = soundIDsUrlsToDownload[i].first;
+                String url = soundIDsUrlsToDownload[i].second;
                 File location = baseDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
                 if (!location.exists()){  // Dont' re-download if file already exists
                     std::unique_ptr<URL::DownloadTask> downloadTask = URL(url).downloadToFile(location, "");
@@ -69,7 +69,7 @@ public:
     }
 
 private:
-    std::vector<std::pair<String, String>> soudnIDsUrlsToDownload = {};
+    std::vector<std::pair<String, String>> soundIDsUrlsToDownload = {};
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allFinished = false;
     File baseDownloadLocation;
