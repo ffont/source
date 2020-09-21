@@ -15,6 +15,7 @@
 #include "ServerInterface.h"
 #include "SourceSampler.h"
 #include "Downloader.h"
+#include "LevelMeterSource.h"
 #include "defines.h"
 
 

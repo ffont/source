@@ -5,13 +5,15 @@
               companyWebsite="https://ritaandaurora.github.io" companyEmail="frederic.font@gmail.com"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/">
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Source">
       <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>
       <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
             file="Source/api_key.example.h"/>
       <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>
+      <FILE id="Z81MTA" name="LevelMeterSource.h" compile="0" resource="0"
+            file="3rdParty/ff_meters/LevelMeter/LevelMeterSource.h"/>
       <FILE id="wyWwO7" name="BinaryData.cpp" compile="1" resource="0" file="Source/BinaryData.cpp"/>
       <FILE id="xoVRFs" name="BinaryData.h" compile="0" resource="0" file="Source/BinaryData.h"/>
       <FILE id="NVOE4I" name="FreesoundAPI.cpp" compile="1" resource="0"
@@ -61,7 +63,6 @@
         <MODULEPATH id="juce_gui_extra" path="3rdParty/JUCE_ELK/modules"/>
         <MODULEPATH id="juce_osc" path="3rdParty/JUCE_ELK/modules"/>
         <MODULEPATH id="juce_dsp" path="3rdParty/JUCE_ELK/modules"/>
-        <MODULEPATH id="ff_meters" path="3rdParty"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <LINUX_MAKE targetFolder="Builds/ELKAudioOS" vstLegacyFolder="/code/VST2_SDK"
@@ -88,12 +89,10 @@
         <MODULEPATH id="juce_audio_basics"/>
         <MODULEPATH id="juce_osc" path="~/JUCE/modules"/>
         <MODULEPATH id="juce_dsp" path="~/JUCE/modules"/>
-        <MODULEPATH id="ff_meters" path="3rdParty"/>
       </MODULEPATHS>
     </LINUX_MAKE>
   </EXPORTFORMATS>
   <MODULES>
-    <MODULE id="ff_meters" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
