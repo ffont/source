@@ -161,7 +161,7 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
         loadedSoundsInfo = {};
         sampler.clearSounds();
         sampler.clearVoices();
-        sampler.setSamplerVoices(32);
+        sampler.setSamplerVoices(16);
     }
 }
 
@@ -317,11 +317,19 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
     state.setProperty(STATE_QUERY, query, nullptr);
     
-    // Add sounds info
-    state.appendChild(loadedSoundsInfo.createCopy(), nullptr);
-    
-    // Add sampler state (includes main settings and individual sampler sounds parameters)
+    // Add sampler main settings (not including individual sound settings because it will be in soundsData value tree)
     state.appendChild(sampler.getState(), nullptr);
+    
+    // Add sounds info (including sampler sound settings)
+    ValueTree soundsData = ValueTree(STATE_SOUNDS_INFO);
+    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
+        ValueTree soundInfo = loadedSoundsInfo.getChild(i).createCopy();  // Retrieve basic sound info
+        soundInfo.removeChild(soundInfo.getChildWithName(STATE_SAMPLER_SOUND), nullptr); // Remove existing sampler sound child so we replace it with updated version from sampler
+        ValueTree samplerSoundInfo = sampler.getStateForSound(i);
+        soundInfo.appendChild(samplerSoundInfo, nullptr);
+        soundsData.appendChild(soundInfo, nullptr);
+    }
+    state.appendChild(soundsData, nullptr);
     
     return state;
 }
@@ -391,21 +399,20 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     if (state.hasProperty(STATE_PRESET_NUMBER)){
         currentPresetIndex = (int)state.getProperty(STATE_PRESET_NUMBER);
     }
+    
+    // Now load sampler state (does not include sound properties)
+    ValueTree samplerState = state.getChildWithName(STATE_SAMPLER);
+    if (samplerState.isValid()){
+        sampler.loadState(samplerState);
+    }
 
-    // Load loaded sounds info and download them
+    // Now load sounds into the sampler: download if needed, create SamplerSound objects and adjust parameters following state info
     ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
     if (soundsInfo.isValid()){
         soundsToLoadInfo = soundsInfo;
         downloadSounds(true);  // Download sounds sync (sounds will most probably already be in disk)
         loadDownloadedSoundsIntoSampler();
     }
-    
-    // Now load sampler state, including sound properties
-    ValueTree samplerState = state.getChildWithName(STATE_SAMPLER);
-    if (samplerState.isValid()){
-        sampler.loadState(samplerState);
-    }
-
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -515,7 +522,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
         SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
         if (voice->isVoiceActive()){
             voiceActivations += "1,";
-            if (auto* playingSound = static_cast<SourceSamplerSound*> (voice->getCurrentlyPlayingSound().get()))
+            if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
                 voiceSoundIdxs += (String)playingSound->getIdx() + ",";
             } else {
@@ -570,13 +577,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
             if (soundIndex < sampler.getNumSounds()){
-                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
-                sound->setParameterByNameFloat(parameterName, parameterValue);
+                auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+                if (sound != nullptr){
+                    sound->setParameterByNameFloat(parameterName, parameterValue);
+                }
             }
         } else {
             for (int i=0; i<sampler.getNumSounds(); i++){
-                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(i).get());
-                sound->setParameterByNameFloat(parameterName, parameterValue);
+                auto* sound = sampler.getSourceSamplerSoundInPosition(i);  // Here we do want to get sound by sampler position (not loadedSoundsInfo idx) because we're iterating over them all
+                if (sound != nullptr){
+                    sound->setParameterByNameFloat(parameterName, parameterValue);
+                }
             }
         }
         
@@ -590,13 +601,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
             if (soundIndex < sampler.getNumSounds()){
-                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(soundIndex).get());
-                sound->setParameterByNameInt(parameterName, parameterValue);
+                auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+                if (sound != nullptr){
+                    sound->setParameterByNameInt(parameterName, parameterValue);
+                }
             }
         } else {
             for (int i=0; i<sampler.getNumSounds(); i++){
-                auto* sound = static_cast<SourceSamplerSound*> (sampler.getSound(i).get());
-                sound->setParameterByNameInt(parameterName, parameterValue);
+                auto* sound = sampler.getSourceSamplerSoundInPosition(i);  // Here we do want to get sound by sampler position (not loadedSoundsInfo idx) because we're iterating over them all
+                if (sound != nullptr){
+                    sound->setParameterByNameInt(parameterName, parameterValue);
+                }
             }
         }
         
@@ -685,7 +700,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     FreesoundClient client(FREESOUND_API_KEY);
     logToState("Querying new sounds for: " + query);
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_time2s", 0);
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_times", 0);
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");
         Array<FSSound> sounds = list.toArrayOfSounds();
@@ -795,40 +810,76 @@ void SourceSamplerAudioProcessor::loadDownloadedSoundsIntoSampler(){
     soundsToLoadInfo = soundsInfoDownloadedOk;  // Update stored sounds info to only include those that downloaded ok
     
     // Load sounds
-    setSources();  // Load the sounds in the sampler
-    loadedSoundsInfo = soundsInfoDownloadedOk.createCopy(); // Store loaded sounds info and...
+    setSourceSamplerSoundObjects();  // Load the sounds in the sampler, includes setting sound parameters from state (e.g. frequency cutoff, etc...)
+    loadedSoundsInfo = soundsInfoDownloadedOk; // Store loaded sounds info and...
     soundsToLoadInfo = {};  // ...clear "sounds to load" because sounds have already been loaded
     
     isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
 }
 
-void SourceSamplerAudioProcessor::setSources()
+void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx)
+{
+    int nSounds = soundsToLoadInfo.getNumChildren();
+    int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
+    
+    ValueTree soundInfo = soundsToLoadInfo.getChild(soundIdx);
+    String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
+    File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
+    if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
+        logToState("- Adding sound " + audioSample.getFullPathName());
+        
+        // 1) Create SourceSamplerSound object and add to sampler
+        std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
+        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(soundIdx, String(soundIdx), *reader, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
+        
+        // Add duration information to soundsToLoadInfo ValueTree (we do it here because this is a reliable value which also takes into account MAX_SAMPLE_LENGTH)
+        soundInfo.setProperty(STATE_SOUND_INFO_DURATION, justAddedSound->getLengthInSeconds(), nullptr);
+        
+        // 2) Load sound parameters to sampler
+        
+        // Get ValueTree with note parameters. If none in the preset data, create an empty one.
+        ValueTree samplerSoundParameters = soundInfo.getChildWithName(STATE_SAMPLER_SOUND);
+        if (!samplerSoundParameters.isValid()){ samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND); }
+        
+        // Check if midiRootNote is in the provided sound parameters, if not, add it with an appropriate value
+        int midiRootNote = -1;
+        for (int j=0; j<samplerSoundParameters.getNumChildren();j++){
+            if (samplerSoundParameters.getChild(j).getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString() == "midiRootNote"){
+                midiRootNote = (int)samplerSoundParameters.getChild(j).getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+            }
+        }
+        if (midiRootNote == -1){
+            // root note was not found on sound propperties, generate one assuming some nice sounds layout
+            samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                                            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                                            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                                            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
+                                            nullptr);
+        }
+        
+        // Check if midiNotes is in the provided sound sampelr state, if not, add it with an appropriate value
+        if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
+            BigInteger midiNotes;
+            midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
+            samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+        }
+        
+        // Now to load all parameters to the sound
+        justAddedSound->loadState(samplerSoundParameters);
+    } else {
+        logToState("- Skipping sound " + (String)soundID + " (no file found or file is empty)");
+    }
+}
+
+void SourceSamplerAudioProcessor::setSourceSamplerSoundObjects()
 {
     sampler.clearSounds();
-    
-    if(audioFormatManager.getNumKnownFormats() == 0){
-        audioFormatManager.registerBasicFormats();
-    }
-
-    int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
+    if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
     int nSounds = soundsToLoadInfo.getNumChildren();
-    
     logToState("Loading " + (String)nSounds + " sounds to sampler");
     if (nSounds > 0){
-        int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
-            String soundID = soundsToLoadInfo.getChild(i).getProperty(STATE_SOUND_INFO_ID).toString();
-            File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
-            if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
-                std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
-                int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2;
-                BigInteger midiNotes;
-                midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                logToState("- Adding sound " + audioSample.getFullPathName() + " with midi root note " + (String)midiNoteForNormalPitch);
-                sampler.addSound(new SourceSamplerSound(i, String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength, getSampleRate(), getBlockSize()));
-            } else {
-                logToState("- Skipping sound " + (String)soundID + " (no file found or file is empty)");
-            }
+            setSingleSourceSamplerSoundObject(i);
         }
     }
     logToState("Sampler sources configured with " + (String)sampler.getNumSounds() + " sounds and " + (String)sampler.getNumVoices() + " voices");
@@ -868,11 +919,6 @@ double SourceSamplerAudioProcessor::getStartTime(){
 String SourceSamplerAudioProcessor::getQuery()
 {
     return query;
-}
-
-ValueTree SourceSamplerAudioProcessor::getLoadedSoundsInfo()
-{
-    return loadedSoundsInfo;
 }
 
 void SourceSamplerAudioProcessor::timerCallback()

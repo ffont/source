@@ -158,7 +158,6 @@
         }
 
         function setSoundParameter(soundIdx, sliderElement){
-            console.log(soundIdx)
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
             sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'int;str;float')
@@ -261,15 +260,16 @@
             html += '<input type="range" id="' + soundIdx + '_maxPitchRatioMod" name="maxPitchRatioMod" min="0.0" max="2.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxPitchRatioMod: <span id="' + soundIdx + '_maxPitchRatioModLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxFilterCutoffMod" name="maxFilterCutoffMod" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterCutoffMod: <span id="' + soundIdx + '_maxFilterCutoffModLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR.attack" name="filterADSR.attack" min="0.0" max="20.0" value="0.1" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.attack: <span id="' + soundIdx + '_filterADSR.attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_filterADSR.attack" name="filterADSR.attack" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.attack: <span id="' + soundIdx + '_filterADSR.attackLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_filterADSR.decay" name="filterADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.decay: <span id="' + soundIdx + '_filterADSR.decayLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_filterADSR.sustain" name="filterADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.sustain: <span id="' + soundIdx + '_filterADSR.sustainLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_filterADSR.release" name="filterADSR.release" min="0.0" max="20.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.release: <span id="' + soundIdx + '_filterADSR.releaseLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxFilterADSRMod" name="maxFilterADSRMod" min="0.0" max="10.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxFilterADSRMod: <span id="' + soundIdx + '_maxFilterADSRModLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_midiRootNote" name="midiRootNote" min="0" max="127" value="64" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > midiRootNote: <span id="' + soundIdx + '_midiRootNoteLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_basePitch" name="basePitch" min="-36.0" max="36.0" value="0.0" step="1.0" oninput="setSoundParameter(' + soundIdx + ', this)" > basePitch: <span id="' + soundIdx + '_basePitchLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > startPosition: <span id="' + soundIdx + '_startPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > endPosition: <span id="' + soundIdx + '_endPositionLabel"></span><br>'
@@ -296,12 +296,19 @@
             }
         }
 
-        function createCardForSound(i, sound){ //sound, samplerSound = xml elements
-            var cardElementId = i + "_" + sound.getAttribute('soundId');
+        function createCardForSound(idx, sound){ //sound = xml element
+            var cardElementId = idx + "_" + sound.getAttribute('soundId');
             html = '<div class="controls_card" id="' + cardElementId + '">';
-            html += '<b>' + i + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + i + ')">play</button><button onclick="stopSound(' + i + ')">stop</button><br>';
+            html += '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
             html += sound.getAttribute('soundName') + '<br>';
-            html += generateSoundEditControls(i);
+            var licenseURL = sound.getAttribute('soundLicense');
+            var licenseName = "-";
+            if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
+            else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
+            else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
+            else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
+            html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+            html += generateSoundEditControls(idx);
             html += '</div>';
             return html;
         }
@@ -309,7 +316,9 @@
         function syncUIWithState(xmlState){
             
             var port = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('currentPort');
-            document.getElementById("portIndicator").innerHTML = '(' + port + ')';
+            if (document.getElementById("portIndicator").innerHTML != '(' + port + ')'){
+                document.getElementById("portIndicator").innerHTML = '(' + port + ')';
+            }
             
             var logMessages = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('logMessages').split(';');
             document.getElementById("log").innerHTML = '';
@@ -381,14 +390,12 @@
             // Check if the sound listing has changed
             var shouldRedoCards = false;
             var soundInfoElements = xmlState.getElementsByTagName('soundInfo');
-            var samplerSoundElements = xmlState.getElementsByTagName('SamplerSound');
-            var OldStateSoundInfoElements, OldStateSamplerSoundElements = undefined;
+            var OldStateSoundInfoElements = undefined;
 
             if (lastReceivedStateXml === undefined){
                 shouldRedoCards = true;
             } else {
                 OldStateSoundInfoElements = lastReceivedStateXml.getElementsByTagName('soundInfo');
-                OldStateSamplerSoundElements = lastReceivedStateXml.getElementsByTagName('SamplerSound');
                 
                 var newStateIds = "";
                 var oldStateIds = "";
@@ -417,7 +424,9 @@
             // Update sound sliders if slider was not moved recently
             var slidersToUpdate = [];
             for (var i = 0; i < soundInfoElements.length; i++) {
-                var samplerSound = samplerSoundElements[i];
+                var sound = soundInfoElements[i];
+                var samplerSound = sound.getElementsByTagName('SamplerSound')[0];
+                var soundIdx = samplerSound.getAttribute('soundIdx');
                 var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
                 for (var j = 0; j < samplerSoundParameters.length; j++) {
                     var parameter = samplerSoundParameters[j];

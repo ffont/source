@@ -17,16 +17,12 @@
 SourceSamplerSound::SourceSamplerSound (int _idx,
                                         const String& soundName,
                                         AudioFormatReader& source,
-                                        const BigInteger& notes,
-                                        int midiNoteForNormalPitch,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
     : idx (_idx),
       name (soundName),
       sourceSampleRate (source.sampleRate),
-      midiNotes (notes),
-      midiRootNote (midiNoteForNormalPitch),
       pluginSampleRate (_pluginSampleRate),
       pluginBlockSize (_pluginBlockSize)
       
@@ -101,7 +97,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
-    if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
+    if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
+    else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
     else if (name == "launchMode") { launchMode = jlimit(0, 2, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     // --> End auto-generated code C
@@ -109,6 +106,8 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
 
 ValueTree SourceSamplerSound::getState(){
     ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
+    state.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+    state.setProperty(STATE_SOUND_INFO_IDX, idx, nullptr);  // idx is set to the state sot hat the UI gets it, but never loaded because it is generated dynamically
     
     // --> Start auto-generated code B
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
@@ -182,6 +181,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterADSRMod, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "basePitch", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, basePitch, nullptr),
@@ -248,17 +252,23 @@ ValueTree SourceSamplerSound::getState(){
 
 void SourceSamplerSound::loadState(ValueTree soundState){
     
+    if (soundState.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
+        midiNotes.parseString(soundState.getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES).toString(), 16);
+    }
+    
     // Iterate over parameters and load them
-    for (int i=0; i<soundState.getNumChildren(); i++){
-        ValueTree parameter = soundState.getChild(i);
-        String type = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
-        String name = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
-        if (type == "float"){
-            float value = (float)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-            setParameterByNameFloat(name, value);
-        } else if (type == "int"){
-            int value = (int)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-            setParameterByNameInt(name, value);
+    if (soundState.isValid()){
+        for (int i=0; i<soundState.getNumChildren(); i++){
+            ValueTree parameter = soundState.getChild(i);
+            String type = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
+            String name = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
+            if (type == "float"){
+                float value = (float)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+                setParameterByNameFloat(name, value);
+            } else if (type == "int"){
+                int value = (int)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+                setParameterByNameInt(name, value);
+            }
         }
     }
 }
@@ -282,6 +292,10 @@ SourceSamplerVoice::SourceSamplerVoice() {
 }
 
 SourceSamplerVoice::~SourceSamplerVoice() {}
+
+SourceSamplerSound* SourceSamplerVoice::getCurrentlyPlayingSourceSamplerSound() const noexcept {
+    return static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get());
+}
 
 bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 {
@@ -399,7 +413,7 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
 {
     if (allowTailOff) {
         // This is the case when receiving a note off event
-        if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get())){
+        if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound()){
             if (playingSound->launchMode == LAUNCH_MODE_TRIGGER){
                 // We only trigger ADSRs release phase if we're in gate or loop launch modes, otherwise continue playing normally
             } else {
@@ -417,8 +431,7 @@ void SourceSamplerVoice::pitchWheelMoved (int newValue) {
     // 8192 = middle value
     // 16383 = max
     // 0 = min
-    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
-    {
+    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound()){
         if (newValue >= 8192){
             pitchBendModSemitones = (double)(((float)newValue - 8192.0f)/8192.0f) * playingSound->pitchBendRangeUp;
         } else {
@@ -429,7 +442,7 @@ void SourceSamplerVoice::pitchWheelMoved (int newValue) {
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
-    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Aftertouch modifies the playback speed up to an octave
         pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
@@ -443,7 +456,7 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 
 void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 {
-    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Channel aftertouch modifies the playback speed up to an octave
         pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
@@ -457,7 +470,7 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     
     if (controllerNumber == 1){
-        if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+        if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
         {
             // Channel aftertouch modifies the playback speed up to an octave
             pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
@@ -480,7 +493,7 @@ float interpolateSample (float samplePosition, const float* const signal)
 //==============================================================================
 void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
 {
-    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Do some preparation
         int originalNumSamples = numSamples; // user later for filter processing
@@ -640,7 +653,7 @@ void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 
 float SourceSamplerVoice::getPlayingPositionPercentage()
 {
-    if (auto* playingSound = static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get()))
+    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
     {
         return (float)sourceSamplePosition/(float)playingSound->getLengthInSamples();
     }

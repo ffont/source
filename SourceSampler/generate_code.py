@@ -143,8 +143,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '            '
-    code_dict['../../server/templates/index.html'] = {}
-    code_dict['../../server/templates/index.html']['A'] = current_code
+    code_dict['../Resources/index.html'] = {}
+    code_dict['../Resources/index.html']['A'] = current_code
 
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))

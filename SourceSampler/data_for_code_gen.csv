@@ -4,10 +4,11 @@ filterRessonance;float;0;1;0;
 maxPitchRatioMod;float;0;2;0.1;semitones
 maxFilterCutoffMod;float;0;100;10;
 gain;float;-80;12;-10;db
-ampADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;
-filterADSR;adsr;;;0.1f, 0.0f, 1.0f, 1.0f;
+ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
+filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
 maxFilterADSRMod;float;0;10;1;
-basePitch;float;-36;36;0;semitones
+midiRootNote;int;0;127;64;midi note that will play the sound at original speed
+basePitch;float;-36;36;0;semitones (modifies midi root note)
 startPosition;float;0;1;0;percentage position
 endPosition;float;0;1;1;percentage position
 loopStartPosition;float;0;1;0;percentage position

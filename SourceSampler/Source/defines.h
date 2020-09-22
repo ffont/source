@@ -23,6 +23,8 @@
 #define HTTP_SERVER_LISTEN_PORT 8124
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 
+#define MAX_SAMPLE_LENGTH 300
+
 #define ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER "ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "ACTION_SET_SOUND_PARAMETER_FLOAT"
 #define ACTION_SET_SOUND_PARAMETER_INT "ACTION_SET_SOUND_PARAMETER_INT"
@@ -65,8 +67,10 @@
 #define STATE_SOUNDS_INFO "soundsInfo"
 #define STATE_SOUND_INFO "soundInfo"
 #define STATE_SOUND_INFO_ID "soundId"
+#define STATE_SOUND_INFO_IDX "soundIdx"  // This is the id of the sound in the Sampler object, nothing to do with Freesound
 #define STATE_SOUND_INFO_NAME "soundName"
 #define STATE_SOUND_INFO_USER "soundUser"
+#define STATE_SOUND_INFO_DURATION "soundDurationInSeconds"  // Set when sound loaded in buffer, not before
 #define STATE_SOUND_INFO_LICENSE "soundLicense"
 #define STATE_SOUND_INFO_OGG_DOWNLOAD_URL "soundOGGURL"
 #define STATE_SOUND_FS_SOUND_ANALYSIS "fsAnalysis"
@@ -92,6 +96,7 @@
 #define STATE_SAMPLER_SOUND_PARAMETER_TYPE "parameter_type"
 #define STATE_SAMPLER_SOUND_PARAMETER_NAME "parameter_name"
 #define STATE_SAMPLER_SOUND_PARAMETER_VALUE "parameter_value"
+#define STATE_SAMPLER_SOUND_MIDI_NOTES "midiNotes"
 
 #define GLOBAL_PERSISTENT_STATE "GlobalSettings"
 #define GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL "midiInChannel"

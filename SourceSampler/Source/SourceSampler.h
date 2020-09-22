@@ -26,21 +26,14 @@ public:
         @param name         a name for the sample
         @param source       the audio to load. This object can be safely deleted by the
                             caller after this constructor returns
-        @param midiNotes    the set of midi keys that this sound should be played on. This
-                            is used by the SynthesiserSound::appliesToNote() method
-        @param midiNoteForNormalPitch   the midi note at which the sample should be played
-                                        with its natural rate. All other notes will be pitched
-                                        up or down relative to this one
-        @param attackTimeSecs   the attack (fade-in) time, in seconds
-        @param releaseTimeSecs  the decay (fade-out) time, in seconds
         @param maxSampleLengthSeconds   a maximum length of audio to read from the audio
                                         source, in seconds
+        @param _pluginSampleRate  sample rate of the host plugin
+        @param _pluginBlockSize  block size of the host plugin
     */
     SourceSamplerSound (int _idx,
                         const String& name,
                         AudioFormatReader& source,
-                        const BigInteger& midiNotes,
-                        int midiNoteForNormalPitch,
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
@@ -79,14 +72,13 @@ private:
     //==============================================================================
     friend class SourceSamplerVoice;
     
-    int idx = -1;
+    int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
 
     String name;
     std::unique_ptr<AudioBuffer<float>> data;
     double sourceSampleRate;
     BigInteger midiNotes;
     int length = 0;
-    int midiRootNote = 0;
     
     double pluginSampleRate;
     int pluginBlockSize;
@@ -99,9 +91,10 @@ private:
     float maxPitchRatioMod = 0.1f;
     float maxFilterCutoffMod = 10.0f;
     float gain = -10.0f;
-    ADSR::Parameters ampADSR = {0.1f, 0.0f, 1.0f, 1.0f};
-    ADSR::Parameters filterADSR = {0.1f, 0.0f, 1.0f, 1.0f};
+    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 1.0f};
+    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 1.0f};
     float maxFilterADSRMod = 1.0f;
+    int midiRootNote = 64;
     float basePitch = 0.0f;
     float startPosition = 0.0f;
     float endPosition = 1.0f;
@@ -150,6 +143,8 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     
     float getPlayingPositionPercentage();
+    
+    SourceSamplerSound* getCurrentlyPlayingSourceSamplerSound() const noexcept;
 
 
 private:
@@ -247,8 +242,29 @@ public:
         fxChain.prepare (spec);
     }
     
+    SourceSamplerSound* getSourceSamplerSoundByIdx (int idx) const noexcept {
+        // Return the sound with the given idx (rember idx can be different than sound "child" number)
+        for (int i=0; i<getNumSounds(); i++){
+            auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
+            if (sound->getIdx() == idx){
+                return sound;
+            }
+        }
+        return nullptr;
+    }
+    
+    SourceSamplerSound* getSourceSamplerSoundInPosition (int i) const noexcept {
+        // Return the sound with the given idx (rember idx can be different than sound "child" number)
+        if (i<getNumSounds()){
+            return static_cast<SourceSamplerSound*> (getSound(i).get());
+        }
+        return nullptr;
+    }
+    
     //==============================================================================
     ValueTree getState(){
+        
+        // NOTE: this collects sampeler's state but excludes individual sounds' state (see getStateForSound to get state of a sound)
         
         ValueTree state = ValueTree(STATE_SAMPLER);
         
@@ -266,24 +282,21 @@ public:
         reverbParameters.setProperty(STATE_REVERB_FREEZEMODE, params.freezeMode, nullptr);
         state.appendChild(reverbParameters, nullptr);
         
-        // Add individual sound settings to state
-        ValueTree samplerSoundsState = ValueTree(STATE_SAMPLER_SOUNDS);
-        samplerSoundsState.setProperty(STATE_SAMPLER_NSOUNDS, getNumSounds(), nullptr);
-        for (int i=0; i<getNumSounds(); i++){
-            auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
-            samplerSoundsState.appendChild(sound->getState(), nullptr);
-        }
-        state.appendChild(samplerSoundsState, nullptr);
-        
         return state;
+    }
+    
+    ValueTree getStateForSound(int idx){
+        auto* sound = getSourceSamplerSoundByIdx(idx);  // This index corresponds to sound idx (ID) in the sampler, not to the sound position
+        if (sound != nullptr){  // Safety check to make sure we don't try to access a sound that does not exist
+            return sound->getState();
+        }
+        return ValueTree();  // Otherwise return empty ValueTree
     }
     
     void loadState(ValueTree samplerState){
         
-        // This should be called after having called "setSources" with the corresponding sounds
-        // This will set the individual sound parameters to the stored ones, but does no deal with
-        // loading specific sounds or downloading them. This also set "global" parameters.
-        
+        // NOTE: this loads the sampeler's state but excludes individual sounds' state (see loadStateForSound to load the state for a sound)
+                
         // Load number of voices
         if (samplerState.hasProperty(STATE_NUMVOICES)){
             int numVoices = (int)samplerState.getProperty(STATE_NUMVOICES);
@@ -315,19 +328,12 @@ public:
             auto& reverb = fxChain.get<reverbIndex>();
             reverb.setParameters(reverbParameters);
         }
-        
-        // Load individual sound settings
-        ValueTree samplerSoundsVT = samplerState.getChildWithName(STATE_SAMPLER_SOUNDS);
-        if (samplerSoundsVT.isValid()){
-            // NOTE: this assumes that the order of the sounds in the Sampler is the same order stored in the state ValueTree
-            // TODO: double check that the order is preserved!
-            for (int i=0; i<samplerSoundsVT.getNumChildren(); i++){
-                ValueTree soundState = samplerSoundsVT.getChild(i);
-                if (i<getNumSounds()){  // Safety check to make sure we don't try to modify sound that does not exist
-                    auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
-                    sound->loadState(soundState);
-                }
-            }
+    }
+    
+    void loadStateForSound(int idx, ValueTree soundState){
+        auto* sound = getSourceSamplerSoundByIdx(idx);  // This index corresponds to sound idx (ID) in the sampler, not to the sound position
+        if (sound != nullptr){  // Safety check to make sure we don't try to access a sound that does not exist
+            sound->loadState(soundState);
         }
     }
     

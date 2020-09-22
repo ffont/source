@@ -21,9 +21,9 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     addAndMakeVisible(browser);
     int port = processor.getServerInterfaceHttpPort();
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    browser.goToURL("https://localhost:" + (String)port  + "/index");
+    browser.goToURL("https://localhost:" + (String)port  + "/");
     #else
-    browser.goToURL("http://localhost:" + (String)port  + "/index");
+    browser.goToURL("http://localhost:" + (String)port  + "/");
     #endif
     #endif
     

@@ -102,13 +102,13 @@ public:
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     void downloadSounds(bool blocking);
     void loadDownloadedSoundsIntoSampler();
-    void setSources();
+    void setSingleSourceSamplerSoundObject(int soundIdx);
+    void setSourceSamplerSoundObjects();
     
     void addToMidiBuffer(int soundNumber, bool doNoteOff);
 
     double getStartTime();
     String getQuery();
-    ValueTree getLoadedSoundsInfo();
     
     void timerCallback() override;
     int getServerInterfaceHttpPort();

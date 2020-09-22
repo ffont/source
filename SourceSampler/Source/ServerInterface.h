@@ -263,7 +263,7 @@ void HTTPServer::run()
     httplib::Server server;
     #endif
     
-    server.Get("/index", [](const httplib::Request &, httplib::Response &res) {
+    server.Get("/", [](const httplib::Request &, httplib::Response &res) {
         String contents = String::fromUTF8 (BinaryData::index_html, BinaryData::index_htmlSize);
         res.set_content(contents.toStdString(), "text/html");
     });
