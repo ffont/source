@@ -57,6 +57,8 @@
 #define STATE_PRESET_NAME "presetName"
 #define STATE_PRESET_NUMBER "presetNumber"
 
+#define STATE_CURRENT_PORT "currentPort"
+
 #define STATE_QUERY "query"
 
 #define STATE_SOUNDS_INFO "soundsInfo"

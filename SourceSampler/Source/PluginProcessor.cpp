@@ -885,6 +885,7 @@ void SourceSamplerAudioProcessor::timerCallback()
     fullState.appendChild(presetState, nullptr);
     fullState.appendChild(globalSettings, nullptr);
     fullState.appendChild(volatileState, nullptr);
+    fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
     serverInterface.serializedAppState = fullState.toXmlString();
 }
 

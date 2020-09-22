@@ -308,6 +308,9 @@
 
         function syncUIWithState(xmlState){
             
+            var port = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('currentPort');
+            document.getElementById("portIndicator").innerHTML = '(' + port + ')';
+            
             var SourcePresetState = xmlState.getElementsByTagName('SourcePresetState')[0];
             var GlobalSettings = xmlState.getElementsByTagName('GlobalSettings')[0];
             var SamplerState = xmlState.getElementsByTagName('Sampler')[0];
@@ -480,7 +483,7 @@
 </head>
 
 <body>
-    <h1>Source, a Freesound-powered sampler</h1>
+    <h1>Source, a Freesound-powered sampler <span id="portIndicator"></span></h1>
     <span id="errorIndicator"></span><br>
 
     <div class="controls_card">
