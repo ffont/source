@@ -219,7 +219,7 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    DBG("Called prepareToPlay with sampleRate " << sampleRate << " and block size " << samplesPerBlock);
+    logToState("Called prepareToPlay with sampleRate " + (String)sampleRate + " and block size " + (String)samplesPerBlock);
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
     
     // Configure level measurer
@@ -262,7 +262,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // It is very ugly to do this here... should find an alternative!
     if (!aconnectWasRun){
         String aconnectCommandLine =  "aconnect " + String(ACONNECT_MIDI_INTERFACE_ID) + " " + String(ACONNECT_SUSHI_ID);
-        DBG("Calling aconnect to setup MIDI in to sushi connection");
+        logToState("Calling aconnect to setup MIDI in to sushi connection");
         exec(static_cast<const char*> (aconnectCommandLine.toUTF8()));
         aconnectWasRun = true;
     }
@@ -379,7 +379,7 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
 void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
 {
     // Load state informaiton form XML state
-    DBG("Loading state...");
+    logToState("Loading state...");
     
     // Set main stuff
     if (state.hasProperty(STATE_QUERY)){
@@ -676,18 +676,18 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float maxSoundLength)
 {
     if (isQueryDownloadingAndLoadingSounds){
-        DBG("Source is already busy querying and downloading sounds");
+        logToState("Source is already busy querying and downloading sounds");
     }
     
     query = textQuery;
     isQueryDownloadingAndLoadingSounds = true;
     
     FreesoundClient client(FREESOUND_API_KEY);
-    DBG("Querying new sounds for: " << query);
+    logToState("Querying new sounds for: " + query);
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_time2s", 0);
     if (list.getCount() > 0){
-        DBG("Query got " << list.getCount() << " results");
+        logToState("Query got " + (String)list.getCount() + " results");
         Array<FSSound> sounds = list.toArrayOfSounds();
         std::random_shuffle(sounds.begin(), sounds.end());
         sounds.resize(jmin(numSounds, list.getCount()));
@@ -720,7 +720,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         downloadSounds(true);  // Download sounds sync
         loadDownloadedSoundsIntoSampler(); // Need to call this if doing download sounds sync
     } else {
-        DBG("Query got no results...");
+        logToState("Query got no results...");
     }
 }
 
@@ -739,7 +739,7 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     }
     
     // Download the sounds (if not already downloaded)
-    DBG("Downloading new sounds...");
+    logToState("Downloading new sounds...");
     downloader.setSoundsToDownload(soundIDsUrlsToDownload);
     if (!blocking){
         downloader.startThread(0);
@@ -750,7 +750,7 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     #else
 
     // If inside ELK build, download the sounds with the python server as it seems to be much much faster
-    DBG("Sending download task to python server...");
+    logToState("Sending download task to python server...");
     URL url = URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds");
     
     String urlsParam = "";
@@ -773,9 +773,9 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     {
         //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
         String resp = stream->readEntireStreamAsString();
-        DBG("Response with " << statusCode << ": " << resp);
+        logToState("Response with " + (String)statusCode + ": " + resp);
     } else {
-        DBG("Downloading in server failed!");
+        logToState("Downloading in server failed!");
     }
     
     loadDownloadedSoundsIntoSampler();
@@ -813,7 +813,7 @@ void SourceSamplerAudioProcessor::setSources()
     int maxSampleLength = 20;  // This is unrelated to the maxSoundLength of the makeQueryAndLoadSounds method
     int nSounds = soundsToLoadInfo.getNumChildren();
     
-    DBG("Loading " << nSounds << " sounds to sampler");
+    logToState("Loading " + (String)nSounds + " sounds to sampler");
     if (nSounds > 0){
         int nNotesPerSound = 128 / nSounds;
         for (int i = 0; i < nSounds; i++) {
@@ -824,14 +824,14 @@ void SourceSamplerAudioProcessor::setSources()
                 int midiNoteForNormalPitch = i * nNotesPerSound + nNotesPerSound / 2;
                 BigInteger midiNotes;
                 midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                DBG("- Adding sound " << audioSample.getFullPathName() << " with midi root note " << midiNoteForNormalPitch);
+                logToState("- Adding sound " + audioSample.getFullPathName() + " with midi root note " + (String)midiNoteForNormalPitch);
                 sampler.addSound(new SourceSamplerSound(i, String(i), *reader, midiNotes, midiNoteForNormalPitch, maxSampleLength, getSampleRate(), getBlockSize()));
             } else {
-                DBG("- Skipping sound " << soundID << " (no file found or file is empty)");
+                logToState("- Skipping sound " + (String)soundID + " (no file found or file is empty)");
             }
         }
     }
-    DBG("Sampler sources configured with " << sampler.getNumSounds() << " sounds and " << sampler.getNumVoices() << " voices");
+    logToState("Sampler sources configured with " + (String)sampler.getNumSounds() + " sounds and " + (String)sampler.getNumVoices() + " voices");
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundNumber, bool doNoteOff)
@@ -886,6 +886,7 @@ void SourceSamplerAudioProcessor::timerCallback()
     fullState.appendChild(globalSettings, nullptr);
     fullState.appendChild(volatileState, nullptr);
     fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
+    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
     serverInterface.serializedAppState = fullState.toXmlString();
 }
 
@@ -897,6 +898,24 @@ int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
     #else
     return 0;
     #endif
+}
+
+void SourceSamplerAudioProcessor::logToState(const String& message)
+{
+    DBG(message);
+    
+    recentLogMessages.push_back(message);  // Add a new element at the end
+    if (recentLogMessages.size() > 50){
+        // Keep only the last 20
+        std::vector<String>::const_iterator first = recentLogMessages.end() - 20;
+        std::vector<String>::const_iterator last = recentLogMessages.end();
+        std::vector<String> newVec(first, last);
+        recentLogMessages = newVec;
+    }
+    recentLogMessagesSerialized = "";
+    for (int i=0; i<recentLogMessages.size();i++){
+        recentLogMessagesSerialized += recentLogMessages[i] +  ";";
+    }
 }
 
 

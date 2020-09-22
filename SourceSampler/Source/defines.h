@@ -58,6 +58,7 @@
 #define STATE_PRESET_NUMBER "presetNumber"
 
 #define STATE_CURRENT_PORT "currentPort"
+#define STATE_LOG_MESSAGES "logMessages"
 
 #define STATE_QUERY "query"
 

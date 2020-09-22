@@ -137,6 +137,10 @@ private:
     
     Downloader downloader; // Object to download sounds in the background (or synchrounously)
     
+    void logToState(const String& message);
+    std::vector<String> recentLogMessages = {};
+    String recentLogMessagesSerialized = "";
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };
