@@ -391,20 +391,21 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     if (state.hasProperty(STATE_PRESET_NUMBER)){
         currentPresetIndex = (int)state.getProperty(STATE_PRESET_NUMBER);
     }
-    
+
     // Load loaded sounds info and download them
     ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
     if (soundsInfo.isValid()){
         soundsToLoadInfo = soundsInfo;
-        downloadSounds();
-        //loadDownloadedSoundsIntoSampler();  // No need to call this as this will be called by the downloader when it finishes
+        downloadSounds(true);  // Download sounds sync (sounds will most probably already be in disk)
+        loadDownloadedSoundsIntoSampler();
     }
     
-    // Set the rest of sampler parameters
+    // Now load sampler state, including sound properties
     ValueTree samplerState = state.getChildWithName(STATE_SAMPLER);
     if (samplerState.isValid()){
         sampler.loadState(samplerState);
     }
+
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -716,13 +717,14 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             soundsInfo.appendChild(soundInfo, nullptr);
         }
         soundsToLoadInfo = soundsInfo;
-        downloadSounds();
+        downloadSounds(true);  // Download sounds sync
+        loadDownloadedSoundsIntoSampler(); // Need to call this if doing download sounds sync
     } else {
         DBG("Query got no results...");
     }
 }
 
-void SourceSamplerAudioProcessor::downloadSounds ()
+void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
 {
     #if !ELK_BUILD
     
@@ -739,9 +741,12 @@ void SourceSamplerAudioProcessor::downloadSounds ()
     // Download the sounds (if not already downloaded)
     DBG("Downloading new sounds...");
     downloader.setSoundsToDownload(soundIDsUrlsToDownload);
-    downloader.startThread(0);
-    //loadDownloadedSoundsIntoSampler(); // No need to call this directly as the downloader will trigger an action when finished and sounds will be loaded
-
+    if (!blocking){
+        downloader.startThread(0);
+    } else {
+        downloader.downloadAllSounds();
+    }
+        
     #else
 
     // If inside ELK build, download the sounds with the python server as it seems to be much much faster
@@ -787,11 +792,13 @@ void SourceSamplerAudioProcessor::loadDownloadedSoundsIntoSampler(){
             soundsInfoDownloadedOk.appendChild(soundInfo.createCopy(), nullptr);
         }
     }
-    
     soundsToLoadInfo = soundsInfoDownloadedOk;  // Update stored sounds info to only include those that downloaded ok
+    
+    // Load sounds
     setSources();  // Load the sounds in the sampler
     loadedSoundsInfo = soundsInfoDownloadedOk.createCopy(); // Store loaded sounds info and...
     soundsToLoadInfo = {};  // ...clear "sounds to load" because sounds have already been loaded
+    
     isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
 }
 

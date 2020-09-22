@@ -100,7 +100,7 @@ public:
     
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
-    void downloadSounds();
+    void downloadSounds(bool blocking);
     void loadDownloadedSoundsIntoSampler();
     void setSources();
     
