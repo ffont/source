@@ -413,8 +413,8 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
 {
     if (allowTailOff) {
         // This is the case when receiving a note off event
-        if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound()){
-            if (playingSound->launchMode == LAUNCH_MODE_TRIGGER){
+        if (auto* sound = getCurrentlyPlayingSourceSamplerSound()){
+            if (sound->launchMode == LAUNCH_MODE_TRIGGER){
                 // We only trigger ADSRs release phase if we're in gate or loop launch modes, otherwise continue playing normally
             } else {
                 adsr.noteOff();
@@ -431,24 +431,24 @@ void SourceSamplerVoice::pitchWheelMoved (int newValue) {
     // 8192 = middle value
     // 16383 = max
     // 0 = min
-    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound()){
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound()){
         if (newValue >= 8192){
-            pitchBendModSemitones = (double)(((float)newValue - 8192.0f)/8192.0f) * playingSound->pitchBendRangeUp;
+            pitchBendModSemitones = (double)(((float)newValue - 8192.0f)/8192.0f) * sound->pitchBendRangeUp;
         } else {
-            pitchBendModSemitones = (double)((8192.0f - (float)newValue)/8192.0f) * playingSound->pitchBendRangeDown * -1;
+            pitchBendModSemitones = (double)((8192.0f - (float)newValue)/8192.0f) * sound->pitchBendRangeDown * -1;
         }
     }
 }
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
-    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Aftertouch modifies the playback speed up to an octave
-        pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
+        pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
         
         // Aftertouch also modifies filter cutoff
-        filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
+        filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
     }
 }
@@ -456,13 +456,13 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 
 void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 {
-    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Channel aftertouch modifies the playback speed up to an octave
-        pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
+        pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
         
         // Aftertouch also modifies filter cutoff
-        filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
+        filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
     }
 }
@@ -470,13 +470,13 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     
     if (controllerNumber == 1){
-        if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
+        if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
         {
             // Channel aftertouch modifies the playback speed up to an octave
-            pitchRatioMod = playingSound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
+            pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
             
             // Aftertouch also modifies filter cutoff
-            filterCutoffMod = playingSound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
+            filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
             processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
         }
     }
@@ -493,17 +493,17 @@ float interpolateSample (float samplePosition, const float* const signal)
 //==============================================================================
 void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
 {
-    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Do some preparation
         int originalNumSamples = numSamples; // user later for filter processing
         float previousMasterGain = masterGain;
         float previousPitchRatioMod = pitchRatioMod;
         float previousPan = pan;
-        updateParametersFromSourceSamplerSound(playingSound);
+        updateParametersFromSourceSamplerSound(sound);
         
         // Sampler reading and rendering
-        auto& data = *playingSound->data;
+        auto& data = *sound->data;
         const float* const inL = data.getReadPointer (0);
         const float* const inR = data.getNumChannels() > 1 ? data.getReadPointer (1) : nullptr;
 
@@ -516,16 +516,16 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float l = interpolateSample(sourceSamplePosition, inL);
             float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR) : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if (playingSound->launchMode == LAUNCH_MODE_LOOP && playingSound->loopXFadeNSamples > 0){
-                if (playingSound->reverse == 0){
+            if (sound->launchMode == LAUNCH_MODE_LOOP && sound->loopXFadeNSamples > 0){
+                if (sound->reverse == 0){
                     // Normal playing mode: do loop when reahing fixedLoopEndPositionSample
                     float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
-                    if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < playingSound->loopXFadeNSamples)){
+                    if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < sound->loopXFadeNSamples)){
                         if (ENABLE_DEBUG_BUFFER == 1){
-                            startRecordingToDebugBuffer((int)playingSound->loopXFadeNSamples * 2);
+                            startRecordingToDebugBuffer((int)sound->loopXFadeNSamples * 2);
                         }
                         
-                        // We are approaching loopEndPositionSample and are closer than playingSound->loopXFadeNSamples
+                        // We are approaching loopEndPositionSample and are closer than sound->loopXFadeNSamples
                         float lcrossfadeSample = 0.0;
                         float rcrossfadeSample = 0.0;
                         float crossfadeGain = 0.0;
@@ -533,7 +533,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         if (crossfadePos > 0){
                             lcrossfadeSample = interpolateSample(crossfadePos, inL);
                             rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
-                            crossfadeGain = (float)samplesToLoopEndPositionSample/playingSound->loopXFadeNSamples;
+                            crossfadeGain = (float)samplesToLoopEndPositionSample/sound->loopXFadeNSamples;
                         } else {
                             // If position is negative, there is no data to do the crossfade
                         }
@@ -545,16 +545,16 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 } else {
                     // Reverse playing mode: do loop when reahing fixedLoopEndPositionSample
                     int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
-                    if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < playingSound->loopXFadeNSamples)){
-                        // We are approaching loopStartPositionSample (going backwards) and are closer than playingSound->loopXFadeNSamples
+                    if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < sound->loopXFadeNSamples)){
+                        // We are approaching loopStartPositionSample (going backwards) and are closer than sound->loopXFadeNSamples
                         float lcrossfadeSample = 0.0;
                         float rcrossfadeSample = 0.0;
                         float crossfadeGain = 0.0;
                         float crossfadePos = (float)fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
-                        if (crossfadePos < playingSound->length){
+                        if (crossfadePos < sound->length){
                             lcrossfadeSample = interpolateSample(crossfadePos, inL);
                             rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
-                            crossfadeGain = (float)samplesToLoopStartPositionSample/playingSound->loopXFadeNSamples;
+                            crossfadeGain = (float)samplesToLoopStartPositionSample/sound->loopXFadeNSamples;
                         } else {
                             // If position is above playing sound length, there is no data to do the crossfade
                         }
@@ -593,7 +593,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
             // Advance source sample position for next iteration
             float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));;
-            if (playingSound->reverse == 0){
+            if (sound->reverse == 0){
                 sourceSamplePosition += pitchRatio + interpolatedPitchRatioMod;
             } else {
                 sourceSamplePosition -= pitchRatio + interpolatedPitchRatioMod;
@@ -601,9 +601,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             
             // Check if we're reaching the end of the sound
             bool noteStoppedHard = false;
-            if (playingSound->launchMode == LAUNCH_MODE_LOOP){
+            if (sound->launchMode == LAUNCH_MODE_LOOP){
                 // If looping is enabled, check whether we should loop
-                if (playingSound->reverse == 0){
+                if (sound->reverse == 0){
                     if (sourceSamplePosition > fixedLoopEndPositionSample){
                         sourceSamplePosition = fixedLoopStartPositionSample;
                     }
@@ -615,7 +615,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             } else {
                 // If not looping, check whether we've reached the end of the file
                 bool endReached = false;
-                if (playingSound->reverse == 0){
+                if (sound->reverse == 0){
                     if (sourceSamplePosition > endPositionSample){
                         endReached = true;
                     }
@@ -653,9 +653,9 @@ void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 
 float SourceSamplerVoice::getPlayingPositionPercentage()
 {
-    if (auto* playingSound = getCurrentlyPlayingSourceSamplerSound())
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
-        return (float)sourceSamplePosition/(float)playingSound->getLengthInSamples();
+        return (float)sourceSamplePosition/(float)sound->getLengthInSamples();
     }
     return -1.0;
 }
