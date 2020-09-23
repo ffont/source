@@ -160,7 +160,6 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
         query = "";
         loadedSoundsInfo = {};
         sampler.clearSounds();
-        sampler.clearVoices();
         sampler.setSamplerVoices(16);
     }
 }
@@ -659,10 +658,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_SET_POLYPHONY))){
         int numVoices = message.substring(String(ACTION_SET_POLYPHONY).length() + 1).getIntValue();
         sampler.setSamplerVoices(numVoices);
-        
+
     }
-    
-    
 }
 
 

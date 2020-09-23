@@ -148,6 +148,9 @@ public:
 
 
 private:
+    int pluginBlockSize = 0;
+    int pluginNumChannelsSize = 0;
+    
     //==============================================================================
     // Sample reading and rendering
     double pitchRatio = 0;
@@ -167,6 +170,8 @@ private:
         masterGainIndex
     };
     juce::dsp::ProcessorChain<juce::dsp::LadderFilter<float>, juce::dsp::Gain<float>> processorChain;
+    AudioBuffer<float> tmpVoiceBuffer;  // used for processing voice contents in each process block, then adding to the main output buffer
+    
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;
@@ -181,7 +186,6 @@ private:
     
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
-    
     
     AudioBuffer<float> debugBuffer;  // Used only to store samples for debugging purposes
     int debugBufferCurrentPosition = 0;
@@ -219,10 +223,25 @@ public:
     
     void setSamplerVoices(int nVoices)
     {
+        // Clear existing voices and re-create new ones
         clearVoices();
-        
         for (auto i = 0; i < jmin(maxNumVoices, nVoices); ++i)
             addVoice (new SourceSamplerVoice);
+        
+        // Prepare newly created voices if processing specs are given (re-prepare voices)
+        if (currentNumChannels > 0 ){
+            // This is a big UGLY, might find a better fix for the future. The issue is that the sampler.prepare method (which in its turn
+            // calls voices' prepare method) is only called once when plugin processor hits "prepareToPlay". Later on, if we remove and re-create
+            // voices, these are never prepared and the tmpVoiceBuffer is never allocated (and processing chain is not prepared either). To
+            // fix this, we store processing specs in the sampler object (num channels, sample rate, block size) so that everytime voice
+            // objects are deleted and created, we can already prepare them. These specs are stored the first time "sampler.prepare" is called
+            // because it is the first time sampler actually knows about what sample rate, block size and num channels shold work on.
+            // HOWEVER, when we call "sampler.setSamplerVoices" the first time, the processing specs have not been stored yet, so we need to
+            // add a check here to not call prepare on the voices with the default values of currentBlockSize, currentNumChannels and
+            // getSampleRate() whcih are meaningless (=0) and will throw errors.
+            for (auto* v : voices)
+                dynamic_cast<SourceSamplerVoice*> (v)->prepare ({ getSampleRate(), (juce::uint32) currentBlockSize, (juce::uint32) currentNumChannels });
+        }
         
         setNoteStealingEnabled (true);
     }
@@ -234,6 +253,9 @@ public:
     
     void prepare (const juce::dsp::ProcessSpec& spec) noexcept
     {
+        // Store current processing specs to be later used for voice processing and re-preparing
+        currentNumChannels = spec.numChannels;
+        currentBlockSize = spec.maximumBlockSize;
         setCurrentPlaybackSampleRate (spec.sampleRate);
 
         for (auto* v : voices)
@@ -402,5 +424,7 @@ private:
         reverbIndex
     };
     
+    int currentNumChannels = 0;
+    int currentBlockSize = 0;
     juce::dsp::ProcessorChain<juce::dsp::Reverb> fxChain;
 };

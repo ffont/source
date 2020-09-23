@@ -288,8 +288,7 @@ int SourceSamplerSound::getIdx(){
 // --------- implementation of SourceSamplerVoice
 
 
-SourceSamplerVoice::SourceSamplerVoice() {
-}
+SourceSamplerVoice::SourceSamplerVoice() {}
 
 SourceSamplerVoice::~SourceSamplerVoice() {}
 
@@ -506,10 +505,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         auto& data = *sound->data;
         const float* const inL = data.getReadPointer (0);
         const float* const inR = data.getNumChannels() > 1 ? data.getReadPointer (1) : nullptr;
-
-        float* outL = outputBuffer.getWritePointer (0, startSample);
-        float* outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getWritePointer (1, startSample) : nullptr;
-
+        
+        tmpVoiceBuffer.clear();
+        float* outL = tmpVoiceBuffer.getWritePointer (0, 0);
+        float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? outputBuffer.getWritePointer (1, 0) : nullptr;
+        
         while (--numSamples >= 0)
         {
             // Calculate L and R samples using basic interpolation
@@ -638,16 +638,23 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
         }
 
-        // Filter and master gain processing
-        auto block = juce::dsp::AudioBlock<float> (outputBuffer);
-        auto blockToUse = block.getSubBlock ((size_t) startSample, (size_t) originalNumSamples);
+        // Apply filter
+        auto block = juce::dsp::AudioBlock<float> (tmpVoiceBuffer);
+        auto blockToUse = block.getSubBlock (0, (size_t) originalNumSamples);
         auto contextToUse = juce::dsp::ProcessContextReplacing<float> (blockToUse);
         processorChain.process (contextToUse);
+        
+        // Add voice signal (including filter) to the output buffer
+        juce::dsp::AudioBlock<float> (outputBuffer)
+            .getSubBlock ((size_t) startSample, (size_t) originalNumSamples)
+            .add (blockToUse);
     }
 }
 
 void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    std::cout << "Preparing voice "<< std::endl;
+    tmpVoiceBuffer = AudioBuffer<float>(spec.numChannels, spec.maximumBlockSize);
     processorChain.prepare (spec);
 }
 
