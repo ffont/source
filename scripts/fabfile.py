@@ -108,6 +108,17 @@ def compile_macos(ctx):
 
 
 @task
+def compile_projucer_macos(ctx):
+
+    # Compile the projucer version compatible with source
+    print('Compiling Projucer for macOS platform...')
+    print('*********************************************\n')
+    os.system("cd ../SourceSampler/3rdParty/JUCE_ELK/extras/Projucer/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
+
+    print('\nAll done!')
+
+
+@task
 def compile(ctx):
     compile_macos(ctx)
     compile_elk(ctx)
