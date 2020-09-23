@@ -62,9 +62,9 @@ void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
     {
         int port = processor.getServerInterfaceHttpPort();
         #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-        URL("https://localhost:" + (String)port + "/index").launchInDefaultBrowser();
+        URL("https://localhost:" + (String)port + "/").launchInDefaultBrowser();
         #else
-        URL("http://localhost:" + (String)port + "/index").launchInDefaultBrowser();
+        URL("http://localhost:" + (String)port + "/").launchInDefaultBrowser();
         #endif
     } else if (button == &reloadUI)
     {
@@ -72,9 +72,9 @@ void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
             hadBrowserError = false; // Reset browser error property
             int port = processor.getServerInterfaceHttpPort();
             #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            browser.goToURL("https://localhost:" + (String)port  + "/index");
+            browser.goToURL("https://localhost:" + (String)port  + "/");
             #else
-            browser.goToURL("http://localhost:" + (String)port  + "/index");
+            browser.goToURL("http://localhost:" + (String)port  + "/");
             #endif
             resized();
         #endif

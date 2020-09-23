@@ -508,7 +508,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         
         tmpVoiceBuffer.clear();
         float* outL = tmpVoiceBuffer.getWritePointer (0, 0);
-        float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? outputBuffer.getWritePointer (1, 0) : nullptr;
+        float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? tmpVoiceBuffer.getWritePointer (1, 0) : nullptr;
         
         while (--numSamples >= 0)
         {
@@ -653,7 +653,6 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
 void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 {
-    std::cout << "Preparing voice "<< std::endl;
     tmpVoiceBuffer = AudioBuffer<float>(spec.numChannels, spec.maximumBlockSize);
     processorChain.prepare (spec);
 }
