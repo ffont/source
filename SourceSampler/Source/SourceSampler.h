@@ -275,6 +275,20 @@ public:
         return nullptr;
     }
     
+    void cleartSourceSamplerSoundByIdx (int idx) {
+        int indexInSamplerSoundsList = -1;
+        for (int i=0; i<getNumSounds(); i++){
+            auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
+            if (sound->getIdx() == idx){
+                indexInSamplerSoundsList = i;
+                break;
+            }
+        }
+        if (indexInSamplerSoundsList > -1){
+            removeSound(indexInSamplerSoundsList);
+        }
+    }
+    
     SourceSamplerSound* getSourceSamplerSoundInPosition (int i) const noexcept {
         // Return the sound with the given idx (rember idx can be different than sound "child" number)
         if (i<getNumSounds()){
@@ -312,7 +326,7 @@ public:
         if (sound != nullptr){  // Safety check to make sure we don't try to access a sound that does not exist
             return sound->getState();
         }
-        return ValueTree();  // Otherwise return empty ValueTree
+        return ValueTree(STATE_SAMPLER_SOUND);  // Otherwise return empty ValueTree
     }
     
     void loadState(ValueTree samplerState){

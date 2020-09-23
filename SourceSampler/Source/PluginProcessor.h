@@ -101,6 +101,7 @@ public:
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
     void downloadSounds(bool blocking);
+    bool allSoundsFinishedDownloading();
     void loadDownloadedSoundsIntoSampler();
     void setSingleSourceSamplerSoundObject(int soundIdx);
     void setSourceSamplerSoundObjects();
@@ -120,12 +121,12 @@ private:
     MidiBuffer midiFromEditor;
     long midicounter;
     bool isQueryDownloadingAndLoadingSounds = false;
+    double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
     bool aconnectWasRun = false;
-    
+    ;
     String query = "";
     String presetName = "empty";
-    ValueTree soundsToLoadInfo;
     ValueTree loadedSoundsInfo;
     bool midiOutForwardsMidiIn = true;
     

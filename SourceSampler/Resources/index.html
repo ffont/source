@@ -66,7 +66,7 @@
         var updateSystemStatsTimer;
         var lastReceivedStateText;
         var lastReceivedStateXml;
-        var updateStateInterval = 50;
+        var updateStateInterval = 100;
 
         document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('allSoundsEditor').innerHTML = '<b>All sounds</b><br>' + generateSoundEditControls(-1);
@@ -299,18 +299,44 @@
         function createCardForSound(idx, sound){ //sound = xml element
             var cardElementId = idx + "_" + sound.getAttribute('soundId');
             html = '<div class="controls_card" id="' + cardElementId + '">';
-            html += '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
-            html += sound.getAttribute('soundName') + '<br>';
-            var licenseURL = sound.getAttribute('soundLicense');
-            var licenseName = "-";
-            if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
-            else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
-            else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
-            else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-            html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
-            html += generateSoundEditControls(idx);
+            html = '<div id="soundCardInfo_' + idx + '></div>';
+            html = '<div id="soundCardControls_' + idx + '></div>';
             html += '</div>';
             return html;
+        }
+    
+        function updateCardForSound(idx, sound){ //sound = xml element
+            var soundInfoElement = document.getElementById('soundCardInfo_' + idx);
+            var soundControlsElement = document.getElementById('soundCardControls_' + idx);
+            var downloadProgress = sound.getAttribute('downloadProgress');
+            if (downloadProgress !== 100){
+                // Sound not yet loaded, show download progress
+                html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><br>';
+                console.log(downloadProgress)
+                if (!downloadProgress){
+                    downloadProgress = 0;
+                }
+                html += 'Downloading: <span id="downloadProgress_' + idx + '">' + downloadProgress + '</span>%';
+                soundInfoElement.innerHTML = html;
+                
+            } else {
+                // Sound already loaded, show all info
+                html += '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
+                html += sound.getAttribute('soundName') + '<br>';
+                var licenseURL = sound.getAttribute('soundLicense');
+                var licenseName = "-";
+                if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
+                else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
+                else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
+                else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
+                html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+                soundInfoElement.innerHTML = html;
+                
+                if (soundControlsElement.innerHTML == ""){
+                    // If card does not yet have the controls, add them now
+                    soundControlsElement.innerHTML = generateSoundEditControls(idx);
+                }
+            }
         }
 
         function syncUIWithState(xmlState){
@@ -425,6 +451,8 @@
             var slidersToUpdate = [];
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var sound = soundInfoElements[i];
+                updateCardForSound(i, sound); // Update basic card details
+                
                 var samplerSound = sound.getElementsByTagName('SamplerSound')[0];
                 var soundIdx = samplerSound.getAttribute('soundIdx');
                 var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');

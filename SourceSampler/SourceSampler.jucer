@@ -40,7 +40,7 @@
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" vstLegacyFolder="../../VST_SDK/VST2_SDK"
                customPList="&lt;plist&gt;&#10;&lt;dict&gt;&#10;&lt;key&gt;NSAppTransportSecurity&lt;/key&gt;&#10;&lt;dict&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoads&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsForMedia&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsInWebContent&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsLocalNetworking&lt;/key&gt;&#10;    &lt;true/&gt;&#10;&lt;/dict&gt;&#10;&lt;/dict&gt;&#10;&lt;/plist&gt;"
-               prebuildCommand="if [[ $TARGET_NAME == *&quot;Shared Code&quot;* ]]; then&#10;    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/&#10;    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO&#10;    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData&#10;fi"
+               prebuildCommand="if [[ $TARGET_NAME == *&quot;Shared Code&quot;* ]]; then&#10;    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/&#10;    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO&#10;    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData&#10;fi"
                extraCompilerFlags="-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include"
                extraLinkerFlags="-L/usr/local/opt/openssl/lib&#10;-lssl &#10;-lcrypto">
       <CONFIGURATIONS>

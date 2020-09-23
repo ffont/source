@@ -15,6 +15,7 @@
 
 
 class Downloader: public ActionBroadcaster,
+                  public URL::DownloadTask::Listener,
                   public Thread
 {
 public:
@@ -27,51 +28,43 @@ public:
         }
     }
     
-    void setBaseDownloadLocation(File _baseDownloadLocation){
-       baseDownloadLocation = _baseDownloadLocation;
-   }
-    
-    void setSoundsToDownload(std::vector<std::pair<String, String>> _soundIdsUrlsToDownload){
-        soundIDsUrlsToDownload = _soundIdsUrlsToDownload;
+    void setSoundsToDownload(std::vector<std::pair<File, String>> _soundTargetLocationsAndUrlsToDownload){
+        soundTargetLocationsAndUrlsToDownload = _soundTargetLocationsAndUrlsToDownload;
     }
     
     void run(){
         downloadAllSounds();
-        sendActionMessage(ACTION_FINISHED_DOWNLOADING_SOUNDS);
     }
     
     void downloadAllSounds(){
-        if (baseDownloadLocation.isDirectory()){
-            for (int i=0; i<soundIDsUrlsToDownload.size();i++){
-                String soundID = soundIDsUrlsToDownload[i].first;
-                String url = soundIDsUrlsToDownload[i].second;
-                File location = baseDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
-                if (!location.exists()){  // Dont' re-download if file already exists
-                    std::unique_ptr<URL::DownloadTask> downloadTask = URL(url).downloadToFile(location, "");
-                    downloadTasks.push_back(std::move(downloadTask));
-                }
-            }
-            
-            int64 startedWaitingTime = Time::getCurrentTime().toMilliseconds();
-            while (!allFinished){
-                allFinished = true;
-                for (int i=0; i<downloadTasks.size(); i++){
-                    if (!downloadTasks[i]->isFinished()){
-                        allFinished = false;
-                    }
-                }
-                if (Time::getCurrentTime().toMilliseconds() - startedWaitingTime > MAX_DOWNLOAD_WAITING_TIME_MS){
-                    // If more than 10 seconds, mark all as finished
-                    allFinished = true;
-                }
+        for (int i=0; i<soundTargetLocationsAndUrlsToDownload.size();i++){
+            File location = soundTargetLocationsAndUrlsToDownload[i].first;
+            String url = soundTargetLocationsAndUrlsToDownload[i].second;
+            if (!location.exists()){  // Dont' re-download if file already exists
+                std::unique_ptr<URL::DownloadTask> downloadTask = URL(url).downloadToFile(location, "", this);
+                downloadTasks.push_back(std::move(downloadTask));
+            } else {
+                // If sound already downloaded, show trigger action
+                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + location.getFullPathName();
+                sendActionMessage(actionMessage);
             }
         }
     }
-
+    
+    void finished(URL::DownloadTask *task, bool success){
+        String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + task->getTargetLocation().getFullPathName();
+        sendActionMessage(actionMessage);
+    }
+    
+    void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength){
+        String serializedParameters = task->getTargetLocation().getFullPathName() + SERIALIZATION_SEPARATOR + (String)(100*bytesDownloaded/totalLength) + SERIALIZATION_SEPARATOR;
+        String actionMessage = String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
+        sendActionMessage(actionMessage);
+    }
+    
 private:
-    std::vector<std::pair<String, String>> soundIDsUrlsToDownload = {};
+    std::vector<std::pair<File, String>> soundTargetLocationsAndUrlsToDownload = {};
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allFinished = false;
-    File baseDownloadLocation;
     
 };

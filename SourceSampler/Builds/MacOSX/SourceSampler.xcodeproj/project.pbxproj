@@ -1573,7 +1573,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		034D5AB0BCB3DF887A4A7B4F = {
 			isa = PBXAggregateTarget;
@@ -1608,7 +1608,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		EAEF4090DB790789CBE7A070 = {
 			isa = PBXResourcesBuildPhase;
@@ -1678,7 +1678,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		23C56F40D5954398F7F6627B = {
 			isa = PBXResourcesBuildPhase;
@@ -1748,7 +1748,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		EFE0B6F6159D9251020A363D = {
 			isa = PBXResourcesBuildPhase;
@@ -1829,7 +1829,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		CECE87B5F4D34E3012193FDA = {
 			isa = PBXResourcesBuildPhase;
@@ -1899,7 +1899,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Pre-build script";
 			shellPath = /bin/sh;
-			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../Resources ../../Source/ BinaryData\nfi";
+			shellScript = "if [[ $TARGET_NAME == *\"Shared Code\"* ]]; then\n    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/\n    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO\n    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData\nfi";
 		};
 		FB8B9E4DD15910E6C78DD33B = {
 			isa = PBXSourcesBuildPhase;
