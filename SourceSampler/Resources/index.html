@@ -8,6 +8,7 @@
         .cards_container_slide {
             overflow: scroll;
             white-space: nowrap;
+            vertical-align: top;
         }
 
         .controls_card {
@@ -53,10 +54,12 @@
 
         #individualSoundEditors{
             display: inline-block;
+            vertical-align: top;
         }
 
         #allSoundsEditor{
             display: inline-block;
+            vertical-align: top;
         }
     </style>
 
@@ -299,42 +302,42 @@
         function createCardForSound(idx, sound){ //sound = xml element
             var cardElementId = idx + "_" + sound.getAttribute('soundId');
             html = '<div class="controls_card" id="' + cardElementId + '">';
-            html = '<div id="soundCardInfo_' + idx + '></div>';
-            html = '<div id="soundCardControls_' + idx + '></div>';
+            html += '<div id="soundCardInfo_' + idx + '"></div>';
+            html += '<div id="soundCardControls_' + idx +'" style="display:none;">' + generateSoundEditControls(idx) + '</div>';
             html += '</div>';
             return html;
         }
     
         function updateCardForSound(idx, sound){ //sound = xml element
             var soundInfoElement = document.getElementById('soundCardInfo_' + idx);
-            var soundControlsElement = document.getElementById('soundCardControls_' + idx);
             var downloadProgress = sound.getAttribute('downloadProgress');
-            if (downloadProgress !== 100){
+            if (downloadProgress != 100){
                 // Sound not yet loaded, show download progress
                 html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><br>';
-                console.log(downloadProgress)
-                if (!downloadProgress){
+                if (downloadProgress == null){
                     downloadProgress = 0;
                 }
-                html += 'Downloading: <span id="downloadProgress_' + idx + '">' + downloadProgress + '</span>%';
+                html += 'Downloading: ' + downloadProgress + '%';
                 soundInfoElement.innerHTML = html;
                 
             } else {
-                // Sound already loaded, show all info
-                html += '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
-                html += sound.getAttribute('soundName') + '<br>';
-                var licenseURL = sound.getAttribute('soundLicense');
-                var licenseName = "-";
-                if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
-                else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
-                else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
-                else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-                html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
-                soundInfoElement.innerHTML = html;
+                // Sound already loaded, show all info (if it has not been already shown)
+                if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
+                    html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
+                    html += sound.getAttribute('soundName') + '<br>';
+                    var licenseURL = sound.getAttribute('soundLicense');
+                    var licenseName = "-";
+                    if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
+                    else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
+                    else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
+                    else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
+                    html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+                    soundInfoElement.innerHTML = html;
+                }
                 
-                if (soundControlsElement.innerHTML == ""){
-                    // If card does not yet have the controls, add them now
-                    soundControlsElement.innerHTML = generateSoundEditControls(idx);
+                var soundControlsElement = document.getElementById('soundCardControls_' + idx);
+                if (soundControlsElement.style.display === "none") {
+                    soundControlsElement.style.display = "block";
                 }
             }
         }
