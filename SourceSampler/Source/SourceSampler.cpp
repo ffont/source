@@ -59,6 +59,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
     else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
+    else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(-1.0f, 1.0f, value); }
     else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
@@ -75,6 +76,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxGainVelMod") { maxGainVelMod = jlimit(0.0f, 1.0f, value); }
+    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 10.0f, value); }
+    else if (name == "at2GainAmt") { at2GainAmt = jlimit(0.0f, 1.0f, value); }
     else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
@@ -99,7 +102,7 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
     if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
-    else if (name == "launchMode") { launchMode = jlimit(0, 2, value); }
+    else if (name == "launchMode") { launchMode = jlimit(0, 3, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     // --> End auto-generated code C
 }
@@ -129,6 +132,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterCutoffMod", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterCutoffMod, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterKeyboardTracking", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterKeyboardTracking, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
@@ -232,6 +240,16 @@ ValueTree SourceSamplerSound::getState(){
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2CutoffAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2CutoffAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "at2GainAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, at2GainAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
                       nullptr);
@@ -322,7 +340,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // This is called at each processing block of 64 samples
     
     // Pitch
-    pitchRatio = std::pow (2.0, (sound->basePitch + getCurrentlyPlayingNote() - sound->midiRootNote + pitchBendModSemitones) / 12.0) * sound->sourceSampleRate / getSampleRate();
+    double currentNoteFrequency = std::pow (2.0, (sound->basePitch + getCurrentlyPlayingNote() - sound->midiRootNote + pitchBendModSemitones) / 12.0);
+    pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
     
     // Looping settings
     int soundLengthInSamples = sound->getLengthInSamples();
@@ -353,15 +372,20 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     adsrFilter.setParameters (sound->filterADSR);
     
     // Filter
-    filterCutoff = sound->filterCutoff;
+    filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = sound->filterRessonance;
     auto& filter = processorChain.get<filterIndex>();
-    filter.setCutoffFrequencyHz (filterCutoff + filterCutoffMod + sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample()); // Base cutoff + AT mod + ADSR mod
+    float computedCutoff = filterCutoff  + // Base cutoff
+                           filterCutoffVelMod + // Velocity mod to cutoff
+                           filterCutoffMod +  // Aftertouch mod/modulation wheel mod
+                           sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
+    filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
     filter.setResonance (filterRessonance);
     
     // Amp and pan
     pan = sound->pan;
     masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
+    masterGain = masterGain + gainMod; // Add modulation gain (if any)
     auto& gain = processorChain.get<masterGainIndex>();
     gain.setGainLinear (1.0); // This gain we don't really use it
 }
@@ -386,19 +410,23 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         // TODO: what should really be the sample rate below?
         adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
         
+        // Compute velocity modulations (only relevant at start of note)
+        filterCutoffVelMod = sound->filterCutoff * sound->vel2CutoffAmt * velocity;
+        float velocityGain = (sound->maxGainVelMod * velocity) + (1 - sound->maxGainVelMod);
+        lgain = velocityGain;
+        rgain = velocityGain;
+        
+        // Update the rest of parameters (that will be udpated at each block)
         updateParametersFromSourceSamplerSound(sound);
         
+        // Set initial playhead position
         if (sound->reverse == 0){
             sourceSamplePosition = startPositionSample;
         } else {
             sourceSamplePosition = endPositionSample;
         }
         
-        float velocityGain = (sound->maxGainVelMod * velocity) + (1 - sound->maxGainVelMod);
-        lgain = velocityGain;
-        rgain = velocityGain;
-
-        // Trigger ADSR
+        // Trigger ADSRs
         adsr.noteOn();
         adsrFilter.noteOn();
     }
@@ -449,6 +477,9 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
         // Aftertouch also modifies filter cutoff
         filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+        
+        //Aftertouch modifies gain as well
+        gainMod = sound->at2GainAmt * (float)newAftertouchValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
     }
 }
 
@@ -460,9 +491,12 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
         // Channel aftertouch modifies the playback speed up to an octave
         pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
         
-        // Aftertouch also modifies filter cutoff
+        // Channel aftertouch also modifies filter cutoff
         filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+        
+        // Channel aftertouch modifies gain as well
+        gainMod = sound->at2GainAmt * (float)newChannelPressureValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
     }
 }
 
@@ -471,12 +505,15 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     if (controllerNumber == 1){
         if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
         {
-            // Channel aftertouch modifies the playback speed up to an octave
+            // Modulation wheel modifies the playback speed up to an octave
             pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
             
-            // Aftertouch also modifies filter cutoff
+            // Modulation wheel also modifies filter cutoff
             filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
             processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
+            
+            // Modulation wheel modifies gain as well
+            gainMod = sound->at2GainAmt * (float)newValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
         }
     }
 }

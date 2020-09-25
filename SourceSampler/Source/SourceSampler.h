@@ -90,6 +90,7 @@ private:
     float filterRessonance = 0.0f;
     float maxPitchRatioMod = 0.1f;
     float maxFilterCutoffMod = 10.0f;
+    float filterKeyboardTracking = 0.0f;
     float gain = -10.0f;
     ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 1.0f};
     ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 1.0f};
@@ -104,6 +105,8 @@ private:
     int launchMode = 0;
     int reverse = 0;
     float maxGainVelMod = 0.5f;
+    float vel2CutoffAmt = 0.0f;
+    float at2GainAmt = 0.0f;
     float pan = 0.0f;
     float pitchBendRangeUp = 12.0f;
     float pitchBendRangeDown = 12.0f;
@@ -174,8 +177,10 @@ private:
     
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
-    float filterCutoffMod = 0.0f;
+    float filterCutoffMod = 0.0f;  // For aftertouch, modulation wheel
+    float filterCutoffVelMod = 0.0f;  // For aftertouch, modulation wheel
     float masterGain = 0.5f;
+    float gainMod = 1.0f;  // For aftertouch, modulation wheel
     int startPositionSample = 0;
     int endPositionSample = 0;
     int loopStartPositionSample = 0;

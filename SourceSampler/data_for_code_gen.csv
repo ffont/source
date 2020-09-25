@@ -3,6 +3,7 @@ filterCutoff;float;10;20000;20000;
 filterRessonance;float;0;1;0;
 maxPitchRatioMod;float;0;2;0.1;semitones
 maxFilterCutoffMod;float;0;100;10;
+filterKeyboardTracking;float;-1;1;0;
 gain;float;-80;12;-10;db
 ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
 filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
@@ -14,9 +15,11 @@ endPosition;float;0;1;1;percentage position
 loopStartPosition;float;0;1;0;percentage position
 loopEndPosition;float;0;1;1;percentage position
 loopXFadeNSamples;int;10;100000;500;n samples
-launchMode;int;0;2;0;gate,loop,trigger
+launchMode;int;0;3;0;gate,loop,loop ping-pong,trigger
 reverse;int;0;1;0;1=reverse
 maxGainVelMod;float;0;1;0.5;
+vel2CutoffAmt;float;0;10;0;velocity to cutoff amount (multiplier to cutoff frequency)
+at2GainAmt;float;0;1;0;gain amount to be added with AT
 pan;float;-1;1;0;
 pitchBendRangeUp;float;0;36;12;semitones
 pitchBendRangeDown;float;0;36;12;semitones
