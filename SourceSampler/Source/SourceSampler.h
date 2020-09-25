@@ -156,6 +156,7 @@ private:
     
     //==============================================================================
     // Sample reading and rendering
+    bool playheadDirectionIsForward = true; // true = forward, false = backward
     double pitchRatio = 0;
     double pitchRatioMod = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;

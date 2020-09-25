@@ -53,7 +53,8 @@
 
 #define LAUNCH_MODE_GATE 0
 #define LAUNCH_MODE_LOOP 1
-#define LAUNCH_MODE_TRIGGER 2
+#define LAUNCH_MODE_LOOP_FW_BW 2
+#define LAUNCH_MODE_TRIGGER 3
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"

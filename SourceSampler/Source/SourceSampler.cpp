@@ -376,6 +376,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     filterRessonance = sound->filterRessonance;
     auto& filter = processorChain.get<filterIndex>();
     float computedCutoff = filterCutoff  + // Base cutoff
+                           currentNoteFrequency * std::pow(2, (getCurrentlyPlayingNote() - 64)/12) * sound->filterKeyboardTracking + // Add kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            filterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
@@ -422,8 +423,10 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         // Set initial playhead position
         if (sound->reverse == 0){
             sourceSamplePosition = startPositionSample;
+            playheadDirectionIsForward = true;
         } else {
             sourceSamplePosition = endPositionSample;
+            playheadDirectionIsForward = false;
         }
         
         // Trigger ADSRs
@@ -553,9 +556,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float l = interpolateSample(sourceSamplePosition, inL);
             float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR) : l;
             // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if (sound->launchMode == LAUNCH_MODE_LOOP && sound->loopXFadeNSamples > 0){
-                if (sound->reverse == 0){
-                    // Normal playing mode: do loop when reahing fixedLoopEndPositionSample
+            if ((sound->launchMode == LAUNCH_MODE_LOOP) && sound->loopXFadeNSamples > 0){
+                // NOTE: don't crossfade in LAUNCH_MODE_LOOP_FW_BW mode because it loops from the the same sample (no need to crossfade)
+                if (playheadDirectionIsForward){
+                    // PLayhead going forward  (normal playing mode): do loop when reahing fixedLoopEndPositionSample
                     float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
                     if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < sound->loopXFadeNSamples)){
                         if (ENABLE_DEBUG_BUFFER == 1){
@@ -580,7 +584,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         // Do nothing because we're not in crossfade zone
                     }
                 } else {
-                    // Reverse playing mode: do loop when reahing fixedLoopEndPositionSample
+                    // Playhead going backwards: do loop when reahing fixedLoopEndPositionSample
                     int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
                     if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < sound->loopXFadeNSamples)){
                         // We are approaching loopStartPositionSample (going backwards) and are closer than sound->loopXFadeNSamples
@@ -630,7 +634,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
             // Advance source sample position for next iteration
             float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));;
-            if (sound->reverse == 0){
+            if (playheadDirectionIsForward){
                 sourceSamplePosition += pitchRatio + interpolatedPitchRatioMod;
             } else {
                 sourceSamplePosition -= pitchRatio + interpolatedPitchRatioMod;
@@ -638,21 +642,33 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             
             // Check if we're reaching the end of the sound
             bool noteStoppedHard = false;
-            if (sound->launchMode == LAUNCH_MODE_LOOP){
+            if ((sound->launchMode == LAUNCH_MODE_LOOP) || (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW)){
                 // If looping is enabled, check whether we should loop
-                if (sound->reverse == 0){
+                if (playheadDirectionIsForward){
                     if (sourceSamplePosition > fixedLoopEndPositionSample){
-                        sourceSamplePosition = fixedLoopStartPositionSample;
+                        if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                            // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
+                            playheadDirectionIsForward = !playheadDirectionIsForward;
+                        } else {
+                            // Foward loop mode: jump from loop end to loop start
+                            sourceSamplePosition = fixedLoopStartPositionSample;
+                        }
                     }
                 } else {
                     if (sourceSamplePosition < fixedLoopStartPositionSample){
-                        sourceSamplePosition = fixedLoopEndPositionSample;
+                        if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                            // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
+                            playheadDirectionIsForward = !playheadDirectionIsForward;
+                        } else {
+                            // Forward loop mode (in reverse): jump from loop start to loop end
+                            sourceSamplePosition = fixedLoopEndPositionSample;
+                        }
                     }
                 }
             } else {
                 // If not looping, check whether we've reached the end of the file
                 bool endReached = false;
-                if (sound->reverse == 0){
+                if (playheadDirectionIsForward){
                     if (sourceSamplePosition > endPositionSample){
                         endReached = true;
                     }
