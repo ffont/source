@@ -23,3 +23,5 @@ at2GainAmt;float;0;1;0;gain amount to be added with AT
 pan;float;-1;1;0;
 pitchBendRangeUp;float;0;36;12;semitones
 pitchBendRangeDown;float;0;36;12;semitones
+noteMappingMode;int;0;3;0;pitch/slice/both/repeat (repeat means sounds is not altered at all)
+numSlices;int;0;128;0;0=auto per n notes, 1=auto per onsets, 2-128=from 2 to 128 equally spaced slices

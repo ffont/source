@@ -104,10 +104,18 @@
         function updateSliderLabel(sliderElement){
             var labelElement = document.getElementById(sliderElement.id + "Label");
             if (labelElement != null) {
-                if (labelElement.id.indexOf("launchModeLabel") == -1){
-                    labelElement.innerHTML = getProcessedSoundParameterValuLinToExp(sliderElement).toFixed(2);
-                } else {
+                if (labelElement.id.indexOf("launchModeLabel") > -1){
                     labelElement.innerHTML = ["gate", "loop", "loopfb", "trigger"][sliderElement.value];
+                } else if (labelElement.id.indexOf("noteMappingMode") > -1){
+                    labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
+                } else if (labelElement.id.indexOf("numSlices") > -1){
+                    var names =  ["auto (n notes)", "auto (onsets)"]
+                    for (var i=2; i<=128; i++){
+                        names.push(i);
+                    }
+                    labelElement.innerHTML = names[sliderElement.value];
+                } else {
+                    labelElement.innerHTML = getProcessedSoundParameterValuLinToExp(sliderElement).toFixed(2);
                 }
             }
         }
@@ -293,6 +301,8 @@
             html += '<input type="range" id="' + soundIdx + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pan: <span id="' + soundIdx + '_panLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeUp: <span id="' + soundIdx + '_pitchBendRangeUpLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeDown: <span id="' + soundIdx + '_pitchBendRangeDownLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > noteMappingMode: <span id="' + soundIdx + '_noteMappingModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_numSlices" name="numSlices" min="0" max="128" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > numSlices: <span id="' + soundIdx + '_numSlicesLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }

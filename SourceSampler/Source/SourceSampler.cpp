@@ -104,6 +104,8 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
     else if (name == "launchMode") { launchMode = jlimit(0, 3, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
+    else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
+    else if (name == "numSlices") { numSlices = jlimit(0, 128, value); }
     // --> End auto-generated code C
 }
 
@@ -263,6 +265,16 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeDown", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeDown, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "noteMappingMode", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, noteMappingMode, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "numSlices", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, numSlices, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -340,15 +352,62 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // This is called at each processing block of 64 samples
     
     // Pitch
-    double currentNoteFrequency = std::pow (2.0, (sound->basePitch + getCurrentlyPlayingNote() - sound->midiRootNote + pitchBendModSemitones) / 12.0);
+    int currenltlyPlayingNote = 0;
+    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_PITCH) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+        currenltlyPlayingNote = getCurrentlyPlayingNote();
+    } else {
+        // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for
+        // that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
+        currenltlyPlayingNote = sound->midiRootNote;
+    }
+    double currentNoteFrequency = std::pow (2.0, (sound->basePitch + currenltlyPlayingNote - sound->midiRootNote + pitchBendModSemitones) / 12.0);
     pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
     
-    // Looping settings
+    // Set start/end and loop start/end settings
+    int soundLoopStartPosition, soundLoopEndPosition;  // To be set later
     int soundLengthInSamples = sound->getLengthInSamples();
-    startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-    endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
-    int soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
-    int soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
+    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+        // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
+        // Also, loop start/end positions are ignored and set to the same slice start/end positions
+        // TODO: do real implementation here to find approptiate start/end slice positions
+        int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+        int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+        int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
+        if (sound->numSlices != SLICE_MODE_AUTO_ONSETS){
+            // if not in slice by onsets mode, divide the sound in N equal slices
+            int nSlices;
+            if (sound->numSlices == SLICE_MODE_AUTO_NNOTES){
+                // If in auto-nnotes mode choose the number of slices automatically to be the same of the number of notes mapped to this sound
+                // TODO: find the lowest assigned midi note and the highest assigned midi note and set the number of slices to that
+                nSlices = 16;
+            } else {
+                // Othwise, assign the selected number of slices directly
+                nSlices = sound->numSlices;
+            }
+            float sliceLength = startToEndSoundLength / nSlices;
+            int currentSlice = getCurrentlyPlayingNote() % nSlices;  // TODO: add some sort of offset of the lowest assigned midi note so that sound starting slice is aligned with first mappend note
+            currentSlice = jlimit(0, nSlices, currentSlice);
+            startPositionSample = globalStartPositionSample + currentSlice * sliceLength;
+            endPositionSample = globalStartPositionSample + (currentSlice + 1) * sliceLength;
+            
+        } else {
+            // if in onsets mode, get the slices from the onsets analysis
+            // TODO: implement this bit properly by getting information form the sound analysis and finding right onset times
+            startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+            endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+        }
+        soundLoopStartPosition = startPositionSample;
+        soundLoopEndPosition = endPositionSample;
+    } else {
+        // If note mapping by slice is not enabled, then all mappend notes start at the same start/end position as defined by the start/end position slider(s)
+        // Also, the loop positions are defined following the sliders
+        startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+        endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+        soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
+        soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
+    }
+    
+    // Find fixed looping points (at zero-crossings)
     if ((soundLoopStartPosition != loopStartPositionSample) || (soundLoopEndPosition != loopEndPositionSample)){
         // Either loop start or end has changed in the sound object
         auto& data = *sound->data;
@@ -366,6 +425,14 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     }
     loopStartPositionSample = soundLoopStartPosition;
     loopEndPositionSample = soundLoopEndPosition;
+    
+    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+        // If in some slicing mode, because start/end position and loop start/end positions are the same, now that we have "fixed" the
+        // loop start/end position to the nearest zero crossing, do the same for the slice start/end so we avoid clicks at start and
+        // end of slices
+        startPositionSample = loopStartPositionSample;
+        endPositionSample = loopEndPositionSample;
+    }
     
     // ADSRs
     adsr.setParameters (sound->ampADSR);
@@ -404,6 +471,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         pitchRatioMod = 0.0;
         pitchBendModSemitones = 0.0;
         filterCutoffMod = 0.0;
+        gainMod = 0.0;
         
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (sound->pluginSampleRate);

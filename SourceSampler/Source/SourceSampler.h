@@ -110,6 +110,8 @@ private:
     float pan = 0.0f;
     float pitchBendRangeUp = 12.0f;
     float pitchBendRangeDown = 12.0f;
+    int noteMappingMode = 0;
+    int numSlices = 0;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
