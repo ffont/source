@@ -537,6 +537,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         // Do some preparation
         int originalNumSamples = numSamples; // user later for filter processing
         float previousMasterGain = masterGain;
+        double previousPitchRatio = pitchRatio;
         float previousPitchRatioMod = pitchRatioMod;
         float previousPan = pan;
         updateParametersFromSourceSamplerSound(sound);
@@ -633,11 +634,12 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
 
             // Advance source sample position for next iteration
-            float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));;
+            double interpolatedPitchRatio = (previousPitchRatio * ((double)numSamples/originalNumSamples) + pitchRatio * (1.0f - (double)numSamples/originalNumSamples));
+            float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));
             if (playheadDirectionIsForward){
-                sourceSamplePosition += pitchRatio + interpolatedPitchRatioMod;
+                sourceSamplePosition += interpolatedPitchRatio + interpolatedPitchRatioMod;
             } else {
-                sourceSamplePosition -= pitchRatio + interpolatedPitchRatioMod;
+                sourceSamplePosition -= interpolatedPitchRatio + interpolatedPitchRatioMod;
             }
             
             // Check if we're reaching the end of the sound
