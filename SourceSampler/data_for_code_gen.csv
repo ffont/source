@@ -3,7 +3,7 @@ filterCutoff;float;10;20000;20000;
 filterRessonance;float;0;1;0;
 maxPitchRatioMod;float;0;2;0.1;semitones
 maxFilterCutoffMod;float;0;100;10;
-filterKeyboardTracking;float;-1;1;0;
+filterKeyboardTracking;float;0;1;0;
 gain;float;-80;12;-10;db
 ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
 filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;

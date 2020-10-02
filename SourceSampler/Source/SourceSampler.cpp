@@ -59,7 +59,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
     else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
-    else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(-1.0f, 1.0f, value); }
+    else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(0.0f, 1.0f, value); }
     else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
@@ -375,8 +375,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = sound->filterRessonance;
     auto& filter = processorChain.get<filterIndex>();
-    float computedCutoff = filterCutoff  + // Base cutoff
-                           currentNoteFrequency * std::pow(2, (getCurrentlyPlayingNote() - 64)/12) * sound->filterKeyboardTracking + // Add kb tracking
+    float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            filterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
