@@ -81,6 +81,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
+    else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
     
     // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
@@ -102,7 +103,7 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
     if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
-    else if (name == "launchMode") { launchMode = jlimit(0, 3, value); }
+    else if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
     else if (name == "numSlices") { numSlices = jlimit(0, 128, value); }
@@ -275,6 +276,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "numSlices", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, numSlices, nullptr),
                       nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "playheadPosition", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, playheadPosition, nullptr),
+                      nullptr);
     // --> End auto-generated code B
     
     return state;
@@ -402,136 +408,6 @@ int findNearestPositiveZeroCrossing (int position, const float* const signal, in
     return position;  // If none found, return original
 }
 
-void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
-{
-    // This is called at each processing block of 64 samples
-    
-    // Pitch
-    int currenltlyPlayingNote = 0;
-    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_PITCH) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
-        currenltlyPlayingNote = getCurrentlyPlayingNote();
-    } else {
-        // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for
-        // that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
-        currenltlyPlayingNote = sound->midiRootNote;
-    }
-    double currentNoteFrequency = std::pow (2.0, (sound->basePitch + currenltlyPlayingNote - sound->midiRootNote + pitchBendModSemitones) / 12.0);
-    pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
-    
-    // Set start/end and loop start/end settings
-    int soundLoopStartPosition, soundLoopEndPosition;  // To be set later
-    int soundLengthInSamples = sound->getLengthInSamples();
-    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
-        // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
-        // Also, loop start/end positions are ignored and set to the same slice start/end positions
-        // TODO: do real implementation here to find approptiate start/end slice positions
-        int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-        int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
-        int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
-        if (sound->numSlices != SLICE_MODE_AUTO_ONSETS){
-            // if not in slice by onsets mode, divide the sound in N equal slices
-            int nSlices;
-            if (sound->numSlices == SLICE_MODE_AUTO_NNOTES){
-                // If in auto-nnotes mode choose the number of slices automatically to be the same of the number of notes mapped to this sound
-                nSlices = sound->getNumberOfMappedMidiNotes();
-            } else {
-                // Othwise, assign the selected number of slices directly
-                nSlices = sound->numSlices;
-            }
-            float sliceLength = startToEndSoundLength / nSlices;
-            int currentSlice = currentlyPlayedNoteIndex % nSlices;
-            startPositionSample = globalStartPositionSample + currentSlice * sliceLength;
-            endPositionSample = globalStartPositionSample + (currentSlice + 1) * sliceLength;
-            
-        } else {
-            // If in onsets mode, get the slices from the onsets analysis. Only consider those onsets inside the global start/end selection
-            int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-            int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
-            std::vector<int> onsetTimesSamples = sound->getOnsetTimesSamples();
-            if (onsetTimesSamples.size() > 0){
-                // If onset data is available, use the onsets :)
-                std::vector<int> validOnsetTimesSamples = {};
-                for (int i=0; i<onsetTimesSamples.size(); i++){
-                    if ((onsetTimesSamples[i] >= globalStartPositionSample) && (onsetTimesSamples[i] <= globalEndPositionSample)){
-                        validOnsetTimesSamples.push_back(onsetTimesSamples[i]);
-                    }
-                }
-                int nSlices = (int)validOnsetTimesSamples.size();
-                int currentSlice = currentlyPlayedNoteIndex % nSlices;
-                startPositionSample = validOnsetTimesSamples[currentSlice];
-                if (currentSlice < nSlices - 1){
-                    endPositionSample = validOnsetTimesSamples[currentSlice + 1];
-                } else {
-                    endPositionSample = globalEndPositionSample;
-                }
-                
-            } else {
-                // If no onset data is available, use all sound
-                startPositionSample = globalStartPositionSample;
-                endPositionSample = globalEndPositionSample;
-            }
-        }
-        soundLoopStartPosition = startPositionSample;
-        soundLoopEndPosition = endPositionSample;
-    } else {
-        // If note mapping by slice is not enabled, then all mappend notes start at the same start/end position as defined by the start/end position slider(s)
-        // Also, the loop positions are defined following the sliders
-        startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-        endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
-        soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
-        soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
-    }
-    
-    // Find fixed looping points (at zero-crossings)
-    if ((soundLoopStartPosition != loopStartPositionSample) || (soundLoopEndPosition != loopEndPositionSample)){
-        // Either loop start or end has changed in the sound object
-        auto& data = *sound->data;
-        const float* const signal = data.getReadPointer (0);  // use first audio channel to detect 0 crossing
-        if (soundLoopStartPosition != loopStartPositionSample){
-            // If the loop start position has changed, process it to move it to the next positive zero crossing
-            fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
-            DBG("Fixed start sample position by " << fixedLoopStartPositionSample - soundLoopStartPosition);
-        }
-        if (soundLoopEndPosition != loopEndPositionSample){
-            // If the loop end position has changed, process it to move it to the next positive zero crossing
-            fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
-            DBG("Fixed end sample position by " << fixedLoopEndPositionSample - soundLoopEndPosition);
-        }
-    }
-    loopStartPositionSample = soundLoopStartPosition;
-    loopEndPositionSample = soundLoopEndPosition;
-    
-    if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
-        // If in some slicing mode, because start/end position and loop start/end positions are the same, now that we have "fixed" the
-        // loop start/end position to the nearest zero crossing, do the same for the slice start/end so we avoid clicks at start and
-        // end of slices
-        startPositionSample = loopStartPositionSample;
-        endPositionSample = loopEndPositionSample;
-    }
-    
-    // ADSRs
-    adsr.setParameters (sound->ampADSR);
-    adsrFilter.setParameters (sound->filterADSR);
-    
-    // Filter
-    filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
-    filterRessonance = sound->filterRessonance;
-    auto& filter = processorChain.get<filterIndex>();
-    float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
-                           filterCutoffVelMod + // Velocity mod to cutoff
-                           filterCutoffMod +  // Aftertouch mod/modulation wheel mod
-                           sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
-    filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
-    filter.setResonance (filterRessonance);
-    
-    // Amp and pan
-    pan = sound->pan;
-    masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
-    masterGain = masterGain + gainMod; // Add modulation gain (if any)
-    auto& gain = processorChain.get<masterGainIndex>();
-    gain.setGainLinear (1.0); // This gain we don't really use it
-}
-
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
 {
     // This is called when note on is received
@@ -565,13 +441,18 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         // Update the rest of parameters (that will be udpated at each block)
         updateParametersFromSourceSamplerSound(sound);
         
-        // Set initial playhead position
-        if (sound->reverse == 0){
-            sourceSamplePosition = startPositionSample;
-            playheadDirectionIsForward = true;
+        if (sound->launchMode == LAUNCH_MODE_FREEZE){
+            // In freeze mode, sourceSamplePosition depends on the playheadPosition parameter
+            sourceSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
         } else {
-            sourceSamplePosition = endPositionSample;
-            playheadDirectionIsForward = false;
+            // Set initial playhead position according to start/end times
+            if (sound->reverse == 0){
+                sourceSamplePosition = startPositionSample;
+                playheadDirectionIsForward = true;
+            } else {
+                sourceSamplePosition = endPositionSample;
+                playheadDirectionIsForward = false;
+            }
         }
         
         // Trigger ADSRs
@@ -582,6 +463,143 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
     {
         jassertfalse; // this object can only play SourceSamplerSound!
     }
+}
+
+void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSound* sound)
+{
+    // This is called at each processing block of 64 samples
+    
+    if (sound->launchMode == LAUNCH_MODE_FREEZE){
+        // If in freeze mode, we "only" care about the playhead position parameter, the rest of parameters to define pitch, start/end times, etc., are not relevant
+        targetPlayheadPosition = sound->playheadPosition * sound->getLengthInSamples();
+        
+    } else {
+        // Pitch
+        int currenltlyPlayingNote = 0;
+        if ((sound->noteMappingMode == NOTE_MAPPING_MODE_PITCH) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+            currenltlyPlayingNote = getCurrentlyPlayingNote();
+        } else {
+            // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for
+            // that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
+            currenltlyPlayingNote = sound->midiRootNote;
+        }
+        double currentNoteFrequency = std::pow (2.0, (sound->basePitch + currenltlyPlayingNote - sound->midiRootNote + pitchBendModSemitones) / 12.0);
+        pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
+        
+        // Set start/end and loop start/end settings
+        int soundLoopStartPosition, soundLoopEndPosition;  // To be set later
+        int soundLengthInSamples = sound->getLengthInSamples();
+        if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+            // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
+            // Also, loop start/end positions are ignored and set to the same slice start/end positions
+            // TODO: do real implementation here to find approptiate start/end slice positions
+            int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+            int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
+            if (sound->numSlices != SLICE_MODE_AUTO_ONSETS){
+                // if not in slice by onsets mode, divide the sound in N equal slices
+                int nSlices;
+                if (sound->numSlices == SLICE_MODE_AUTO_NNOTES){
+                    // If in auto-nnotes mode choose the number of slices automatically to be the same of the number of notes mapped to this sound
+                    nSlices = sound->getNumberOfMappedMidiNotes();
+                } else {
+                    // Othwise, assign the selected number of slices directly
+                    nSlices = sound->numSlices;
+                }
+                float sliceLength = startToEndSoundLength / nSlices;
+                int currentSlice = currentlyPlayedNoteIndex % nSlices;
+                startPositionSample = globalStartPositionSample + currentSlice * sliceLength;
+                endPositionSample = globalStartPositionSample + (currentSlice + 1) * sliceLength;
+                
+            } else {
+                // If in onsets mode, get the slices from the onsets analysis. Only consider those onsets inside the global start/end selection
+                int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+                int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+                std::vector<int> onsetTimesSamples = sound->getOnsetTimesSamples();
+                if (onsetTimesSamples.size() > 0){
+                    // If onset data is available, use the onsets :)
+                    std::vector<int> validOnsetTimesSamples = {};
+                    for (int i=0; i<onsetTimesSamples.size(); i++){
+                        if ((onsetTimesSamples[i] >= globalStartPositionSample) && (onsetTimesSamples[i] <= globalEndPositionSample)){
+                            validOnsetTimesSamples.push_back(onsetTimesSamples[i]);
+                        }
+                    }
+                    int nSlices = (int)validOnsetTimesSamples.size();
+                    int currentSlice = currentlyPlayedNoteIndex % nSlices;
+                    startPositionSample = validOnsetTimesSamples[currentSlice];
+                    if (currentSlice < nSlices - 1){
+                        endPositionSample = validOnsetTimesSamples[currentSlice + 1];
+                    } else {
+                        endPositionSample = globalEndPositionSample;
+                    }
+                    
+                } else {
+                    // If no onset data is available, use all sound
+                    startPositionSample = globalStartPositionSample;
+                    endPositionSample = globalEndPositionSample;
+                }
+            }
+            soundLoopStartPosition = startPositionSample;
+            soundLoopEndPosition = endPositionSample;
+        } else {
+            // If note mapping by slice is not enabled, then all mappend notes start at the same start/end position as defined by the start/end position slider(s)
+            // Also, the loop positions are defined following the sliders
+            startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+            endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
+            soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
+        }
+        
+        // Find fixed looping points (at zero-crossings)
+        if ((soundLoopStartPosition != loopStartPositionSample) || (soundLoopEndPosition != loopEndPositionSample)){
+            // Either loop start or end has changed in the sound object
+            auto& data = *sound->data;
+            const float* const signal = data.getReadPointer (0);  // use first audio channel to detect 0 crossing
+            if (soundLoopStartPosition != loopStartPositionSample){
+                // If the loop start position has changed, process it to move it to the next positive zero crossing
+                fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
+                DBG("Fixed start sample position by " << fixedLoopStartPositionSample - soundLoopStartPosition);
+            }
+            if (soundLoopEndPosition != loopEndPositionSample){
+                // If the loop end position has changed, process it to move it to the next positive zero crossing
+                fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
+                DBG("Fixed end sample position by " << fixedLoopEndPositionSample - soundLoopEndPosition);
+            }
+        }
+        loopStartPositionSample = soundLoopStartPosition;
+        loopEndPositionSample = soundLoopEndPosition;
+        
+        if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
+            // If in some slicing mode, because start/end position and loop start/end positions are the same, now that we have "fixed" the
+            // loop start/end position to the nearest zero crossing, do the same for the slice start/end so we avoid clicks at start and
+            // end of slices
+            startPositionSample = loopStartPositionSample;
+            endPositionSample = loopEndPositionSample;
+        }
+    }
+    
+    
+    // ADSRs
+    adsr.setParameters (sound->ampADSR);
+    adsrFilter.setParameters (sound->filterADSR);
+    
+    // Filter
+    filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
+    filterRessonance = sound->filterRessonance;
+    auto& filter = processorChain.get<filterIndex>();
+    float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
+                           filterCutoffVelMod + // Velocity mod to cutoff
+                           filterCutoffMod +  // Aftertouch mod/modulation wheel mod
+                           sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
+    filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
+    filter.setResonance (filterRessonance);
+    
+    // Amp and pan
+    pan = sound->pan;
+    masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
+    masterGain = masterGain + gainMod; // Add modulation gain (if any)
+    auto& gain = processorChain.get<masterGainIndex>();
+    gain.setGainLinear (1.0); // This gain we don't really use it
 }
 
 void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
@@ -663,6 +681,17 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
             // Modulation wheel modifies gain as well
             gainMod = sound->at2GainAmt * (float)newValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
         }
+    } else if ((controllerNumber >= 10) && (controllerNumber < 30))  {
+        
+        if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
+        {
+            // Control CCs used for modulation of playhead positon of sound N (where 10=sound 1, 11=sound 2, etc)
+            int soundIdx = controllerNumber - 10;
+            if (sound->idx == soundIdx){
+                // The message applies to the current sound, modify its playhead position parameter
+                sound->setParameterByNameFloat("playheadPosition", (float)newValue/127.0);
+            }
+        }
     }
 }
 
@@ -679,12 +708,13 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
-        // Do some preparation
+        // Do some preparation (not all parameters will be used depending on the launch mode)
         int originalNumSamples = numSamples; // user later for filter processing
         float previousMasterGain = masterGain;
         double previousPitchRatio = pitchRatio;
         float previousPitchRatioMod = pitchRatioMod;
         float previousPan = pan;
+        bool noteStoppedHard = false;
         updateParametersFromSourceSamplerSound(sound);
         
         // Sampler reading and rendering
@@ -696,59 +726,65 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         float* outL = tmpVoiceBuffer.getWritePointer (0, 0);
         float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? tmpVoiceBuffer.getWritePointer (1, 0) : nullptr;
         
+        
         while (--numSamples >= 0)
         {
             // Calculate L and R samples using basic interpolation
             float l = interpolateSample(sourceSamplePosition, inL);
             float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR) : l;
-            // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-            if ((sound->launchMode == LAUNCH_MODE_LOOP) && sound->loopXFadeNSamples > 0){
-                // NOTE: don't crossfade in LAUNCH_MODE_LOOP_FW_BW mode because it loops from the the same sample (no need to crossfade)
-                if (playheadDirectionIsForward){
-                    // PLayhead going forward  (normal playing mode): do loop when reahing fixedLoopEndPositionSample
-                    float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
-                    if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < sound->loopXFadeNSamples)){
-                        if (ENABLE_DEBUG_BUFFER == 1){
-                            startRecordingToDebugBuffer((int)sound->loopXFadeNSamples * 2);
-                        }
-                        
-                        // We are approaching loopEndPositionSample and are closer than sound->loopXFadeNSamples
-                        float lcrossfadeSample = 0.0;
-                        float rcrossfadeSample = 0.0;
-                        float crossfadeGain = 0.0;
-                        float crossfadePos = (float)fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
-                        if (crossfadePos > 0){
-                            lcrossfadeSample = interpolateSample(crossfadePos, inL);
-                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
-                            crossfadeGain = (float)samplesToLoopEndPositionSample/sound->loopXFadeNSamples;
+            
+            if (sound->launchMode != LAUNCH_MODE_FREEZE){
+                // Outside freeze mode, add samples from the source sound to the buffer and check for looping and other sorts of modulations
+                
+                // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
+                if ((sound->launchMode == LAUNCH_MODE_LOOP) && sound->loopXFadeNSamples > 0){
+                    // NOTE: don't crossfade in LAUNCH_MODE_LOOP_FW_BW mode because it loops from the the same sample (no need to crossfade)
+                    if (playheadDirectionIsForward){
+                        // PLayhead going forward  (normal playing mode): do loop when reahing fixedLoopEndPositionSample
+                        float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
+                        if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < sound->loopXFadeNSamples)){
+                            if (ENABLE_DEBUG_BUFFER == 1){
+                                startRecordingToDebugBuffer((int)sound->loopXFadeNSamples * 2);
+                            }
+                            
+                            // We are approaching loopEndPositionSample and are closer than sound->loopXFadeNSamples
+                            float lcrossfadeSample = 0.0;
+                            float rcrossfadeSample = 0.0;
+                            float crossfadeGain = 0.0;
+                            float crossfadePos = (float)fixedLoopStartPositionSample - samplesToLoopEndPositionSample;
+                            if (crossfadePos > 0){
+                                lcrossfadeSample = interpolateSample(crossfadePos, inL);
+                                rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
+                                crossfadeGain = (float)samplesToLoopEndPositionSample/sound->loopXFadeNSamples;
+                            } else {
+                                // If position is negative, there is no data to do the crossfade
+                            }
+                            l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
+                            r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                         } else {
-                            // If position is negative, there is no data to do the crossfade
+                            // Do nothing because we're not in crossfade zone
                         }
-                        l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
-                        r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                     } else {
-                        // Do nothing because we're not in crossfade zone
-                    }
-                } else {
-                    // Playhead going backwards: do loop when reahing fixedLoopEndPositionSample
-                    int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
-                    if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < sound->loopXFadeNSamples)){
-                        // We are approaching loopStartPositionSample (going backwards) and are closer than sound->loopXFadeNSamples
-                        float lcrossfadeSample = 0.0;
-                        float rcrossfadeSample = 0.0;
-                        float crossfadeGain = 0.0;
-                        float crossfadePos = (float)fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
-                        if (crossfadePos < sound->length){
-                            lcrossfadeSample = interpolateSample(crossfadePos, inL);
-                            rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
-                            crossfadeGain = (float)samplesToLoopStartPositionSample/sound->loopXFadeNSamples;
+                        // Playhead going backwards: do loop when reahing fixedLoopEndPositionSample
+                        int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
+                        if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < sound->loopXFadeNSamples)){
+                            // We are approaching loopStartPositionSample (going backwards) and are closer than sound->loopXFadeNSamples
+                            float lcrossfadeSample = 0.0;
+                            float rcrossfadeSample = 0.0;
+                            float crossfadeGain = 0.0;
+                            float crossfadePos = (float)fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
+                            if (crossfadePos < sound->length){
+                                lcrossfadeSample = interpolateSample(crossfadePos, inL);
+                                rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
+                                crossfadeGain = (float)samplesToLoopStartPositionSample/sound->loopXFadeNSamples;
+                            } else {
+                                // If position is above playing sound length, there is no data to do the crossfade
+                            }
+                            l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
+                            r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
                         } else {
-                            // If position is above playing sound length, there is no data to do the crossfade
+                            // Do nothing because we're not in crossfade zone
                         }
-                        l = l * (crossfadeGain) + lcrossfadeSample * (1.0f - crossfadeGain);
-                        r = r * (crossfadeGain) + rcrossfadeSample * (1.0f - crossfadeGain);
-                    } else {
-                        // Do nothing because we're not in crossfade zone
                     }
                 }
             }
@@ -778,58 +814,74 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 *outL++ += (l + r) * 0.5f;
             }
 
-            // Advance source sample position for next iteration
-            double interpolatedPitchRatio = (previousPitchRatio * ((double)numSamples/originalNumSamples) + pitchRatio * (1.0f - (double)numSamples/originalNumSamples));
-            float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));
-            if (playheadDirectionIsForward){
-                sourceSamplePosition += interpolatedPitchRatio + interpolatedPitchRatioMod;
-            } else {
-                sourceSamplePosition -= interpolatedPitchRatio + interpolatedPitchRatioMod;
-            }
-            
-            // Check if we're reaching the end of the sound
-            bool noteStoppedHard = false;
-            if ((sound->launchMode == LAUNCH_MODE_LOOP) || (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW)){
-                // If looping is enabled, check whether we should loop
-                if (playheadDirectionIsForward){
-                    if (sourceSamplePosition > fixedLoopEndPositionSample){
-                        if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
-                            // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
-                            playheadDirectionIsForward = !playheadDirectionIsForward;
-                        } else {
-                            // Foward loop mode: jump from loop end to loop start
-                            sourceSamplePosition = fixedLoopStartPositionSample;
-                        }
-                    }
+            if (sound->launchMode == LAUNCH_MODE_FREEZE){
+                // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
+                double distanceToTargetPlayheadPosition = targetPlayheadPosition - sourceSamplePosition;
+                double distanceToTargetPlayheadPositionNormalized = abs(distanceToTargetPlayheadPosition / sound->getLengthInSamples()); // normalized between 0 and 1
+                // TODO: use a nice function here for max speed. The closer to the target, the slower should go
+                double maxSpeed = jmax(pow(distanceToTargetPlayheadPositionNormalized, 2) * 100.0, 1.0);
+                double actualSpeed = jmin(maxSpeed, abs(distanceToTargetPlayheadPosition));
+                //std::cout << actualSpeed << std::endl;
+                if (distanceToTargetPlayheadPosition >= 0){
+                    sourceSamplePosition += actualSpeed;
                 } else {
-                    if (sourceSamplePosition < fixedLoopStartPositionSample){
-                        if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
-                            // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
-                            playheadDirectionIsForward = !playheadDirectionIsForward;
-                        } else {
-                            // Forward loop mode (in reverse): jump from loop start to loop end
-                            sourceSamplePosition = fixedLoopEndPositionSample;
-                        }
-                    }
+                    sourceSamplePosition -= actualSpeed;
                 }
+                sourceSamplePosition = jlimit(0.0, (double)(sound->getLengthInSamples() - 1), sourceSamplePosition);  // Just to be sure...
+ 
             } else {
-                // If not looping, check whether we've reached the end of the file
-                bool endReached = false;
+                // If not in freeze mode, advance source sample position for next iteration according to pitch ratio and other modulations...
+                double interpolatedPitchRatio = (previousPitchRatio * ((double)numSamples/originalNumSamples) + pitchRatio * (1.0f - (double)numSamples/originalNumSamples));
+                float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));
                 if (playheadDirectionIsForward){
-                    if (sourceSamplePosition > endPositionSample){
-                        endReached = true;
-                    }
+                    sourceSamplePosition += interpolatedPitchRatio + interpolatedPitchRatioMod;
                 } else {
-                    if (sourceSamplePosition < startPositionSample){
-                        endReached = true;
-                    }
+                    sourceSamplePosition -= interpolatedPitchRatio + interpolatedPitchRatioMod;
                 }
                 
-                if (endReached)
-                {
-                    stopNote (0.0f, false);
-                    noteStoppedHard = true;
-                    break;
+                // ... also check if we're reaching the end of the sound or looping region to do looping
+                if ((sound->launchMode == LAUNCH_MODE_LOOP) || (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW)){
+                    // If looping is enabled, check whether we should loop
+                    if (playheadDirectionIsForward){
+                        if (sourceSamplePosition > fixedLoopEndPositionSample){
+                            if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                                // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
+                                playheadDirectionIsForward = !playheadDirectionIsForward;
+                            } else {
+                                // Foward loop mode: jump from loop end to loop start
+                                sourceSamplePosition = fixedLoopStartPositionSample;
+                            }
+                        }
+                    } else {
+                        if (sourceSamplePosition < fixedLoopStartPositionSample){
+                            if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                                // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
+                                playheadDirectionIsForward = !playheadDirectionIsForward;
+                            } else {
+                                // Forward loop mode (in reverse): jump from loop start to loop end
+                                sourceSamplePosition = fixedLoopEndPositionSample;
+                            }
+                        }
+                    }
+                } else {
+                    // If not looping, check whether we've reached the end of the file
+                    bool endReached = false;
+                    if (playheadDirectionIsForward){
+                        if (sourceSamplePosition > endPositionSample){
+                            endReached = true;
+                        }
+                    } else {
+                        if (sourceSamplePosition < startPositionSample){
+                            endReached = true;
+                        }
+                    }
+                    
+                    if (endReached)
+                    {
+                        stopNote (0.0f, false);
+                        noteStoppedHard = true;
+                        break;
+                    }
                 }
             }
             
@@ -837,6 +889,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 stopNote (0.0f, false);
             }
         }
+        
 
         // Apply filter
         auto block = juce::dsp::AudioBlock<float> (tmpVoiceBuffer);

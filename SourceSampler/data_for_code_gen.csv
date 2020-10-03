@@ -15,7 +15,7 @@ endPosition;float;0;1;1;percentage position
 loopStartPosition;float;0;1;0;percentage position
 loopEndPosition;float;0;1;1;percentage position
 loopXFadeNSamples;int;10;100000;500;n samples
-launchMode;int;0;3;0;gate,loop,loop ping-pong,trigger
+launchMode;int;0;4;0;gate,loop,loop ping-pong,trigger,freeze
 reverse;int;0;1;0;1=reverse
 maxGainVelMod;float;0;1;0.5;
 vel2CutoffAmt;float;0;10;0;velocity to cutoff amount (multiplier to cutoff frequency)
@@ -25,3 +25,4 @@ pitchBendRangeUp;float;0;36;12;semitones
 pitchBendRangeDown;float;0;36;12;semitones
 noteMappingMode;int;0;3;0;pitch/slice/both/repeat (repeat means sounds is not altered at all)
 numSlices;int;0;128;0;0=auto per n notes, 1=auto per onsets, 2-128=from 2 to 128 equally spaced slices
+playheadPosition;float;0;1;0;this is only used in “freeze” mode, and represents the playhead position from 0=sound start, to 1=sound end

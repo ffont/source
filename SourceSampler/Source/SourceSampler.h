@@ -122,6 +122,7 @@ private:
     float pitchBendRangeDown = 12.0f;
     int noteMappingMode = 0;
     int numSlices = 0;
+    float playheadPosition = 0.0f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -162,13 +163,13 @@ public:
 
 
 private:   
-    int pluginBlockSize = 0;
     int pluginNumChannelsSize = 0;
     int currentlyPlayedNoteIndex = 0;
     
     //==============================================================================
     // Sample reading and rendering
     bool playheadDirectionIsForward = true; // true = forward, false = backward
+    float targetPlayheadPosition = 0;  // only used in "freeze" mode
     double pitchRatio = 0;
     double pitchRatioMod = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;

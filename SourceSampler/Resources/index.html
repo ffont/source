@@ -105,7 +105,7 @@
             var labelElement = document.getElementById(sliderElement.id + "Label");
             if (labelElement != null) {
                 if (labelElement.id.indexOf("launchModeLabel") > -1){
-                    labelElement.innerHTML = ["gate", "loop", "loopfb", "trigger"][sliderElement.value];
+                    labelElement.innerHTML = ["gate", "loop", "loopfb", "trigger", "freeze"][sliderElement.value];
                 } else if (labelElement.id.indexOf("noteMappingMode") > -1){
                     labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
                 } else if (labelElement.id.indexOf("numSlices") > -1){
@@ -293,7 +293,7 @@
             html += '<input type="range" id="' + soundIdx + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopStartPosition: <span id="' + soundIdx + '_loopStartPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopEndPosition: <span id="' + soundIdx + '_loopEndPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopXFadeNSamples: <span id="' + soundIdx + '_loopXFadeNSamplesLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_launchMode" name="launchMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > launchMode: <span id="' + soundIdx + '_launchModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > launchMode: <span id="' + soundIdx + '_launchModeLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > reverse: <span id="' + soundIdx + '_reverseLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_maxGainVelMod" name="maxGainVelMod" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > maxGainVelMod: <span id="' + soundIdx + '_maxGainVelModLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="10.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > vel2CutoffAmt: <span id="' + soundIdx + '_vel2CutoffAmtLabel"></span><br>'
@@ -303,6 +303,7 @@
             html += '<input type="range" id="' + soundIdx + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeDown: <span id="' + soundIdx + '_pitchBendRangeDownLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > noteMappingMode: <span id="' + soundIdx + '_noteMappingModeLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_numSlices" name="numSlices" min="0" max="128" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > numSlices: <span id="' + soundIdx + '_numSlicesLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_playheadPosition" name="playheadPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > playheadPosition: <span id="' + soundIdx + '_playheadPositionLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
