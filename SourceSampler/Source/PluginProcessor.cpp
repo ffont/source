@@ -729,7 +729,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     FreesoundClient client(FREESOUND_API_KEY);
     logToState("Querying new sounds for: " + query);
     auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhytwhm.onset_times", 0);
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");
         Array<FSSound> sounds = list.toArrayOfSounds();
@@ -864,6 +864,22 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
         // 1) Create SourceSamplerSound object and add to sampler
         std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
         SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(soundIdx, String(soundIdx), *reader, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
+        
+        // Pass onset times to the just added sound (if info is preset in Freesound analysis)
+        ValueTree soundAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
+        if (soundAnalysis.isValid()){
+            ValueTree onsetTimes = soundAnalysis.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
+            if (onsetTimes.isValid()){
+                std::vector<float> onsets = {};
+                for (int i=0; i<onsetTimes.getNumChildren(); i++){
+                    ValueTree onsetVT = onsetTimes.getChild(i);
+                    float onset = (float)(onsetVT.getProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME));
+                    onsets.push_back(onset);
+                }
+                justAddedSound->setOnsetTimesSamples(onsets);
+                logToState("    ...with analysis info of " + (String)onsets.size() + " onsets");
+            }
+        }
         
         // Add duration information to loadedSoundsInfo ValueTree (we do it here because this is a reliable value which also takes into account MAX_SAMPLE_LENGTH)
         soundInfo.setProperty(STATE_SOUND_INFO_DURATION, justAddedSound->getLengthInSeconds(), nullptr);

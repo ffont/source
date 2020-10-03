@@ -315,6 +315,28 @@ int SourceSamplerSound::getIdx(){
     return idx;
 }
 
+int SourceSamplerSound::getNumberOfMappedMidiNotes()
+{
+    return midiNotes.countNumberOfSetBits();
+}
+
+BigInteger SourceSamplerSound::getMappedMidiNotes()
+{
+    return midiNotes;
+}
+
+void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
+    onsetTimesSamples.clear();
+    for (int i=0; i<onsetTimes.size(); i++){
+        onsetTimesSamples.push_back((int)(onsetTimes[i] * sourceSampleRate));
+    }
+}
+
+std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
+    return onsetTimesSamples;
+}
+
+
 // --------- implementation of SourceSamplerVoice
 
 
@@ -329,6 +351,39 @@ SourceSamplerSound* SourceSamplerVoice::getCurrentlyPlayingSourceSamplerSound() 
 bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 {
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
+}
+
+int SourceSamplerVoice::getCurrentlyPlayingNoteIndex()
+{
+    /* This function compares the MIDI note being currenlty played and the list of midi notes assigned to the
+     sound and returns the "index" of the currently note being played. For example, if the first MIDI note
+     assigned to the sound is C3 and the currently played note is also C3, this function returns 0. If sound
+     is assigned notes C3, C#3 and D3 and the currently played note is C5, this function returns 2. If no notes
+     are assigned to the sound or no sound is being played, this function returns 0 (this function will not be
+     called in these cases anyway). If there are note discontinuities in the mapping, the discontinuities are
+     not counted (e.g. if a sound is assigned notes [C3, C#3, E3] and the note being played is E3, this function
+     will return 2.
+          */
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
+    {
+        if (sound->getNumberOfMappedMidiNotes() > 0){
+            BigInteger mappedMidiNotes = sound->getMappedMidiNotes();
+            int currentNote = getCurrentlyPlayingNote();
+            int noteIndex = 0;
+            int i = 0;
+            while (true) {
+                int nextMappedNote = mappedMidiNotes.findNextSetBit(i);
+                if (nextMappedNote == currentNote){
+                    return noteIndex;
+                } else if (nextMappedNote == -1){
+                    break;
+                }
+                noteIndex += 1;
+                i = nextMappedNote + 1;
+            }
+        }
+    }
+    return 0;
 }
 
 int findNearestPositiveZeroCrossing (int position, const float* const signal, int maxSamplesSearch)
@@ -378,23 +433,43 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
             int nSlices;
             if (sound->numSlices == SLICE_MODE_AUTO_NNOTES){
                 // If in auto-nnotes mode choose the number of slices automatically to be the same of the number of notes mapped to this sound
-                // TODO: find the lowest assigned midi note and the highest assigned midi note and set the number of slices to that
-                nSlices = 16;
+                nSlices = sound->getNumberOfMappedMidiNotes();
             } else {
                 // Othwise, assign the selected number of slices directly
                 nSlices = sound->numSlices;
             }
             float sliceLength = startToEndSoundLength / nSlices;
-            int currentSlice = getCurrentlyPlayingNote() % nSlices;  // TODO: add some sort of offset of the lowest assigned midi note so that sound starting slice is aligned with first mappend note
-            currentSlice = jlimit(0, nSlices, currentSlice);
+            int currentSlice = currentlyPlayedNoteIndex % nSlices;
             startPositionSample = globalStartPositionSample + currentSlice * sliceLength;
             endPositionSample = globalStartPositionSample + (currentSlice + 1) * sliceLength;
             
         } else {
-            // if in onsets mode, get the slices from the onsets analysis
-            // TODO: implement this bit properly by getting information form the sound analysis and finding right onset times
-            startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-            endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            // If in onsets mode, get the slices from the onsets analysis. Only consider those onsets inside the global start/end selection
+            int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
+            int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            std::vector<int> onsetTimesSamples = sound->getOnsetTimesSamples();
+            if (onsetTimesSamples.size() > 0){
+                // If onset data is available, use the onsets :)
+                std::vector<int> validOnsetTimesSamples = {};
+                for (int i=0; i<onsetTimesSamples.size(); i++){
+                    if ((onsetTimesSamples[i] >= globalStartPositionSample) && (onsetTimesSamples[i] <= globalEndPositionSample)){
+                        validOnsetTimesSamples.push_back(onsetTimesSamples[i]);
+                    }
+                }
+                int nSlices = (int)validOnsetTimesSamples.size();
+                int currentSlice = currentlyPlayedNoteIndex % nSlices;
+                startPositionSample = validOnsetTimesSamples[currentSlice];
+                if (currentSlice < nSlices - 1){
+                    endPositionSample = validOnsetTimesSamples[currentSlice + 1];
+                } else {
+                    endPositionSample = globalEndPositionSample;
+                }
+                
+            } else {
+                // If no onset data is available, use all sound
+                startPositionSample = globalStartPositionSample;
+                endPositionSample = globalEndPositionSample;
+            }
         }
         soundLoopStartPosition = startPositionSample;
         soundLoopEndPosition = endPositionSample;
@@ -472,6 +547,9 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         pitchBendModSemitones = 0.0;
         filterCutoffMod = 0.0;
         gainMod = 0.0;
+        
+        // Compute index of the currently played note
+        currentlyPlayedNoteIndex = getCurrentlyPlayingNoteIndex();
         
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (sound->pluginSampleRate);

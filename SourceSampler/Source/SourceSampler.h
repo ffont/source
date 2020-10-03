@@ -67,6 +67,15 @@ public:
     float getLengthInSeconds();
     int getIdx();
     float getPlayingPositionPercentage();
+    
+    //==============================================================================
+    int getNumberOfMappedMidiNotes();
+    BigInteger getMappedMidiNotes();
+    
+    void setOnsetTimesSamples(std::vector<float> _onsetTimes);
+    std::vector<int> getOnsetTimesSamples();
+    
+    
 
 private:
     //==============================================================================
@@ -79,6 +88,7 @@ private:
     double sourceSampleRate;
     BigInteger midiNotes;
     int length = 0;
+    std::vector<int> onsetTimesSamples = {};
     
     double pluginSampleRate;
     int pluginBlockSize;
@@ -122,10 +132,8 @@ class SourceSamplerVoice: public SynthesiserVoice
 {
 public:
     //==============================================================================
-    /** Creates a SamplerVoice. */
     SourceSamplerVoice();
 
-    /** Destructor. */
     ~SourceSamplerVoice() override;
 
     //==============================================================================
@@ -148,13 +156,15 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     
     float getPlayingPositionPercentage();
+    int getCurrentlyPlayingNoteIndex();
     
     SourceSamplerSound* getCurrentlyPlayingSourceSamplerSound() const noexcept;
 
 
-private:
+private:   
     int pluginBlockSize = 0;
     int pluginNumChannelsSize = 0;
+    int currentlyPlayedNoteIndex = 0;
     
     //==============================================================================
     // Sample reading and rendering
