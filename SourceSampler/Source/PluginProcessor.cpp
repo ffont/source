@@ -594,8 +594,9 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
         String query = tokens[0];
         int numSounds = tokens[1].getIntValue();
-        float maxSoundLength = tokens[2].getFloatValue();
-        makeQueryAndLoadSounds(query, numSounds, maxSoundLength);
+        float minSoundLength = tokens[2].getFloatValue();
+        float maxSoundLength = tokens[3].getFloatValue();
+        makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
         
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
         String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
@@ -716,7 +717,7 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float maxSoundLength)
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
     if ((isQueryDownloadingAndLoadingSounds) && (Time::getMillisecondCounter() - startedQueryDownloadingAndLoadingSoundsTime < MAX_QUERY_AND_DOWNLOADING_BUSY_TIME)){
         logToState("Source is already busy querying and downloading sounds");
@@ -728,7 +729,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     
     FreesoundClient client(FREESOUND_API_KEY);
     logToState("Querying new sounds for: " + query);
-    auto filter = "duration:[0 TO " + (String)maxSoundLength + "]";
+    auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");

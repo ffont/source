@@ -137,13 +137,15 @@ public:
     void processActionFromOSCMessage (const OSCMessage& message)
     {
         if (message.getAddressPattern().toString() == OSC_ADDRESS_NEW_QUERY){
-            if (message.size() == 3)  {
+            if (message.size() == 4)  {
                 String query = message[0].getString();
                 int numSounds = message[1].getInt32();
-                float maxLength = message[2].getFloat32();
+                float minLength = message[2].getFloat32();
+                float maxLength = message[3].getFloat32();
                 String separator = ";";
                 String serializedParameters = query + SERIALIZATION_SEPARATOR +
                                               (String)numSounds + SERIALIZATION_SEPARATOR  +
+                                              (String)minLength + SERIALIZATION_SEPARATOR  +
                                               (String)maxLength + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);

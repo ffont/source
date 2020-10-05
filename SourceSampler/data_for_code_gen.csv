@@ -1,28 +1,28 @@
 name;type;min;max;default;
-filterCutoff;float;10;20000;20000;
-filterRessonance;float;0;1;0;
-maxPitchRatioMod;float;0;2;0.1;semitones
-maxFilterCutoffMod;float;0;100;10;
-filterKeyboardTracking;float;0;1;0;
-gain;float;-80;12;-10;db
-ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
-filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
-maxFilterADSRMod;float;0;10;1;
-midiRootNote;int;0;127;64;midi note that will play the sound at original speed
-basePitch;float;-36;36;0;semitones (modifies midi root note)
+launchMode;int;0;4;0;gate,loop,loop ping-pong,trigger,freeze
 startPosition;float;0;1;0;percentage position
 endPosition;float;0;1;1;percentage position
 loopStartPosition;float;0;1;0;percentage position
 loopEndPosition;float;0;1;1;percentage position
 loopXFadeNSamples;int;10;100000;500;n samples
-launchMode;int;0;4;0;gate,loop,loop ping-pong,trigger,freeze
 reverse;int;0;1;0;1=reverse
-maxGainVelMod;float;0;1;0.5;
-vel2CutoffAmt;float;0;10;0;velocity to cutoff amount (multiplier to cutoff frequency)
-at2GainAmt;float;0;1;0;gain amount to be added with AT
-pan;float;-1;1;0;
-pitchBendRangeUp;float;0;36;12;semitones
-pitchBendRangeDown;float;0;36;12;semitones
 noteMappingMode;int;0;3;0;pitch/slice/both/repeat (repeat means sounds is not altered at all)
 numSlices;int;0;128;0;0=auto per n notes, 1=auto per onsets, 2-128=from 2 to 128 equally spaced slices
 playheadPosition;float;0;1;0;this is only used in “freeze” mode, and represents the playhead position from 0=sound start, to 1=sound end
+filterCutoff;float;10;20000;20000;
+filterRessonance;float;0;1;0;
+filterKeyboardTracking;float;0;1;0;
+filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
+filterADSR2CutoffAmt;float;0;10;1;
+gain;float;-80;12;-10;db
+ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;
+pan;float;-1;1;0;
+midiRootNote;int;0;127;64;midi note that will play the sound at original speed
+pitch;float;-36;36;0;semitones (with respect to midi root note)
+pitchBendRangeUp;float;0;36;12;semitones
+pitchBendRangeDown;float;0;36;12;semitones
+mod2CutoffAmt;float;0;100;10;
+mod2GainAmt;float;0;12;6;gain amount to be added with AT (in dB)
+mod2PitchAmt;float;0;12;0;semitones
+vel2CutoffAmt;float;0;10;0;velocity to cutoff amount (multiplier to cutoff frequency)
+vel2GainAmt;float;0;1;0.5;percentage of how much velocity affects gain ¡

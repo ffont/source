@@ -55,33 +55,33 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
     // --> Start auto-generated code A
-    if (name == "filterCutoff") { filterCutoff = jlimit(10.0f, 20000.0f, value); }
+    if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "filterCutoff") { filterCutoff = jlimit(10.0f, 20000.0f, value); }
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
-    else if (name == "maxPitchRatioMod") { maxPitchRatioMod = jlimit(0.0f, 2.0f, value); }
-    else if (name == "maxFilterCutoffMod") { maxFilterCutoffMod = jlimit(0.0f, 100.0f, value); }
     else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(0.0f, 1.0f, value); }
+    else if (name == "filterADSR.attack") { filterADSR.attack = value; }
+    else if (name == "filterADSR.decay") { filterADSR.decay = value; }
+    else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
+    else if (name == "filterADSR.release") { filterADSR.release = value; }
+    else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = jlimit(0.0f, 10.0f, value); }
     else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
     else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
     else if (name == "ampADSR.release") { ampADSR.release = value; }
-    else if (name == "filterADSR.attack") { filterADSR.attack = value; }
-    else if (name == "filterADSR.decay") { filterADSR.decay = value; }
-    else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
-    else if (name == "filterADSR.release") { filterADSR.release = value; }
-    else if (name == "maxFilterADSRMod") { maxFilterADSRMod = jlimit(0.0f, 10.0f, value); }
-    else if (name == "basePitch") { basePitch = jlimit(-36.0f, 36.0f, value); }
-    else if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "maxGainVelMod") { maxGainVelMod = jlimit(0.0f, 1.0f, value); }
-    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 10.0f, value); }
-    else if (name == "at2GainAmt") { at2GainAmt = jlimit(0.0f, 1.0f, value); }
     else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
+    else if (name == "pitch") { pitch = jlimit(-36.0f, 36.0f, value); }
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
-    else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
+    else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(0.0f, 12.0f, value); }
+    else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(0.0f, 12.0f, value); }
+    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 10.0f, value); }
+    else if (name == "vel2GainAmt") { vel2GainAmt = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
     
     // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
@@ -101,12 +101,12 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
-    if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
+    if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
-    else if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
     else if (name == "numSlices") { numSlices = jlimit(0, 128, value); }
+    else if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
     // --> End auto-generated code C
 }
 
@@ -117,89 +117,9 @@ ValueTree SourceSamplerSound::getState(){
     
     // --> Start auto-generated code B
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterCutoff", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterCutoff, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterRessonance", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterRessonance, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxPitchRatioMod", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxPitchRatioMod, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterCutoffMod", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterCutoffMod, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterKeyboardTracking", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterKeyboardTracking, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.attack", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.attack, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.decay", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.decay, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.sustain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.sustain, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.release", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.release, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.attack", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.attack, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.decay", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.decay, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.sustain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.sustain, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.release", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.release, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxFilterADSRMod", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxFilterADSRMod, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "basePitch", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, basePitch, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "launchMode", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, launchMode, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
@@ -228,43 +148,8 @@ ValueTree SourceSamplerSound::getState(){
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "launchMode", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, launchMode, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "reverse", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, reverse, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "maxGainVelMod", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, maxGainVelMod, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2CutoffAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2CutoffAmt, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "at2GainAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, at2GainAmt, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeUp", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeUp, nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeDown", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeDown, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
@@ -280,6 +165,121 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "playheadPosition", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, playheadPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterCutoff", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterCutoff, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterRessonance", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterRessonance, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterKeyboardTracking", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterKeyboardTracking, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.attack", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.attack, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.decay", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.decay, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.sustain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.sustain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.release", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.release, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR2CutoffAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR2CutoffAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.attack", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.attack, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.decay", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.decay, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.sustain", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.sustain, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.release", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.release, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitch", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitch, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeUp", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeUp, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeDown", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeDown, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2CutoffAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2CutoffAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2GainAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2GainAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2PitchAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2PitchAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2CutoffAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2CutoffAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2GainAmt", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2GainAmt, nullptr),
                       nullptr);
     // --> End auto-generated code B
     
@@ -415,11 +415,13 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
     {
         // Reset processor chain internal state
         processorChain.reset();
+        auto& gain = processorChain.get<masterGainIndex>();
+        gain.setRampDurationSeconds(sound->pluginBlockSize/sound->pluginSampleRate);
         
         // Reset some parameters
         adsr.reset();
         adsrFilter.reset();
-        pitchRatioMod = 0.0;
+        pitchModSemitones = 0.0;
         pitchBendModSemitones = 0.0;
         filterCutoffMod = 0.0;
         gainMod = 0.0;
@@ -434,7 +436,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         
         // Compute velocity modulations (only relevant at start of note)
         filterCutoffVelMod = sound->filterCutoff * sound->vel2CutoffAmt * velocity;
-        float velocityGain = (sound->maxGainVelMod * velocity) + (1 - sound->maxGainVelMod);
+        float velocityGain = (sound->vel2GainAmt * velocity) + (1 - sound->vel2GainAmt);
         lgain = velocityGain;
         rgain = velocityGain;
         
@@ -442,15 +444,15 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         updateParametersFromSourceSamplerSound(sound);
         
         if (sound->launchMode == LAUNCH_MODE_FREEZE){
-            // In freeze mode, sourceSamplePosition depends on the playheadPosition parameter
-            sourceSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
+            // In freeze mode, playheadSamplePosition depends on the playheadPosition parameter
+            playheadSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
         } else {
             // Set initial playhead position according to start/end times
             if (sound->reverse == 0){
-                sourceSamplePosition = startPositionSample;
+                playheadSamplePosition = startPositionSample;
                 playheadDirectionIsForward = true;
             } else {
-                sourceSamplePosition = endPositionSample;
+                playheadSamplePosition = endPositionSample;
                 playheadDirectionIsForward = false;
             }
         }
@@ -471,7 +473,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     
     if (sound->launchMode == LAUNCH_MODE_FREEZE){
         // If in freeze mode, we "only" care about the playhead position parameter, the rest of parameters to define pitch, start/end times, etc., are not relevant
-        targetPlayheadPosition = sound->playheadPosition * sound->getLengthInSamples();
+        targetPlayheadSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
         
     } else {
         // Pitch
@@ -483,7 +485,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
             // that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
             currenltlyPlayingNote = sound->midiRootNote;
         }
-        double currentNoteFrequency = std::pow (2.0, (sound->basePitch + currenltlyPlayingNote - sound->midiRootNote + pitchBendModSemitones) / 12.0);
+        double currentNoteFrequency = std::pow (2.0, (sound->pitch + currenltlyPlayingNote - sound->midiRootNote) / 12.0);
         pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
         
         // Set start/end and loop start/end settings
@@ -492,7 +494,6 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
             // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
             // Also, loop start/end positions are ignored and set to the same slice start/end positions
-            // TODO: do real implementation here to find approptiate start/end slice positions
             int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
             int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
             int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
@@ -578,7 +579,6 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         }
     }
     
-    
     // ADSRs
     adsr.setParameters (sound->ampADSR);
     adsrFilter.setParameters (sound->filterADSR);
@@ -590,16 +590,14 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            filterCutoffMod +  // Aftertouch mod/modulation wheel mod
-                           sound->maxFilterADSRMod * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
+                           sound->filterADSR2CutoffAmt * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
     filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
     filter.setResonance (filterRessonance);
     
     // Amp and pan
     pan = sound->pan;
-    masterGain = Decibels::decibelsToGain(sound->gain);  // From dB to linear (note gain in SamplerSound is really in dB)
-    masterGain = masterGain + gainMod; // Add modulation gain (if any)
     auto& gain = processorChain.get<masterGainIndex>();
-    gain.setGainLinear (1.0); // This gain we don't really use it
+    gain.setGainDecibels(sound->gain + gainMod);
 }
 
 void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
@@ -637,15 +635,12 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
-        // Aftertouch modifies the playback speed up to an octave
-        pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newAftertouchValue/127.0;
+        pitchModSemitones = sound->mod2PitchAmt * (double)newAftertouchValue/127.0;
         
-        // Aftertouch also modifies filter cutoff
-        filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newAftertouchValue/127.0;
+        filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newAftertouchValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
         
-        //Aftertouch modifies gain as well
-        gainMod = sound->at2GainAmt * (float)newAftertouchValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
+        gainMod = sound->mod2GainAmt * (float)newAftertouchValue/127.0;
     }
 }
 
@@ -654,15 +649,12 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
-        // Channel aftertouch modifies the playback speed up to an octave
-        pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newChannelPressureValue/127.0;
+        pitchModSemitones = sound->mod2PitchAmt * (double)newChannelPressureValue/127.0;
         
-        // Channel aftertouch also modifies filter cutoff
-        filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newChannelPressureValue/127.0;
+        filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newChannelPressureValue/127.0;
         processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
         
-        // Channel aftertouch modifies gain as well
-        gainMod = sound->at2GainAmt * (float)newChannelPressureValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
+        gainMod = sound->mod2GainAmt * (float)newChannelPressureValue/127.0;
     }
 }
 
@@ -671,15 +663,12 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     if (controllerNumber == 1){
         if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
         {
-            // Modulation wheel modifies the playback speed up to an octave
-            pitchRatioMod = sound->maxPitchRatioMod * pitchRatio * (double)newValue/127.0;
+            pitchModSemitones = sound->mod2PitchAmt * (double)newValue/127.0;
             
-            // Modulation wheel also modifies filter cutoff
-            filterCutoffMod = sound->maxFilterCutoffMod * filterCutoff * (double)newValue/127.0;
+            filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newValue/127.0;
             processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
             
-            // Modulation wheel modifies gain as well
-            gainMod = sound->at2GainAmt * (float)newValue/127.0; // This assumes at2AmpMultiplierAmt goes from 1.0 to X, but minimum is always 1.0
+            gainMod = sound->mod2GainAmt * (float)newValue/127.0;
         }
     } else if ((controllerNumber >= 10) && (controllerNumber < 30))  {
         
@@ -710,9 +699,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
     {
         // Do some preparation (not all parameters will be used depending on the launch mode)
         int originalNumSamples = numSamples; // user later for filter processing
-        float previousMasterGain = masterGain;
         double previousPitchRatio = pitchRatio;
-        float previousPitchRatioMod = pitchRatioMod;
+        float previousPitchModSemitones = pitchModSemitones;
+        float previousPitchBendModSemitones = pitchBendModSemitones;
         float previousPan = pan;
         bool noteStoppedHard = false;
         updateParametersFromSourceSamplerSound(sound);
@@ -730,8 +719,8 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         while (--numSamples >= 0)
         {
             // Calculate L and R samples using basic interpolation
-            float l = interpolateSample(sourceSamplePosition, inL);
-            float r = (inR != nullptr) ? interpolateSample(sourceSamplePosition, inR) : l;
+            float l = interpolateSample(playheadSamplePosition, inL);
+            float r = (inR != nullptr) ? interpolateSample(playheadSamplePosition, inR) : l;
             
             if (sound->launchMode != LAUNCH_MODE_FREEZE){
                 // Outside freeze mode, add samples from the source sound to the buffer and check for looping and other sorts of modulations
@@ -741,7 +730,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                     // NOTE: don't crossfade in LAUNCH_MODE_LOOP_FW_BW mode because it loops from the the same sample (no need to crossfade)
                     if (playheadDirectionIsForward){
                         // PLayhead going forward  (normal playing mode): do loop when reahing fixedLoopEndPositionSample
-                        float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - sourceSamplePosition;
+                        float samplesToLoopEndPositionSample = (float)fixedLoopEndPositionSample - playheadSamplePosition;
                         if ((samplesToLoopEndPositionSample > 0) && (samplesToLoopEndPositionSample < sound->loopXFadeNSamples)){
                             if (ENABLE_DEBUG_BUFFER == 1){
                                 startRecordingToDebugBuffer((int)sound->loopXFadeNSamples * 2);
@@ -766,7 +755,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         }
                     } else {
                         // Playhead going backwards: do loop when reahing fixedLoopEndPositionSample
-                        int samplesToLoopStartPositionSample = sourceSamplePosition - (float)fixedLoopStartPositionSample;
+                        int samplesToLoopStartPositionSample = playheadSamplePosition - (float)fixedLoopStartPositionSample;
                         if ((samplesToLoopStartPositionSample > 0) && (samplesToLoopStartPositionSample < sound->loopXFadeNSamples)){
                             // We are approaching loopStartPositionSample (going backwards) and are closer than sound->loopXFadeNSamples
                             float lcrossfadeSample = 0.0;
@@ -794,7 +783,6 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
             
             // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
-            float interpolatedMasterGain = (previousMasterGain * ((float)numSamples/originalNumSamples) + masterGain * (1.0f - (float)numSamples/originalNumSamples));
             float rGainPan = jmin (1 - pan, 1.0f);
             float lGainPan = jmin (1 + pan, 1.0f);
             float previousRGainPan = jmin (1 - previousPan, 1.0f);
@@ -803,8 +791,8 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float interpolatedLGainPan = (previousLGainPan * ((float)numSamples/originalNumSamples) + lGainPan * (1.0f - (float)numSamples/originalNumSamples));
             auto envelopeValue = adsr.getNextSample();
             
-            l *= lgain * interpolatedLGainPan * envelopeValue * interpolatedMasterGain;
-            r *= rgain * interpolatedRGainPan * envelopeValue * interpolatedMasterGain;
+            l *= lgain * interpolatedLGainPan * envelopeValue;
+            r *= rgain * interpolatedRGainPan * envelopeValue;
 
             // Update output buffer with L and R samples
             if (outR != nullptr) {
@@ -816,50 +804,49 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
             if (sound->launchMode == LAUNCH_MODE_FREEZE){
                 // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
-                double distanceToTargetPlayheadPosition = targetPlayheadPosition - sourceSamplePosition;
-                double distanceToTargetPlayheadPositionNormalized = abs(distanceToTargetPlayheadPosition / sound->getLengthInSamples()); // normalized between 0 and 1
-                // TODO: use a nice function here for max speed. The closer to the target, the slower should go
-                double maxSpeed = jmax(pow(distanceToTargetPlayheadPositionNormalized, 2) * 100.0, 1.0);
-                double actualSpeed = jmin(maxSpeed, abs(distanceToTargetPlayheadPosition));
-                //std::cout << actualSpeed << std::endl;
-                if (distanceToTargetPlayheadPosition >= 0){
-                    sourceSamplePosition += actualSpeed;
+                double distanceTotargetPlayheadSamplePosition = targetPlayheadSamplePosition - playheadSamplePosition;
+                double distanceTotargetPlayheadSamplePositionNormalized = abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
+                double maxSpeed = jmax(pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * 100.0, 1.0);
+                double actualSpeed = jmin(maxSpeed, abs(distanceTotargetPlayheadSamplePosition));
+                if (distanceTotargetPlayheadSamplePosition >= 0){
+                    playheadSamplePosition += actualSpeed;
                 } else {
-                    sourceSamplePosition -= actualSpeed;
+                    playheadSamplePosition -= actualSpeed;
                 }
-                sourceSamplePosition = jlimit(0.0, (double)(sound->getLengthInSamples() - 1), sourceSamplePosition);  // Just to be sure...
+                playheadSamplePosition = jlimit(0.0, (double)(sound->getLengthInSamples() - 1), playheadSamplePosition);  // Just to be sure...
  
             } else {
                 // If not in freeze mode, advance source sample position for next iteration according to pitch ratio and other modulations...
                 double interpolatedPitchRatio = (previousPitchRatio * ((double)numSamples/originalNumSamples) + pitchRatio * (1.0f - (double)numSamples/originalNumSamples));
-                float interpolatedPitchRatioMod = (previousPitchRatioMod * ((float)numSamples/originalNumSamples) + pitchRatioMod * (1.0f - (float)numSamples/originalNumSamples));
+                float interpolatedPitchModSemitones = (previousPitchModSemitones * ((float)numSamples/originalNumSamples) + pitchModSemitones * (1.0f - (float)numSamples/originalNumSamples));
+                float interpolatedPitchBendModSemitones = (previousPitchBendModSemitones * ((float)numSamples/originalNumSamples) + pitchBendModSemitones * (1.0f - (float)numSamples/originalNumSamples));
                 if (playheadDirectionIsForward){
-                    sourceSamplePosition += interpolatedPitchRatio + interpolatedPitchRatioMod;
+                    playheadSamplePosition += interpolatedPitchRatio * pow(2, interpolatedPitchModSemitones/12) * pow(2, interpolatedPitchBendModSemitones/12);
                 } else {
-                    sourceSamplePosition -= interpolatedPitchRatio + interpolatedPitchRatioMod;
+                    playheadSamplePosition -= interpolatedPitchRatio * pow(2, interpolatedPitchModSemitones/12) * pow(2, interpolatedPitchBendModSemitones/12);
                 }
                 
                 // ... also check if we're reaching the end of the sound or looping region to do looping
                 if ((sound->launchMode == LAUNCH_MODE_LOOP) || (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW)){
                     // If looping is enabled, check whether we should loop
                     if (playheadDirectionIsForward){
-                        if (sourceSamplePosition > fixedLoopEndPositionSample){
+                        if (playheadSamplePosition > fixedLoopEndPositionSample){
                             if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
                                 // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
                                 playheadDirectionIsForward = !playheadDirectionIsForward;
                             } else {
                                 // Foward loop mode: jump from loop end to loop start
-                                sourceSamplePosition = fixedLoopStartPositionSample;
+                                playheadSamplePosition = fixedLoopStartPositionSample;
                             }
                         }
                     } else {
-                        if (sourceSamplePosition < fixedLoopStartPositionSample){
+                        if (playheadSamplePosition < fixedLoopStartPositionSample){
                             if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
                                 // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
                                 playheadDirectionIsForward = !playheadDirectionIsForward;
                             } else {
                                 // Forward loop mode (in reverse): jump from loop start to loop end
-                                sourceSamplePosition = fixedLoopEndPositionSample;
+                                playheadSamplePosition = fixedLoopEndPositionSample;
                             }
                         }
                     }
@@ -867,11 +854,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                     // If not looping, check whether we've reached the end of the file
                     bool endReached = false;
                     if (playheadDirectionIsForward){
-                        if (sourceSamplePosition > endPositionSample){
+                        if (playheadSamplePosition > endPositionSample){
                             endReached = true;
                         }
                     } else {
-                        if (sourceSamplePosition < startPositionSample){
+                        if (playheadSamplePosition < startPositionSample){
                             endReached = true;
                         }
                     }
@@ -914,7 +901,7 @@ float SourceSamplerVoice::getPlayingPositionPercentage()
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
-        return (float)sourceSamplePosition/(float)sound->getLengthInSamples();
+        return (float)playheadSamplePosition/(float)sound->getLengthInSamples();
     }
     return -1.0;
 }

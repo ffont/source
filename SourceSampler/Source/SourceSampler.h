@@ -96,33 +96,33 @@ private:
     // Define sound "controllable" parameters here
     
     // --> Start auto-generated code A
-    float filterCutoff = 20000.0f;
-    float filterRessonance = 0.0f;
-    float maxPitchRatioMod = 0.1f;
-    float maxFilterCutoffMod = 10.0f;
-    float filterKeyboardTracking = 0.0f;
-    float gain = -10.0f;
-    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 1.0f};
-    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 1.0f};
-    float maxFilterADSRMod = 1.0f;
-    int midiRootNote = 64;
-    float basePitch = 0.0f;
+    int launchMode = 0;
     float startPosition = 0.0f;
     float endPosition = 1.0f;
     float loopStartPosition = 0.0f;
     float loopEndPosition = 1.0f;
     int loopXFadeNSamples = 500;
-    int launchMode = 0;
     int reverse = 0;
-    float maxGainVelMod = 0.5f;
-    float vel2CutoffAmt = 0.0f;
-    float at2GainAmt = 0.0f;
-    float pan = 0.0f;
-    float pitchBendRangeUp = 12.0f;
-    float pitchBendRangeDown = 12.0f;
     int noteMappingMode = 0;
     int numSlices = 0;
     float playheadPosition = 0.0f;
+    float filterCutoff = 20000.0f;
+    float filterRessonance = 0.0f;
+    float filterKeyboardTracking = 0.0f;
+    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 1.0f};
+    float filterADSR2CutoffAmt = 1.0f;
+    float gain = -10.0f;
+    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 1.0f};
+    float pan = 0.0f;
+    int midiRootNote = 64;
+    float pitch = 0.0f;
+    float pitchBendRangeUp = 12.0f;
+    float pitchBendRangeDown = 12.0f;
+    float mod2CutoffAmt = 10.0f;
+    float mod2GainAmt = 6.0f;
+    float mod2PitchAmt = 0.0f;
+    float vel2CutoffAmt = 0.0f;
+    float vel2GainAmt = 0.5f;
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -169,11 +169,11 @@ private:
     //==============================================================================
     // Sample reading and rendering
     bool playheadDirectionIsForward = true; // true = forward, false = backward
-    float targetPlayheadPosition = 0;  // only used in "freeze" mode
+    float targetPlayheadSamplePosition = 0;  // only used in "freeze" mode
     double pitchRatio = 0;
-    double pitchRatioMod = 0;  // For aftertouch, modulation wheel
+    double pitchModSemitones = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;
-    double sourceSamplePosition = 0;
+    double playheadSamplePosition = 0;
     float pan = 0;
     float lgain = 0, rgain = 0;
     ADSR adsr;
@@ -193,7 +193,6 @@ private:
     float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;  // For aftertouch, modulation wheel
     float filterCutoffVelMod = 0.0f;  // For aftertouch, modulation wheel
-    float masterGain = 0.5f;
     float gainMod = 1.0f;  // For aftertouch, modulation wheel
     int startPositionSample = 0;
     int endPositionSample = 0;

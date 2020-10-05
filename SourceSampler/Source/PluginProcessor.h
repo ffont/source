@@ -99,7 +99,7 @@ public:
     void setMidiThru(bool doMidiTrhu);
     
     //==============================================================================
-    void makeQueryAndLoadSounds(const String& query, int numSounds, float maxSoundLength);
+    void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void downloadSounds(bool blocking);
     bool allSoundsFinishedDownloading();
     void loadDownloadedSoundsIntoSampler();
