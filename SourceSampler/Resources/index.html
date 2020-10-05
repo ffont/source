@@ -5,6 +5,19 @@
     <title>Source, a Freesound-powered sampler</title>
 
     <style>
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 80%;
+        }
+    
+        h1 {
+            margin-bottom: 0px;   
+        }
+    
+        input[type=number] {
+            max-width: 50px;
+        }
+        
         .cards_container_slide {
             overflow: scroll;
             white-space: nowrap;
@@ -61,6 +74,11 @@
         #allSoundsEditor{
             display: inline-block;
             vertical-align: top;
+        }
+    
+        #log {
+            max-height: 200px;
+            overflow: scroll;
         }
     </style>
 
@@ -564,9 +582,16 @@
     <div class="controls_card">
         <b>Query</b><br>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-        Num sounds:<input name="numSounds" value="" type="text" placeholder="16"><br>
-        Sound length:<input name="minSoundLength" value="" type="text" placeholder="0.0"> to <input name="maxSoundLength" value="" type="text" placeholder="0.5"><br>
+        Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
+        Sound length:<input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
         <button onclick="makeQuery()">Go!</button>
+    </div>
+    
+    <div class="controls_card">
+        <b>Global options</b><br>
+        Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
+        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
+        MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
     </div>
 
     <div class="controls_card">
@@ -586,19 +611,6 @@
     </div>
 
     <div class="controls_card">
-        <b>System stats</b><br>
-        <button onclick="getSystemStats();">Get system stats</button>
-        <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
-    </div>
-
-    <div class="controls_card">
-        <b>Global options</b><br>
-        Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
-        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
-        MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
-    </div>
-
-    <div class="controls_card">
         <b>Voices</b><br>
         <div id="voicesState"></div>
     </div>
@@ -613,14 +625,20 @@
         <div id="individualSoundEditors"></div>
     </div>
 
-    <h3>State</h3>
-    <button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button>
-    <textarea id="state" style="width:100%;height:500px;"></textarea>
+    <div class="controls_card">
+        <b>System stats</b><br>
+        <button onclick="getSystemStats();">Get system stats</button>
+        <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
+    </div>
     
     <div class="controls_card">
         <b>Log</b><br>
         <div id="log"></div>
     </div>
+    
+    <h3>State</h3>
+    <button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button>
+    <textarea id="state" style="width:100%;height:500px;"></textarea>
 
 </body>
 </html>

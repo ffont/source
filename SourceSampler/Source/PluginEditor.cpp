@@ -91,7 +91,7 @@ void SourceSamplerAudioProcessorEditor::resized()
 {
     #if !ELK_BUILD
     if (!hadBrowserError){
-        float width = 1000;
+        float width = 1050;
         float height = 800;
         setSize(width, height);
         browser.setBounds(getLocalBounds());
