@@ -73,8 +73,6 @@
 #define STATE_CURRENT_PORT "currentPort"
 #define STATE_LOG_MESSAGES "logMessages"
 
-#define STATE_QUERY "query"
-
 #define STATE_SOUNDS_INFO "soundsInfo"
 #define STATE_SOUND_INFO "soundInfo"
 #define STATE_SOUND_INFO_ID "soundId"
