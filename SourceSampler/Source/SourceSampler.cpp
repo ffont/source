@@ -810,9 +810,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             if (sound->launchMode == LAUNCH_MODE_FREEZE){
                 // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
                 double distanceTotargetPlayheadSamplePosition = targetPlayheadSamplePosition - playheadSamplePosition;
-                double distanceTotargetPlayheadSamplePositionNormalized = abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
-                double maxSpeed = jmax(pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * 100.0, 1.0);
-                double actualSpeed = jmin(maxSpeed, abs(distanceTotargetPlayheadSamplePosition));
+                double distanceTotargetPlayheadSamplePositionNormalized = std::abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
+                double maxSpeed = jmax(std::pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * 100.0, 1.0);
+                double actualSpeed = jmin(maxSpeed, std::abs(distanceTotargetPlayheadSamplePosition));
                 if (distanceTotargetPlayheadSamplePosition >= 0){
                     playheadSamplePosition += actualSpeed;
                 } else {
@@ -826,9 +826,9 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 float interpolatedPitchModSemitones = (previousPitchModSemitones * ((float)numSamples/originalNumSamples) + pitchModSemitones * (1.0f - (float)numSamples/originalNumSamples));
                 float interpolatedPitchBendModSemitones = (previousPitchBendModSemitones * ((float)numSamples/originalNumSamples) + pitchBendModSemitones * (1.0f - (float)numSamples/originalNumSamples));
                 if (playheadDirectionIsForward){
-                    playheadSamplePosition += interpolatedPitchRatio * pow(2, interpolatedPitchModSemitones/12) * pow(2, interpolatedPitchBendModSemitones/12);
+                    playheadSamplePosition += interpolatedPitchRatio * std::pow(2, interpolatedPitchModSemitones/12) * std::pow(2, interpolatedPitchBendModSemitones/12);
                 } else {
-                    playheadSamplePosition -= interpolatedPitchRatio * pow(2, interpolatedPitchModSemitones/12) * pow(2, interpolatedPitchBendModSemitones/12);
+                    playheadSamplePosition -= interpolatedPitchRatio * std::pow(2, interpolatedPitchModSemitones/12) * std::pow(2, interpolatedPitchBendModSemitones/12);
                 }
                 
                 // ... also check if we're reaching the end of the sound or looping region to do looping
