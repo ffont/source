@@ -106,7 +106,7 @@ public:
     void setSingleSourceSamplerSoundObject(int soundIdx);
     void setSourceSamplerSoundObjects();
     
-    void addToMidiBuffer(int soundNumber, bool doNoteOff);
+    void addToMidiBuffer(int soundIndex, bool doNoteOff);
 
     double getStartTime();
     String getQuery();
@@ -124,9 +124,9 @@ private:
     double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
     bool aconnectWasRun = false;
-    ;
     String query = "";
     String presetName = "empty";
+    int currentNoteMappingType = NOTE_MAPPING_TYPE_CONTIGUOUS;
     ValueTree loadedSoundsInfo;
     bool midiOutForwardsMidiIn = true;
     

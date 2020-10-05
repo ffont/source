@@ -17,7 +17,11 @@
         input[type=number] {
             max-width: 50px;
         }
-        
+    
+        input[type=range] {
+            vertical-align: top;
+        }
+    
         .cards_container_slide {
             overflow: scroll;
             white-space: nowrap;
@@ -208,7 +212,8 @@
             var numSounds = document.getElementsByName('numSounds')[0].value || 16;
             var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
             var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength], 'str;int;float;float')
+            var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
         }
 
         function setMidiInChannel() {
@@ -580,10 +585,14 @@
     </div>
 
     <div class="controls_card">
-        <b>Query</b><br>
+        <b>Make new preset</b><br>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
         Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
         Sound length:<input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
+        Note mapping type: <select name="noteMappingType">
+            <option value="0">contiguous</option>
+            <option value="1">interleaved</option>
+        </select><br>
         <button onclick="makeQuery()">Go!</button>
     </div>
     

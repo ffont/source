@@ -65,6 +65,10 @@
 #define NOTE_MAPPING_MODE_BOTH 2
 #define NOTE_MAPPING_MODE_REPEAT 3
 
+#define NOTE_MAPPING_TYPE_CONTIGUOUS 0  // Don't confuse note mapping type with note mapping mode. I know, naming should improve...
+#define NOTE_MAPPING_TYPE_INTERLEAVED 1
+#define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
+
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"
 #define STATE_PRESET_NAME "presetName"

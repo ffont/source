@@ -71,6 +71,7 @@ public:
     //==============================================================================
     int getNumberOfMappedMidiNotes();
     BigInteger getMappedMidiNotes();
+    int getMidiRootNote();
     
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
     std::vector<int> getOnsetTimesSamples();

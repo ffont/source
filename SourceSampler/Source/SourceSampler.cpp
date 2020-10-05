@@ -331,6 +331,11 @@ BigInteger SourceSamplerSound::getMappedMidiNotes()
     return midiNotes;
 }
 
+int SourceSamplerSound::getMidiRootNote()
+{
+    return midiRootNote;
+}
+
 void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
     onsetTimesSamples.clear();
     for (int i=0; i<onsetTimes.size(); i++){
