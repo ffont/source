@@ -315,7 +315,6 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     // Add general stuff
     state.setProperty(STATE_PRESET_NAME, presetName, nullptr);
     state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
-    state.setProperty(STATE_QUERY, query, nullptr);
     
     // Add sampler main settings (not including individual sound settings because it will be in soundsData value tree)
     state.appendChild(sampler.getState(), nullptr);
@@ -390,9 +389,6 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     logToState("Loading state...");
     
     // Set main stuff
-    if (state.hasProperty(STATE_QUERY)){
-        query = state.getProperty(STATE_QUERY).toString();
-    }
     if (state.hasProperty(STATE_PRESET_NAME)){
         presetName = state.getProperty(STATE_PRESET_NAME).toString();
     }
