@@ -84,6 +84,13 @@
             max-height: 200px;
             overflow: scroll;
         }
+
+        .midiMapping{
+            background-color: #ddd;
+            margin: 2px;
+            padding: 5px;
+        }
+        
     </style>
 
     <script>
@@ -291,7 +298,65 @@
             sendOsc('/load_preset', [idx - 1], 'int')
         }
 
+        function createUpdateMapping(mappingID){
+            var randomID = parseInt(mappingID.split('_')[0], 10);
+            var soundIdx = parseInt(mappingID.split('_')[1], 10);
+            var ccNumber = document.getElementById(mappingID + '_mappingCCNumber').value;
+            var name = document.getElementById(mappingID + '_mappingParameterName').value;
+            var minRange = parseFloat(document.getElementById(mappingID + '_mappingMinRange').value, 10);
+            var maxRange = parseFloat(document.getElementById(mappingID + '_mappingMaxRange').value, 10);
+            sendOsc('/add_or_update_cc_mapping', [soundIdx, randomID, ccNumber, name, minRange, maxRange], 'int;int;int;str;float;float');
+            if (randomID == -1){
+                // Remove this element from DOM because this one is only while creating a new mappping
+                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = "";
+            }
+        }
+
+        function removeMidiMapping(mappingID){
+            var randomID = parseInt(mappingID.split('_')[0], 10);
+            var soundIdx = parseInt(mappingID.split('_')[1], 10);
+            if (randomID != -1){
+                sendOsc('/remove_cc_mapping', [soundIdx, randomID], 'int;int');
+                //document.getElementById(mappingID).remove();  // No need to remove because it will be removed when updating state
+            } else {
+                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
+            }
+        }
+
         // UI generation
+
+        function getMidiControllableParameterNames(){
+            // --> Start auto-generated code B
+            parameterNames = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
+            // --> End auto-generated code B
+            return parameterNames;
+        }
+
+        function addNewMIDIMappingEditor(soundIdx) {
+                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = createMIDIMappingEditor(soundIdx, -1, 0, "", 0.0, 1.0);
+            }
+
+        function createMIDIMappingEditor(soundIdx, randomID, ccNumber, parameterName, minRange, maxRange){
+            html = '<div id="' + randomID + '_' + soundIdx + '" class="midiMapping">';
+            html += 'CC number: <input id="' + randomID + '_' + soundIdx + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
+            html += 'Parameter: <select id="' + randomID + '_' + soundIdx + '_mappingParameterName">';
+            var availableParams = getMidiControllableParameterNames();
+            for (var i=0; i<availableParams.length; i++){
+                if (availableParams[i] != parameterName){
+                    html += '<option value="' + availableParams[i] + '">' + availableParams[i] + '</option>';
+                } else {
+                    html += '<option value="' + availableParams[i] + '" selected>' + availableParams[i] + '</option>';
+                }
+            }
+            html += '</select><br>';
+            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundIdx + '_mappingMinRangeLabel"></span><br>';
+            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundIdx + '_mappingMaxRangeLabel"></span><br>';
+            html += '<button onclick="createUpdateMapping(\'' + randomID + '_' + soundIdx + '\')">submit</button><button onclick="removeMidiMapping(\'' + randomID + '_' + soundIdx + '\')">delete</button>';
+            html += '</div>';
+            return html;
+        }
+
+
         function generateSoundEditControls(soundIdx){
             html = '';
             // --> Start auto-generated code A
@@ -348,6 +413,8 @@
             html = '<div class="controls_card" id="' + cardElementId + '">';
             html += '<div id="soundCardInfo_' + idx + '"></div>';
             html += '<div id="soundCardControls_' + idx +'" style="display:none;">' + generateSoundEditControls(idx) + '</div>';
+            html += '<div><button onclick="addNewMIDIMappingEditor(' + idx +');">Add CC mapping</button><div id="newMappingPlaceholder_' + idx + '"></div></div>';
+            html += '<div id="soundCardMappings_' + idx + '" style="display:none;"></div>';
             html += '</div>';
             return html;
         }
@@ -382,6 +449,11 @@
                 var soundControlsElement = document.getElementById('soundCardControls_' + idx);
                 if (soundControlsElement.style.display === "none") {
                     soundControlsElement.style.display = "block";
+                }
+
+                var soundMappingsElement = document.getElementById('soundCardMappings_' + idx);
+                if (soundMappingsElement.style.display === "none") {
+                    soundMappingsElement.style.display = "block";
                 }
             }
         }
@@ -528,6 +600,47 @@
                 }
             }
             updateAllSliderLabels();
+
+            // Add/updae sound MIDI mappings
+            for (var i = 0; i < soundInfoElements.length; i++) {
+                var sound = soundInfoElements[i];
+                var samplerSound = sound.getElementsByTagName('SamplerSound')[0];
+                var soundIdx = samplerSound.getAttribute('soundIdx');
+                var samplerSoundMappings = samplerSound.getElementsByTagName('SamplerSoundMidiCCMapping');
+                var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundIdx);
+                var currentMappingIDs = []; // Used later to decide whether some elements should be removed
+                for (var j = 0; j < samplerSoundMappings.length; j++) {
+                    var mapping = samplerSoundMappings[j];
+                    var randomID = parseInt(mapping.getAttribute('midiMappingRandomId'), 10);
+                    var ccNumber = parseInt(mapping.getAttribute('midiMappingCcNumber'), 10);
+                    var name = mapping.getAttribute('midiMappingParameterName');
+                    var minRange = parseFloat(mapping.getAttribute('midiMappingMinRange'), 10);
+                    var maxRange = parseFloat(mapping.getAttribute('midiMappingMaxRange'), 10);
+
+                    var mappingID = randomID + '_' + soundIdx;
+                    currentMappingIDs.push(mappingID);
+                    if (document.getElementById(mappingID) != undefined){
+                        // if a div with that mappingID already exists in the samplerSoundMappingsElement, do nothing
+                        
+                    } else {
+                        // if such a mappingID is not yet there, add it
+                        html = createMIDIMappingEditor(soundIdx, randomID, ccNumber, name, minRange, maxRange);
+                        samplerSoundMappingsElement.innerHTML += html;
+                    }
+                
+                    // TODO: this assumes that mappings are not changed elsewhere. this should probably be improved doing
+                    // proper checking of whether we should redraw, update, etc...
+                }
+
+                // Also we need to remove the divs for mappings which are no longer in the state (have been removed)
+                var elementsInDiv = samplerSoundMappingsElement.getElementsByClassName("midiMapping");
+                for (var j = 0; j < elementsInDiv.length; j++) {
+                    var mappingElement = elementsInDiv[j];
+                    if (currentMappingIDs.indexOf(mappingElement.id) == -1){
+                        mappingElement.remove();
+                    }
+                }
+            }
         }
 
         // State handling

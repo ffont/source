@@ -83,6 +83,8 @@ public:
             addListener (this, OSC_ADDRESS_PLAY_SOUND);
             addListener (this, OSC_ADDRESS_STOP_SOUND);
             addListener (this, OSC_ADDRESS_SET_POLYPHONY);
+            addListener (this, OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING);
+            addListener (this, OSC_ADDRESS_REMOVE_CC_MAPPING);
         }
     }
     

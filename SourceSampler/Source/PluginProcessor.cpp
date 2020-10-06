@@ -549,7 +549,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    //DBG("Action message: " << message);
+    DBG("Action message: " << message);
     
     if (message.startsWith(String(ACTION_FINISHED_DOWNLOADING_SOUND))){
         // A sound has finished downloading, trigger loading into sampler
@@ -699,7 +699,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String parameterName = tokens[3];
         float minRange = tokens[4].getFloatValue();
         float maxRange = tokens[5].getFloatValue();
-        
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->addOrEditMidiMapping(randomID, ccNumber, parameterName, minRange, maxRange);
@@ -711,7 +710,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
         int soundIndex = tokens[0].getIntValue();
         int randomID = tokens[1].getIntValue();
-       
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->removeMidiMapping(randomID);

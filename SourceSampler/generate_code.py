@@ -21,7 +21,8 @@ def generate_code(controls_data_filename):
             'type': row.get('type', None),
             'min': row.get('min', None),
             'max':  row.get('max', ''),
-            'default': row.get('default', '')
+            'default': row.get('default', ''),
+            'midiCCenabled': row.get('midiCCenabled', '') == '1',
         }
         controls_list.append(control_data)
 
@@ -164,6 +165,17 @@ def generate_code(controls_data_filename):
     current_code += '            '
     code_dict['../Resources/index.html'] = {}
     code_dict['../Resources/index.html']['A'] = current_code
+
+    # Generate list of controls modifiable via MIDI cc in interface.hmtl
+    current_code = '            parameterNames = ['
+    midiCCenabledControls = [control_data for control_data in controls_list if control_data['midiCCenabled'] == True]
+    for count, control_data in enumerate(midiCCenabledControls):
+        if count != len(midiCCenabledControls) - 1:
+            current_code += '"{name}", '.format(**control_data)
+        else:
+            current_code += '"{name}"]'.format(**control_data)
+    current_code += '\n            '
+    code_dict['../Resources/index.html']['B'] = current_code
 
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))
