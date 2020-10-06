@@ -689,7 +689,36 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int numVoices = message.substring(String(ACTION_SET_POLYPHONY).length() + 1).getIntValue();
         sampler.setSamplerVoices(numVoices);
 
+    } else if (message.startsWith(String(ACTION_ADD_OR_UPDATE_CC_MAPPING))){
+        String serializedParameters = message.substring(String(ACTION_ADD_OR_UPDATE_CC_MAPPING).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();
+        int randomID = tokens[1].getIntValue();
+        int ccNumber = tokens[2].getIntValue();
+        String parameterName = tokens[3];
+        float minRange = tokens[4].getFloatValue();
+        float maxRange = tokens[5].getFloatValue();
+        
+        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        if (sound != nullptr){
+            sound->addOrEditMidiMapping(randomID, ccNumber, parameterName, minRange, maxRange);
+        }
+
+    } else if (message.startsWith(String(ACTION_REMOVE_CC_MAPPING))){
+        String serializedParameters = message.substring(String(ACTION_REMOVE_CC_MAPPING).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();
+        int randomID = tokens[1].getIntValue();
+       
+        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        if (sound != nullptr){
+            sound->removeMidiMapping(randomID);
+        }
+
     }
+    
 }
 
 

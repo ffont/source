@@ -236,6 +236,32 @@ public:
                 String actionMessage = String(ACTION_SET_POLYPHONY) + ":" + (String)numVoices;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING){
+            if (message.size() == 6)  {
+                int soundIndex = message[0].getInt32();
+                int randomID = message[1].getInt32();
+                int ccNumber = message[2].getInt32();
+                String parameterName = message[3].getString();
+                float minRange = message[4].getFloat32();
+                float maxRange = message[5].getFloat32();
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                              (String)randomID + SERIALIZATION_SEPARATOR +
+                                              (String)ccNumber + SERIALIZATION_SEPARATOR +
+                                              parameterName + SERIALIZATION_SEPARATOR +
+                                              (String)minRange + SERIALIZATION_SEPARATOR +
+                                              (String)maxRange + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_ADD_OR_UPDATE_CC_MAPPING) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_REMOVE_CC_MAPPING){
+            if (message.size() == 2)  {
+                int soundIndex = message[0].getInt32();
+                int randomID = message[1].getInt32();
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                              (String)randomID + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_REMOVE_CC_MAPPING) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
         }
     }
     #if ENABLE_HTTP_SERVER

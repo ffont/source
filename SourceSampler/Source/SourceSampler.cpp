@@ -148,6 +148,12 @@ ValueTree SourceSamplerSound::getState(){
     ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
     state.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
     state.setProperty(STATE_SOUND_INFO_IDX, idx, nullptr);  // idx is set to the state sot hat the UI gets it, but never loaded because it is generated dynamically
+
+    // Add midi mappings (sorted by cc number so are displayed accordingly in the interface
+    std::vector<MidiCCMapping> midiMappingsSorted = getMidiMappingsSorted();
+    for (int i=0; i<midiMappingsSorted.size(); i++){
+        state.appendChild(midiMappingsSorted[i].getState(), nullptr);
+    }
     
     // --> Start auto-generated code B
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
@@ -331,18 +337,28 @@ void SourceSamplerSound::loadState(ValueTree soundState){
         midiNotes.parseString(soundState.getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES).toString(), 16);
     }
     
-    // Iterate over parameters and load them
+    // Iterate over sound parameters and midi mappings and load them
     if (soundState.isValid()){
         for (int i=0; i<soundState.getNumChildren(); i++){
-            ValueTree parameter = soundState.getChild(i);
-            String type = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
-            String name = parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
-            if (type == "float"){
-                float value = (float)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-                setParameterByNameFloat(name, value);
-            } else if (type == "int"){
-                int value = (int)parameter.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-                setParameterByNameInt(name, value);
+            ValueTree parameterOrMapping = soundState.getChild(i);
+            if (parameterOrMapping.hasType(STATE_SAMPLER_SOUND_PARAMETER)){
+                // VT is a sound parameter
+                String type = parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE).toString();
+                String name = parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString();
+                if (type == "float"){
+                    float value = (float)parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+                    setParameterByNameFloat(name, value);
+                } else if (type == "int"){
+                    int value = (int)parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+                    setParameterByNameInt(name, value);
+                }
+            } else if (parameterOrMapping.hasType(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING)){
+                // VT is a midi CC mapping
+                addOrEditMidiMapping(-1,
+                                     (int)parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NUMBER),
+                                     parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NAME).toString(),
+                                     (float)parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MIN),
+                                     (float)parameterOrMapping.getProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MAX));
             }
         }
     }
@@ -384,6 +400,47 @@ void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 
 std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
     return onsetTimesSamples;
+}
+
+void SourceSamplerSound::addOrEditMidiMapping(int randomID, int ccNumber, String parameterName, float minRange, float maxRange){
+    if (randomID < 0){
+        midiMappings.push_back(MidiCCMapping(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange)));
+    } else {
+        for (int i=0; i<midiMappings.size(); i++){
+            if (midiMappings[i].randomID == randomID){
+                midiMappings[i].ccNumber = ccNumber;
+                midiMappings[i].parameterName = parameterName;
+                midiMappings[i].minRange = minRange;
+                midiMappings[i].maxRange = maxRange;
+            }
+        }
+    }
+}
+
+std::vector<MidiCCMapping> SourceSamplerSound::getMidiMappingsForCcNumber(int ccNumber){
+    std::vector<MidiCCMapping> toReturn = {};
+    for (int i=0; i<midiMappings.size(); i++){
+        if (midiMappings[i].ccNumber == ccNumber){
+            toReturn.push_back(midiMappings[i]);
+        }
+    }
+    return toReturn;
+}
+
+std::vector<MidiCCMapping> SourceSamplerSound::getMidiMappingsSorted(){
+    std::vector<MidiCCMapping> midiMappingsSorted = midiMappings;
+    std::sort(midiMappingsSorted.begin(), midiMappingsSorted.end());
+    return midiMappingsSorted;
+}
+
+void SourceSamplerSound::removeMidiMapping(int randomID){
+    std::vector<MidiCCMapping> newMidiMappings = {};
+    for (int i=0; i<midiMappings.size(); i++){
+        if (midiMappings[i].randomID != randomID){
+            newMidiMappings.push_back(midiMappings[i]);
+        }
+    }
+    midiMappings = newMidiMappings;
 }
 
 
