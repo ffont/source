@@ -761,6 +761,7 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 
 void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
     
+    // Do the modwheel modulation
     if (controllerNumber == 1){
         if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
         {
@@ -771,16 +772,16 @@ void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
             
             gainMod = sound->mod2GainAmt * (float)newValue/127.0;
         }
-    } else if ((controllerNumber >= 10) && (controllerNumber < 30))  {
-        
-        if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
-        {
-            // Control CCs used for modulation of playhead positon of sound N (where 10=sound 1, 11=sound 2, etc)
-            int soundIdx = controllerNumber - 10;
-            if (sound->idx == soundIdx){
-                // The message applies to the current sound, modify its playhead position parameter
-                sound->setParameterByNameFloat("playheadPosition", (float)newValue/127.0);
-            }
+    }
+    
+    // Check if there are other parameters mapped to this controller
+    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
+    {
+        std::vector<MidiCCMapping> mappings = sound->getMidiMappingsForCcNumber(controllerNumber);
+        for (int i=0; i<mappings.size(); i++){
+            float normInputValue = (float)newValue/127.0;  // This goes from 0 to 1
+            float value = jmap(normInputValue, mappings[i].minRange, mappings[i].maxRange);
+            sound->setParameterByNameFloatNorm(mappings[i].parameterName, value);
         }
     }
 }
