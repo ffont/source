@@ -100,6 +100,39 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     }
 }
 
+void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float value0to1){
+    // --> Start auto-generated code D
+    if (name == "startPosition") { setParameterByNameFloat("startPosition", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "endPosition") { setParameterByNameFloat("endPosition", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "loopStartPosition") { setParameterByNameFloat("loopStartPosition", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "loopEndPosition") { setParameterByNameFloat("loopEndPosition", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "playheadPosition") { setParameterByNameFloat("playheadPosition", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "freezePlayheadSpeed") { setParameterByNameFloat("freezePlayheadSpeed", jmap(value0to1, 1.0f, 5000.0f)); }
+    else if (name == "filterCutoff") { setParameterByNameFloat("filterCutoff", jmap(value0to1, 10.0f, 20000.0f)); }
+    else if (name == "filterRessonance") { setParameterByNameFloat("filterRessonance", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "filterKeyboardTracking") { setParameterByNameFloat("filterKeyboardTracking", jmap(value0to1, 0.0f, 1.0f)); }
+    else if (name == "filterADSR.attack") { setParameterByNameFloat("filterADSR.attack", value0to1); }
+    else if (name == "filterADSR.decay") { setParameterByNameFloat("filterADSR.decay", value0to1); }
+    else if (name == "filterADSR.sustain") { setParameterByNameFloat("filterADSR.sustain", value0to1); }
+    else if (name == "filterADSR.release") { setParameterByNameFloat("filterADSR.release", value0to1); }
+    else if (name == "filterADSR2CutoffAmt") { setParameterByNameFloat("filterADSR2CutoffAmt", jmap(value0to1, 0.0f, 10.0f)); }
+    else if (name == "gain") { setParameterByNameFloat("gain", jmap(value0to1, -80.0f, 12.0f)); }
+    else if (name == "ampADSR.attack") { setParameterByNameFloat("ampADSR.attack", value0to1); }
+    else if (name == "ampADSR.decay") { setParameterByNameFloat("ampADSR.decay", value0to1); }
+    else if (name == "ampADSR.sustain") { setParameterByNameFloat("ampADSR.sustain", value0to1); }
+    else if (name == "ampADSR.release") { setParameterByNameFloat("ampADSR.release", value0to1); }
+    else if (name == "pan") { setParameterByNameFloat("pan", jmap(value0to1, -1.0f, 1.0f)); }
+    else if (name == "pitch") { setParameterByNameFloat("pitch", jmap(value0to1, -36.0f, 36.0f)); }
+    else if (name == "pitchBendRangeUp") { setParameterByNameFloat("pitchBendRangeUp", jmap(value0to1, 0.0f, 36.0f)); }
+    else if (name == "pitchBendRangeDown") { setParameterByNameFloat("pitchBendRangeDown", jmap(value0to1, 0.0f, 36.0f)); }
+    else if (name == "mod2CutoffAmt") { setParameterByNameFloat("mod2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
+    else if (name == "mod2GainAmt") { setParameterByNameFloat("mod2GainAmt", jmap(value0to1, -12.0f, 12.0f)); }
+    else if (name == "mod2PitchAmt") { setParameterByNameFloat("mod2PitchAmt", jmap(value0to1, -12.0f, 12.0f)); }
+    else if (name == "vel2CutoffAmt") { setParameterByNameFloat("vel2CutoffAmt", jmap(value0to1, 0.0f, 10.0f)); }
+    else if (name == "vel2GainAmt") { setParameterByNameFloat("vel2GainAmt", jmap(value0to1, 0.0f, 1.0f)); }
+    // --> End auto-generated code D
+}
+
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
     if (name == "launchMode") { launchMode = jlimit(0, 4, value); }

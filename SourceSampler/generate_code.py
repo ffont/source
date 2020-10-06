@@ -25,7 +25,7 @@ def generate_code(controls_data_filename):
         }
         controls_list.append(control_data)
 
-    # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameFloat
+    # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameFloat and setParameterByNameFloatNorm
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
         iftag = 'else if' if count > 0 else 'if'
@@ -45,6 +45,25 @@ def generate_code(controls_data_filename):
     current_code += '    '
     code_dict['SourceSampler.cpp'] = {}
     code_dict['SourceSampler.cpp']['A'] = current_code
+
+    current_code = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
+        iftag = 'else if' if count > 0 else 'if'
+        control_data.update({'iftag': iftag})
+        if control_data['type'] == 'float':
+            minf = float(control_data['min'])
+            maxf = float(control_data['max'])
+            control_data.update({'minf': minf, 'maxf': maxf})
+            current_code += '    {iftag} (name == "{name}") {{ setParameterByNameFloat("{name}", jmap(value0to1, {minf}f, {maxf}f)); }}\n'.format(**control_data)
+        elif control_data['type'] == 'adsr':
+            for adsr_phase in ['attack', 'decay', 'sustain', 'release']:  # Note that these names ust match ADSR::Parameters names
+                control_data.update({'adsr_phase': adsr_phase})
+                current_code += '    {iftag} (name == "{name}.{adsr_phase}") {{ setParameterByNameFloat("{name}.{adsr_phase}", value0to1); }}\n'.format(**control_data)
+        else:
+            # Don't know what to do with other types
+            pass
+    current_code += '    '
+    code_dict['SourceSampler.cpp']['D'] = current_code
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
     current_code = ''

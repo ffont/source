@@ -56,6 +56,7 @@ public:
     
     //==============================================================================
     void setParameterByNameFloat(const String& name, float value);
+    void setParameterByNameFloatNorm(const String& name, float value0to1);
     void setParameterByNameInt(const String& name, int value);
     
     //==============================================================================
