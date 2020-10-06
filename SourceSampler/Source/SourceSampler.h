@@ -107,6 +107,7 @@ private:
     int noteMappingMode = 0;
     int numSlices = 0;
     float playheadPosition = 0.0f;
+    float freezePlayheadSpeed = 100.0f;
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
     float filterKeyboardTracking = 0.0f;

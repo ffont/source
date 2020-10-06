@@ -60,6 +60,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
+    else if (name == "freezePlayheadSpeed") { freezePlayheadSpeed = jlimit(1.0f, 5000.0f, value); }
     else if (name == "filterCutoff") { filterCutoff = jlimit(10.0f, 20000.0f, value); }
     else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
     else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(0.0f, 1.0f, value); }
@@ -78,8 +79,8 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
     else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
-    else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(0.0f, 12.0f, value); }
-    else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(0.0f, 12.0f, value); }
+    else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(-12.0f, 12.0f, value); }
+    else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(-12.0f, 12.0f, value); }
     else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 10.0f, value); }
     else if (name == "vel2GainAmt") { vel2GainAmt = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
@@ -165,6 +166,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "playheadPosition", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, playheadPosition, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "freezePlayheadSpeed", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, freezePlayheadSpeed, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
@@ -811,7 +817,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
                 double distanceTotargetPlayheadSamplePosition = targetPlayheadSamplePosition - playheadSamplePosition;
                 double distanceTotargetPlayheadSamplePositionNormalized = std::abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
-                double maxSpeed = jmax(std::pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * 100.0, 1.0);
+                double maxSpeed = jmax(std::pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * sound->freezePlayheadSpeed, 1.0);
                 double actualSpeed = jmin(maxSpeed, std::abs(distanceTotargetPlayheadSamplePosition));
                 if (distanceTotargetPlayheadSamplePosition >= 0){
                     playheadSamplePosition += actualSpeed;
