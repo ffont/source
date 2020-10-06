@@ -851,6 +851,11 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
         logToState("Downloading in server failed!");
     }
     
+    // Mark all sounds as download complete
+    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
+        ValueTree soundInfo = loadedSoundsInfo.getChild(i);
+        soundInfo.setProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS, 100, nullptr);
+    }
     loadDownloadedSoundsIntoSampler();
     
     #endif
