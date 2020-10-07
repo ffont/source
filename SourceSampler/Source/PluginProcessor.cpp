@@ -67,7 +67,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     
     // If on ELK build, start loading preset 0
     #if ELK_BUILD
-    setCurrentProgram(0);
+    setCurrentProgram(latestLoadedPreset);
     #endif
 
 }
@@ -163,6 +163,7 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
         sampler.clearSounds();
         sampler.setSamplerVoices(16);
     }
+    saveGlobalPersistentStateToFile(); // Save global settings to file (which inlucdes the latest loaded preset index)
 }
 
 const String SourceSamplerAudioProcessor::getProgramName (int index)
@@ -426,6 +427,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex, nullptr);
     settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
@@ -459,6 +461,10 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU)){
                 midiOutForwardsMidiIn = (bool)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU);
+            }
+            
+            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET)){
+                latestLoadedPreset = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET);
             }
             
             ValueTree _presetNumberMapping = settings.getChildWithName(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);

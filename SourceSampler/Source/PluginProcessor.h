@@ -65,6 +65,7 @@ public:
     void changeProgramName (int index, const String& newName) override;
     String getPresetFilenameByIndex(int index);
     int currentPresetIndex = -1;
+    int latestLoadedPreset = 0; // Only used in ELK builds to re-load the last preset that was loaded (in previous runs included)
 
     //==============================================================================
     ValueTree collectPresetStateInformation ();
