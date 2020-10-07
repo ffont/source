@@ -139,7 +139,7 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
-    else if (name == "numSlices") { numSlices = jlimit(0, 128, value); }
+    else if (name == "numSlices") { numSlices = jlimit(0, 100, value); }
     else if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
     // --> End auto-generated code C
 }
