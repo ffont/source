@@ -13,10 +13,21 @@
 
 #if ELK_BUILD
     #define ENABLE_OSC_SERVER 1
-    #define ENABLE_HTTP_SERVER 1
+    #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
+    #define USE_EXTERNAL_HTTP_SERVER 1
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
 #else
-    #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface
-    #define ENABLE_HTTP_SERVER 1
+    #if JUCE_DEBUG
+        #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
+        #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
+        #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
+        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
+    #else
+        #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
+        #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
+        #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server
+        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
+    #endif
 #endif
 #define ENABLE_DEBUG_BUFFER 0
 #define STATE_UPDATE_HZ 15
@@ -74,6 +85,8 @@
 #define NOTE_MAPPING_TYPE_CONTIGUOUS 0  // Don't confuse note mapping type with note mapping mode. I know, naming should improve...
 #define NOTE_MAPPING_TYPE_INTERLEAVED 1
 #define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
+
+#define STATE_FULL_STATE "SourceFullState"
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"

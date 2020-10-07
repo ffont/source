@@ -107,7 +107,7 @@ class ServerInterface: public ActionBroadcaster
 public:
     ServerInterface ()
     {
-        #if ENABLE_HTTP_SERVER
+        #if ENABLE_EMBEDDED_HTTP_SERVER
         httpServer.setInterfacePointer(this);
         httpServer.startThread(0); // Lowest priority
         #endif
@@ -119,7 +119,7 @@ public:
     
     ~ServerInterface ()
     {
-        #if ENABLE_HTTP_SERVER
+        #if ENABLE_EMBEDDED_HTTP_SERVER
         httpServer.interface.release();
         if (httpServer.serverPtr != nullptr){
             httpServer.serverPtr->stop();
@@ -266,7 +266,7 @@ public:
             }
         }
     }
-    #if ENABLE_HTTP_SERVER
+    #if ENABLE_EMBEDDED_HTTP_SERVER
     HTTPServer httpServer;
     #endif
     #if ENABLE_OSC_SERVER

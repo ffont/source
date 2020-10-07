@@ -82,6 +82,8 @@ public:
     
     ValueTree collectVolatileStateInformation ();
     
+    void sendStateToExternalServer(ValueTree state);
+    
     //==============================================================================
     // Action listener
     void actionListenerCallback (const String &message) override;

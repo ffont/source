@@ -61,9 +61,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     loadGlobalPersistentStateFromFile();
     
     // Start timer to collect state and pass it to the UI
-    #if ENABLE_HTTP_SERVER
     startTimerHz(STATE_UPDATE_HZ);
-    #endif
     
     // If on ELK build, start loading preset 0
     #if ELK_BUILD
@@ -722,7 +720,25 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
 
     }
-    
+}
+
+void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state)
+{
+    // This is only used in ELK builds in which the HTTP server is running outside the plugin
+    URL url = URL("http://localhost:8123/state_from_plugin");
+    String header = "Content-Type: text/xml";
+    int statusCode = -1;
+    StringPairArray responseHeaders;
+    String data = state.toXmlString();
+    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+    bool postLikeRequest = true;
+    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+        &responseHeaders, &statusCode)))
+    {
+        // No need to read response really
+        //String resp = stream->readEntireStreamAsString();
+    }
 }
 
 
@@ -804,7 +820,7 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
 {
     // NOTE: blocking only has effect in non-elk situation
     
-    #if !ELK_BUILD
+    #if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
     
     // Download the sounds within the plugin
     
@@ -1041,19 +1057,27 @@ void SourceSamplerAudioProcessor::timerCallback()
     ValueTree presetState = collectPresetStateInformation();
     ValueTree globalSettings = collectGlobalSettingsStateInformation();
     ValueTree volatileState = collectVolatileStateInformation();
-    ValueTree fullState = ValueTree("SourceFullState");
+    ValueTree fullState = ValueTree(STATE_FULL_STATE);
     fullState.appendChild(presetState, nullptr);
     fullState.appendChild(globalSettings, nullptr);
     fullState.appendChild(volatileState, nullptr);
-    fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
     fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
+    
+    #if ENABLE_EMBEDDED_HTTP_SERVER
+    fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
     serverInterface.serializedAppState = fullState.toXmlString();
+    #endif
+    
+    #if USE_EXTERNAL_HTTP_SERVER
+    sendStateToExternalServer(fullState);
+    #endif
+   
 }
 
 
 int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 {
-    #if ENABLE_HTTP_SERVER
+    #if ENABLE_EMBEDDED_HTTP_SERVER
     return serverInterface.httpServer.port;
     #else
     return 0;

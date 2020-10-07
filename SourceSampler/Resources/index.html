@@ -350,7 +350,7 @@
             }
             html += '</select><br>';
             html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundIdx + '_mappingMinRangeLabel"></span><br>';
-            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundIdx + '_mappingMaxRangeLabel"></span><br>';
+            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + randomID + '_' + soundIdx + '_mappingMaxRangeLabel"></span><br>';
             html += '<button onclick="createUpdateMapping(\'' + randomID + '_' + soundIdx + '\')">submit</button><button onclick="removeMidiMapping(\'' + randomID + '_' + soundIdx + '\')">delete</button>';
             html += '</div>';
             return html;
@@ -413,9 +413,9 @@
             html = '<div class="controls_card" id="' + cardElementId + '">';
             html += '<div id="soundCardInfo_' + idx + '"></div>';
             html += '<div id="soundCardControls_' + idx +'" style="display:none;">' + generateSoundEditControls(idx) + '</div>';
-            html += '<div><button onclick="addNewMIDIMappingEditor(' + idx +');">Add CC mapping</button><div id="newMappingPlaceholder_' + idx + '"></div></div>';
-            html += '<div id="soundCardMappings_' + idx + '" style="display:none;"></div>';
-            html += '</div>';
+            html += '<div id="soundCardMappingsWrapper_' + idx + '" style="display:none;"><button onclick="addNewMIDIMappingEditor(' + idx +');">Add CC mapping</button><div id="newMappingPlaceholder_' + idx + '"></div>';
+            html += '<div id="soundCardMappings_' + idx + '"></div>';
+            html += '</div></div>';
             return html;
         }
     
@@ -451,9 +451,9 @@
                     soundControlsElement.style.display = "block";
                 }
 
-                var soundMappingsElement = document.getElementById('soundCardMappings_' + idx);
-                if (soundMappingsElement.style.display === "none") {
-                    soundMappingsElement.style.display = "block";
+                var soundMappingsWrapperElement = document.getElementById('soundCardMappingsWrapper_' + idx);
+                if (soundMappingsWrapperElement.style.display === "none") {
+                    soundMappingsWrapperElement.style.display = "block";
                 }
             }
         }
@@ -461,10 +461,11 @@
         function syncUIWithState(xmlState){
             
             var port = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('currentPort');
-            if (document.getElementById("portIndicator").innerHTML != '(' + port + ')'){
-                document.getElementById("portIndicator").innerHTML = '(' + port + ')';
+            if (port != undefined){
+                if (document.getElementById("portIndicator").innerHTML != '(' + port + ')'){
+                    document.getElementById("portIndicator").innerHTML = '(' + port + ')';
+                }
             }
-            
             var logMessages = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('logMessages').split(';');
             document.getElementById("log").innerHTML = '';
             for (var i=0; i<logMessages.length; i++){
