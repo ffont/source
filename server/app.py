@@ -11,6 +11,8 @@ import requests
 import os
 import time
 import sys
+import urllib.request
+from threading import Thread
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
@@ -71,19 +73,54 @@ def get_system_stats():
         return 'No stats'
 
 
+class SoundDownloader:
+    def __init__(self, url, outfile):
+        self.old_percent = 0
+        self.url = url
+        self.outfile = outfile
+
+    def download_progress_hook(self, count, blockSize, totalSize):
+        percent = int(count * blockSize * 100 / totalSize)
+        if percent > self.old_percent:
+            self.old_percent = percent
+            osc_client.send_message('/downloading_sound_progress', [self.outfile, percent])
+        if percent >= 100:
+            osc_client.send_message('/finished_downloading_sound', [self.outfile])    
+
+
+def download_sound(url, outfile):
+    if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
+        # If sound does not exist, start downloading
+        print('Downloading ' + url)
+        progress = SoundDownloader(url, outfile)
+        urllib.request.urlretrieve(url, outfile, reporthook=progress.download_progress_hook)
+    else:
+        # If sound already exists, notify plugin about that
+        osc_client.send_message('/finished_downloading_sound', [outfile])    
+
+
+def download_all_sounds(urls, outfiles):
+    for url, outfile in zip(urls, outfiles):
+        thread = Thread(target = download_sound, args = (url, outfile, ))
+        thread.start()
+        #download_sound(url, outfile)
+
+
 @app.route('/download_sounds', methods = ['GET'])  # Download the sounds requested by the plugin
 def download_sounds():
-    # TODO: make sounds download in different threads and send OSC messages back to the plugin
-    # to show progress
+    urls_to_download = []
+    outfiles = []
     for url in request.args['urls'].split(','):
         if url:
             sound_id = url.split('/')[-1].split('_')[0]
-            outfile = '/udata/source/sounds/' + sound_id + '.ogg'
-            if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
-                print('Downloading ' + url)
-                r = requests.get(url, allow_redirects=True)
-                open(outfile, 'wb').write(r.content)
-    return 'All downloaded!'
+            outfile = os.path.join(request.args['location'], sound_id + '.ogg')
+            urls_to_download.append(url)
+            outfiles.append(outfile)
+    
+    thread = Thread(target = download_all_sounds, args = (urls_to_download, outfiles, ))
+    thread.start()
+
+    return 'Downloading async...'
 
 
 if __name__ == '__main__':

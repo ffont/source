@@ -83,6 +83,8 @@ public:
             addListener (this, OSC_ADDRESS_PLAY_SOUND);
             addListener (this, OSC_ADDRESS_STOP_SOUND);
             addListener (this, OSC_ADDRESS_SET_POLYPHONY);
+            addListener (this, OSC_ADDRESS_FINISHED_DOWNLOADING_SOUND);
+            addListener (this, OSC_ADDRESS_DOWNLOADING_SOUND_PROGRESS);
             addListener (this, OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING);
             addListener (this, OSC_ADDRESS_REMOVE_CC_MAPPING);
         }
@@ -236,6 +238,21 @@ public:
             if (message.size() == 1)  {
                 int numVoices = message[0].getInt32();
                 String actionMessage = String(ACTION_SET_POLYPHONY) + ":" + (String)numVoices;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_FINISHED_DOWNLOADING_SOUND){
+            if (message.size() == 1)  {
+                String soundTargetLocation = message[0].getString();
+                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundTargetLocation;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_DOWNLOADING_SOUND_PROGRESS){
+            if (message.size() == 2)  {
+                String soundTargetLocation = message[0].getString();
+                int percentageCompleted = message[1].getInt32();
+                String serializedParameters = soundTargetLocation + SERIALIZATION_SEPARATOR +
+                                              (String)percentageCompleted + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING){

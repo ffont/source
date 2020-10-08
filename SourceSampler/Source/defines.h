@@ -65,6 +65,9 @@
 #define OSC_ADDRESS_PLAY_SOUND "/play_sound"
 #define OSC_ADDRESS_STOP_SOUND "/stop_sound"
 #define OSC_ADDRESS_SET_POLYPHONY "/set_polyphony"
+#define OSC_ADDRESS_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
+#define OSC_ADDRESS_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
+
 #define OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define OSC_ADDRESS_REMOVE_CC_MAPPING "/remove_cc_mapping"
 

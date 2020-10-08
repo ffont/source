@@ -843,17 +843,17 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     }
         
     #else
-
-    // If inside ELK build, download the sounds with the python server as it seems to be much much faster
-    logToState("Sending download task to python server...");
-    URL url = URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds");
     
+    logToState("Sending download task to python server...");
+    URL url;
+    url = URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds");
     String urlsParam = "";
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
         ValueTree soundInfo = loadedSoundsInfo.getChild(i);
         urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
     }
     url = url.withParameter("urls", urlsParam);
+    url = url.withParameter("location", soundsDownloadLocation.getFullPathName());
     
     String header;
     int statusCode = -1;
@@ -872,13 +872,6 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     } else {
         logToState("Downloading in server failed!");
     }
-    
-    // Mark all sounds as download complete
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-        soundInfo.setProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS, 100, nullptr);
-    }
-    loadDownloadedSoundsIntoSampler();
     
     #endif
 }
