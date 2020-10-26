@@ -28,6 +28,8 @@ def send_elk(ctx):
             ("source_sushi_config.json", remote_dir),
             ("../server/app.py", remote_dir),
             ("../server/requirements.txt", remote_dir),
+            ("glue_app.py", remote_dir),
+            ("source_sensei_config.json", remote_dir),
             ("../SourceSampler/Resources/index.html", remote_dir),
             ("../SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
         ]:

@@ -11,14 +11,16 @@ import requests
 import os
 import time
 import sys
-import urllib.request
+import urllib
 from threading import Thread
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
 
-# TODO: add check to see if we're running in ELK platform, and if it is the case, change template_folder to /home/mind/
-template_folder='../SourceSampler/Resources/'
+if sys.platform == "linux2":
+    template_folder='/home/mind/'
+else:
+    template_folder='../SourceSampler/Resources/'
 app = Flask(__name__, template_folder=template_folder)  
 osc_client = None
 plugin_state = "No sate"
@@ -93,7 +95,7 @@ def download_sound(url, outfile):
         # If sound does not exist, start downloading
         print('Downloading ' + url)
         progress = SoundDownloader(url, outfile)
-        urllib.request.urlretrieve(url, outfile, reporthook=progress.download_progress_hook)
+        urllib.urlretrieve(url, outfile, reporthook=progress.download_progress_hook)
     else:
         # If sound already exists, notify plugin about that
         osc_client.send_message('/finished_downloading_sound', [outfile])    

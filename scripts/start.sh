@@ -8,7 +8,7 @@ fi
 # If sushi running, kill it
 PID=`ps -eaf | grep "sushi" | grep -v grep | awk '{print $2}'`
 if [[ "" !=  "$PID" ]]; then
-  echo "* Killing existing python server with PID $PID"
+  echo "* Killing existing sushi process PID $PID"
   kill -9 $PID
 fi
 
