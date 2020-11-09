@@ -82,9 +82,20 @@ As far as I know, JUCE 6 is not yet supported by ELK, so we're using 5.4.7 here.
 
 Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html/documents/working_with_elk_board.html#configuring-automatic-startup
 
-1) Modify `sushi` service to point to `/home/mind/source_sushi_config.json`
+1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
 
-2) Create new service for python server at `/lib/systemd/system/source-server.service` (use `sudo`). This server is used to download audio files outside the plugin because it seems to be much much faster this way.
+```
+ExecStart=/home/mind/sushi_custom -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
+```
+
+2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
+
+```
+ExecStart=/usr/bin/sensei -f /home/mind/source_sensei_config.json
+```
+
+3) Create new service for python server at `/lib/systemd/system/source.service` (use `sudo`). This server is used as the "glue" app which will run the HTTP server as well as control hardware stuff (display, LEDs, etc) and communicate with the plugin running in sushi using OSC messages. The server 
+also takes care of downloading sounds as it seems to be much faster to do it from outside sushi.
 
 ```
 [Unit]
@@ -95,27 +106,29 @@ After=load-drivers.service
 Type=simple
 RemainAfterExit=yes
 WorkingDirectory=/home/mind/
-ExecStart=python app.py
+ExecStart=main
 User=mind
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-3) Enable `sushi` and `source-server` services
+4) Enable `sushi`, `sensei`, and `source` services
 
 ```
 sudo systemctl enable sushi
-sudo systemctl enable source-server
+sudo systemctl enable sensei
+sudo systemctl enable source
 ```
 
-Now both services will start automatically on start up. You can still use `start.sh` to test new versions because the previous processes will be killed.
+Now both services will start automatically on start up. You can still use `./start` to test new versions because the previous processes will be killed.
 
 When running from startup, you can check std out logs with:
 
 ```
 sudo journalctl -fu sushi
-sudo journalctl -fu source-server
+sudo journalctl -fu sensei
+sudo journalctl -fu source
 ```
     
     

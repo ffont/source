@@ -24,11 +24,14 @@ def send_elk(ctx):
     print('********************************************************\n')
     with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
         for local_file, destination_dir in [
-            ("start.sh", remote_dir),
+            ("start", remote_dir),
+            ("stop", remote_dir),
             ("source_sushi_config.json", remote_dir),
-            ("../server/app.py", remote_dir),
-            ("../server/requirements.txt", remote_dir),
-            ("glue_app.py", remote_dir),
+            ("main", remote_dir),
+            ("requirements.txt", remote_dir),
+            ("LiberationMono-Regular.ttf", remote_dir),
+            ("elk_ui.py", remote_dir),
+            ("test_glue_app.py", remote_dir),
             ("source_sensei_config.json", remote_dir),
             ("../SourceSampler/Resources/index.html", remote_dir),
             ("../SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
@@ -38,7 +41,7 @@ def send_elk(ctx):
 
     print('\nAll done!')
     print('You can now run Source on the ELK board with the command:')
-    print('./start.sh')
+    print('./start')
     print('\n')
 
 

@@ -1,0 +1,7 @@
+#!/bin/bash
+# Stop SOURCE
+
+pkill -f 'python3 ./main'
+
+pkill -2 sensei
+pkill -2 sushi

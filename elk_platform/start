@@ -1,0 +1,13 @@
+#!/bin/bash
+# Start SOURCE
+
+./stop
+sleep 1
+/usr/bin/sensei -f /home/mind/source_sensei_config.json &
+sleep 1
+./main &
+sleep 2
+/home/mind/sushi_custom -r --multicore-processing=2 -c /home/mind/source_sushi_config.json &
+sleep 3
+aconnect -x
+aconnect 16 128

@@ -1,12 +1,8 @@
-from __future__ import print_function
+#!/usr/bin/env python3
 
+from time import sleep
 import argparse
-try:
-    import commands
-    do_system_stats = True
-except:
-    # Python 3
-    do_system_stats = False
+import subprocess
 import requests
 import os
 import time
@@ -14,18 +10,66 @@ import sys
 import urllib
 from threading import Thread
 
+from elkpy import sushicontroller as sc
+from elkpy import sushiprocessor as sp
+from elk_ui import ElkUIController
+
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
 
-if sys.platform == "linux2":
-    template_folder='/home/mind/'
+if sys.platform == "linux" or sys.platform == "linux2":
+    platform = "ELK"
 else:
-    template_folder='../SourceSampler/Resources/'
-app = Flask(__name__, template_folder=template_folder)  
+    platform = "desktop"
+
+app = Flask(__name__, template_folder='/home/mind/' if platform == "ELK" else '../SourceSampler/Resources/')
 osc_client = None
 plugin_state = "No sate"
 time_post_state_triggered = None
 time_post_state_received = None
+
+bridge= None
+
+
+def get_status_output(*args, **kwargs):
+    # Util funciton used later to run commands and get output
+    p = subprocess.Popen(*args, **kwargs)
+    stdout, stderr = p.communicate()
+    return p.returncode, stdout, stderr
+
+
+class ElkBridge(object):
+    """ 
+    Bridge / Glue application to connect board UI (pots, buttons, LEDs, etc.)
+    to changes in SUSHI's processors.
+    """
+
+    def __init__(self):
+        self.ui = ElkUIController(self.handle_faders,
+                                  self.handle_buttons,
+                                  None,
+                                  None)
+
+        self.sushi = sc.SushiController()
+        self._refresh_display()
+
+    def handle_faders(self, idx, val):
+        pass
+
+        self._refresh_display()
+
+    def handle_buttons(self, idx, val):
+        pass
+
+    def run(self):
+        self.ui.run()
+
+        while True:
+            time.sleep(0.05)
+            self.ui.refresh()
+
+    def _refresh_display(self):
+        self.ui.set_display_lines(["Source is runnning :)"])
 
 
 @app.route('/', methods = ['GET'])  # Serve main interface HTML file
@@ -64,13 +108,16 @@ def update_state():
 
 @app.route('/get_system_stats', methods = ['GET'])  # Return system stats (only if running in ELK)
 def get_system_stats():
-    if do_system_stats and sys.platform != 'darwin':
+    if sys.platform != 'darwin':
         # Get system stats (only works when running in ELK as for other host(s) the command would be different)
-        temp_out = commands.getstatusoutput("sudo vcgencmd measure_temp")[1]
-        cpu_usage = commands.getstatusoutput("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[1]
-        mem_usage = commands.getstatusoutput("free | grep Mem | awk '{print $3/$2 * 100.0}'")[1]
-        msw = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + commands.getstatusoutput("more /proc/xenomai/sched/stat | grep sushi_b64")[1]
-        return "{0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(temp_out, cpu_usage, mem_usage, msw)
+        try:
+            temp_out = get_status_output("sudo vcgencmd measure_temp")[1]
+            cpu_usage = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[1]
+            mem_usage = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[1]
+            msw = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")[1]
+            return "{0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(temp_out, cpu_usage, mem_usage, msw)
+        except:
+            return 'Error getting stats'
     else:
         return 'No stats'
 
@@ -93,11 +140,12 @@ class SoundDownloader:
 def download_sound(url, outfile):
     if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
         # If sound does not exist, start downloading
-        print('Downloading ' + url)
+        print('- Downloading ' + url)
         progress = SoundDownloader(url, outfile)
         urllib.urlretrieve(url, outfile, reporthook=progress.download_progress_hook)
     else:
         # If sound already exists, notify plugin about that
+        print('- Skip downloading ' + url + ' (already downloaded)')
         osc_client.send_message('/finished_downloading_sound', [outfile])    
 
 
@@ -125,12 +173,23 @@ def download_sounds():
     return 'Downloading async...'
 
 
+def run_elk_bridge():
+    bridge = ElkBridge()
+    bridge.run()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--osc_ip", default="127.0.0.1", help="The IP to send OSC to")
     parser.add_argument("--osc_port", type=int, default=9000, help="The port to send OSC messages to")
     parser.add_argument("--http_port", type=int, default=8123, help="The port the web server should listen at")
     args = parser.parse_args()
+
+    if platform == "ELK":
+        thread = Thread(target=run_elk_bridge)
+        thread.start()
+        #thread.join()
+
 
     osc_client = OSCClient(args.osc_ip, args.osc_port, encoding='utf8')
     app.run(host='0.0.0.0', port=args.http_port, debug=True)
