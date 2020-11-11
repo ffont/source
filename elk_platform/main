@@ -3,13 +3,14 @@
 import argparse
 import json
 import logging
-import lxml.etree as etree
 import os
 import requests
 import subprocess
 import sys
 import time
 import urllib
+
+from bs4 import BeautifulSoup
 
 try:
     from elkpy import sushicontroller as sc
@@ -110,6 +111,18 @@ class ElkBridge(object):
     def handle_encoder(self, direction):
         print('Encoder rotated: {0}'.format(direction))
 
+        global osc_client
+        global plguin_state_xml
+
+        preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
+        preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
+        new_preset_number = preset_number + direction
+        if new_preset_number < 0:
+            new_preset_number = 0
+        if new_preset_number != preset_number:
+            print('Loading new preset')
+            osc_client.send_message("/load_preset", [new_preset_number])
+
     def run(self):
         self.ui.run()
 
@@ -129,6 +142,10 @@ class ElkBridge(object):
             self.ui.refresh()
 
     def _refresh_display(self):
+        global connection_with_plugin_ok
+        global time_post_state_received
+        global plguin_state_xml
+
         # Before setting new display lines, pre-compute some variables form the state
         
         # Check plugin connection status
@@ -143,12 +160,12 @@ class ElkBridge(object):
         preset_number = 0
         num_loaded_sounds = 0
         if plguin_state_xml is not None:
-            volatile_state = plguin_state_xml.findall("VolatileState")[0]
-            num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations', '').split(',') if element])
-            preset_state = plguin_state_xml.findall("SourcePresetState")[0]
-            preset_number = int(preset_state.get("presetNumber", "-1"))
-            preset_name = int(preset_state.get("presetName", "no name"))
-            num_loaded_sounds = len(preset_state.findall("soundsInfo")[0].findall("soundInfo"))
+            volatile_state = plguin_state_xml.find_all("VolatileState".lower())[0]
+            num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
+            preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
+            preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
+            preset_name = preset_state.get("presetName".lower(), "no name")
+            num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
             
         # Update lines of text for the display (set_display_lines will trigger display update)
         self.ui.set_display_lines([
@@ -226,8 +243,7 @@ def state_from_plugin():
     global connection_with_plugin_ok
     time_post_state_received = time.time()
     plugin_state = request.data
-    plguin_state_xml = etree.fromstring(plugin_state)
-    #print(etree.tostring(plguin_state_xml, pretty_print=True).decode("utf-8"))  # To pretty print state
+    plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
     if connection_with_plugin_ok == False:
             connection_with_plugin_ok = True
             print('* Plugin connected')
