@@ -39,7 +39,7 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 elk_bridge_refresh_fps = 20
-system_stats_refresh_fps = 1
+system_stats_refresh_fps = 0.2
 
 plugin_state = "No sate"
 plguin_state_xml = None
@@ -59,22 +59,25 @@ elk_bridge= None
 
 # --- Utils ------------------------------------------------------------------------
 
-def get_status_output(*args, **kwargs):
-    p = subprocess.Popen(*args, **kwargs)
-    stdout, stderr = p.communicate()
-    return p.returncode, stdout, stderr
 
+def get_status_output(command):    
+    return os.popen(command).read()[:-1]  # Remove last char which is always \n
 
 def collect_system_stats():
     global system_stats
 
     # Get system stats like cpu usage, temperature, etc.
     try:
-        system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp")[1]
-        system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[1]
-        system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[1]
-        system_stats['network_ssid'] = get_status_output("iwgetid")[1]
-        system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")[1]
+        system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
+        system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
+        system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
+        system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
+        connmanctl_services_output = get_status_output("sudo connmanctl services")
+        wifi_is_connected = '*AO' in connmanctl_services_output
+        if wifi_is_connected:
+            system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
+        else:
+            system_stats['network_ssid'] = 'No network'
     except:
         system_stats = {}
 
@@ -97,7 +100,7 @@ class ElkBridge(object):
                                   self.handle_encoder)
 
         self.sushi = sc.SushiController()
-        self._refresh_display()
+        self._refresh_display(0)
 
     def handle_faders(self, fader_idx, val):
         print('Fader {0} moved: {1}'.format(fader_idx, val))
@@ -137,11 +140,11 @@ class ElkBridge(object):
             
             counter += 1
             if counter % 3 == 0:
-                self._refresh_display()  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
+                self._refresh_display(counter)  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
 
             self.ui.refresh()
 
-    def _refresh_display(self):
+    def _refresh_display(self, counter):
         global connection_with_plugin_ok
         global time_post_state_received
         global plguin_state_xml
@@ -169,8 +172,8 @@ class ElkBridge(object):
             
         # Update lines of text for the display (set_display_lines will trigger display update)
         self.ui.set_display_lines([
-            "Source is runnning :)",
-            system_stats.get("temp", "-"),
+            "R&A SOURCE" + "." * (counter % 8),
+            "{0}ºC|c:{1}|m:{2}".format(system_stats.get("temp", "-"), system_stats.get("cpu", "-"), system_stats.get("mem", "-")),
             'Network: ' + system_stats.get("network_ssid", "-"),
             "Plugin is online" if connection_with_plugin_ok else "Plugin is offline",
             "{0}: {1} ({2} sounds)".format(preset_number, preset_name, num_loaded_sounds),
@@ -265,7 +268,7 @@ def update_state():
 @http_server.route('/get_system_stats', methods = ['GET'])  # Return system stats
 def get_system_stats():
     if system_stats:
-        return "{0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
+        return "temp={0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
     else:
         return "No stats"
 
@@ -301,6 +304,7 @@ if __name__ == "__main__":
         elk_bridge_thread.start()
 
         # Also if on ELK platform, start the thread that will collect and update system stats periodically
+        collect_system_stats()
         system_stats_thread = Thread(target=run_collect_system_stats_loop)
         system_stats_thread.start()
 
