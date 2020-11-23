@@ -300,13 +300,15 @@ if __name__ == "__main__":
 
     if platform == "ELK":
         # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
-        elk_bridge_thread = Thread(target=run_elk_bridge_loop)
-        elk_bridge_thread.start()
+        if elk_bridge_refresh_fps:
+            elk_bridge_thread = Thread(target=run_elk_bridge_loop)
+            elk_bridge_thread.start()
 
         # Also if on ELK platform, start the thread that will collect and update system stats periodically
-        collect_system_stats()
-        system_stats_thread = Thread(target=run_collect_system_stats_loop)
-        system_stats_thread.start()
+        if system_stats_refresh_fps:
+            collect_system_stats()
+            system_stats_thread = Thread(target=run_collect_system_stats_loop)
+            system_stats_thread.start()
 
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')
@@ -314,4 +316,4 @@ if __name__ == "__main__":
 
     # Start HTTP server that will receive state updates from the plugin and implements the web interface
     print('* Starting HTTP server at {}'.format(args.http_port))
-    http_server.run(host='0.0.0.0', port=args.http_port, debug=False)
+    http_server.run(host='0.0.0.0', port=args.http_port, debug=True)
