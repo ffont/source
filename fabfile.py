@@ -33,7 +33,7 @@ def send_elk(ctx):
             ("elk_platform/elk_ui.py", remote_dir),
             ("elk_platform/source_sensei_config.json", remote_dir),
             ("SourceSampler/Resources/index.html", remote_dir),
-            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
+            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_dir)
         ]:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
             c.put(local_file, destination_dir)
@@ -60,6 +60,7 @@ def compile_elk(ctx):
 
     print('\n* Temporarily modifying makefile')
 
+    
     def replace_in_file(path, text_to_replace="", replacement=""):
         file_contents = open(path, 'r').read()
         if text_to_replace != "":
@@ -74,30 +75,22 @@ def compile_elk(ctx):
         replacement="#define   JUCE_WEB_BROWSER 0")
 
     old_makefile_file_contents = replace_in_file("SourceSampler/Builds/ELKAudioOS/Makefile", 
-        text_to_replace="@pkg-config --print-errors alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl", 
-        replacement="@pkg-config --print-errors alsa freetype2 libcurl")
-
-    replace_in_file("SourceSampler/Builds/ELKAudioOS/Makefile", 
-        text_to_replace="JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -L/workdir/sysroots/aarch64-elk-linux/usr/lib/ $(shell pkg-config --libs alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl) -fvisibility=hidden -lrt -ldl -lpthread $(LDFLAGS)", 
-        replacement="JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -L/workdir/sysroots/aarch64-elk-linux/usr/lib/ $(shell pkg-config --libs alsa freetype2 libcurl) -fvisibility=hidden -lrt -ldl -lpthread $(LDFLAGS)")
-    
-    replace_in_file("SourceSampler/Builds/ELKAudioOS/Makefile", 
-        text_to_replace="JUCE_CPPFLAGS := $(DEPFLAGS) -DLINUX=1 -DNDEBUG=1 -DJUCER_LINUX_MAKE_84E12380=1 -DJUCE_APP_VERSION=0.0.1 -DJUCE_APP_VERSION_HEX=0x1 $(shell pkg-config --cflags alsa freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ $(CPPFLAGS)", 
-        replacement="JUCE_CPPFLAGS := $(DEPFLAGS) -DLINUX=1 -DNDEBUG=1 -DJUCER_LINUX_MAKE_84E12380=1 -DJUCE_APP_VERSION=0.0.1 -DJUCE_APP_VERSION_HEX=0x1 $(shell pkg-config --cflags alsa freetype2 libcurl) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ $(CPPFLAGS)")
-    
+        text_to_replace="libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread", 
+        replacement="libcurl) -pthread")
 
     # Cross-compile Source
+    # NOTE: for some reason (probably JUCE bug) the copy-step for VST3 in linux can not be disabled and generates permission errors when
+    # executed. To fix this issue here we mount a volume where the generated VST3 will be copied. This volume is inside the build folder so
+    # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
     print('\n* Cross-compiling')
     os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
-
+    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
 
     # Undo file replacements
     print('\n* Restoring build files')
     replace_in_file("SourceSampler/JuceLibraryCode/AppConfig.h", replacement=old_appconfig_file_contents)
     replace_in_file("SourceSampler/Builds/ELKAudioOS/Makefile", replacement=old_makefile_file_contents)
     
-
     print('\nAll done!')
 
 
@@ -107,7 +100,7 @@ def compile_macos(ctx):
     # Compile release Source for macOS platform
     print('Compiling Source for macOS platform...')
     print('*********************************************\n')
-    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
+    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration Release")    
 
     print('\nAll done!')
 
@@ -118,7 +111,17 @@ def compile_projucer_macos(ctx):
     # Compile the projucer version compatible with source
     print('Compiling Projucer for macOS platform...')
     print('*********************************************\n')
-    os.system("cd SourceSampler/3rdParty/JUCE_ELK/extras/Projucer/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
+    os.system("cd SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
+
+    print('\nAll done!')
+
+@task
+def compile_binary_builder_macos(ctx):
+
+    # Compile the BinaryBuilder version compatible with source
+    print('Compiling BinaryBuilder for macOS platform...')
+    print('*********************************************\n')
+    os.system("cd SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
 
     print('\nAll done!')
 

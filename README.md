@@ -46,11 +46,6 @@ To do the cross compilation (and also deployment to the board) I prepared a Pyth
 The first thing to do is to prepare the ELK development SDK Docker image following the [instrucitons here](https://github.com/elk-audio/elkpi-sdk/blob/master/running_docker_container_on_macos.md). You need to run steps 1 to 3, no need to run the toolchain when everything installed.
 
 
-#### Preparing some code dependencies
-
-Source needs to be built as a VST2 plugin, meaning that you need the VST2 SDK installed in your computer. This is because the JUCE version used (5.4.7), does not support building VST3 plugins for Linux. The Python script used to build Source will try to mount the VST2 SDK in the Docker container so it can be used for compilation. The script will search for a folder named `VST_SDK` (the SDK) at the same directory level where the `source` folder is (if needed, you can edit this in `fabfile.py`). You should find a copy of the VST2 SDK and place it in the corresponding directory.
-
-
 #### Do the cross-compilation
 
 With all this in place, you should be able to cross-compile Source for ELK in a very similar way as you would do it for the desktop, using the Fabric script:
@@ -60,9 +55,9 @@ cd scripts
 fab compile-elk
 ```
 
-This will take a while, specially the first time it runs. When it finished, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/` which is the VST2 plugin that you can run in ELK platform.
+This will take a while, specially the first time it runs. When it finished, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/` which is the VST3 plugin that you can run in ELK platform.
 
-**NOTE**: the build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/`.
+**NOTE**: the build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/` or by running `fab compile-binary-builder-macos`.
 
 
 #### Loading the built plugin in the ELK board
@@ -72,11 +67,8 @@ Instructions for this section still need to be added.
 
 ### Note about JUCE version used for Source
 
-To build Source for the ELK platform Source it needs a custom version of JUCE which is patched to remove some graphical dependencies. In particular, we use a patched version of JUCE 5.4.7 which can be found in my [own fork of JUCE](https://github.com/ffont/JUCE_ELK) (a branch named [`juce_547_76910b0eb_ELK`](https://github.com/ffont/JUCE_ELK/tree/juce_547_76910b0eb_ELK)). The patch basically cosists in adding a number of `#if/#endif` to avoid using graphical libraries not present in ELK cross-compilation toolchain. I basically ported the [official patch proposed by ELK for JUCE version 5.4.5](https://github.com/juce-framework/JUCE/compare/master...elk-audio:mind/headless_plugin_client_next) to JUCE 5.4.7. The patched JUCE version can be used to build macOS version normally.
+The current version of Source uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of Source, we don't need any patched version of JUCE and we can simply use the official release :)
 
-The custom JUCE patch is included as a submodule of this repository (`source/SourceSampler/3rdParty/JUCE_ELK`) and is already configured in the Projucer file. For conveniency, the standard JUCE version (at the same commit as the patched one) is also included as a submodule (`source/SourceSampler/3rdParty/JUCE`), but it is only used by the build scritps to build `BinaryBuilder` and `Projcuer`.
-
-As far as I know, JUCE 6 is not yet supported by ELK, so we're using 5.4.7 here. Once JUCE 6 becomes supported, we won't probably need the cusotm patch (because JUCE 6 supports headless plugins) and also we won't need the VST2 SDK anymore because JUCE 6 can build VST3 plugins on Linux platforms.
 
 ### Auto-start notes for ELK platform
 
@@ -86,7 +78,7 @@ Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/home/mind/sushi_custom -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
+ExecStart=/home/mind/sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
 ```
 
 2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
@@ -138,7 +130,7 @@ sudo journalctl -fu source
 
 Source is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/source/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
 
-* [juce](https://juce.com), available under GPLv3 license ([@76910b0](https://github.com/juce-framework/JUCE/tree/76910b0ebd7fd00d7d03b64beb6f5c96746cf8ce), v5.4.7)
+* [juce](https://juce.com), available under GPLv3 license ([@76910b0](https://github.com/juce-framework/JUCE/tree/b8206e3604ebaca64779bf19f1613c373b9adf4f), v6.0.4)
 * [cpp-httplib](https://github.com/yhirose/cpp-httplib), available under MIT license ([@3da4a0a](https://github.com/yhirose/cpp-httplib/tree/3da4a0a))
 * [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@71e05b8](https://github.com/ffAudio/ff_meters/commit/71e05b8f93ec3643fc7268b8da65d7b98bdefdf8))
 
