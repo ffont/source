@@ -86,7 +86,7 @@ Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/home/mind/sushi_custom -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
+ExecStart=/home/mind/sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
 ```
 
 2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
