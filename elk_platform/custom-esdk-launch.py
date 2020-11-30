@@ -119,8 +119,8 @@ try:
     cd /code/source/SourceSampler/Builds/ELKAudioOS
     unset LD_LIBRARY_PATH
     source /workdir/environment-setup-aarch64-elk-linux
-    export CXXFLAGS="-O3 -pipe -lm -ffast-math -feliminate-unused-debug-types -funroll-loops"
-    AR=aarch64-elk-linux-ar make -j2 CONFIG=Release CFLAGS="-DJUCE_HEADLESS_PLUGIN_CLIENT=1 -DELK_BUILD=1 -Wno-psabi" TARGET_ARCH="-mcpu=cortex-a72 -mtune=cortex-a72" -i
+    export CXXFLAGS="-O3 -pipe -ffast-math -feliminate-unused-debug-types -funroll-loops"
+    AR=aarch64-elk-linux-ar make -j2 CONFIG=Release CFLAGS="-DELK_BUILD=1 -Wno-psabi" TARGET_ARCH="-mcpu=cortex-a72 -mtune=cortex-a72" -i
     """.format(args.workdir, setupscript[0])
     os.execvp(cmd[0], cmd + [args])
 
