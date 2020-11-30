@@ -44,7 +44,7 @@
                 {
                     "path" : "/home/mind/SourceSampler.so",
                     "name" : "sourcesampler",
-                    "type"   : "vst2x"
+                    "type"   : "vst3x"
                 }
             ]
         }
