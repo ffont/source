@@ -52,7 +52,7 @@ def compile_elk(ctx):
 
     # Generate binary files
     print('\n* Building BinaryData')
-    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Debug/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
+    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
 
     # When compiling in ELK, the JUCE_WEB_BROWSER option of juce_gui_extra needs to be disabled, but we do want it to be
     # enabled when compiling the plugin for other platforms. The solution we adopt is that here we live modify the source files
