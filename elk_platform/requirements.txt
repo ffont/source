@@ -2,3 +2,4 @@ Flask
 requests
 oscpy
 lxml
+bs4

@@ -33,7 +33,7 @@ def send_elk(ctx):
             ("elk_platform/elk_ui.py", remote_dir),
             ("elk_platform/source_sensei_config.json", remote_dir),
             ("SourceSampler/Resources/index.html", remote_dir),
-            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_dir)
+            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir)
         ]:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
             c.put(local_file, destination_dir)
@@ -84,7 +84,7 @@ def compile_elk(ctx):
     # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
     print('\n* Cross-compiling')
     os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
+    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ${PWD}/../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py crops/extsdk-container')
 
     # Undo file replacements
     print('\n* Restoring build files')

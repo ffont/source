@@ -2,10 +2,10 @@
 
 <JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.0.1"
               projectLineFeed="&#10;" companyName="Rita &amp; Aurora" companyWebsite="https://ritaandaurora.github.io"
-              companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST3"
+              companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/"
-              jucerFormatVersion="1">
+              jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Source">
       <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>

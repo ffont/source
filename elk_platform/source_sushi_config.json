@@ -43,8 +43,9 @@
             "plugins" : [
                 {
                     "path" : "/home/mind/SourceSampler.so",
-                    "name" : "sourcesampler",
-                    "type"   : "vst3x"
+                    "name" : "SourceSampler",
+                    "type" : "vst2x",
+                    "uid" : "SoSa"
                 }
             ]
         }

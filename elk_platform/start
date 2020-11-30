@@ -8,7 +8,7 @@ sleep 1
 #python3 main &
 nohup ./main 1>/home/mind/source_start.log 2>/home/mind/source_start_error.log &
 sleep 2
-/home/mind/sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json &
+sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json &
 sleep 3
 aconnect -x
 aconnect 16 128
