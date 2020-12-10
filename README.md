@@ -70,22 +70,24 @@ Instructions for this section still need to be added.
 The current version of Source uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of Source, we don't need any patched version of JUCE and we can simply use the official release :)
 
 
-### Auto-start notes for ELK platform
+## Running Source in the ELK platform (with Blackboard hat)
+
+### Configure auto-start
 
 Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html/documents/working_with_elk_board.html#configuring-automatic-startup
 
-1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
+1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/udata/source/app/source_sushi_config.json`. Change line:
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/home/mind/sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json
+ExecStart=/udata/source/app/sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json
 ```
 
-2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/home/mind/source_sushi_config.json`. Change line:
+2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/udata/source/app/source_sushi_config.json`. Change line:
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/usr/bin/sensei -f /home/mind/source_sensei_config.json
+ExecStart=/usr/bin/sensei -f /udata/source/app/source_sensei_config.json
 ```
 
 3) Create new service for python server at `/lib/systemd/system/source.service` (use `sudo`). This server is used as the "glue" app which will run the HTTP server as well as control hardware stuff (display, LEDs, etc) and communicate with the plugin running in sushi using OSC messages. The server 
@@ -99,7 +101,7 @@ After=load-drivers.service
 [Service]
 Type=simple
 RemainAfterExit=yes
-WorkingDirectory=/home/mind/
+WorkingDirectory=/udata/source/app/
 ExecStart=main
 User=mind
 
@@ -124,6 +126,14 @@ sudo journalctl -fu sushi
 sudo journalctl -fu sensei
 sudo journalctl -fu source
 ```
+
+### Give more sudo permissions to "mind" user
+
+To run source, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities,
+running `sensei` might also fail. To add sudo capabilities:
+
+ * switch to user `root` (`sudo su`)
+ * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.
     
     
 ## Licenses

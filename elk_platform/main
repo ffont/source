@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import asyncio
 import argparse
 import json
 import logging
@@ -27,7 +28,7 @@ except ModuleNotFoundError:
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
-from threading import Thread
+import threading
 
 if sys.platform == "linux" or sys.platform == "linux2":
     platform = "ELK"
@@ -52,7 +53,7 @@ system_stats = {}
 system_stats_thread = None
 elk_bridge_thread = None
 
-http_server = Flask(__name__, template_folder='/home/mind/' if platform == "ELK" else '../SourceSampler/Resources/')
+http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else '../SourceSampler/Resources/')
 osc_client = None
 elk_bridge= None
 
@@ -215,11 +216,24 @@ def download_sound(url, outfile):
         print('- Skip downloading ' + url + ' (already downloaded)')
         osc_client.send_message('/finished_downloading_sound', [outfile])    
 
+class DownloadSoundsThread(threading.Thread):
+
+    url = None
+    outfile = None
+
+    def __init__(self, _url, _outfile):
+        super(DownloadSoundsThread, self).__init__()
+        url = _url
+        outfile = _outfile
+
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        download_sound(self.url, self.outfile)
+        
 
 def download_all_sounds(urls, outfiles):
     for url, outfile in zip(urls, outfiles):
-        thread = Thread(target = download_sound, args = (url, outfile, ))
-        thread.start()
+        DownloadSoundsThread(url, outfile).start()
 
 
 # --- HTTP Server ------------------------------------------------------------------------
@@ -284,12 +298,25 @@ def download_sounds():
             urls_to_download.append(url)
             outfiles.append(outfile)
     
-    thread = Thread(target = download_all_sounds, args = (urls_to_download, outfiles, ))
-    thread.start()
+    download_all_sounds(urls_to_download, outfiles)
+    #thread = Thread(target = download_all_sounds, args = (urls_to_download, outfiles, ))
+    #thread.start()
     return 'Downloading async...'
 
 
 # --- Main ------------------------------------------------------------------------
+
+class ElkBridgeThread(threading.Thread):
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        run_elk_bridge_loop()
+
+
+class CollectSystemStatsThread(threading.Thread):
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        run_collect_system_stats_loop()
+        
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -301,14 +328,12 @@ if __name__ == "__main__":
     if platform == "ELK":
         # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
         if elk_bridge_refresh_fps:
-            elk_bridge_thread = Thread(target=run_elk_bridge_loop)
-            elk_bridge_thread.start()
+            ElkBridgeThread().start()
 
         # Also if on ELK platform, start the thread that will collect and update system stats periodically
         if system_stats_refresh_fps:
             collect_system_stats()
-            system_stats_thread = Thread(target=run_collect_system_stats_loop)
-            system_stats_thread.start()
+            CollectSystemStatsThread().start()
 
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')

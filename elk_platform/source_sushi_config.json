@@ -42,10 +42,10 @@
             ],
             "plugins" : [
                 {
-                    "path" : "/home/mind/SourceSampler.so",
+                    "path" : "/udata/source/app/SourceSampler.vst3",
                     "name" : "SourceSampler",
-                    "type" : "vst2x",
-                    "uid" : "SoSa"
+                    "type" : "vst3x",
+                    "uid" : "SourceSampler"
                 }
             ]
         }

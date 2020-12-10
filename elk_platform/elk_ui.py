@@ -39,7 +39,7 @@ ROT_ENC_PATH = "/sensors/analog/rot_enc"
 # OLED display
 DISPLAY_CONFIG = ["--display", "ssd1306",  "--i2c-port", "0", "--i2c-address", "0x3C", "--width", "128", "--height", "64"]
 RESET_PIN_INDEX = 31
-FONT_PATH = "/home/mind/LiberationMono-Regular.ttf"
+FONT_PATH = "/udata/source/app/LiberationMono-Regular.ttf"
 FONT_SIZE = 10
 DISPLAY_N_LINES = 6
 DISPLAY_LINE_LENGTH = 21

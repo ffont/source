@@ -3,12 +3,11 @@
 
 ./stop
 sleep 1
-/usr/bin/sensei -f /home/mind/source_sensei_config.json &
-sleep 1
-#python3 main &
-nohup ./main 1>/home/mind/source_start.log 2>/home/mind/source_start_error.log &
+/usr/bin/sensei -f /udata/source/app/source_sensei_config.json &
+sleep 3
+nohup ./main 1>/udata/source/app/source_start.log 2>/udata/source/app/source_start_error.log &
 sleep 2
-sushi -r --multicore-processing=2 -c /home/mind/source_sushi_config.json &
+sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json --log-level=debug &
 sleep 3
 aconnect -x
 aconnect 16 128
