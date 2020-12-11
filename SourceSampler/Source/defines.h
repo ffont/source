@@ -10,7 +10,6 @@
 
 #pragma once
 
-
 #if ELK_BUILD
     #define ENABLE_OSC_SERVER 1
     #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
@@ -31,6 +30,10 @@
 #endif
 #define ENABLE_DEBUG_BUFFER 0
 #define STATE_UPDATE_HZ 15
+
+#define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
+#define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
+#define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
 
 #define OSC_LISTEN_PORT 9000
 #define HTTP_SERVER_LISTEN_PORT 8124
