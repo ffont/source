@@ -29,7 +29,7 @@
     #endif
 #endif
 #define ENABLE_DEBUG_BUFFER 0
-#define STATE_UPDATE_HZ 10
+#define STATE_UPDATE_HZ 1
 
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
