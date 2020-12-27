@@ -1063,7 +1063,7 @@ String SourceSamplerAudioProcessor::getQuery()
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
-    std::cout << "Calling timer callback" << std::endl;
+    //std::cout << "Calling timer callback" << std::endl;
     
     // Collect the state and update the serverInterface object with that state information so it can be used by the http server
     ValueTree presetState = collectPresetStateInformation();
@@ -1081,7 +1081,6 @@ void SourceSamplerAudioProcessor::timerCallback()
     #endif
     
     #if USE_EXTERNAL_HTTP_SERVER
-    std::cout << "Posting state to server..." << std::endl;
     sendStateToExternalServer(fullState);
     #endif
    
@@ -1099,8 +1098,7 @@ int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 
 void SourceSamplerAudioProcessor::logToState(const String& message)
 {
-    //DBG(message);
-    std::cout << message << std::endl;
+    DBG(message);
     
     recentLogMessages.push_back(message);  // Add a new element at the end
     if (recentLogMessages.size() > 50){

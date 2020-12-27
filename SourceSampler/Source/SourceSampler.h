@@ -448,7 +448,6 @@ public:
         
         if (m.isNoteOn())
         {
-            std::cout << "MIDI NOTE ON " << m.getNoteNumber() << "  " << m.getFloatVelocity() << " (channel " << channel << ")" << std::endl;
             noteOn (channel, m.getNoteNumber(), m.getFloatVelocity());
         }
         else if (m.isNoteOff())

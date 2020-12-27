@@ -69,11 +69,9 @@ public:
     OSCServer(){
         // Start listening on OSC port
         if (! connect (OSC_LISTEN_PORT)){
-            //DBG("ERROR starting OSC server");
-            std::cout << "ERROR starting OSC server" << std::endl;
+            DBG("ERROR starting OSC server");
         } else {
-            //DBG("Started OSC server, listening at 0.0.0.0:" << OSC_LISTEN_PORT);
-            std::cout << "Started OSC server, listening at 0.0.0.0:" << OSC_LISTEN_PORT << std::endl;
+            DBG("Started OSC server, listening at 0.0.0.0:" << OSC_LISTEN_PORT);
             addListener (this);
         }
     }
@@ -124,7 +122,6 @@ public:
     
     void log(String message){
         DBG(message);
-        std::cout << message << std::endl;
     }
         
     void processActionFromOSCMessage (const OSCMessage& message)
@@ -386,10 +383,8 @@ void HTTPServer::run()
 
 void OSCServer::oscMessageReceived (const OSCMessage& message)
 {
-    std::cout << "Received OSC message at address " + message.getAddressPattern().toString() << std::endl;
+    //std::cout << "Received OSC message at address " + message.getAddressPattern().toString() << std::endl;
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);
-    } else {
-        std::cout << "interface pointer has not been properly set..." << std::endl;
     }
 }
