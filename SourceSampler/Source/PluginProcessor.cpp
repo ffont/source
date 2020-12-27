@@ -28,9 +28,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 {
     
     #if ELK_BUILD
-    sourceDataLocation = File("/udata/source/");
-    soundsDownloadLocation = File("/udata/source/sounds/");
-    presetFilesLocation = File("/udata/source/presets/");
+    sourceDataLocation = File(ELK_SOURCE_DATA_BASE_LOCATION);
+    soundsDownloadLocation = File(ELK_SOURCE_SOUNDS_LOCATION);
+    presetFilesLocation = File(ELK_SOURCE_PRESETS_LOCATION);
     #else
     sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
     soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
