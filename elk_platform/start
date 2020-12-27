@@ -1,13 +1,15 @@
 #!/bin/bash
-# Start SOURCE
 
 ./stop
+aconnect -x
+
 sleep 1
 /usr/bin/sensei -f /udata/source/app/source_sensei_config.json &
-sleep 3
-nohup ./main 1>/udata/source/app/source_start.log 2>/udata/source/app/source_start_error.log &
+sleep 1
+/usr/bin/python3 main  &
+#nohup /usr/bin/python3 main 1>/udata/source/app/source_start.log 2>/udata/source/app/source_start_error.log &
 sleep 2
-sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json --log-level=debug &
+sushi -r -c /udata/source/app/source_sushi_config.json --log-level=debug &
 sleep 3
-aconnect -x
+echo "Running aconnect"
 aconnect 16 128

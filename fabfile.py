@@ -2,7 +2,7 @@ import os
 
 from fabric import task, Connection
 
-host = 'mind@elk-pi.local'
+host = 'mind@source.local'
 remote_dir = '/udata/source/app/'
 remote_vst3_so_dir = '/udata/source/app/SourceSampler.vst3/Contents/aarch64-linux/'
 
@@ -33,15 +33,16 @@ def send_elk(ctx):
         c.run('mkdir -p {}'.format(remote_vst3_so_dir))
 
         for local_file, destination_dir in [
-            ("elk_platform/start", remote_dir),
-            ("elk_platform/stop", remote_dir),
-            ("elk_platform/source_sushi_config.json", remote_dir),
-            ("elk_platform/main", remote_dir),
-            ("elk_platform/requirements.txt", remote_dir),
-            ("elk_platform/LiberationMono-Regular.ttf", remote_dir),
-            ("elk_platform/elk_ui.py", remote_dir),
-            ("elk_platform/source_sensei_config.json", remote_dir),
-            ("SourceSampler/Resources/index.html", remote_dir),
+            #("elk_platform/start", remote_dir),
+            #("elk_platform/stop", remote_dir),
+            #("elk_platform/source_sushi_config.json", remote_dir),
+            #("elk_platform/main", remote_dir),
+            #("elk_platform/requirements.txt", remote_dir),
+            #("elk_platform/LiberationMono-Regular.ttf", remote_dir),
+            #("elk_platform/elk_ui.py", remote_dir),
+            #("elk_platform/source_sensei_config.json", remote_dir),
+            #("SourceSampler/Resources/index.html", remote_dir),
+            ("elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSamplerJUCE5.so'),
             ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
         ]:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
@@ -100,6 +101,24 @@ def compile_elk(ctx):
     replace_in_file("SourceSampler/JuceLibraryCode/AppConfig.h", replacement=old_appconfig_file_contents)
     replace_in_file("SourceSampler/Builds/ELKAudioOS/Makefile", replacement=old_makefile_file_contents)
     
+    print('\nAll done!')
+
+
+@task
+def compile_elk_juce5(ctx):
+
+    print('Coss-compiling Source for ELK platform (JUCE5 version)...')
+    print('*********************************************************')
+
+    # Generate binary files
+    print('\n* Building BinaryData')
+    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
+
+    # Cross-compile Source
+    print('\n* Cross-compiling')
+    os.system("find elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
+    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/elk_platform/custom-esdk-launch-juce5.py:/usr/bin/esdk-launch.py crops/extsdk-container')
+
     print('\nAll done!')
 
 

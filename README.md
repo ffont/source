@@ -80,10 +80,10 @@ Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/udata/source/app/sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json
+ExecStart=/usr/bin/sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json
 ```
 
-2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/udata/source/app/source_sushi_config.json`. Change line:
+2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/udata/source/app/source_sensei_config.json`. Change line:
 
 ```
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
@@ -95,14 +95,14 @@ also takes care of downloading sounds as it seems to be much faster to do it fro
 
 ```
 [Unit]
-Description=source web server
-After=load-drivers.service
+Description=source glue app
+After=sensei.service
 
 [Service]
 Type=simple
 RemainAfterExit=yes
 WorkingDirectory=/udata/source/app/
-ExecStart=main
+ExecStart=python3 main
 User=mind
 
 [Install]
