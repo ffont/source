@@ -41,7 +41,7 @@ if disable_flask_logging:
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-BUTTON_MIDI_NOTES = [ 48, 60, 62, 64, 65, 67, 69, 71, 72 ]  # C3 + C scale from C4 to C5
+BUTTON_MIDI_NOTES = [48, 60, 62, 64, 65, 67, 69, 71, 72]  # C3 + C scale from C4 to C5
 
 elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 0.2
@@ -59,14 +59,15 @@ elk_bridge_thread = None
 
 http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else '../SourceSampler/Resources/')
 osc_client = None
-elk_bridge= None
+elk_bridge = None
 
 
 # --- Utils ------------------------------------------------------------------------
 
 
-def get_status_output(command):    
+def get_status_output(command):
     return os.popen(command).read()[:-1]  # Remove last char which is always \n
+
 
 def collect_system_stats():
     global system_stats
@@ -111,7 +112,7 @@ class ElkBridge(object):
         while not sushi_initialized:
             try:
                 self.sushi = sc.SushiController()
-                sushi_initialized = True 
+                sushi_initialized = True
                 print("Initialized SushiController")
             except Exception as e:
                 print('ERROR initializing SushiController: {0}'.format(e))
@@ -124,7 +125,7 @@ class ElkBridge(object):
                                           self.handle_buttons,
                                           self.handle_encoder_button,
                                           self.handle_encoder)
-                elkui_initialized = True 
+                elkui_initialized = True
                 print("Initialized ElkUIController")
             except Exception as e:
                 print('ERROR initializing ElkUIController: {0}'.format(e))
@@ -132,7 +133,7 @@ class ElkBridge(object):
         self._refresh_display(0)
 
     def handle_faders(self, fader_idx, val):
-        
+
         if self.selected_sound_idx is not None:
             if (fader_idx == 0):
                 osc_client.send_message("/set_sound_parameter", [self.selected_sound_idx, "pitch", 36.0 * (val - 0.5)])
@@ -142,11 +143,11 @@ class ElkBridge(object):
                 osc_client.send_message("/set_sound_parameter_int", [self.selected_sound_idx, "launchMode", int(round(4 * val))])
             elif (fader_idx == 3):
                 osc_client.send_message("/set_sound_parameter", [self.selected_sound_idx, "gain", 12.0 * 2.0 * (val - 0.5)])
-        
+
     def handle_buttons(self, button_idx, val):
         stored_val = self.buttons_state.get(button_idx, 0)
         current_val = int(val)
-         
+
         if stored_val == current_val:
             # State did not change, "nothing" happened. We should not reach here...
             pass
@@ -155,7 +156,7 @@ class ElkBridge(object):
 
             # If button was also pressed not long ago, consider a "double press" and trigger a sound
             if time.time() - self.time_buttons_pressed.get(button_idx, 0) < 0.5:
-                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)      
+                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
                 self.buttons_sent_note_on[button_idx] = True
 
             # Reset time button was pressed
@@ -170,13 +171,13 @@ class ElkBridge(object):
                 if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
                     sound_idx += 8
                 self.selected_sound_idx = sound_idx  # Select sound
-            
+
         elif stored_val == 1 and current_val == 0:
             # Button was released
 
             # If note on was triggered, trigger note off now
             if self.buttons_sent_note_on.get(button_idx, False):
-                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 0.0)      
+                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 0.0)
                 self.buttons_sent_note_on[button_idx] = False
 
             # Unselect current sound
@@ -210,7 +211,7 @@ class ElkBridge(object):
         counter = 0
         while True:
             time.sleep(1.0/elk_bridge_refresh_fps)
-            
+
             counter += 1
             if counter % 3 == 0:
                 self._refresh_display(counter)  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
@@ -223,7 +224,7 @@ class ElkBridge(object):
         global plguin_state_xml
 
         # Before setting new display lines, pre-compute some variables form the state
-        
+
         # Check plugin connection status
         if time_post_state_received is not None and time.time() - time_post_state_received < 0.5:
             shoudl_state_received_mark = True
@@ -233,7 +234,6 @@ class ElkBridge(object):
             if connection_with_plugin_ok == True:
                 connection_with_plugin_ok = False
                 print('* Plugin disconnected')
-
 
         # Check if a sound is selected to decide which info to show
         if self.selected_sound_idx is not None:
@@ -258,7 +258,7 @@ class ElkBridge(object):
                             sound_launch_mode = ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(value)]
                         elif parameter.get('parameter_name', '') == 'gain':
                             sound_gain = value
-                    
+
             self.ui.set_display_lines([
                 "R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else ""),
                 "SOUND {0}: {1}".format(self.selected_sound_idx, sound_name),
@@ -276,16 +276,16 @@ class ElkBridge(object):
             if plguin_state_xml is not None:
                 volatile_state = plguin_state_xml.find_all("VolatileState".lower())[0]
                 num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-                
+
                 playingVoiceIdxs = [int(element) for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element != '' and int(element) > -1]
                 if playingVoiceIdxs:
                     self.last_sound_played = playingVoiceIdxs[0]
-                
+
                 preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
                 preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
                 preset_name = preset_state.get("presetName".lower(), "no name")
                 num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
-                
+
             # Update lines of text for the display (set_display_lines will trigger display update)
             self.ui.set_display_lines([
                 "R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else ""),
@@ -293,7 +293,7 @@ class ElkBridge(object):
                 'Network: ' + system_stats.get("network_ssid", "-"),
                 "{0} ({1})".format("Plugin online" if connection_with_plugin_ok else "Plugin offline", system_stats.get("n_sushi_proc", "-1")),
                 "{0}: {1} ({2} sounds)".format(preset_number, preset_name, num_loaded_sounds),
-                "Last sound played: {}".format(self.last_sound_played), 
+                "Last sound played: {}".format(self.last_sound_played),
             ])
 
 
@@ -317,7 +317,7 @@ class SoundDownloader:
             self.old_percent = percent
             osc_client.send_message('/downloading_sound_progress', [self.outfile, percent])
         if percent >= 100:
-            osc_client.send_message('/finished_downloading_sound', [self.outfile])    
+            osc_client.send_message('/finished_downloading_sound', [self.outfile])
 
 
 def download_sound(url, outfile):
@@ -329,7 +329,8 @@ def download_sound(url, outfile):
     else:
         # If sound already exists, notify plugin about that
         print('- Skip downloading ' + url + ' (already downloaded)')
-        osc_client.send_message('/finished_downloading_sound', [outfile])    
+        osc_client.send_message('/finished_downloading_sound', [outfile])
+
 
 class DownloadSoundsThread(threading.Thread):
 
@@ -344,7 +345,7 @@ class DownloadSoundsThread(threading.Thread):
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
         download_sound(self.url, self.outfile)
-        
+
 
 def download_all_sounds(urls, outfiles):
     for url, outfile in zip(urls, outfiles):
@@ -353,8 +354,8 @@ def download_all_sounds(urls, outfiles):
 
 # --- HTTP Server ------------------------------------------------------------------------
 
-@http_server.route('/', methods = ['GET'])  # Serve main interface HTML file
-def index():        
+@http_server.route('/', methods=['GET'])  # Serve main interface HTML file
+def index():
     tvars = {}
     return render_template("index.html", **tvars)
 
@@ -367,7 +368,7 @@ def send_osc():
     return 'OSC sent'
 
 
-@http_server.route('/state_from_plugin', methods = ['POST'])  # Receives a state update from the plugin and saves the contents
+@http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
 def state_from_plugin():
     global plugin_state
     global plguin_state_xml
@@ -378,12 +379,12 @@ def state_from_plugin():
     plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
     print('State received')
     if connection_with_plugin_ok == False:
-            connection_with_plugin_ok = True
-            print('* Plugin connected')
+        connection_with_plugin_ok = True
+        print('* Plugin connected')
     return 'State received'
 
 
-@http_server.route('/update_state', methods = ['GET'])  # Client requests to get an updated version of the state
+@http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_state():
     global connection_with_plugin_ok
     if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
@@ -395,7 +396,7 @@ def update_state():
         return Response(plugin_state, mimetype='text/xml')
 
 
-@http_server.route('/get_system_stats', methods = ['GET'])  # Return system stats
+@http_server.route('/get_system_stats', methods=['GET'])  # Return system stats
 def get_system_stats():
     if system_stats:
         return "temp={0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
@@ -403,7 +404,7 @@ def get_system_stats():
         return "No stats"
 
 
-@http_server.route('/download_sounds', methods = ['GET'])  # Download the sounds requested by the plugin
+@http_server.route('/download_sounds', methods=['GET'])  # Download the sounds requested by the plugin
 def download_sounds():
     urls_to_download = []
     outfiles = []
@@ -413,7 +414,7 @@ def download_sounds():
             outfile = os.path.join(request.args['location'], sound_id + '.ogg')
             urls_to_download.append(url)
             outfiles.append(outfile)
-    
+
     logger = logging.getLogger('werkzeug')
     logger.debug(outfiles)
     download_all_sounds(urls_to_download, outfiles)
@@ -434,7 +435,7 @@ class CollectSystemStatsThread(threading.Thread):
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
         run_collect_system_stats_loop()
-        
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
