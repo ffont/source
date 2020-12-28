@@ -124,6 +124,7 @@ class ElkBridge(object):
                     time.sleep(1)
                 else:
                     break  # break while because this will never succeed
+                
 
         elkui_initialized = False
         while not elkui_initialized:
@@ -167,7 +168,7 @@ class ElkBridge(object):
             # If button was also pressed not long ago, consider a "double press" and trigger a sound
             if time.time() - self.time_buttons_pressed.get(button_idx, 0) < 0.5:
                 #if self.sushi is not None:
-                #self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
+                    #self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
                 sound_idx = button_idx - 1   # from 0-7
                 if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
                     sound_idx += 8
@@ -213,19 +214,12 @@ class ElkBridge(object):
         print('Encoder button pressed: {0}'.format(val))
 
     def handle_encoder(self, direction):
-        print('Encoder rotated: {0}'.format(direction))
-
-        global osc_client
-        global plguin_state_xml
-
-        preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
-        preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
-        new_preset_number = preset_number + direction
-        if new_preset_number < 0:
-            new_preset_number = 0
-        if new_preset_number != preset_number:
-            print('Loading new preset')
-            osc_client.send_message("/load_preset", [new_preset_number])
+        if plguin_state_xml is not None:
+            current_loaded_preset = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
+            current_loaded_preset += direction
+            if current_loaded_preset < 0:
+                current_loaded_preset = 0
+            osc_client.send_message("/load_preset", [current_loaded_preset])
 
     def run(self):
         if self.ui is not None:
@@ -310,11 +304,10 @@ class ElkBridge(object):
             display_lines += [
                 "{0}ºC|c:{1}|m:{2}".format(system_stats.get("temp", "-"), system_stats.get("cpu", "-"), system_stats.get("mem", "-")),
                 'Network: ' + system_stats.get("network_ssid", "-"),
-                "{0}".format("Plugin online" if connection_with_plugin_ok else "Plugin offline"),
-                "{0}: {1} ({2} sounds)".format(preset_number, preset_name, num_loaded_sounds),
-                "",
+                "{0}: {1}".format(preset_number, preset_name),
+                "{0} sounds".format(num_loaded_sounds),
             ]
-
+        
         # Send new lines to UI
         if self.ui is not None:
             self.ui.set_display_lines(display_lines)
@@ -366,8 +359,8 @@ class DownloadSoundsThread(threading.Thread):
 
     def __init__(self, _url, _outfile):
         super(DownloadSoundsThread, self).__init__()
-        url = _url
-        outfile = _outfile
+        self.url = _url
+        self.outfile = _outfile
 
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -386,18 +379,15 @@ def index():
     tvars = {}
     return render_template("index.html", **tvars)
 
-
 @http_server.route('/simulator', methods=['GET'])  # Serve the interface which simulates blackboard
 def simulator():
     tvars = {}
     return render_template("simulator.html", **tvars)
 
-
 @http_server.route('/simulator_get_display', methods=['GET'])  # Get contents of the display
 def simulator_get_display():
     global elk_bridge
     return '<br>'.join(elk_bridge.display_contents_for_simulator)
-
 
 @http_server.route('/simulator_user_action', methods=['GET'])  # Simulate user pressing a button, knob, etc
 def simulator_user_action():
@@ -406,12 +396,13 @@ def simulator_user_action():
     value = request.args['value']
     if action.startswith("button"):
         button_idx = int(action.split('_')[2])
-        elk_bridge.handle_buttons(button_idx, value)
+        if elk_bridge is not None:
+            elk_bridge.handle_buttons(button_idx, value)
     elif action.startswith("slider"):
         slider_idx = int(action.split('_')[1])
-        elk_bridge.handle_faders(slider_idx, float(value))
+        if elk_bridge is not None:
+            elk_bridge.handle_faders(slider_idx, float(value))
     return 'Action received'
-
 
 @http_server.route('/send_osc', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin
 def send_osc():
@@ -420,25 +411,23 @@ def send_osc():
     osc_client.send_message(address, values)
     return 'OSC sent'
 
-
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
 def state_from_plugin():
     global plugin_state
     global plguin_state_xml
     global time_post_state_received
     global connection_with_plugin_ok
+    global elk_bridge
     time_post_state_received = time.time()
     plugin_state = request.data
     used_parser = "lxml"
     plguin_state_xml = BeautifulSoup(plugin_state, "lxml")
     #print('Time loading XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
-    sys.stdout.flush()
-
+    
     if connection_with_plugin_ok == False:
         connection_with_plugin_ok = True
         print('* Plugin connected')
     return 'State received'
-
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_state():
@@ -451,14 +440,12 @@ def update_state():
     else:
         return Response(plugin_state, mimetype='text/xml')
 
-
 @http_server.route('/get_system_stats', methods=['GET'])  # Return system stats
 def get_system_stats():
     if system_stats:
         return "temp={0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
     else:
         return "No stats"
-
 
 @http_server.route('/download_sounds', methods=['GET'])  # Download the sounds requested by the plugin
 def download_sounds():
@@ -470,12 +457,7 @@ def download_sounds():
             outfile = os.path.join(request.args['location'], sound_id + '.ogg')
             urls_to_download.append(url)
             outfiles.append(outfile)
-
-    logger = logging.getLogger('werkzeug')
-    logger.debug(outfiles)
     download_all_sounds(urls_to_download, outfiles)
-    #thread = Thread(target = download_all_sounds, args = (urls_to_download, outfiles, ))
-    #thread.start()
     return 'Downloading async...'
 
 

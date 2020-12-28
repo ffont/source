@@ -876,22 +876,24 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     logToState("- " + (String)nAlreadyDownloaded + " sounds already existing");
     logToState("- " + (String)nSentToDownload + " sounds sent to python server for downloading");
     
-    String header;
-    int statusCode = -1;
-    StringPairArray responseHeaders;
-    String data = "";
-    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-    bool postLikeRequest = false;
-    
-    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-        &responseHeaders, &statusCode)))
-    {
-        //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
-        String resp = stream->readEntireStreamAsString();
-        logToState("Python server download response with " + (String)statusCode + ": " + resp);
-    } else {
-        logToState("Python server error downloading!");
+    if (nSentToDownload > 0){
+        String header;
+        int statusCode = -1;
+        StringPairArray responseHeaders;
+        String data = "";
+        if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+        bool postLikeRequest = false;
+        
+        if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+            &responseHeaders, &statusCode)))
+        {
+            //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
+            String resp = stream->readEntireStreamAsString();
+            logToState("Python server download response with " + (String)statusCode + ": " + resp);
+        } else {
+            logToState("Python server error downloading!");
+        }
     }
     
     #endif
