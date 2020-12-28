@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 /**
  * \typedef	std::pair<int, var> Response

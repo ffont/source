@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "JuceHeader.h"
+#include <JuceHeader.h>
 #include "defines.h"
 #include "httplib.h"
 #include "BinaryData.h"
