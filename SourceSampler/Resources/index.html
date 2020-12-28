@@ -233,6 +233,11 @@
             sendOsc('/set_midi_thru', [midiThru ? 1: 0], 'int')
         }
 
+        function setStateUpdateHz() {
+            var stateUpdateHz = document.getElementsByName('stateUpdateHz')[0].value;
+            sendOsc('/set_state_timer_hz', [stateUpdateHz], 'int')
+        }
+
         function setReverbParameters() {
             var roomSize = document.getElementById('0_roomSize').value;
             var damping = document.getElementById('0_damping').value;
@@ -716,6 +721,8 @@
         Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
         MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
         MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
+        <hr>
+        State update HZ:<input name="stateUpdateHz" value="" type="number" onchange="setStateUpdateHz()"><br>
     </div>
 
     <div class="controls_card">

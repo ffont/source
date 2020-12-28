@@ -720,6 +720,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sound->removeMidiMapping(randomID);
         }
 
+    } else if (message.startsWith(String(ACTION_SET_STATE_TIMER_HZ))){
+        int newHz = message.substring(String(ACTION_SET_STATE_TIMER_HZ).length() + 1).getIntValue();
+        stopTimer();
+        startTimerHz(newHz);
     }
 }
 
