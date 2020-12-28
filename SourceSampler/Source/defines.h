@@ -31,7 +31,7 @@
 #define ENABLE_DEBUG_BUFFER 0
 
 #if ELK_BUILD
-    #define STATE_UPDATE_HZ 1
+    #define STATE_UPDATE_HZ 5
 #else
     #define STATE_UPDATE_HZ 15
 #endif
