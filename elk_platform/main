@@ -72,21 +72,23 @@ def get_status_output(command):
 def collect_system_stats():
     global system_stats
 
-    # Get system stats like cpu usage, temperature, etc.
-    try:
-        system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
-        system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
-        system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
-        system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
-        system_stats['n_sushi_proc'] = get_status_output("ps -e | grep sushi | wc -l")
-        connmanctl_services_output = get_status_output("sudo connmanctl services")
-        wifi_is_connected = '*AO' in connmanctl_services_output
-        if wifi_is_connected:
-            system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
-        else:
-            system_stats['network_ssid'] = 'No network'
-    except:
-        system_stats = {}
+    if platform == "ELK":
+
+        # Get system stats like cpu usage, temperature, etc.
+        try:
+            system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
+            system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
+            system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
+            system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
+            system_stats['n_sushi_proc'] = get_status_output("ps -e | grep sushi | wc -l")
+            connmanctl_services_output = get_status_output("sudo connmanctl services")
+            wifi_is_connected = '*AO' in connmanctl_services_output
+            if wifi_is_connected:
+                system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
+            else:
+                system_stats['network_ssid'] = 'No network'
+        except:
+            system_stats = {}
 
 
 def run_collect_system_stats_loop():
@@ -104,7 +106,9 @@ class ElkBridge(object):
     time_buttons_pressed = {}
     buttons_sent_note_on = {}
     selected_sound_idx = None
-    last_sound_played = None
+    display_contents_for_simulator = "No contents"
+    ui = None
+    sushi = None
 
     def __init__(self):
 
@@ -116,7 +120,11 @@ class ElkBridge(object):
                 print("Initialized SushiController")
             except Exception as e:
                 print('ERROR initializing SushiController: {0}'.format(e))
-                time.sleep(1)
+                if platform == "ELK":
+                    time.sleep(1)
+                else:
+                    break  # break while because this will never succeed
+                
 
         elkui_initialized = False
         while not elkui_initialized:
@@ -129,7 +137,10 @@ class ElkBridge(object):
                 print("Initialized ElkUIController")
             except Exception as e:
                 print('ERROR initializing ElkUIController: {0}'.format(e))
-                time.sleep(1)
+                if platform == "ELK":
+                    time.sleep(1)
+                else:
+                    break  # break while because this will never succeed
         self._refresh_display(0)
 
     def handle_faders(self, fader_idx, val):
@@ -156,8 +167,14 @@ class ElkBridge(object):
 
             # If button was also pressed not long ago, consider a "double press" and trigger a sound
             if time.time() - self.time_buttons_pressed.get(button_idx, 0) < 0.5:
-                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
-                self.buttons_sent_note_on[button_idx] = True
+                #if self.sushi is not None:
+                    #self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
+                sound_idx = button_idx - 1   # from 0-7
+                if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
+                    sound_idx += 8
+                if (sound_idx > -1):
+                    osc_client.send_message("/play_sound", [sound_idx])
+                    self.buttons_sent_note_on[button_idx] = True
 
             # Reset time button was pressed
             self.time_buttons_pressed[button_idx] = None
@@ -177,14 +194,21 @@ class ElkBridge(object):
 
             # If note on was triggered, trigger note off now
             if self.buttons_sent_note_on.get(button_idx, False):
-                self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 0.0)
-                self.buttons_sent_note_on[button_idx] = False
+                #if self.sushi is not None:
+                #    self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 0.0)
+                sound_idx = button_idx - 1   # from 0-7
+                if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
+                    sound_idx += 8
+                if (sound_idx > -1):
+                    osc_client.send_message("/stop_sound", [sound_idx])
+                    self.buttons_sent_note_on[button_idx] = False
 
             # Unselect current sound
             self.selected_sound_idx = None  # Unselect sound
 
         self.buttons_state[button_idx] = current_val
-        self.ui.set_led(button_idx, val)
+        if self.ui is not None:
+            self.ui.set_led(button_idx, val)
 
     def handle_encoder_button(self, val):
         print('Encoder button pressed: {0}'.format(val))
@@ -205,7 +229,8 @@ class ElkBridge(object):
             osc_client.send_message("/load_preset", [new_preset_number])
 
     def run(self):
-        self.ui.run()
+        if self.ui is not None:
+            self.ui.run()
 
         # Start loop to call refresh for the display
         counter = 0
@@ -216,7 +241,8 @@ class ElkBridge(object):
             if counter % 3 == 0:
                 self._refresh_display(counter)  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
 
-            self.ui.refresh()
+            if self.ui is not None:
+                self.ui.refresh()
 
     def _refresh_display(self, counter):
         global connection_with_plugin_ok
@@ -236,6 +262,8 @@ class ElkBridge(object):
                 print('* Plugin disconnected')
 
         # Check if a sound is selected to decide which info to show
+        display_lines = ["R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else "")]
+
         if self.selected_sound_idx is not None:
             sound_name = ""
             sound_pitch = -1
@@ -258,15 +286,13 @@ class ElkBridge(object):
                             sound_launch_mode = ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(value)]
                         elif parameter.get('parameter_name', '') == 'gain':
                             sound_gain = value
-
-            self.ui.set_display_lines([
-                "R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else ""),
+            display_lines += [
                 "SOUND {0}: {1}".format(self.selected_sound_idx, sound_name),
                 "Pitch: {0:.2f}".format(float(sound_pitch)),
                 "Cutoff: {0:.2f} Hz".format(float(sound_cutoff)),
                 "Launch mode: {0}".format(sound_launch_mode),
                 "Gain: {0:.2f} dB".format(float(sound_gain)),
-            ])
+            ]
         else:
             # Get some properties from plugin state
             num_active_voices = 0
@@ -276,28 +302,30 @@ class ElkBridge(object):
             if plguin_state_xml is not None:
                 volatile_state = plguin_state_xml.find_all("VolatileState".lower())[0]
                 num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-
-                playingVoiceIdxs = [int(element) for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element != '' and int(element) > -1]
-                if playingVoiceIdxs:
-                    self.last_sound_played = playingVoiceIdxs[0]
-
                 preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
                 preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
                 preset_name = preset_state.get("presetName".lower(), "no name")
                 num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
 
             # Update lines of text for the display (set_display_lines will trigger display update)
-            self.ui.set_display_lines([
-                "R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else ""),
+            display_lines += [
                 "{0}ºC|c:{1}|m:{2}".format(system_stats.get("temp", "-"), system_stats.get("cpu", "-"), system_stats.get("mem", "-")),
                 'Network: ' + system_stats.get("network_ssid", "-"),
-                "{0} ({1})".format("Plugin online" if connection_with_plugin_ok else "Plugin offline", system_stats.get("n_sushi_proc", "-1")),
+                "{0}".format("Plugin online" if connection_with_plugin_ok else "Plugin offline"),
                 "{0}: {1} ({2} sounds)".format(preset_number, preset_name, num_loaded_sounds),
-                "Last sound played: {}".format(self.last_sound_played),
-            ])
+                "",
+            ]
+        
+        # Send new lines to UI
+        if self.ui is not None:
+            self.ui.set_display_lines(display_lines)
+
+        # Also save the lines in internal state
+        self.display_contents_for_simulator = display_lines
 
 
 def run_elk_bridge_loop():
+    global elk_bridge
     print('* Starting ElkBridge')
     elk_bridge = ElkBridge()
     elk_bridge.run()
@@ -359,6 +387,28 @@ def index():
     tvars = {}
     return render_template("index.html", **tvars)
 
+@http_server.route('/simulator', methods=['GET'])  # Serve the interface which simulates blackboard
+def simulator():
+    tvars = {}
+    return render_template("simulator.html", **tvars)
+
+@http_server.route('/simulator_get_display', methods=['GET'])  # Get contents of the display
+def simulator_get_display():
+    global elk_bridge
+    return '<br>'.join(elk_bridge.display_contents_for_simulator)
+
+@http_server.route('/simulator_user_action', methods=['GET'])  # Simulate user pressing a button, knob, etc
+def simulator_user_action():
+    global elk_bridge
+    action = request.args['action']
+    value = request.args['value']
+    if action.startswith("button"):
+        button_idx = int(action.split('_')[2])
+        elk_bridge.handle_buttons(button_idx, value)
+    elif action.startswith("slider"):
+        slider_idx = int(action.split('_')[1])
+        elk_bridge.handle_faders(slider_idx, float(value))
+    return 'Action received'
 
 @http_server.route('/send_osc', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin
 def send_osc():
@@ -366,7 +416,6 @@ def send_osc():
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
     osc_client.send_message(address, values)
     return 'OSC sent'
-
 
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
 def state_from_plugin():
@@ -377,12 +426,17 @@ def state_from_plugin():
     time_post_state_received = time.time()
     plugin_state = request.data
     used_parser = "html.parser"
+    plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
+
+    '''
     try:
         # Requires lxml to be installed https://lxml.de/installation.html
-        plguin_state_xml = BeautifulSoup(plugin_state, "xml")
+        plguin_state_xml = BeautifulSoup(plugin_state, "lxml-xml")
         used_parser = "xml"
-    except:
-        plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
+    except Exception as e:
+        print(e)
+    '''
+    plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
 
     print('Time loading XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
     sys.stdout.flush()
@@ -391,7 +445,6 @@ def state_from_plugin():
         connection_with_plugin_ok = True
         print('* Plugin connected')
     return 'State received'
-
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_state():
@@ -404,14 +457,12 @@ def update_state():
     else:
         return Response(plugin_state, mimetype='text/xml')
 
-
 @http_server.route('/get_system_stats', methods=['GET'])  # Return system stats
 def get_system_stats():
     if system_stats:
         return "temp={0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
     else:
         return "No stats"
-
 
 @http_server.route('/download_sounds', methods=['GET'])  # Download the sounds requested by the plugin
 def download_sounds():
@@ -453,15 +504,14 @@ if __name__ == "__main__":
     parser.add_argument("--http_port", type=int, default=8123, help="The port the web server should listen at")
     args = parser.parse_args()
 
-    if platform == "ELK":
-        # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
-        if elk_bridge_refresh_fps:
-            ElkBridgeThread().start()
+    # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
+    if elk_bridge_refresh_fps:
+        ElkBridgeThread().start()
 
-        # Also if on ELK platform, start the thread that will collect and update system stats periodically
-        if system_stats_refresh_fps:
-            collect_system_stats()
-            CollectSystemStatsThread().start()
+    # Also if on ELK platform, start the thread that will collect and update system stats periodically
+    if system_stats_refresh_fps:
+        collect_system_stats()
+        CollectSystemStatsThread().start()
 
     # Run aconnect
     print('* Running aconnect')
@@ -474,4 +524,4 @@ if __name__ == "__main__":
 
     # Start HTTP server that will receive state updates from the plugin and implements the web interface
     print('* Starting HTTP server at {}'.format(args.http_port))
-    http_server.run(host='0.0.0.0', port=args.http_port, debug=False)
+    http_server.run(host='0.0.0.0', port=args.http_port, debug=True if platform == "desktop" else False)
