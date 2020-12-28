@@ -376,8 +376,17 @@ def state_from_plugin():
     global connection_with_plugin_ok
     time_post_state_received = time.time()
     plugin_state = request.data
-    plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
-    print('State received')
+    used_parser = "html.parser"
+    try:
+        # Requires lxml to be installed https://lxml.de/installation.html
+        plguin_state_xml = BeautifulSoup(plugin_state, "xml")
+        used_parser = "xml"
+    except:
+        plguin_state_xml = BeautifulSoup(plugin_state, "html.parser")
+
+    print('Time loading XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
+    sys.stdout.flush()
+
     if connection_with_plugin_ok == False:
         connection_with_plugin_ok = True
         print('* Plugin connected')
