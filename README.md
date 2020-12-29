@@ -78,11 +78,18 @@ The current version of Source uses JUCE 6 which has native support for VST3 plug
 
 Follow official ELK instructions here: https://elk-audio.github.io/elk-docs/html/documents/working_with_elk_board.html#configuring-automatic-startup
 
-1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/udata/source/app/source_sushi_config.json`. Change line:
+1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/udata/source/app/source_sushi_config.json` and add restart policy. Change lines:
 
 ```
+[Service]
+Type=simple
+RemainAfterExit=no
+WorkingDirectory=/udata/
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/usr/bin/sushi -r --multicore-processing=2 -c /udata/source/app/source_sushi_config.json
+ExecStart=/usr/bin/sushi -r --multicore-processing=3 -c /udata/source/app/source_sushi_config.json
+User=mind
+Restart=always
+RestartSec=3
 ```
 
 2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/udata/source/app/source_sensei_config.json`. Change line:
@@ -102,10 +109,12 @@ After=sensei.service
 
 [Service]
 Type=simple
-RemainAfterExit=yes
+RemainAfterExit=no
 WorkingDirectory=/udata/source/app/
 ExecStart=python3 main
 User=mind
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
