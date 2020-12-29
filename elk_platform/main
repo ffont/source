@@ -175,6 +175,8 @@ class ElkBridge(object):
                 if stored_val == 0 and current_val == 1:  # Button was pressed
                     # If sound was already selected, pressing the button again will trigger the sound
                     if self.selected_sound_idx == sound_idx:
+                        #if self.buttons_sent_note_on.get(button_idx, False):  # If note on was sent without note off, stop it first (just in case)
+                        #    osc_client.send_message("/stop_sound", [sound_idx])
                         osc_client.send_message("/play_sound", [sound_idx])
                         self.buttons_sent_note_on[button_idx] = True
 
@@ -208,8 +210,7 @@ class ElkBridge(object):
                     self.selected_sound_idx = None
                     if self.ui is not None:
                         for led_idx in range(0, 9): 
-                            if led_idx != button_idx:
-                                self.ui.set_led(led_idx, 0)
+                            self.ui.set_led(led_idx, 0)
             else:
                 # Save currently loaded preset
                 if plguin_state_xml is not None:

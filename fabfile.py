@@ -18,40 +18,66 @@ def clean(ctx):
 
 
 @task
-def send_elk(ctx):
+def send_elk(ctx, include_config_files=False, include_plugin_files=True):
 
     # Copy compiled file and sushi configuration to board
     # NOTE: note that the architecture folder name of the generated VST3 build (arm64-linux) is in fact wrong,
     # and it should really be "aarch64-linux". The fabric script copies it to the reight directory on the ELK board,
     # but the paths here might need to be updated if the cross compilation toolchain is updated to generate the
     # compiled plugin in the right directory.
-    print('\nSending compiled SourceSamler and config files to board...')
-    print('********************************************************\n')
+    print('\nSending SourceSamler to board...')
+    print('********************************\n')
     with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
 
         c.run('mkdir -p {}'.format(remote_dir))
         c.run('mkdir -p {}'.format(remote_vst3_so_dir))
 
-        for local_file, destination_dir in [
-            #("elk_platform/start", remote_dir),
-            #("elk_platform/stop", remote_dir),
-            #("elk_platform/source_sushi_config.json", remote_dir),
-            #("elk_platform/main", remote_dir),
-            #("elk_platform/requirements.txt", remote_dir),
-            #("elk_platform/LiberationMono-Regular.ttf", remote_dir),
-            #("elk_platform/elk_ui.py", remote_dir),
-            #("elk_platform/source_sensei_config.json", remote_dir),
-            #("SourceSampler/Resources/index.html", remote_dir),
+        config_files = [
+            ("elk_platform/start", remote_dir),
+            ("elk_platform/stop", remote_dir),
+            ("elk_platform/source_sushi_config.json", remote_dir),
+            ("elk_platform/main", remote_dir),
+            ("elk_platform/requirements.txt", remote_dir),
+            ("elk_platform/LiberationMono-Regular.ttf", remote_dir),
+            ("elk_platform/elk_ui.py", remote_dir),
+            ("elk_platform/source_sensei_config.json", remote_dir),
+            ("SourceSampler/Resources/index.html", remote_dir),
+        ]
+
+        plugin_files = [
             ("elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSamplerJUCE5.so'),
             ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
-        ]:
+        ]
+
+        files_to_send = []
+        if include_config_files:
+            files_to_send += config_files
+        if include_plugin_files:
+            files_to_send += plugin_files
+
+        for local_file, destination_dir in files_to_send:
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
             c.put(local_file, destination_dir)
 
-    print('\nAll done!')
-    print('You can now run Source on the ELK board with the command:')
-    print('./start')
+        print('Now restarting "sushi" and "source" services in board...')
+        c.run('sudo systemctl restart sushi')
+        c.run('sudo systemctl restart source')
+
+    print('DONE!')
     print('\n')
+
+
+@task
+def send_elk_all(ctx):
+    send_elk(ctx, include_config_files=True)
+
+@task
+def send_elk_config(ctx):
+    send_elk(ctx, include_config_files=True, include_plugin_files=False)
+
+@task
+def send_elk_plugin(ctx):
+    send_elk(ctx, include_config_files=False, include_plugin_files=True)
 
 
 @task
