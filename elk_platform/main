@@ -44,7 +44,7 @@ if disable_flask_logging:
 BUTTON_MIDI_NOTES = [48, 60, 62, 64, 65, 67, 69, 71, 72]  # C3 + C scale from C4 to C5
 
 elk_bridge_refresh_fps = 20
-system_stats_refresh_fps = 0.2
+system_stats_refresh_fps = 1
 
 plugin_state = "No sate"
 plguin_state_xml = None
@@ -158,60 +158,63 @@ class ElkBridge(object):
     def handle_buttons(self, button_idx, val):
         stored_val = self.buttons_state.get(button_idx, 0)
         current_val = int(val)
+        shift_button_pressed = self.buttons_state.get(0, 0) == 1
 
         if stored_val == current_val:
             # State did not change, "nothing" happened. We should not reach here...
             pass
-        elif stored_val == 0 and current_val == 1:
-            # Button was pressed
-
-            # If button was also pressed not long ago, consider a "double press" and trigger a sound
-            if time.time() - self.time_buttons_pressed.get(button_idx, 0) < 0.5:
-                #if self.sushi is not None:
-                    #self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 1.0)
-                sound_idx = button_idx - 1   # from 0-7
-                if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
-                    sound_idx += 8
-                if (sound_idx > -1):
-                    osc_client.send_message("/play_sound", [sound_idx])
-                    self.buttons_sent_note_on[button_idx] = True
-
-            # Reset time button was pressed
-            self.time_buttons_pressed[button_idx] = None
-
-            # Store time when button was pressed
-            self.time_buttons_pressed[button_idx] = time.time()
-
-            # Select corresponding sound
+        else:
+            # Check what sound idx corresponds to the button
+            sound_idx = -1
             if button_idx > 0:
                 sound_idx = button_idx - 1   # from 0-7
-                if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
+                if shift_button_pressed:  # if "shift" button is pressed, sound index is form 8-15
                     sound_idx += 8
-                self.selected_sound_idx = sound_idx  # Select sound
+            
+            if sound_idx > -1:
+                if stored_val == 0 and current_val == 1:  # Button was pressed
+                    # If sound was already selected, pressing the button again will trigger the sound
+                    if self.selected_sound_idx == sound_idx:
+                        osc_client.send_message("/play_sound", [sound_idx])
+                        self.buttons_sent_note_on[button_idx] = True
 
-        elif stored_val == 1 and current_val == 0:
-            # Button was released
+                    # Select corresponding sound
+                    self.selected_sound_idx = sound_idx
+                    if self.ui is not None:
+                        self.ui.set_led(button_idx, 1)  # Light corresponding LED...
+                        for led_idx in range(0, 9):
+                            if led_idx != button_idx:
+                                self.ui.set_led(led_idx, 0)  # ...and stop the others
 
-            # If note on was triggered, trigger note off now
-            if self.buttons_sent_note_on.get(button_idx, False):
-                #if self.sushi is not None:
-                #    self.sushi.keyboard.send_note_on(0, 0, BUTTON_MIDI_NOTES[button_idx], 0.0)
-                sound_idx = button_idx - 1   # from 0-7
-                if self.buttons_state.get(0, 0) == 1:  # if "shift" button is pressed, sound index is form 8-15
-                    sound_idx += 8
-                if (sound_idx > -1):
-                    osc_client.send_message("/stop_sound", [sound_idx])
-                    self.buttons_sent_note_on[button_idx] = False
+                elif stored_val == 1 and current_val == 0:  # Button was released
+                    # If note on was triggered, trigger note off now
+                    if self.buttons_sent_note_on.get(button_idx, False):
+                        osc_client.send_message("/stop_sound", [sound_idx])
+                        self.buttons_sent_note_on[button_idx] = False
 
-            # Unselect current sound
-            self.selected_sound_idx = None  # Unselect sound
-
+        # Updated stored button's state
+        self.time_buttons_pressed[button_idx] = time.time()
         self.buttons_state[button_idx] = current_val
-        if self.ui is not None:
-            self.ui.set_led(button_idx, val)
 
     def handle_encoder_button(self, val):
-        print('Encoder button pressed: {0}'.format(val))
+        current_val = int(val)
+        if current_val == 1:  # When pressed
+        
+            shift_button_pressed = self.buttons_state.get(0, 0) == 1
+
+            if not shift_button_pressed:
+                # If a sound is selected, unselect it
+                if self.selected_sound_idx is not None:
+                    self.selected_sound_idx = None
+                    if self.ui is not None:
+                        for led_idx in range(0, 9): 
+                            if led_idx != button_idx:
+                                self.ui.set_led(led_idx, 0)
+            else:
+                # Save currently loaded preset
+                if plguin_state_xml is not None:
+                    current_loaded_preset_index = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
+                    osc_client.send_message("/save_current_preset", [current_loaded_preset_index])
 
     def handle_encoder(self, direction):
         if plguin_state_xml is not None:
@@ -402,6 +405,14 @@ def simulator_user_action():
         slider_idx = int(action.split('_')[1])
         if elk_bridge is not None:
             elk_bridge.handle_faders(slider_idx, float(value))
+    elif action.startswith("encoder"):
+        sub_action = action.split('_')[1]
+        if sub_action == 'rotate':
+            elk_bridge.handle_encoder(int(value))
+        elif sub_action == 'press':
+            elk_bridge.handle_encoder_button(1.0)
+        elif sub_action == 'release':
+            elk_bridge.handle_encoder_button(0.0)
     return 'Action received'
 
 @http_server.route('/send_osc', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin

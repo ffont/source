@@ -28,6 +28,10 @@
             margin-bottom: 20px;
         }
 
+        #buttons {
+            margin-bottom: 10px;
+        }
+
         #sliders {
             display: inline-block;
             vertical-align: top;
@@ -132,6 +136,18 @@
             var value = document.getElementById("slider" + sliderIdx).value;
             postAction('slider_' + sliderIdx, value);
         }
+
+        function encoder(direction) {
+            postAction('encoder_rotate', direction);
+        }
+
+        function pressEncoderButton() {
+            postAction('encoder_press', 0);
+        }
+
+        function releaseEncoderButton() {
+            postAction('encoder_release', 0);
+        }
         
     </script>
 </head>
@@ -156,6 +172,11 @@
         <button id="button6" class="button red" onmousedown="pressButton(6)" onmouseup="releaseButton(6)">6</button>
         <button id="button7" class="button red" onmousedown="pressButton(7)" onmouseup="releaseButton(7)">7</button>
         <button id="button8" class="button red" onmousedown="pressButton(8)" onmouseup="releaseButton(8)">8</button>
+    </div>
+    <div id="encoder">
+        <button id="encoderL" onclick="encoder(-1)"><</button>
+        <button id="encoderPress" onmousedown="pressEncoderButton()" onmouseup="releaseEncoderButton()">E</button>
+        <button id="encoderR" onclick="encoder(1)">></button>
     </div>
 
 </body>
