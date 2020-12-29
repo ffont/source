@@ -39,9 +39,10 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
             ("elk_platform/main", remote_dir),
             ("elk_platform/requirements.txt", remote_dir),
             ("elk_platform/LiberationMono-Regular.ttf", remote_dir),
-            ("elk_platform/elk_ui.py", remote_dir),
+            ("elk_platform/elk_ui_custom.py", remote_dir),
             ("elk_platform/source_sensei_config.json", remote_dir),
             ("SourceSampler/Resources/index.html", remote_dir),
+            ("SourceSampler/Resources/index_minimal.html", remote_dir),
         ]
 
         plugin_files = [

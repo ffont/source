@@ -516,6 +516,8 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     ValueTree state = ValueTree(STATE_VOLATILE_IDENTIFIER);
     
+    state.setProperty(STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS, isQueryDownloadingAndLoadingSounds, nullptr);
+    
     String voiceActivations = "";
     String voiceSoundIdxs = "";
     String voiceSoundPlayPositions = "";

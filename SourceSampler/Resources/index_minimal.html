@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Source, a Freesound-powered sampler</title>
+
+    <style>
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 120%;
+        }
+    
+        h1 {
+            margin-bottom: 0px;   
+        }
+    
+        input {
+            font-size: 120%;
+        }
+
+        input[type=number] {
+            max-width: 80px;
+        }
+
+        button {
+            font-size: 120%;
+        }
+
+        select {
+            font-size: 120%;
+            width: 100%;
+        }
+    
+        .controls_card {
+            padding:5px;
+            margin:5px;
+            vertical-align: top;
+        }
+        
+    </style>
+
+    <script>
+
+        function sendOsc(address, values, types) {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                }
+            };
+            xhr.open('GET', '/send_osc?address=' + address + '&values=' + values.join(';') + '&types=' + types, true);
+            xhr.send();
+        }
+
+        function makeQuery(){
+            var query = document.getElementsByName('query')[0].value;
+            var numSounds = document.getElementsByName('numSounds')[0].value || 16;
+            var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
+            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
+            var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
+        }
+        
+    </script>
+</head>
+
+<body>
+    <div class="controls_card">
+        <b>Make new preset</b><br><br>
+        Query:<input name="query" value="" type="text" placeholder="percussion"><br>
+        Num sounds:<br><input name="numSounds" value="" type="number" placeholder="16"><br>
+        Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
+        Note mapping type: <select name="noteMappingType">
+            <option value="0">contiguous</option>
+            <option value="1">interleaved</option>
+        </select><br>
+        <br>
+        <button onclick="makeQuery()">Go!</button>
+    </div>
+    
+</body>
+</html>

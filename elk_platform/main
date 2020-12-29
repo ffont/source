@@ -21,10 +21,11 @@ except ImportError:
     pass
 
 try:
-    from elk_ui import ElkUIController
+    from elk_ui_custom import ElkUIController
+    from elk_ui_custom import DISPLAY_LINE_LENGTH
 except ModuleNotFoundError:
     # Not running in ELK platform, no problem as ELK-specific code won't be run
-    pass
+    DISPLAY_LINE_LENGTH = 21
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
@@ -47,7 +48,7 @@ elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
 
 plugin_state = "No sate"
-plguin_state_xml = None
+plugin_state_xml = None
 time_post_state_received = None
 connection_with_plugin_ok = False
 old_state_seconds_threshold = 5
@@ -242,9 +243,9 @@ class ElkBridge(object):
                             self.ui.set_led(led_idx, 0)
             else:
                 # Save currently loaded preset
-                if plguin_state_xml is not None:
-                    current_loaded_preset_name = plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetName".lower(), "Noname")
-                    current_loaded_preset_index = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
+                if plugin_state_xml is not None:
+                    current_loaded_preset_name = plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetName".lower(), "Noname")
+                    current_loaded_preset_index = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
                     osc_client.send_message("/save_current_preset", [current_loaded_preset_name, current_loaded_preset_index])
 
     def handle_encoder(self, direction):
@@ -259,8 +260,8 @@ class ElkBridge(object):
         
         else:
             # If no sound is selected, change preset
-            if plguin_state_xml is not None:
-                current_loaded_preset = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
+            if plugin_state_xml is not None:
+                current_loaded_preset = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
                 current_loaded_preset += direction
                 if current_loaded_preset < 0:
                     current_loaded_preset = 0
@@ -285,7 +286,7 @@ class ElkBridge(object):
     def _refresh_display(self, counter):
         global connection_with_plugin_ok
         global time_post_state_received
-        global plguin_state_xml
+        global plugin_state_xml
 
         # Before setting new display lines, pre-compute some variables form the state
 
@@ -299,14 +300,19 @@ class ElkBridge(object):
                 connection_with_plugin_ok = False
                 print('* Plugin disconnected')
 
-        # Check if a sound is selected to decide which info to show
-        display_lines = ["R&A SOURCE " + ["|", "/", "-", "\\"][counter % 4] + (" *" if shoudl_state_received_mark else "")]
+        # Display first line row with general state info
+        is_querying_and_downloading = False
+        if plugin_state_xml is not None:
+            is_querying_and_downloading = plugin_state_xml.find_all("VolatileState".lower())[0].get('isQueryingAndDownloadingSounds'.lower(), '') != "0"       
+        header_line = "SOURCE            {0}{1}{2}".format("Q" if is_querying_and_downloading else " ", "*" if shoudl_state_received_mark else " ", ["|", "/", "-", "\\"][counter % 4])
+        display_lines = [header_line]
 
+        # Check if a sound is selected to decide which info to show    
         if self.selected_sound_idx is not None:
             sound_name = ""
             params_labels_values = []
-            if plguin_state_xml is not None:
-                preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
+            if plugin_state_xml is not None:
+                preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
                 sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
                 if self.selected_sound_idx < len(sounds_info):
                     sound_info = sounds_info[self.selected_sound_idx]
@@ -329,10 +335,10 @@ class ElkBridge(object):
             preset_name = ""
             preset_number = 0
             num_loaded_sounds = 0
-            if plguin_state_xml is not None:
-                volatile_state = plguin_state_xml.find_all("VolatileState".lower())[0]
+            if plugin_state_xml is not None:
+                volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
                 num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-                preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
+                preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
                 preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
                 preset_name = preset_state.get("presetName".lower(), "no name")
                 num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
@@ -412,6 +418,11 @@ def download_all_sounds(urls, outfiles):
 # --- HTTP Server ------------------------------------------------------------------------
 
 @http_server.route('/', methods=['GET'])  # Serve main interface HTML file
+def index_minimal():
+    tvars = {}
+    return render_template("index_minimal.html", **tvars)
+
+@http_server.route('/index', methods=['GET'])  # Serve main interface HTML file
 def index():
     tvars = {}
     return render_template("index.html", **tvars)
@@ -459,14 +470,14 @@ def send_osc():
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
 def state_from_plugin():
     global plugin_state
-    global plguin_state_xml
+    global plugin_state_xml
     global time_post_state_received
     global connection_with_plugin_ok
     global elk_bridge
     time_post_state_received = time.time()
     plugin_state = request.data
     used_parser = "lxml"
-    plguin_state_xml = BeautifulSoup(plugin_state, "lxml")
+    plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
     #print('Time loading XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
     
     if connection_with_plugin_ok == False:

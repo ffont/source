@@ -152,9 +152,13 @@ class ElkUIController(object):
             return
 
         with render.canvas(self._display_dev) as draw:
+            draw.rectangle( (0, 0, DISPLAY_LINE_LENGTH * 6, 10), outline="white", fill="white")
             y_offset = 0
-            for line in self._display_lines:
-                draw.text( (0, y_offset), line, font=self._display_font, fill=255)
+            for count, line in enumerate(self._display_lines):
+                if count == 0:
+                    draw.text( (0, y_offset), line, font=self._display_font, fill="black")
+                else:
+                    draw.text( (0, y_offset), line, font=self._display_font, fill="white")
                 y_offset += 11
             self._display_dirty = False
 
