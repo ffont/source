@@ -89,7 +89,7 @@ parameter_pages = [
         ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R: {0:.2f}s", "/set_sound_parameter"),
     ] , [
         ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode: {0}", "/set_sound_parameter_int"),
-        ("numSlices", lambda x: int(round(100.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices: {0}", "/set_sound_parameter_int"),
+        ("numSlices", lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices: {0}", "/set_sound_parameter_int"),
         ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead: {0:.4f}", "/set_sound_parameter"),
         ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed: {0:.1f}", "/set_sound_parameter"),
     ]
