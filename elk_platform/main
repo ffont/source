@@ -214,11 +214,20 @@ class ElkBridge(object):
             else:
                 # Save currently loaded preset
                 if plguin_state_xml is not None:
+                    current_loaded_preset_name = plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetName".lower(), "Noname")
                     current_loaded_preset_index = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
-                    osc_client.send_message("/save_current_preset", [current_loaded_preset_index])
+                    osc_client.send_message("/save_current_preset", [current_loaded_preset_name, current_loaded_preset_index])
 
     def handle_encoder(self, direction):
         if plguin_state_xml is not None:
+            # If a sound is selected, unselect it
+            if self.selected_sound_idx is not None:
+                self.selected_sound_idx = None
+                if self.ui is not None:
+                    for led_idx in range(0, 9): 
+                        self.ui.set_led(led_idx, 0)
+
+            # Load next preset
             current_loaded_preset = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
             current_loaded_preset += direction
             if current_loaded_preset < 0:

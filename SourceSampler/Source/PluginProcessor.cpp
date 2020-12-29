@@ -362,6 +362,7 @@ void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _preset
         // If already exists, delete it
         location.deleteFile();
     }
+    logToState("Saving preset to: " + location.getFullPathName());
     xml->writeTo(location);
     if (index > -1){
         updatePresetNumberMapping(filename, index);

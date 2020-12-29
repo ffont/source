@@ -118,7 +118,7 @@ def compile_elk(ctx, configuration='Release'):
     # executed. To fix this issue here we mount a volume where the generated VST3 will be copied. This volume is inside the build folder so
     # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
     print('\n* Cross-compiling')
-    os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
+    os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
     os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/SourceSampler/Builds/ELKAudioOS crops/extsdk-container')
 
     # Undo file replacements
@@ -146,7 +146,7 @@ def compile_elk_juce5(ctx, configuration='Release'):
 
     # Cross-compile Source
     print('\n* Cross-compiling')
-    os.system("find elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/intermediate/Release/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
+    os.system("find elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
     os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS crops/extsdk-container')
 
     print('\nAll done!')

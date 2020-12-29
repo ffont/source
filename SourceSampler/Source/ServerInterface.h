@@ -389,7 +389,7 @@ void HTTPServer::run()
 
 void OSCServer::oscMessageReceived (const OSCMessage& message)
 {
-    //std::cout << "Received OSC message at address " + message.getAddressPattern().toString() << std::endl;
+    DBG("Received OSC message at address: " + message.getAddressPattern().toString());
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);
     }
