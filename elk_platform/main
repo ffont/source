@@ -61,6 +61,40 @@ http_server = Flask(__name__, template_folder='/udata/source/app/' if platform =
 osc_client = None
 elk_bridge = None
 
+parameter_pages = [
+    [
+        ("gain", lambda x: 12.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain: {0:.2f} dB", "/set_sound_parameter"),
+        ("pitch", lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch: {0:.2f}", "/set_sound_parameter"),
+        ("reverse", lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse: {0}", "/set_sound_parameter_int"),
+        ("launchMode", lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode: {0}", "/set_sound_parameter_int"),
+    ], [
+        ("startPosition", lambda x: x, lambda x: float(x), "Start pos: {0:.4f}", "/set_sound_parameter"),
+        ("endPosition", lambda x: x, lambda x: float(x), "End pos: {0:.4f}", "/set_sound_parameter"),
+        ("loopStartPosition", lambda x: x, lambda x: float(x), "Loop st pos: {0:.4f}", "/set_sound_parameter"),
+        ("loopEndPosition", lambda x: x, lambda x: float(x), "Loop end pos: {0:.4f}", "/set_sound_parameter"),
+    ], [
+        ("ampADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A: {0:.2f}s", "/set_sound_parameter"),
+        ("ampADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D: {0:.2f}s", "/set_sound_parameter"),
+        ("ampADSR.sustain", lambda x: x, lambda x: float(x), "S: {0:.2f}", "/set_sound_parameter"),
+        ("ampADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R: {0:.2f}s", "/set_sound_parameter"),
+    ], [
+        ("filterCutoff", lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff: {0:.2f} Hz", "/set_sound_parameter"),
+        ("filterRessonance", lambda x: x, lambda x: float(x), "Resso: {0:.2f}", "/set_sound_parameter"),
+        ("filterKeyboardTracking", lambda x: x, lambda x: float(x), "K.T.: {0:.2f}", "/set_sound_parameter"),
+        ("filterADSR2CutoffAmt", lambda x: 10.0 * x, lambda x: float(x), "Env amt: {0:.2f}", "/set_sound_parameter"),
+    ], [
+        ("filterADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A: {0:.2f}s", "/set_sound_parameter"),
+        ("filterADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D: {0:.2f}s", "/set_sound_parameter"),
+        ("filterADSR.sustain", lambda x: x, lambda x: float(x), "Filter S: {0:.2f}", "/set_sound_parameter"),
+        ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R: {0:.2f}s", "/set_sound_parameter"),
+    ] , [
+        ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode: {0}", "/set_sound_parameter_int"),
+        ("numSlices", lambda x: int(round(100.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices: {0}", "/set_sound_parameter_int"),
+        ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead: {0:.4f}", "/set_sound_parameter"),
+        ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed: {0:.1f}", "/set_sound_parameter"),
+    ]
+]
+
 
 # --- Utils ------------------------------------------------------------------------
 
@@ -107,6 +141,7 @@ class ElkBridge(object):
     buttons_sent_note_on = {}
     selected_sound_idx = None
     display_contents_for_simulator = "No contents"
+    current_parameter_page = 0
     ui = None
     sushi = None
 
@@ -146,14 +181,8 @@ class ElkBridge(object):
     def handle_faders(self, fader_idx, val):
 
         if self.selected_sound_idx is not None:
-            if (fader_idx == 0):
-                osc_client.send_message("/set_sound_parameter", [self.selected_sound_idx, "pitch", 36.0 * (val - 0.5)])
-            elif (fader_idx == 1):
-                osc_client.send_message("/set_sound_parameter", [self.selected_sound_idx, "filterCutoff", 10 + 20000 * val])
-            elif (fader_idx == 2):
-                osc_client.send_message("/set_sound_parameter_int", [self.selected_sound_idx, "launchMode", int(round(4 * val))])
-            elif (fader_idx == 3):
-                osc_client.send_message("/set_sound_parameter", [self.selected_sound_idx, "gain", 12.0 * 2.0 * (val - 0.5)])
+            parameter_name, send_func, _, _, osc_address = parameter_pages[self.current_parameter_page][fader_idx]
+            osc_client.send_message(osc_address, [self.selected_sound_idx, parameter_name, send_func(val)])
 
     def handle_buttons(self, button_idx, val):
         stored_val = self.buttons_state.get(button_idx, 0)
@@ -219,20 +248,23 @@ class ElkBridge(object):
                     osc_client.send_message("/save_current_preset", [current_loaded_preset_name, current_loaded_preset_index])
 
     def handle_encoder(self, direction):
-        if plguin_state_xml is not None:
-            # If a sound is selected, unselect it
-            if self.selected_sound_idx is not None:
-                self.selected_sound_idx = None
-                if self.ui is not None:
-                    for led_idx in range(0, 9): 
-                        self.ui.set_led(led_idx, 0)
-
-            # Load next preset
-            current_loaded_preset = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
-            current_loaded_preset += direction
-            if current_loaded_preset < 0:
-                current_loaded_preset = 0
-            osc_client.send_message("/load_preset", [current_loaded_preset])
+        
+        if self.selected_sound_idx is not None:
+            # If a sound is selected, cycle parameter pages
+            self.current_parameter_page += direction
+            if self.current_parameter_page < 0:
+                self.current_parameter_page = len(parameter_pages) - 1
+            elif self.current_parameter_page > len(parameter_pages) - 1:
+                self.current_parameter_page = 0
+        
+        else:
+            # If no sound is selected, change preset
+            if plguin_state_xml is not None:
+                current_loaded_preset = int(plguin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
+                current_loaded_preset += direction
+                if current_loaded_preset < 0:
+                    current_loaded_preset = 0
+                osc_client.send_message("/load_preset", [current_loaded_preset])
 
     def run(self):
         if self.ui is not None:
@@ -272,33 +304,25 @@ class ElkBridge(object):
 
         if self.selected_sound_idx is not None:
             sound_name = ""
-            sound_pitch = -1
-            sound_cutoff = -1
-            sound_launch_mode = -1
-            sound_gain = -1
+            params_labels_values = []
             if plguin_state_xml is not None:
                 preset_state = plguin_state_xml.find_all("SourcePresetState".lower())[0]
                 sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
                 if self.selected_sound_idx < len(sounds_info):
                     sound_info = sounds_info[self.selected_sound_idx]
                     sound_name = sound_info.get('soundname', '-')
-                    for parameter in sound_info.find_all('samplersoundparameter'):
-                        value = parameter.get('parameter_value', '')
-                        if parameter.get('parameter_name', '') == 'pitch':
-                            sound_pitch = value
-                        elif parameter.get('parameter_name', '') == 'filterCutoff':
-                            sound_cutoff = value
-                        elif parameter.get('parameter_name', '') == 'launchMode':
-                            sound_launch_mode = ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(value)]
-                        elif parameter.get('parameter_name', '') == 'gain':
-                            sound_gain = value
-            display_lines += [
-                "SOUND {0}: {1}".format(self.selected_sound_idx, sound_name),
-                "Pitch: {0:.2f}".format(float(sound_pitch)),
-                "Cutoff: {0:.2f} Hz".format(float(sound_cutoff)),
-                "Launch mode: {0}".format(sound_launch_mode),
-                "Gain: {0:.2f} dB".format(float(sound_gain)),
-            ]
+                    for parameter_name, _, get_func, parameter_label_template, _ in parameter_pages[self.current_parameter_page]:
+                        for parameter in sound_info.find_all('samplersoundparameter'):
+                            val = parameter.get('parameter_value', '')
+                            if parameter.get('parameter_name', '') == parameter_name:
+                                processed_val = get_func(val)
+                                params_labels_values.append((parameter_label_template, processed_val))
+
+            display_lines.append("SOUND {0}: {1}".format(self.selected_sound_idx, sound_name))
+
+            for parameter_label_template, param_value in params_labels_values:
+                display_lines.append(parameter_label_template.format(param_value))
+
         else:
             # Get some properties from plugin state
             num_active_voices = 0
