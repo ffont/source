@@ -742,7 +742,7 @@ Response FSRequest::request(StringPairArray params, String data, bool postLikeRe
 
 	//Try to open a stream with this information.
 	if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-		10000, // timeout in millisecs
+		FREESOUND_API_REQUEST_TIMEOUT, // timeout in millisecs
 		&responseHeaders, &statusCode)))
 	{
 		//Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
