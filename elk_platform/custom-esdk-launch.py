@@ -112,16 +112,20 @@ try:
             pass
 
     # Source the environment setup script and run bash
+    # NOTE: the flag DJUCE_HEADLESS_PLUGIN_CLIENT is only needed for JUCE5 builds, but we always add it anyway
+    path_to_makefile = os.environ['CC_PATH_TO_MAKEFILE']
+    config = os.environ.get('CC_CONFIG', 'Release')
+    print('Cross-compiling with:\n    CC_CONFIG={0}\n    CC_PATH_TO_MAKEFILE={1}'.format(config, path_to_makefile))
     cmd = 'bash -c'.split()
     args = """
-    cd {}; 
-    . {};
-    cd /code/source/SourceSampler/Builds/ELKAudioOS
+    cd {0}; 
+    . {1};
+    cd {2}
     unset LD_LIBRARY_PATH
     source /workdir/environment-setup-aarch64-elk-linux
     export CXXFLAGS="-O3 -pipe -ffast-math -feliminate-unused-debug-types -funroll-loops"
-    AR=aarch64-elk-linux-ar make -j2 CONFIG=Debug CFLAGS="-DELK_BUILD=1 -Wno-psabi" TARGET_ARCH="-mcpu=cortex-a72 -mtune=cortex-a72" -i
-    """.format(args.workdir, setupscript[0])
+    AR=aarch64-elk-linux-ar make -j2 CONFIG={3} CFLAGS="-DJUCE_HEADLESS_PLUGIN_CLIENT=1 -DELK_BUILD=1 -Wno-psabi" TARGET_ARCH="-mcpu=cortex-a72 -mtune=cortex-a72" -i
+    """.format(args.workdir, setupscript[0], path_to_makefile, config)
     os.execvp(cmd[0], cmd + [args])
 
 except EsdkLaunchError as e:

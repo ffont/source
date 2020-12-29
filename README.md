@@ -55,6 +55,8 @@ cd scripts
 fab compile-elk
 ```
 
+(if you need a debug build, you can use `fab compile-elk-debug`)
+
 This will take a while, specially the first time it runs. When it finished, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/` which is the VST3 plugin that you can run in ELK platform.
 
 **NOTE**: the build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/` or by running `fab compile-binary-builder-macos`.
