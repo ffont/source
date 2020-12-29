@@ -104,8 +104,12 @@ def get_status_output(command):
     return os.popen(command).read()[:-1]  # Remove last char which is always \n
 
 
+last_time_restarting_connman = 0
+
+
 def collect_system_stats():
     global system_stats
+    global last_time_restarting_connman
 
     if platform == "ELK":
 
@@ -116,12 +120,29 @@ def collect_system_stats():
             system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
             system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
             system_stats['n_sushi_proc'] = get_status_output("ps -e | grep sushi | wc -l")
+            
+            # Check network status and reconnect if disconnected
             connmanctl_services_output = get_status_output("sudo connmanctl services")
-            wifi_is_connected = '*AO' in connmanctl_services_output
-            if wifi_is_connected:
+            network_is_connected = '*AO' in connmanctl_services_output
+            if network_is_connected:
                 system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
+                last_time_restarting_connman = 0
             else:
-                system_stats['network_ssid'] = 'No network'
+                system_stats['network_ssid'] = '-' + ' (R)' if last_time_restarting_connman != 0 else ''
+                if time.time() - last_time_restarting_connman > 10:  # Don't try to reconnect more often than every 10 seconds
+                    print('* Restarting connman')
+                    last_time_restarting_connman = time.time()
+                    get_status_output("sudo connmanctl enable wifi")
+                    get_status_output("sudo systemctl restart connman")
+
+            # Check aconnect status and reconnect if disconnected                    
+            aconnect_l_output = get_status_output("aconnect -l")
+            aconnect_is_connected = 'connected' in aconnect_l_output
+            if not aconnect_is_connected:
+                print('* Running aconnect')
+                out = get_status_output("aconnect 16 128")
+                print(out)
+
         except:
             system_stats = {}
 
@@ -547,14 +568,12 @@ if __name__ == "__main__":
         collect_system_stats()
         CollectSystemStatsThread().start()
 
-    # Run aconnect
-    print('* Running aconnect')
-    out = get_status_output("aconnect 16 128")
-    print(out)
-
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')
     osc_client = OSCClient(args.osc_ip, args.osc_port, encoding='utf8')
+
+    print('* Running aconnect')
+    get_status_output("aconnect 16 128")
 
     # Start HTTP server that will receive state updates from the plugin and implements the web interface
     print('* Starting HTTP server at {}'.format(args.http_port))

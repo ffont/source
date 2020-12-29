@@ -671,7 +671,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
         String presetName = tokens[0];
         int index = tokens[1].getIntValue();
-        saveCurrentPresetToFile(presetName, index);
+        saveCurrentPresetToFile(presetName, index);  // Save to file
+        setCurrentProgram(index);  // And then reload from the file
         
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
         int index = message.substring(String(ACTION_LOAD_PRESET).length() + 1).getIntValue();

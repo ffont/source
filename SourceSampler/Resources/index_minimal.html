@@ -8,10 +8,7 @@
         body {
             font-family: Helvetica, sans-serif;
             font-size: 120%;
-        }
-    
-        h1 {
-            margin-bottom: 0px;   
+            padding:5px;
         }
     
         input {
@@ -32,9 +29,8 @@
         }
     
         .controls_card {
-            padding:5px;
-            margin:5px;
             vertical-align: top;
+            margin-bottom: 40px;
         }
         
     </style>
@@ -58,13 +54,27 @@
             var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
             var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
             var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
+            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int');
+        }
+
+        function savePreset(){
+            var name = document.getElementsByName('presetName')[0].value;
+            var idx = document.getElementsByName('presetIdx')[0].value;
+            sendOsc('/save_current_preset', [name, idx], 'str;int');
+        }
+
+        function loadPreset() {
+            var idx = document.getElementsByName('presetIdxLoad')[0].value;
+            sendOsc('/load_preset', [idx], 'int')
         }
         
     </script>
 </head>
 
 <body>
+
+    <h2>SOURCE</h2>
+
     <div class="controls_card">
         <b>Make new preset</b><br><br>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
@@ -77,6 +87,25 @@
         <br>
         <button onclick="makeQuery()">Go!</button>
     </div>
+
+    <div class="controls_card">
+        <b>Save preset</b><br><br>
+        Preset number:<input name="presetIdx" value="" type="number"><br>
+        Preset name:<br><input name="presetName" value="" type="text">
+        <br>
+        <button onclick="savePreset()">Save</button>
+    </div>
+
+    <div class="controls_card">
+        <b>Load preset</b><br><br>
+        Preset number:<input name="presetIdxLoad" value="" type="number">
+        <br>
+        <button onclick="loadPreset()">Load</button>
+    </div>
+
+    <br>
+    <br>
+    by Rita & Aurora
     
 </body>
 </html>
