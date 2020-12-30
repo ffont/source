@@ -139,7 +139,7 @@ def collect_system_stats():
 
             # Check aconnect status and reconnect if disconnected                    
             aconnect_l_output = get_status_output("aconnect -l")
-            aconnect_is_connected = 'connected' in aconnect_l_output
+            aconnect_is_connected = 'Connected' in aconnect_l_output
             if not aconnect_is_connected:
                 print('* Running aconnect')
                 out = get_status_output("aconnect 16 128")
