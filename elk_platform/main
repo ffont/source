@@ -46,6 +46,8 @@ BUTTON_MIDI_NOTES = [48, 60, 62, 64, 65, 67, 69, 71, 72]  # C3 + C scale from C4
 
 elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
+START_ANIMATION_N_FRAMES = 25
+START_ANIMATION_LOGO_PATH = '/udata/source/app/logo_oled.png'
 
 plugin_state = "No sate"
 plugin_state_xml = None
@@ -164,6 +166,7 @@ class ElkBridge(object):
     selected_sound_idx = None
     display_contents_for_simulator = "No contents"
     current_parameter_page = 0
+    start_animation_not_finished = True
     ui = None
     sushi = None
 
@@ -189,7 +192,10 @@ class ElkBridge(object):
                 self.ui = ElkUIController(self.handle_faders,
                                           self.handle_buttons,
                                           self.handle_encoder_button,
-                                          self.handle_encoder)
+                                          self.handle_encoder,
+                                          start_animation_text="           SOURCE, by Rita & Aurora",
+                                          start_animation_n_frames=START_ANIMATION_N_FRAMES,
+                                          start_animation_logo_path=START_ANIMATION_LOGO_PATH)
                 elkui_initialized = True
                 print("Initialized ElkUIController")
             except Exception as e:
@@ -296,12 +302,17 @@ class ElkBridge(object):
         counter = 0
         while True:
             time.sleep(1.0/elk_bridge_refresh_fps)
-
             counter += 1
-            if counter % 3 == 0:
-                self._refresh_display(counter)  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
+
+            if not self.start_animation_not_finished:
+                if counter % 3 == 0:
+                    self._refresh_display(counter)  # At 1/3 of the rate of elk_bridge_refresh_fps, also update the full contents of the display
 
             if self.ui is not None:
+                if counter < START_ANIMATION_N_FRAMES and self.start_animation_not_finished:
+                    self.ui.set_start_animation_frame(counter)
+                elif counter == START_ANIMATION_N_FRAMES and self.start_animation_not_finished:
+                    self.start_animation_not_finished = False
                 self.ui.refresh()
 
     def _refresh_display(self, counter):

@@ -13,7 +13,7 @@ import liblo
 
 from demo_opts import get_device as get_display_device
 import luma.core.render as render
-from PIL import ImageFont
+from PIL import ImageFont, Image
 
 ######################
 #  Module Constants  #
@@ -41,6 +41,7 @@ DISPLAY_CONFIG = ["--display", "ssd1306",  "--i2c-port", "0", "--i2c-address", "
 RESET_PIN_INDEX = 31
 FONT_PATH = "/udata/source/app/LiberationMono-Regular.ttf"
 FONT_SIZE = 10
+FONT_SIZE_START_ANIMATION = 64 - 10
 DISPLAY_N_LINES = 6
 DISPLAY_LINE_LENGTH = 21
 
@@ -65,7 +66,10 @@ class ElkUIController(object):
                  encoder_button_callback,
                  encoder_callback,
                  sensei_ctrl_port=SENSEI_TO_BRIDGE_PORT,
-                 sensei_led_port=BRIDGE_TO_SENSEI_PORT):
+                 sensei_led_port=BRIDGE_TO_SENSEI_PORT,
+                 start_animation_text="Welcome!",
+                 start_animation_n_frames=25,
+                 start_animation_logo_path=None):
         """ Initialization.
 
             Inputs:
@@ -107,8 +111,19 @@ class ElkUIController(object):
         self.reset_display()
         self._display_dev = get_display_device(DISPLAY_CONFIG)
         self._display_font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
+        self._display_font_start_animation = ImageFont.truetype(FONT_PATH, FONT_SIZE_START_ANIMATION)
         self._display_dirty = False
         self._display_lines = []
+        self._display_start_animation_frame = None
+        self._display_start_animation_n_frames = start_animation_n_frames
+
+        self.set_start_animation_text(start_animation_text)
+        if start_animation_logo_path is not None:
+            self._start_animation_logo =  Image.open(start_animation_logo_path) 
+            self._start_animation_logo = self._start_animation_logo.resize((128, 64), Image.NEAREST)
+            self._start_animation_logo = self._start_animation_logo.convert('1')
+        else:
+            self._start_animation_logo = None
 
     def set_led(self, idx, val):
         """ Immediately set one of the LEDs on the board.
@@ -121,6 +136,10 @@ class ElkUIController(object):
         osc_msg.add(('f', val))
         liblo.send(self._sensei_address, osc_msg)
 
+    def set_start_animation_text(self, text):
+        self._start_animation_text = text
+        self._start_animation_text_total_width = None
+
     def set_display_lines(self, lines):
         """ Write lines of text to the OLED display.
 
@@ -131,6 +150,10 @@ class ElkUIController(object):
         self._display_lines = []
         for line in lines[:DISPLAY_N_LINES]:
             self._display_lines.append(line[:DISPLAY_LINE_LENGTH])
+        self._display_dirty = True
+
+    def set_start_animation_frame(self, frame_n):
+        self._display_start_animation_frame = frame_n
         self._display_dirty = True
 
     def run(self):
@@ -152,14 +175,28 @@ class ElkUIController(object):
             return
 
         with render.canvas(self._display_dev) as draw:
-            draw.rectangle( (0, 0, DISPLAY_LINE_LENGTH * 6, 10), outline="white", fill="white")
-            y_offset = 0
-            for count, line in enumerate(self._display_lines):
-                if count == 0:
-                    draw.text( (0, y_offset), line, font=self._display_font, fill="black")
-                else:
-                    draw.text( (0, y_offset), line, font=self._display_font, fill="white")
-                y_offset += 11
+
+            if self._display_start_animation_frame is None:
+                # Not displaying the start animation, show lines
+                draw.rectangle( (0, 0, 128, 64/6), outline="white", fill="white")
+                y_offset = 0
+                for count, line in enumerate(self._display_lines):
+                    if count == 0:
+                        draw.text( (0, y_offset), line, font=self._display_font, fill="black")
+                    else:
+                        draw.text( (0, y_offset), line, font=self._display_font, fill="white")
+                    y_offset += 11
+            
+            elif self._display_start_animation_frame >= 0:
+                # Displyaing start animation
+                if self._start_animation_logo is not None and self._display_start_animation_frame < 6:
+                    draw.bitmap((0, 0), self._start_animation_logo, fill="white")
+
+                if self._start_animation_text_total_width is None:
+                    self._start_animation_text_total_width = draw.textsize(self._start_animation_text, font=self._display_font_start_animation)[0]
+                draw.text((int(self._display_start_animation_frame * -1 * self._start_animation_text_total_width / (self._display_start_animation_n_frames - 1)), int((64 - FONT_SIZE_START_ANIMATION)/2)), self._start_animation_text, font=self._display_font_start_animation, fill="white")
+                self._display_start_animation_frame = None
+
             self._display_dirty = False
 
 
