@@ -3,12 +3,17 @@
 
 <head>
     <title>Source, a Freesound-powered sampler</title>
+    <meta name="viewport" content="width=300, user-scalable=no">
 
     <style>
         body {
             font-family: Helvetica, sans-serif;
             font-size: 120%;
-            padding:5px;
+        }
+
+        #wrapper {
+            padding: 5px;
+            width: 290px;
         }
     
         input {
@@ -25,7 +30,7 @@
 
         select {
             font-size: 120%;
-            width: 100%;
+            width: 180px;
         }
     
         .controls_card {
@@ -73,39 +78,41 @@
 
 <body>
 
-    <h2>SOURCE</h2>
+    <div id="wrapper">
+        <h2>SOURCE</h2>
 
-    <div class="controls_card">
-        <b>Make new preset</b><br><br>
-        Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-        Num sounds:<br><input name="numSounds" value="" type="number" placeholder="16"><br>
-        Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
-        Note mapping type: <select name="noteMappingType">
-            <option value="0">contiguous</option>
-            <option value="1">interleaved</option>
-        </select><br>
+        <div class="controls_card">
+            <b>Make new preset</b><br><br>
+            Query:<input name="query" value="" type="text" placeholder="percussion"><br>
+            Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
+            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
+            Note mapping type: <select name="noteMappingType">
+                <option value="0">contiguous</option>
+                <option value="1">interleaved</option>
+            </select><br>
+            <br>
+            <button onclick="makeQuery()">Go!</button>
+        </div>
+
+        <div class="controls_card">
+            <b>Save preset</b><br><br>
+            Preset number:<input name="presetIdx" value="" type="number"><br>
+            Preset name:<br><input name="presetName" value="" type="text">
+            <br>
+            <button onclick="savePreset()">Save</button>
+        </div>
+
+        <div class="controls_card">
+            <b>Load preset</b><br><br>
+            Preset number:<input name="presetIdxLoad" value="" type="number">
+            <br>
+            <button onclick="loadPreset()">Load</button>
+        </div>
+
         <br>
-        <button onclick="makeQuery()">Go!</button>
-    </div>
-
-    <div class="controls_card">
-        <b>Save preset</b><br><br>
-        Preset number:<input name="presetIdx" value="" type="number"><br>
-        Preset name:<br><input name="presetName" value="" type="text">
         <br>
-        <button onclick="savePreset()">Save</button>
+        by Rita & Aurora
     </div>
-
-    <div class="controls_card">
-        <b>Load preset</b><br><br>
-        Preset number:<input name="presetIdxLoad" value="" type="number">
-        <br>
-        <button onclick="loadPreset()">Load</button>
-    </div>
-
-    <br>
-    <br>
-    by Rita & Aurora
     
 </body>
 </html>
