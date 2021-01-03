@@ -7,8 +7,15 @@
 
     <style>
         body {
-            font-family: Helvetica, sans-serif;
+            font-family: futura-pt,Avenir,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Helvetica,Arial,sans-serif;
             font-size: 120%;
+            background-color: black;
+            color: white;
+        }
+
+        h2 {
+            font-size: 1.3em;
+            margin-block-end: 0.33em;
         }
 
         #wrapper {
@@ -18,6 +25,15 @@
     
         input {
             font-size: 120%;
+            background-color: rgb(150, 150, 150);
+            border-radius: 4px;
+            border: 0px;
+            padding: 2px;
+        }
+
+        ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+            color: rgb(112, 112, 112);
+            opacity: 1; /* Firefox */
         }
 
         input[type=number] {
@@ -25,7 +41,13 @@
         }
 
         button {
+            margin-top: 8px;
             font-size: 120%;
+            background-color: rgb(37, 37, 37);
+            border-radius: 4px;
+            border: 0px;
+            padding: 6px;
+            color:white;
         }
 
         select {
@@ -79,23 +101,23 @@
 <body>
 
     <div id="wrapper">
-        <h2>SOURCE</h2>
+        <h1>SOURCE</h1>
 
         <div class="controls_card">
-            <b>Make new preset</b><br><br>
+            <h2>Make new preset</h2>
             Query:<input name="query" value="" type="text" placeholder="percussion"><br>
             Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
             Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             Note mapping type: <select name="noteMappingType">
                 <option value="0">contiguous</option>
                 <option value="1">interleaved</option>
-            </select><br>
+            </select>
             <br>
             <button onclick="makeQuery()">Go!</button>
         </div>
 
         <div class="controls_card">
-            <b>Save preset</b><br><br>
+            <h2>Save preset</h2>
             Preset number:<input name="presetIdx" value="" type="number"><br>
             Preset name:<br><input name="presetName" value="" type="text">
             <br>
@@ -103,7 +125,7 @@
         </div>
 
         <div class="controls_card">
-            <b>Load preset</b><br><br>
+            <h2>Load preset</h2>
             Preset number:<input name="presetIdxLoad" value="" type="number">
             <br>
             <button onclick="loadPreset()">Load</button>

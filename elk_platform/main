@@ -27,7 +27,7 @@ try:
 except ModuleNotFoundError:
     pass
 
-from source_ui import frame_from_lines, frame_from_start_animation, START_ANIMATION_N_FRAMES, justify_text, add_global_message_to_frame
+from source_ui import frame_from_lines, frame_from_start_animation, justify_text, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
@@ -44,13 +44,13 @@ if disable_flask_logging:
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-elk_bridge_refresh_fps = 10
+elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
 
 current_frame = None
 current_frame_directory = 'static/frame/' 
 
-global_message = ('', 0)  # first item is message text, second item is number of frames to be shown for
+global_message = ('', 0, 0)  # (text, starttime, duration)
 
 plugin_state = "No sate"
 plugin_state_xml = None
@@ -67,6 +67,7 @@ http_server = Flask(__name__, template_folder='/udata/source/app/' if platform =
 osc_client = None
 elk_bridge = None
 
+SPECIAL_PAGE_NAME = "special"
 parameter_pages = [
     [
         ("gain", lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f} dB", "/set_sound_parameter"),
@@ -93,12 +94,13 @@ parameter_pages = [
         ("filterADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
         ("filterADSR.sustain", lambda x: x, lambda x: float(x), "Filter S", "{0:.2f}", "/set_sound_parameter"),
         ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
-    ] , [
+    ], [
         ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
         ("numSlices", lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
         ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
         ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
-    ]
+    ],
+    SPECIAL_PAGE_NAME  # Quick hack to enable having an extra page to display sutff other than sound parameters, this should be improved...
 ]
 
 
@@ -123,7 +125,11 @@ def collect_system_stats():
             system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
             system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
             system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
-            system_stats['msw'] = "CPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
+            proc_xenomai_output = get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
+            total_cpu = 0
+            for line in proc_xenomai_output.split('\n'):
+                total_cpu += float(line.split('sushi_b64')[0].strip().split(' ')[-1])
+            system_stats['xenomai_cpu'] = total_cpu
             system_stats['n_sushi_proc'] = get_status_output("ps -e | grep sushi | wc -l")
             
             # Check network status and reconnect if disconnected
@@ -168,7 +174,7 @@ class ElkBridge(object):
     buttons_sent_note_on = {}
     selected_sound_idx = None
     current_parameter_page = 0
-    start_animation_not_finished = True
+    starttime = 0
     ui = None
     sushi = None
 
@@ -239,8 +245,6 @@ class ElkBridge(object):
                 if stored_val == 0 and current_val == 1:  # Button was pressed
                     # If sound was already selected, pressing the button again will trigger the sound
                     if self.selected_sound_idx == sound_idx:
-                        #if self.buttons_sent_note_on.get(button_idx, False):  # If note on was sent without note off, stop it first (just in case)
-                        #    osc_client.send_message("/stop_sound", [sound_idx])
                         osc_client.send_message("/play_sound", [sound_idx])
                         self.buttons_sent_note_on[button_idx] = True
 
@@ -309,13 +313,14 @@ class ElkBridge(object):
             self.ui.run()
 
         # Start loop to call refresh for the display
+        starttime = time.time()
         counter = 0
         while True:
             time.sleep(1.0/elk_bridge_refresh_fps)
             counter += 1
-
-            if counter < START_ANIMATION_N_FRAMES:
-                frame = frame_from_start_animation(counter)
+            time_since_start = time.time() - starttime
+            if time_since_start < START_ANIMATION_DURATION:
+                frame = frame_from_start_animation(time_since_start/START_ANIMATION_DURATION)
             else:
                 frame = self.compute_display_frame(counter)
 
@@ -328,9 +333,9 @@ class ElkBridge(object):
                 self.ui.set_display_frame(frame)
                 self.ui.refresh()
 
-    def show_global_message(self, text, n_frames=10):
+    def show_global_message(self, text, duration=2):
         global global_message
-        global_message = (text, n_frames)
+        global_message = (text, time.time(), duration)
 
     def compute_display_frame(self, counter):
         global connection_with_plugin_ok
@@ -349,7 +354,7 @@ class ElkBridge(object):
         if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
             if connection_with_plugin_ok == True:
                 connection_with_plugin_ok = False
-                print('* Plugin disconnected')
+                elk_bridge.show_global_message("Pl. disconnected :(")
 
         # Get info to show in indicator icons
         is_querying_and_downloading = False
@@ -364,6 +369,7 @@ class ElkBridge(object):
         preset_name = "-"
         if plugin_state_xml is not None:
             volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
+            #num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
             preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
             preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
             preset_name = preset_state.get("presetName".lower(), "no name")
@@ -381,29 +387,51 @@ class ElkBridge(object):
 
             # Get properties from the selected sound
             sound_name = ""
+            sound_id = 0
+            sound_duration = 0
+            sound_license = ""
+            sound_username = ""
+            sound_download_progress = 0
             params_labels_values = []
             if preset_state is not None:
                 sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
                 if self.selected_sound_idx < len(sounds_info):
                     sound_info = sounds_info[self.selected_sound_idx]
                     sound_name = sound_info.get('soundname', '-')
-                    for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
-                        for parameter in sound_info.find_all('samplersoundparameter'):
-                            val = parameter.get('parameter_value', '')
-                            if parameter.get('parameter_name', '') == parameter_name:
-                                processed_val = get_func(val)
-                                params_labels_values.append((parameter_label, value_label_template, processed_val))
+                    sound_id = sound_info.get('soundid', 0)
+                    sound_duration = float(sound_info.get('sounddurationinseconds', 0))
+                    sound_license = translate_cc_license_url(sound_info.get('soundlicense', '-'))
+                    sound_username = sound_info.get('sounduser', '-')
+                    sound_download_progress = int(sound_info.get('downloadprogress', 0))
+
+                    if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
+                        for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
+                            for parameter in sound_info.find_all('samplersoundparameter'):
+                                val = parameter.get('parameter_value', '')
+                                if parameter.get('parameter_name', '') == parameter_name:
+                                    processed_val = get_func(val)
+                                    params_labels_values.append((parameter_label, value_label_template, processed_val))
 
             display_lines.append({
                 "underline": True, 
                 "text": "S{0}:{1}".format(self.selected_sound_idx, sound_name)
             })
 
-            for parameter_label, value_label_template, param_value in params_labels_values:
-                display_lines.append(justify_text(
-                    parameter_label + ":", 
-                    value_label_template.format(param_value)
-                ))
+            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
+                # Display corresponding sound parameters
+                for parameter_label, value_label_template, param_value in params_labels_values:
+                    display_lines.append(justify_text(
+                        parameter_label + ":", 
+                        value_label_template.format(param_value)
+                    ))
+            else:
+                # Display extra sound info
+                display_lines += [
+                    justify_text('ID:', '{0}'.format(sound_id)),
+                    justify_text('User:', '{0}'.format(sound_username)),
+                    justify_text('CC License:', '{0}'.format(sound_license)),
+                    justify_text('Duration:', '{0:.2f}s'.format(sound_duration)) if sound_download_progress == 100 else justify_text('Downloading...', '{0:.1f}%'.format(sound_download_progress)),
+                ]
 
         else:
             # Get some properties from plugin state
@@ -413,24 +441,25 @@ class ElkBridge(object):
 
             # Prepare parameters to show, check which parameters have been set globally because all sounds have the same
             params_labels_values = []
-            if preset_state is not None:
-                sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())     
-                for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
-                    all_sounds_values = []
-                    last_value = None
-                    for sound_info in sounds_info:
-                        for parameter in sound_info.find_all('samplersoundparameter'):
-                            val = parameter.get('parameter_value', '')
-                            if parameter.get('parameter_name', '') == parameter_name:
-                                processed_val = get_func(val)
-                                all_sounds_values.append(processed_val)
-                                last_value = processed_val
-                    if len(set(all_sounds_values)) == 1:
-                        # All sounds have the same value for that parameter, show the number
-                        params_labels_values.append((parameter_label, value_label_template, last_value))
-                    else:
-                        # Some sounds differ, don't show the number
-                        params_labels_values.append((parameter_label, "{0}", "-"))
+            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
+                if preset_state is not None:
+                    sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())     
+                    for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
+                        all_sounds_values = []
+                        last_value = None
+                        for sound_info in sounds_info:
+                            for parameter in sound_info.find_all('samplersoundparameter'):
+                                val = parameter.get('parameter_value', '')
+                                if parameter.get('parameter_name', '') == parameter_name:
+                                    processed_val = get_func(val)
+                                    all_sounds_values.append(processed_val)
+                                    last_value = processed_val
+                        if len(set(all_sounds_values)) == 1:
+                            # All sounds have the same value for that parameter, show the number
+                            params_labels_values.append((parameter_label, value_label_template, last_value))
+                        else:
+                            # Some sounds differ, don't show the number
+                            params_labels_values.append((parameter_label, "{0}", "-"))
 
             # Update lines of text for the display
             display_lines += [{
@@ -439,26 +468,31 @@ class ElkBridge(object):
                 }
             ]
 
-            for parameter_label, value_label_template, param_value in params_labels_values:
-                display_lines.append(justify_text(
-                    parameter_label + ":", 
-                    value_label_template.format(param_value)
-                ))
-
-            '''
-            if volatile_state is not None:
-                num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-                "{0}ºC|c:{1}|m:{2}".format(system_stats.get("temp", "-"), system_stats.get("cpu", "-"), system_stats.get("mem", "-")),
-                'Network: ' + system_stats.get("network_ssid", "-"),
-            '''
+            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
+                # Display corresponding sound parameters
+                for parameter_label, value_label_template, param_value in params_labels_values:
+                    display_lines.append(justify_text(
+                        parameter_label + ":", 
+                        value_label_template.format(param_value)
+                    ))
+            else:
+                # Display extra global system info
+                display_lines += [
+                    justify_text('Temp:', '{0:.1f}ºC'.format(system_stats.get("temp", ""))),
+                    justify_text('Memory:', '{0:.1f}%'.format(system_stats.get("mem", ""))),
+                    justify_text('CPU:', '{0:.1f}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", ""))), 
+                    justify_text('Network:', '{0}'.format(system_stats.get("network_ssid", "-")))
+                ]
         
         # Generate new frame
         frame = frame_from_lines(display_lines)
 
         # If a global message should be added, do it here
-        if global_message[1] > 0:
-            add_global_message_to_frame(frame, global_message[0])
-            global_message = (global_message[0], global_message[1] - 1)
+        if global_message[0] != '':
+            if time.time() - global_message[1] < global_message[2]:
+                add_global_message_to_frame(frame, global_message[0])
+            else:
+                global_message = ('', 0, 0)
 
         return frame
 
@@ -578,6 +612,10 @@ def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
     osc_client.send_message(address, values)
+    
+    if address == '/new_query':
+        elk_bridge.show_global_message("Making query...")
+
     return 'OSC sent'
 
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
@@ -595,7 +633,7 @@ def state_from_plugin():
     
     if connection_with_plugin_ok == False:
         connection_with_plugin_ok = True
-        print('* Plugin connected')
+        elk_bridge.show_global_message("Pl. connected :)")
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
@@ -604,7 +642,7 @@ def update_state():
     if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
         if connection_with_plugin_ok == True:
             connection_with_plugin_ok = False
-            print('* Plugin disconnected')
+            elk_bridge.show_global_message("Pl. disconnected :(")
         return 'Maybe old'
     else:
         return Response(plugin_state, mimetype='text/xml')
@@ -612,7 +650,7 @@ def update_state():
 @http_server.route('/get_system_stats', methods=['GET'])  # Return system stats
 def get_system_stats():
     if system_stats:
-        return "temp={0}\ncpu={1}%\nmem={2}%\nMSW:\n{3}".format(system_stats['temp'], system_stats['cpu'], system_stats['mem'], system_stats['msw'])
+        return "temp={0}\ncpu={1}%|{2}%\nmem={3}%\n".format(system_stats['temp'], system_stats['cpu'], system_stats['xenomai_cpu'], system_stats['mem'])
     else:
         return "No stats"
 

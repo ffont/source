@@ -5,3 +5,4 @@ xcuserdata/
 __pycache__
 VST2_SDK
 api_key.h
+elk_platform/static
