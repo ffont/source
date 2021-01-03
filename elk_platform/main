@@ -478,9 +478,9 @@ class ElkBridge(object):
             else:
                 # Display extra global system info
                 display_lines += [
-                    justify_text('Temp:', '{0:.1f}ºC'.format(system_stats.get("temp", ""))),
-                    justify_text('Memory:', '{0:.1f}%'.format(system_stats.get("mem", ""))),
-                    justify_text('CPU:', '{0:.1f}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", ""))), 
+                    justify_text('Temp:', '{0}ºC'.format(system_stats.get("temp", ""))),
+                    justify_text('Memory:', '{0}%'.format(system_stats.get("mem", ""))),
+                    justify_text('CPU:', '{0}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", ""))), 
                     justify_text('Network:', '{0}'.format(system_stats.get("network_ssid", "-")))
                 ]
         
@@ -614,7 +614,8 @@ def send_osc():
     osc_client.send_message(address, values)
     
     if address == '/new_query':
-        elk_bridge.show_global_message("Making query...")
+        if elk_bridge is not None:
+            elk_bridge.show_global_message("Making query...")
 
     return 'OSC sent'
 
@@ -633,7 +634,8 @@ def state_from_plugin():
     
     if connection_with_plugin_ok == False:
         connection_with_plugin_ok = True
-        elk_bridge.show_global_message("Pl. connected :)")
+        if elk_bridge is not None:
+            elk_bridge.show_global_message("Pl. connected :)")
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
@@ -642,7 +644,8 @@ def update_state():
     if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
         if connection_with_plugin_ok == True:
             connection_with_plugin_ok = False
-            elk_bridge.show_global_message("Pl. disconnected :(")
+            if elk_bridge is not None:
+                elk_bridge.show_global_message("Pl. disconnected :(")
         return 'Maybe old'
     else:
         return Response(plugin_state, mimetype='text/xml')
