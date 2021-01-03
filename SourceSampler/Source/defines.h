@@ -11,17 +11,20 @@
 #pragma once
 
 #if ELK_BUILD
+    #define STATE_UPDATE_HZ 1
     #define ENABLE_OSC_SERVER 1
     #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
     #define USE_EXTERNAL_HTTP_SERVER 1
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
 #else
     #if JUCE_DEBUG
+        #define STATE_UPDATE_HZ 2
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
         #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
     #else
+        #define STATE_UPDATE_HZ 15
         #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
         #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server
@@ -30,11 +33,6 @@
 #endif
 #define ENABLE_DEBUG_BUFFER 0
 
-#if ELK_BUILD
-    #define STATE_UPDATE_HZ 1
-#else
-    #define STATE_UPDATE_HZ 15
-#endif
 
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"

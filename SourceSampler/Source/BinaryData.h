@@ -11,10 +11,10 @@ namespace BinaryData
     const int           index_htmlSize = 44759;
 
     extern const char*  index_minimal_html;
-    const int           index_minimal_htmlSize = 3403;
+    const int           index_minimal_htmlSize = 3672;
 
     extern const char*  simulator_html;
-    const int           simulator_htmlSize = 6116;
+    const int           simulator_htmlSize = 5995;
 
     extern const char*  localhost_key;
     const int           localhost_keySize = 1704;

@@ -2,9 +2,11 @@
 
 import asyncio
 import argparse
+import glob
 import json
 import logging
 import os
+import random
 import requests
 import subprocess
 import sys
@@ -22,10 +24,10 @@ except ImportError:
 
 try:
     from elk_ui_custom import ElkUIController
-    from elk_ui_custom import DISPLAY_LINE_LENGTH
 except ModuleNotFoundError:
-    # Not running in ELK platform, no problem as ELK-specific code won't be run
-    DISPLAY_LINE_LENGTH = 21
+    pass
+
+from source_ui import frame_from_lines, frame_from_start_animation, START_ANIMATION_N_FRAMES, justify_text, add_global_message_to_frame
 
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
@@ -37,17 +39,18 @@ else:
     platform = "desktop"
 
 # Configure Flask logging to only show error messages
-disable_flask_logging = False
+disable_flask_logging = True
 if disable_flask_logging:
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-BUTTON_MIDI_NOTES = [48, 60, 62, 64, 65, 67, 69, 71, 72]  # C3 + C scale from C4 to C5
-
-elk_bridge_refresh_fps = 20
+elk_bridge_refresh_fps = 10
 system_stats_refresh_fps = 1
-START_ANIMATION_N_FRAMES = 25
-START_ANIMATION_LOGO_PATH = '/udata/source/app/logo_oled.png'
+
+current_frame = None
+current_frame_directory = 'static/frame/' 
+
+global_message = ('', 0)  # first item is message text, second item is number of frames to be shown for
 
 plugin_state = "No sate"
 plugin_state_xml = None
@@ -66,35 +69,35 @@ elk_bridge = None
 
 parameter_pages = [
     [
-        ("gain", lambda x: 12.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain: {0:.2f} dB", "/set_sound_parameter"),
-        ("pitch", lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch: {0:.2f}", "/set_sound_parameter"),
-        ("reverse", lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse: {0}", "/set_sound_parameter_int"),
-        ("launchMode", lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode: {0}", "/set_sound_parameter_int"),
+        ("gain", lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f} dB", "/set_sound_parameter"),
+        ("pitch", lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
+        ("reverse", lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
+        ("launchMode", lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
     ], [
-        ("startPosition", lambda x: x, lambda x: float(x), "Start pos: {0:.4f}", "/set_sound_parameter"),
-        ("endPosition", lambda x: x, lambda x: float(x), "End pos: {0:.4f}", "/set_sound_parameter"),
-        ("loopStartPosition", lambda x: x, lambda x: float(x), "Loop st pos: {0:.4f}", "/set_sound_parameter"),
-        ("loopEndPosition", lambda x: x, lambda x: float(x), "Loop end pos: {0:.4f}", "/set_sound_parameter"),
+        ("startPosition", lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
+        ("endPosition", lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
+        ("loopStartPosition", lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
+        ("loopEndPosition", lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
     ], [
-        ("ampADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A: {0:.2f}s", "/set_sound_parameter"),
-        ("ampADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D: {0:.2f}s", "/set_sound_parameter"),
-        ("ampADSR.sustain", lambda x: x, lambda x: float(x), "S: {0:.2f}", "/set_sound_parameter"),
-        ("ampADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R: {0:.2f}s", "/set_sound_parameter"),
+        ("ampADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A", "{0:.2f}s", "/set_sound_parameter"),
+        ("ampADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D", "{0:.2f}s", "/set_sound_parameter"),
+        ("ampADSR.sustain", lambda x: x, lambda x: float(x), "S", "{0:.2f}", "/set_sound_parameter"),
+        ("ampADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R", "{0:.2f}s", "/set_sound_parameter"),
     ], [
-        ("filterCutoff", lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff: {0:.2f} Hz", "/set_sound_parameter"),
-        ("filterRessonance", lambda x: x, lambda x: float(x), "Resso: {0:.2f}", "/set_sound_parameter"),
-        ("filterKeyboardTracking", lambda x: x, lambda x: float(x), "K.T.: {0:.2f}", "/set_sound_parameter"),
-        ("filterADSR2CutoffAmt", lambda x: 10.0 * x, lambda x: float(x), "Env amt: {0:.2f}", "/set_sound_parameter"),
+        ("filterCutoff", lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff", "{0:.2f} Hz", "/set_sound_parameter"),
+        ("filterRessonance", lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
+        ("filterKeyboardTracking", lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
+        ("filterADSR2CutoffAmt", lambda x: 10.0 * x, lambda x: float(x), "Env amt", "{0:.2f}", "/set_sound_parameter"),
     ], [
-        ("filterADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A: {0:.2f}s", "/set_sound_parameter"),
-        ("filterADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D: {0:.2f}s", "/set_sound_parameter"),
-        ("filterADSR.sustain", lambda x: x, lambda x: float(x), "Filter S: {0:.2f}", "/set_sound_parameter"),
-        ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R: {0:.2f}s", "/set_sound_parameter"),
+        ("filterADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A", "{0:.2f}s", "/set_sound_parameter"),
+        ("filterADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
+        ("filterADSR.sustain", lambda x: x, lambda x: float(x), "Filter S", "{0:.2f}", "/set_sound_parameter"),
+        ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
     ] , [
-        ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode: {0}", "/set_sound_parameter_int"),
-        ("numSlices", lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices: {0}", "/set_sound_parameter_int"),
-        ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead: {0:.4f}", "/set_sound_parameter"),
-        ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed: {0:.1f}", "/set_sound_parameter"),
+        ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
+        ("numSlices", lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
+        ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
+        ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
     ]
 ]
 
@@ -164,7 +167,6 @@ class ElkBridge(object):
     time_buttons_pressed = {}
     buttons_sent_note_on = {}
     selected_sound_idx = None
-    display_contents_for_simulator = "No contents"
     current_parameter_page = 0
     start_animation_not_finished = True
     ui = None
@@ -192,10 +194,7 @@ class ElkBridge(object):
                 self.ui = ElkUIController(self.handle_faders,
                                           self.handle_buttons,
                                           self.handle_encoder_button,
-                                          self.handle_encoder,
-                                          start_animation_text="           SOURCE, by Rita & Aurora",
-                                          start_animation_n_frames=START_ANIMATION_N_FRAMES,
-                                          start_animation_logo_path=START_ANIMATION_LOGO_PATH)
+                                          self.handle_encoder)
                 elkui_initialized = True
                 print("Initialized ElkUIController")
             except Exception as e:
@@ -204,13 +203,21 @@ class ElkBridge(object):
                     time.sleep(1)
                 else:
                     break  # break while because this will never succeed
-        self._refresh_display(0)
+        self.compute_display_frame(0)
 
     def handle_faders(self, fader_idx, val):
+        shift_button_pressed = self.buttons_state.get(0, 0) == 1
 
         if self.selected_sound_idx is not None:
-            parameter_name, send_func, _, _, osc_address = parameter_pages[self.current_parameter_page][fader_idx]
-            osc_client.send_message(osc_address, [self.selected_sound_idx, parameter_name, send_func(val)])
+            sound_idx = self.selected_sound_idx
+        else:
+            sound_idx = -1
+        parameter_name, send_func, _, _, _, osc_address = parameter_pages[self.current_parameter_page][fader_idx]
+        send_value = send_func(val)
+        if shift_button_pressed and parameter_name == "pitch" or shift_button_pressed and parameter_name == "gain":
+            send_value = send_value * 0.3333333  # Reduced range mode
+
+        osc_client.send_message(osc_address, [sound_idx, parameter_name, send_value])
 
     def handle_buttons(self, button_idx, val):
         stored_val = self.buttons_state.get(button_idx, 0)
@@ -274,11 +281,13 @@ class ElkBridge(object):
                     current_loaded_preset_name = plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetName".lower(), "Noname")
                     current_loaded_preset_index = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
                     osc_client.send_message("/save_current_preset", [current_loaded_preset_name, current_loaded_preset_index])
+                    self.show_global_message("Saving...")
 
     def handle_encoder(self, direction):
-        
-        if self.selected_sound_idx is not None:
-            # If a sound is selected, cycle parameter pages
+        shift_button_pressed = self.buttons_state.get(0, 0) == 1
+
+        if not shift_button_pressed:
+            # Cycle parameter pages
             self.current_parameter_page += direction
             if self.current_parameter_page < 0:
                 self.current_parameter_page = len(parameter_pages) - 1
@@ -286,7 +295,7 @@ class ElkBridge(object):
                 self.current_parameter_page = 0
         
         else:
-            # If no sound is selected, change preset
+            # Change preset
             if plugin_state_xml is not None:
                 current_loaded_preset = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
                 current_loaded_preset += direction
@@ -295,6 +304,7 @@ class ElkBridge(object):
                 osc_client.send_message("/load_preset", [current_loaded_preset])
 
     def run(self):
+
         if self.ui is not None:
             self.ui.run()
 
@@ -304,20 +314,30 @@ class ElkBridge(object):
             time.sleep(1.0/elk_bridge_refresh_fps)
             counter += 1
 
-            if not self.start_animation_not_finished:
-                self._refresh_display(counter)
+            if counter < START_ANIMATION_N_FRAMES:
+                frame = frame_from_start_animation(counter)
+            else:
+                frame = self.compute_display_frame(counter)
 
+            # Save frame to "global_frame" var (used by simulator)
+            global current_frame
+            current_frame = frame
+
+            # Send new frame to OLED display
             if self.ui is not None:
-                if counter < START_ANIMATION_N_FRAMES and self.start_animation_not_finished:
-                    self.ui.set_start_animation_frame(counter)
-                elif counter == START_ANIMATION_N_FRAMES and self.start_animation_not_finished:
-                    self.start_animation_not_finished = False
+                self.ui.set_display_frame(frame)
                 self.ui.refresh()
 
-    def _refresh_display(self, counter):
+    def show_global_message(self, text, n_frames=10):
+        global global_message
+        global_message = (text, n_frames)
+
+    def compute_display_frame(self, counter):
         global connection_with_plugin_ok
         global time_post_state_received
         global plugin_state_xml
+        global current_frame
+        global global_message
 
         # Before setting new display lines, pre-compute some variables form the state
 
@@ -331,63 +351,116 @@ class ElkBridge(object):
                 connection_with_plugin_ok = False
                 print('* Plugin disconnected')
 
-        # Display first line row with general state info
+        # Get info to show in indicator icons
         is_querying_and_downloading = False
         if plugin_state_xml is not None:
             is_querying_and_downloading = plugin_state_xml.find_all("VolatileState".lower())[0].get('isQueryingAndDownloadingSounds'.lower(), '') != "0"       
-        header_line = "SOURCE            {0}{1}{2}".format("Q" if is_querying_and_downloading else " ", "*" if shoudl_state_received_mark else " ", ["|", "/", "-", "\\"][counter % 4])
+        
+        network_is_connected = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
+         
+        volatile_state = None
+        preset_state = None
+        preset_number = -1
+        preset_name = "-"
+        if plugin_state_xml is not None:
+            volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
+            preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
+            preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
+            preset_name = preset_state.get("presetName".lower(), "no name")
+        
+        indicators = "{0}{1}{2}{3}".format("!" if not network_is_connected else "", "Q" if is_querying_and_downloading else "", "*" if shoudl_state_received_mark else "", ["|", "/", "-", "\\"][counter % 4])
+
+        header_line = {
+            "invert": True, 
+            "text": justify_text("{0}:{1}".format(preset_number, preset_name), indicators)
+        }
         display_lines = [header_line]
 
         # Check if a sound is selected to decide which info to show    
         if self.selected_sound_idx is not None:
+
+            # Get properties from the selected sound
             sound_name = ""
             params_labels_values = []
-            if plugin_state_xml is not None:
-                preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
+            if preset_state is not None:
                 sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
                 if self.selected_sound_idx < len(sounds_info):
                     sound_info = sounds_info[self.selected_sound_idx]
                     sound_name = sound_info.get('soundname', '-')
-                    for parameter_name, _, get_func, parameter_label_template, _ in parameter_pages[self.current_parameter_page]:
+                    for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
                         for parameter in sound_info.find_all('samplersoundparameter'):
                             val = parameter.get('parameter_value', '')
                             if parameter.get('parameter_name', '') == parameter_name:
                                 processed_val = get_func(val)
-                                params_labels_values.append((parameter_label_template, processed_val))
+                                params_labels_values.append((parameter_label, value_label_template, processed_val))
 
-            display_lines.append("SOUND {0}: {1}".format(self.selected_sound_idx, sound_name))
+            display_lines.append({
+                "underline": True, 
+                "text": "S{0}:{1}".format(self.selected_sound_idx, sound_name)
+            })
 
-            for parameter_label_template, param_value in params_labels_values:
-                display_lines.append(parameter_label_template.format(param_value))
+            for parameter_label, value_label_template, param_value in params_labels_values:
+                display_lines.append(justify_text(
+                    parameter_label + ":", 
+                    value_label_template.format(param_value)
+                ))
 
         else:
             # Get some properties from plugin state
-            num_active_voices = 0
-            preset_name = ""
-            preset_number = 0
             num_loaded_sounds = 0
-            if plugin_state_xml is not None:
-                volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
-                num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-                preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
-                preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
-                preset_name = preset_state.get("presetName".lower(), "no name")
+            if preset_state is not None:
                 num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
 
-            # Update lines of text for the display (set_display_lines will trigger display update)
-            display_lines += [
+            # Prepare parameters to show, check which parameters have been set globally because all sounds have the same
+            params_labels_values = []
+            if preset_state is not None:
+                sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())     
+                for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
+                    all_sounds_values = []
+                    last_value = None
+                    for sound_info in sounds_info:
+                        for parameter in sound_info.find_all('samplersoundparameter'):
+                            val = parameter.get('parameter_value', '')
+                            if parameter.get('parameter_name', '') == parameter_name:
+                                processed_val = get_func(val)
+                                all_sounds_values.append(processed_val)
+                                last_value = processed_val
+                    if len(set(all_sounds_values)) == 1:
+                        # All sounds have the same value for that parameter, show the number
+                        params_labels_values.append((parameter_label, value_label_template, last_value))
+                    else:
+                        # Some sounds differ, don't show the number
+                        params_labels_values.append((parameter_label, "{0}", "-"))
+
+            # Update lines of text for the display
+            display_lines += [{
+                    "underline": True,
+                    "text": "{0} sounds".format(num_loaded_sounds),
+                }
+            ]
+
+            for parameter_label, value_label_template, param_value in params_labels_values:
+                display_lines.append(justify_text(
+                    parameter_label + ":", 
+                    value_label_template.format(param_value)
+                ))
+
+            '''
+            if volatile_state is not None:
+                num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
                 "{0}ºC|c:{1}|m:{2}".format(system_stats.get("temp", "-"), system_stats.get("cpu", "-"), system_stats.get("mem", "-")),
                 'Network: ' + system_stats.get("network_ssid", "-"),
-                "{0}: {1}".format(preset_number, preset_name),
-                "{0} sounds".format(num_loaded_sounds),
-            ]
+            '''
         
-        # Send new lines to UI
-        if self.ui is not None:
-            self.ui.set_display_lines(display_lines)
+        # Generate new frame
+        frame = frame_from_lines(display_lines)
 
-        # Also save the lines in internal state
-        self.display_contents_for_simulator = display_lines
+        # If a global message should be added, do it here
+        if global_message[1] > 0:
+            add_global_message_to_frame(frame, global_message[0])
+            global_message = (global_message[0], global_message[1] - 1)
+
+        return frame
 
 
 def run_elk_bridge_loop():
@@ -465,8 +538,17 @@ def simulator():
 
 @http_server.route('/simulator_get_display', methods=['GET'])  # Get contents of the display
 def simulator_get_display():
-    global elk_bridge
-    return '<br>'.join(elk_bridge.display_contents_for_simulator)
+    global current_frame
+    global current_frame_directory
+    files = glob.glob(os.path.join(current_frame_directory, '*'))
+    for f in files:
+        os.remove(f)
+    path = os.path.join(current_frame_directory, 'frame{0}.jpg'.format(random.randint(0, 9999999)))
+    if current_frame is not None:
+        current_frame.save(path)
+        return path
+    else:
+        return ''
 
 @http_server.route('/simulator_user_action', methods=['GET'])  # Simulate user pressing a button, knob, etc
 def simulator_user_action():
