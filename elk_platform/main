@@ -29,6 +29,8 @@ except ModuleNotFoundError:
 
 from source_ui import frame_from_lines, frame_from_start_animation, justify_text, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url
 
+from source_states import state_manager
+
 from flask import Flask, render_template, request, redirect, url_for, Response
 from oscpy.client import OSCClient
 import threading
@@ -170,7 +172,6 @@ def run_collect_system_stats_loop():
 class ElkBridge(object):
 
     buttons_state = {}
-    time_buttons_pressed = {}
     buttons_sent_note_on = {}
     selected_sound_idx = None
     current_parameter_page = 0
@@ -213,7 +214,9 @@ class ElkBridge(object):
 
     def handle_faders(self, fader_idx, val):
         shift_button_pressed = self.buttons_state.get(0, 0) == 1
-
+        state_manager.current_state.on_fader_moved(fader_idx, val, shift=shift_button_pressed)
+        
+        #-
         if self.selected_sound_idx is not None:
             sound_idx = self.selected_sound_idx
         else:
@@ -226,9 +229,15 @@ class ElkBridge(object):
         osc_client.send_message(osc_address, [sound_idx, parameter_name, send_value])
 
     def handle_buttons(self, button_idx, val):
+        shift_button_pressed = self.buttons_state.get(0, 0) == 1
+        if (int(val) == 0):
+            state_manager.current_state.on_button_released(button_idx, shift=shift_button_pressed)
+        else:
+            state_manager.current_state.on_button_pressed(button_idx, shift=shift_button_pressed)
+        
+        #-
         stored_val = self.buttons_state.get(button_idx, 0)
         current_val = int(val)
-        shift_button_pressed = self.buttons_state.get(0, 0) == 1
 
         if stored_val == current_val:
             # State did not change, "nothing" happened. We should not reach here...
@@ -263,14 +272,18 @@ class ElkBridge(object):
                         self.buttons_sent_note_on[button_idx] = False
 
         # Updated stored button's state
-        self.time_buttons_pressed[button_idx] = time.time()
         self.buttons_state[button_idx] = current_val
 
     def handle_encoder_button(self, val):
+        shift_button_pressed = self.buttons_state.get(0, 0) == 1
+        if (int(val) == 0):
+            state_manager.current_state.on_encoder_released(shift=shift_button_pressed)
+        else:
+            state_manager.current_state.on_encoder_pressed(shift=shift_button_pressed)
+        
+        #-
         current_val = int(val)
         if current_val == 1:  # When pressed
-        
-            shift_button_pressed = self.buttons_state.get(0, 0) == 1
 
             if not shift_button_pressed:
                 # If a sound is selected, unselect it
@@ -289,6 +302,9 @@ class ElkBridge(object):
 
     def handle_encoder(self, direction):
         shift_button_pressed = self.buttons_state.get(0, 0) == 1
+        state_manager.current_state.on_encoder_rotated(direction, shift=shift_button_pressed)
+        
+        #-
 
         if not shift_button_pressed:
             # Cycle parameter pages
@@ -480,7 +496,7 @@ class ElkBridge(object):
                 display_lines += [
                     justify_text('Temp:', '{0}ºC'.format(system_stats.get("temp", ""))),
                     justify_text('Memory:', '{0}%'.format(system_stats.get("mem", ""))),
-                    justify_text('CPU:', '{0}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", ""))), 
+                    justify_text('CPU:', '{0}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", 0.0))), 
                     justify_text('Network:', '{0}'.format(system_stats.get("network_ssid", "-")))
                 ]
         

@@ -44,6 +44,7 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
             ("elk_platform/logo_oled_b.png", remote_dir),
             ("elk_platform/logo_oled_fs.png", remote_dir),
             ("elk_platform/elk_ui_custom.py", remote_dir),
+            ("elk_platform/source_states.py", remote_dir),
             ("elk_platform/source_ui.py", remote_dir),
             ("elk_platform/source_sensei_config.json", remote_dir),
             ("SourceSampler/Resources/index.html", remote_dir),
