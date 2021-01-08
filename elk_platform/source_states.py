@@ -1,6 +1,7 @@
+import math
 import time
 
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -146,7 +147,7 @@ class StateManager(object):
 
         return frame
 
-    def show_global_message(self, text, duration=2):
+    def show_global_message(self, text, duration=1):
         self.global_message = (text, time.time(), duration)
 
     def move_to(self, new_state, replace_current=False):
@@ -170,6 +171,13 @@ class StateManager(object):
 
     def gsp(self, sound_idx, property_name):
         return self.get_source_state_selected_sound_property(sound_idx, property_name)
+
+    def is_waiting_for_data_from_web(self):
+        return type(self.current_state) == EnterDataViaWebInterfaceState
+
+    def process_data_from_web(self, data):
+        if self.is_waiting_for_data_from_web():
+            self.current_state.on_data_received(data)
 
     @property
     def current_state(self):
@@ -233,6 +241,26 @@ class State(object):
                 return sound_idx
             else:
                 return num_sounds
+
+    def save_current_preset(self):
+        current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
+        current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
+        if current_preset_index > -1:
+            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, current_preset_index])
+            sm.show_global_message("Saving...")
+
+    def reload_current_preset(self):
+        current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
+        if current_preset_index > -1:
+            sm.send_osc_to_plugin("/load_preset", [current_preset_index])
+            sm.show_global_message("Reloading...")
+
+    def set_num_voices(self, num_voices):
+        sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
+
+    def replace_sound_by(self, *args, **kwargs):
+        # TOOD: implement that when plugin supports it
+        pass       
 
     def on_activating_state(self):
         # Called when state gets activated by the state manager (when it becomes visible)
@@ -423,11 +451,8 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         sm.move_to(HomeContextualMenuState())
 
     def on_encoder_long_pressed(self, shift=False):
-        current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
-        current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
-        if current_preset_index > -1:
-            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, current_preset_index])
-            sm.show_global_message("Saving...")
+        # Save the preset in its location
+        self.save_current_preset()
 
     def on_fader_moved(self, fader_idx, value, shift=False):
         if self.current_page_data == EXTRA_PAGE_1_NAME:
@@ -557,15 +582,107 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
             sm.send_osc_to_plugin(osc_address, [self.sound_idx, parameter_name, send_value])
 
 
-class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, State):
+class MenuState(State):
+
+    page_size = 4
+    selected_item = 0
+    items = ["Item"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.selected_item = kwargs.get('selected_item', 0)
+    
+    @property
+    def num_items(self):
+        return len(self.items)
+
+    @property
+    def selected_item_name(self):
+        return self.items[self.selected_item]
+
+    def get_properties(self):
+        properties = super().get_properties().copy()
+        properties.update({
+           'selected_item': self.selected_item
+        })
+        return properties
+
+    def next_item(self):
+        self.selected_item += 1
+        if self.selected_item >= self.num_items:
+            self.selected_item = self.num_items -1
+
+    def previous_item(self):
+        self.selected_item -= 1
+        if self.selected_item < 0:
+            self.selected_item = 0
+
+    def get_menu_item_lines(self):
+        lines = []
+        current_page = self.selected_item // self.page_size
+        for item in self.items[current_page * self.page_size:(current_page + 1) * self.page_size]:
+            lines.append({
+                "invert": True if item == self.selected_item_name else False, 
+                "text": item
+            })
+        return lines
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if direction > 0:
+            self.next_item()
+        else:
+            self.previous_item()
+
+    def on_encoder_pressed(self, shift=False):
+        self.perform_action(self.selected_item_name)
+
+    def perform_action(self, action_name):
+        pass
+
+
+class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+
+    OPTION_SAVE = "Save preset"
+    OPTION_RELOAD = "Reload preset"
+    OPTION_RELAYOUT_C = "Re-layout (cont.)"
+    OPTION_RELAYOUT_I = "Re-layout (int.)"
+    OPTION_NUM_VOICES = "Num voices..."
+    OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_RELAYOUT_C, OPTION_RELAYOUT_I, OPTION_NUM_VOICES, OPTION_LOAD_PRESET]
+    page_size = 5
+
+    def draw_display_frame(self):
+        lines = self.get_menu_item_lines()
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def perform_action(self, action_name):
+
+        if action_name == self.OPTION_SAVE:
+            self.save_current_preset()
+            sm.go_back()
+        elif action_name == self.OPTION_RELOAD:
+            self.reload_current_preset()
+            sm.go_back()
+        elif action_name == self.OPTION_NUM_VOICES:
+            current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
+            sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title="Num voices", callback=self.set_num_voices))
+        else:
+            sm.show_global_message('Not implemented...')
 
 
-class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, State):
+class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+
+    OPTION_REPLACE = "Replace by..."
+    OPTION_ASSIGNED_NOTES = "Assigned notes..."
+    OPTION_PRECISION_EDITOR = "Precision editor..."
+    OPTION_DELETE = "Delete"
 
     name = "SoundSelectedContextualMenuState"
     sound_idx = -1
+    items = [OPTION_REPLACE, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_DELETE]
+    page_size = 4
 
     def __init__(self, sound_idx, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -586,10 +703,102 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Sta
         elif self.sound_idx < 0 and num_sounds > 0:
             sm.move_to(SoundSelectedContextualMenuState(0), replace_current=True)
 
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+        }]
+        lines += self.get_menu_item_lines()
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def perform_action(self, action_name):
+        if action_name == self.OPTION_REPLACE:
+            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", callback=self.replace_sound_by))
+        else:
+            sm.show_global_message('Not implemented...')
+
 
 class SoundParameterMIDILearnMenuState(State):
 
     name = "SoundParameterMIDILearnMenuState"
+
+
+class EnterNumberState(State):
+
+    value = 0
+    minimum = 0
+    maximum = 128
+    title = "NoTitle"
+    callback = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.value = kwargs.get('initial', 0)
+        self.minimum = kwargs.get('minimum', 0)
+        self.maximum = kwargs.get('maximum', 128)
+        self.title = kwargs.get('title', "NoTitle")
+        self.callback = kwargs.get('callback', None)
+
+    def increase(self):
+        self.value += 1
+        if self.value > self.maximum:
+            self.value = self.maximum
+
+    def decrease(self):
+        self.value -= 1
+        if self.value < self.minimum:
+            self.value = self.minimum
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": self.title
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        return add_centered_value_to_frame(frame, self.value)
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if direction > 0:
+            self.increase()
+        else:
+            self.decrease()
+
+    def on_encoder_pressed(self, shift=False):
+        if self.callback is not None:
+            self.callback(self.value)
+        sm.go_back()
+
+    def on_encoder_long_pressed(self, shift=False):
+        sm.go_back()
+
+
+class EnterDataViaWebInterfaceState(State):
+
+    title = "NoTitle"
+    callback = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = kwargs.get('title', "NoTitle")
+        self.callback = kwargs.get('callback', None)
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": self.title
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        return add_centered_value_to_frame(frame, "Enter data on web...", font_size_big=False)
+
+    def on_data_received(self, data):
+        # data should be a dictionary here
+        if self.callback is not None:
+            self.callback(**data)
+        sm.go_back()
+
+    def on_encoder_long_pressed(self, shift=False):
+        sm.go_back()
+
 
 
 state_manager = StateManager()

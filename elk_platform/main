@@ -27,7 +27,7 @@ except ImportError:
 try:
     from elk_ui_custom import ElkUIController, N_LEDS
 except ModuleNotFoundError:
-    pass
+    N_LEDS = 9
 
 from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin
 
@@ -301,10 +301,11 @@ class ElkBridge(object):
                         # Light current led
                         self.ui.set_led(led_counter - 1, 1)
             else:
-                if not leds_have_been_unset_after_animation:
-                    for i in range(0, N_LEDS):
-                        self.ui.set_led(i, 0)
-                    leds_have_been_unset_after_animation = True
+                if self.ui is not None:
+                    if not leds_have_been_unset_after_animation:
+                        for i in range(0, N_LEDS):
+                            self.ui.set_led(i, 0)
+                        leds_have_been_unset_after_animation = True
                 frame = self.compute_display_frame(counter)
 
             # Save frame to "global_frame" var (used by simulator)
@@ -464,6 +465,16 @@ def simulator_user_action():
         elif sub_action == 'release':
             elk_bridge.handle_encoder_button(0.0)
     return 'Action received'
+
+
+@http_server.route('/receive_data_from_web', methods=['GET'])  # Endpoint used to recieve data form the web interface (for UI options that require web interface for example)
+def receive_data_from_web():
+    # "data" is a list of key/value pairs serialized as: key1:value1,key2:value2,key3:value3...
+    data = request.args.get('data', "")
+    data_dict = {element.split(':')[0]: element.split(':')[1] for element in data.split(',')}
+    state_manager.process_data_from_web(data_dict)
+    return 'Thanks!'
+
 
 @http_server.route('/send_osc', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin
 def send_osc():

@@ -18,6 +18,7 @@ class StateNames(Enum):
     
     LOADED_PRESET_NAME = auto()
     LOADED_PRESET_INDEX = auto()
+    NUM_VOICES = auto()
     
     NUM_SOUNDS = auto()
     SOUNDS_INFO = auto()
@@ -38,6 +39,7 @@ def process_xml_state_from_plugin(plugin_state_xml):
     # Get sub XML element to avoid repeating many queries
     volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
     preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
+    sampler_state = preset_state.find_all("Sampler".lower())[0]
     
     # Is plugin currently querying and downloading?
     source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
@@ -45,6 +47,7 @@ def process_xml_state_from_plugin(plugin_state_xml):
     # Basic preset properties
     source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("presetName".lower(), "Noname")
     source_state[StateNames.LOADED_PRESET_INDEX] = int(preset_state.get("presetNumber".lower(), "-1"))
+    source_state[StateNames.NUM_VOICES] = int(sampler_state.get("NumVoices".lower(), "1"))
     
     # Loaded sounds properties
     sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
@@ -81,6 +84,7 @@ def process_xml_state_from_plugin(plugin_state_xml):
 DISPLAY_SIZE = (128, 64)
 FONT_PATH = 'LiberationMono-Regular.ttf'
 FONT_SIZE = 10
+FONT_SIZE_BIG = 25
 FONT_PATH_TITLE = 'FuturaHeavyfont.ttf'
 FONT_SIZE_TITLE = 64 - 10
 RA_LOGO_PATH = 'logo_oled.png'
@@ -93,6 +97,8 @@ font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
 font_heihgt_px = FONT_SIZE
 font_width_px = font_heihgt_px * 0.6   # This is particular to LiberationMono font
 n_chars_in_line = int(DISPLAY_SIZE[0]/font_width_px)
+
+font_big = ImageFont.truetype(FONT_PATH, FONT_SIZE_BIG)
 
 title_text_width = None
 title_font = ImageFont.truetype(FONT_PATH_TITLE, FONT_SIZE_TITLE)
@@ -113,7 +119,7 @@ def frame_from_lines(lines_info):
     draw = ImageDraw.Draw(im)
 
     y_offset = 0
-    for line in lines_info:
+    for count, line in enumerate(lines_info):
         if type(line) == str:
             draw.text((1, y_offset), line, font=font, fill="white")
         elif type(line) == dict:
@@ -121,7 +127,7 @@ def frame_from_lines(lines_info):
             underline = line.get('underline', False)
             text_color = "white"
             if invert_colors:
-                draw.rectangle((0, y_offset, DISPLAY_SIZE[0], font_heihgt_px), outline="white", fill="white")
+                draw.rectangle((0, y_offset, DISPLAY_SIZE[0], y_offset + font_heihgt_px), outline="white", fill="white")
                 text_color = "black"
             if underline:
                 draw.line((0, y_offset + font_heihgt_px, DISPLAY_SIZE[0], y_offset + font_heihgt_px), fill="white")
@@ -163,6 +169,19 @@ def add_scroll_bar_to_frame(im, current, total, width=1):
     total_height = DISPLAY_SIZE[1] - scroll_y_start
     current_y_start = scroll_y_start + current * total_height/total
     draw.rectangle((DISPLAY_SIZE[0] - width, current_y_start, DISPLAY_SIZE[0],  current_y_start + total_height/total), outline="white", fill="white")
+    return im
+
+
+def add_centered_value_to_frame(im, value, font_size_big=True):
+    draw = ImageDraw.Draw(im)
+    message_text = "{0}".format(value)
+    text_width = draw.textsize(message_text, font=font_big if font_size_big else font)[0]
+    y_offset = font_heihgt_px * 2 + 2
+    height = DISPLAY_SIZE[1] - y_offset
+    if font_size_big:
+        draw.text(((DISPLAY_SIZE[0] - text_width) / 2, y_offset + (height - FONT_SIZE_BIG)/2), message_text, font=font_big, fill="white")
+    else:
+        draw.text(((DISPLAY_SIZE[0] - text_width) / 2, y_offset + (height - FONT_SIZE)/2), message_text, font=font, fill="white")
     return im
 
 
