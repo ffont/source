@@ -23,6 +23,7 @@ N_FADERS = 4
 N_BUTTONS = 9
 N_LEDS = 9
 LED_BASE_IDX = 1
+LED_FADER_IDXS = [10, 12, 11, None]
 ANALOG_SENSORS_MIN_ABS_DIFF = (1.0 / 128)
 
 # OSC ports
@@ -116,6 +117,19 @@ class ElkUIController(object):
         osc_msg.add(('f', val))
         liblo.send(self._sensei_address, osc_msg)
 
+    def set_fader_led(self, idx, val):
+        """ Immediately set one of the LEDs on the faders.
+            Inputs:
+                idx : fader idx from 0 to 3
+                val : 1 = LED on, 0 = LED off
+        """
+        led_idx = LED_FADER_IDXS[idx]
+        if led_idx is not None:
+            osc_msg = liblo.Message('/set_output')
+            osc_msg.add(('i', led_idx))
+            osc_msg.add(('f', val))
+            liblo.send(self._sensei_address, osc_msg)
+
     def set_display_frame(self, im):
         """ Sets the frame contents to display.
         'im' is a 1-bit PIL.Image object of size 128x64.
@@ -131,8 +145,11 @@ class ElkUIController(object):
         for n in range(N_LEDS):
             self.set_led(n, 0)
 
+        for n in range(N_FADERS):
+            self.set_fader_led(n, 0)
+
         self._fader_values = [0.0] * N_FADERS
-        self._enc_value = 0.0
+        self._enc_value = 10.0
         self._osc_server.start()
 
     def refresh(self):

@@ -13,6 +13,8 @@ import sys
 import time
 import urllib
 
+from collections import defaultdict
+
 from bs4 import BeautifulSoup
 
 try:
@@ -23,11 +25,11 @@ except ImportError:
     pass
 
 try:
-    from elk_ui_custom import ElkUIController
+    from elk_ui_custom import ElkUIController, N_LEDS
 except ModuleNotFoundError:
     pass
 
-from source_ui import frame_from_lines, frame_from_start_animation, justify_text, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin
 
 from source_states import state_manager
 
@@ -52,10 +54,8 @@ system_stats_refresh_fps = 1
 current_frame = None
 current_frame_directory = 'static/frame/' 
 
-global_message = ('', 0, 0)  # (text, starttime, duration)
-
 plugin_state = "No sate"
-plugin_state_xml = None
+plugin_state_dict = {}
 time_post_state_received = None
 connection_with_plugin_ok = False
 old_state_seconds_threshold = 5
@@ -69,41 +69,8 @@ http_server = Flask(__name__, template_folder='/udata/source/app/' if platform =
 osc_client = None
 elk_bridge = None
 
-SPECIAL_PAGE_NAME = "special"
-parameter_pages = [
-    [
-        ("gain", lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f} dB", "/set_sound_parameter"),
-        ("pitch", lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
-        ("reverse", lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
-        ("launchMode", lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
-    ], [
-        ("startPosition", lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
-        ("endPosition", lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
-        ("loopStartPosition", lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
-        ("loopEndPosition", lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
-    ], [
-        ("ampADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A", "{0:.2f}s", "/set_sound_parameter"),
-        ("ampADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D", "{0:.2f}s", "/set_sound_parameter"),
-        ("ampADSR.sustain", lambda x: x, lambda x: float(x), "S", "{0:.2f}", "/set_sound_parameter"),
-        ("ampADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R", "{0:.2f}s", "/set_sound_parameter"),
-    ], [
-        ("filterCutoff", lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff", "{0:.2f} Hz", "/set_sound_parameter"),
-        ("filterRessonance", lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
-        ("filterKeyboardTracking", lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
-        ("filterADSR2CutoffAmt", lambda x: 10.0 * x, lambda x: float(x), "Env amt", "{0:.2f}", "/set_sound_parameter"),
-    ], [
-        ("filterADSR.attack", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A", "{0:.2f}s", "/set_sound_parameter"),
-        ("filterADSR.decay", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
-        ("filterADSR.sustain", lambda x: x, lambda x: float(x), "Filter S", "{0:.2f}", "/set_sound_parameter"),
-        ("filterADSR.release", lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
-    ], [
-        ("noteMappingMode", lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
-        ("numSlices", lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
-        ("playheadPosition", lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
-        ("freezePlayheadSpeed", lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
-    ],
-    SPECIAL_PAGE_NAME  # Quick hack to enable having an extra page to display sutff other than sound parameters, this should be improved...
-]
+BUTTON_LONG_PRESS_TIME = 0.35
+BUTTON_DOUBLE_PRESS_TIME = 0.2
 
 
 # --- Utils ------------------------------------------------------------------------
@@ -172,6 +139,12 @@ def run_collect_system_stats_loop():
 class ElkBridge(object):
 
     buttons_state = {}
+    button_pressing_log = defaultdict(list)
+    button_timers = [None, None, None, None, None, None, None, None, None]
+    
+    encoder_pressing_log = []
+    encoder_timer = None
+
     buttons_sent_note_on = {}
     selected_sound_idx = None
     current_parameter_page = 0
@@ -194,7 +167,6 @@ class ElkBridge(object):
                 else:
                     break  # break while because this will never succeed
                 
-
         elkui_initialized = False
         while not elkui_initialized:
             try:
@@ -203,6 +175,7 @@ class ElkBridge(object):
                                           self.handle_encoder_button,
                                           self.handle_encoder)
                 elkui_initialized = True
+                state_manager.set_ui_client(self.ui)
                 print("Initialized ElkUIController")
             except Exception as e:
                 print('ERROR initializing ElkUIController: {0}'.format(e))
@@ -212,117 +185,97 @@ class ElkBridge(object):
                     break  # break while because this will never succeed
         self.compute_display_frame(0)
 
-    def handle_faders(self, fader_idx, val):
-        shift_button_pressed = self.buttons_state.get(0, 0) == 1
-        state_manager.current_state.on_fader_moved(fader_idx, val, shift=shift_button_pressed)
-        
-        #-
-        if self.selected_sound_idx is not None:
-            sound_idx = self.selected_sound_idx
-        else:
-            sound_idx = -1
-        parameter_name, send_func, _, _, _, osc_address = parameter_pages[self.current_parameter_page][fader_idx]
-        send_value = send_func(val)
-        if shift_button_pressed and parameter_name == "pitch" or shift_button_pressed and parameter_name == "gain":
-            send_value = send_value * 0.3333333  # Reduced range mode
+    def is_shift_pressed(self):
+        return self.buttons_state.get(0, 0) == 1
 
-        osc_client.send_message(osc_address, [sound_idx, parameter_name, send_value])
+    def handle_faders(self, fader_idx, val):
+        state_manager.current_state.on_fader_moved(fader_idx, val, shift=self.is_shift_pressed())
 
     def handle_buttons(self, button_idx, val):
-        shift_button_pressed = self.buttons_state.get(0, 0) == 1
-        if (int(val) == 0):
-            state_manager.current_state.on_button_released(button_idx, shift=shift_button_pressed)
+                
+        def delayed_double_press_button_check(button_idx):
+            last_time_pressed = self.button_pressing_log[button_idx][-1]
+            try:
+                previous_time_pressed = self.button_pressing_log[button_idx][-2]
+            except IndexError:
+                previous_time_pressed = 0
+            if last_time_pressed - previous_time_pressed  < BUTTON_DOUBLE_PRESS_TIME:
+                # If time between last 2 pressings is shorter than BUTTON_DOUBLE_PRESS_TIME, trigger double press action
+                state_manager.current_state.on_button_double_pressed(button_idx, shift=self.is_shift_pressed())
+            else:
+                state_manager.current_state.on_button_pressed(button_idx, shift=self.is_shift_pressed())
+
+        is_being_pressed = int(val) == 1 
+        if is_being_pressed:
+            # Trigger the raw press action
+            state_manager.current_state.on_button_down(button_idx, shift=self.is_shift_pressed())
+
+            # Also when button is pressed, save the current time it was pressed and clear any delayed execution timer that existed
+            self.button_pressing_log[button_idx].append(time.time())
+            self.button_pressing_log[button_idx] = self.button_pressing_log[button_idx][-2:]  # Keep only last 2 records (needed to check double presses)
+            if self.button_timers[button_idx] is not None:
+                self.button_timers[button_idx].setClearTimer()
         else:
-            state_manager.current_state.on_button_pressed(button_idx, shift=shift_button_pressed)
-        
-        #-
-        stored_val = self.buttons_state.get(button_idx, 0)
-        current_val = int(val)
+            # Trigger the raw release action
+            state_manager.current_state.on_button_up(button_idx, shift=self.is_shift_pressed())
 
-        if stored_val == current_val:
-            # State did not change, "nothing" happened. We should not reach here...
-            pass
-        else:
-            # Check what sound idx corresponds to the button
-            sound_idx = -1
-            if button_idx > 0:
-                sound_idx = button_idx - 1   # from 0-7
-                if shift_button_pressed:  # if "shift" button is pressed, sound index is form 8-15
-                    sound_idx += 8
-            
-            if sound_idx > -1:
-                if stored_val == 0 and current_val == 1:  # Button was pressed
-                    # If sound was already selected, pressing the button again will trigger the sound
-                    if self.selected_sound_idx == sound_idx:
-                        osc_client.send_message("/play_sound", [sound_idx])
-                        self.buttons_sent_note_on[button_idx] = True
-
-                    # Select corresponding sound
-                    self.selected_sound_idx = sound_idx
-                    if self.ui is not None:
-                        self.ui.set_led(button_idx, 1)  # Light corresponding LED...
-                        for led_idx in range(0, 9):
-                            if led_idx != button_idx:
-                                self.ui.set_led(led_idx, 0)  # ...and stop the others
-
-                elif stored_val == 1 and current_val == 0:  # Button was released
-                    # If note on was triggered, trigger note off now
-                    if self.buttons_sent_note_on.get(button_idx, False):
-                        osc_client.send_message("/stop_sound", [sound_idx])
-                        self.buttons_sent_note_on[button_idx] = False
+            # Also when button is released check the following:
+            # * If pressed for longer than BUTTON_LONG_PRESS_TIME, trigger a "long press" action
+            # * If pressed for shorter than BUTTON_LONG_PRESS_TIME, set up a delayed action to trigger the button press and decide whether it should be "single" or "double" press
+            last_time_pressed = self.button_pressing_log[button_idx][-1]
+            if time.time() - last_time_pressed > BUTTON_LONG_PRESS_TIME:
+                # If button pressed for long time, trigger long press action
+                state_manager.current_state.on_button_long_pressed(button_idx, shift=self.is_shift_pressed())
+            else:
+                self.button_timers[button_idx] = Timer()
+                self.button_timers[button_idx].setTimeout(delayed_double_press_button_check, [button_idx], BUTTON_DOUBLE_PRESS_TIME)
 
         # Updated stored button's state
-        self.buttons_state[button_idx] = current_val
+        self.buttons_state[button_idx] = int(val)
 
     def handle_encoder_button(self, val):
-        shift_button_pressed = self.buttons_state.get(0, 0) == 1
-        if (int(val) == 0):
-            state_manager.current_state.on_encoder_released(shift=shift_button_pressed)
-        else:
-            state_manager.current_state.on_encoder_pressed(shift=shift_button_pressed)
-        
-        #-
-        current_val = int(val)
-        if current_val == 1:  # When pressed
 
-            if not shift_button_pressed:
-                # If a sound is selected, unselect it
-                if self.selected_sound_idx is not None:
-                    self.selected_sound_idx = None
-                    if self.ui is not None:
-                        for led_idx in range(0, 9): 
-                            self.ui.set_led(led_idx, 0)
+        def delayed_double_press_encoder_check():
+            last_time_pressed = self.encoder_pressing_log[-1]
+            try:
+                previous_time_pressed = self.encoder_pressing_log[-2]
+            except IndexError:
+                previous_time_pressed = 0
+            if last_time_pressed - previous_time_pressed  < BUTTON_DOUBLE_PRESS_TIME:
+                # If time between last 2 pressings is shorter than BUTTON_DOUBLE_PRESS_TIME, trigger double press action
+                state_manager.current_state.on_encoder_double_pressed(shift=self.is_shift_pressed())
             else:
-                # Save currently loaded preset
-                if plugin_state_xml is not None:
-                    current_loaded_preset_name = plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetName".lower(), "Noname")
-                    current_loaded_preset_index = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
-                    osc_client.send_message("/save_current_preset", [current_loaded_preset_name, current_loaded_preset_index])
-                    self.show_global_message("Saving...")
+                state_manager.current_state.on_encoder_pressed(shift=self.is_shift_pressed())
+
+        is_being_pressed = int(val) == 1 
+        if is_being_pressed:
+            # Trigger the raw press action
+            state_manager.current_state.on_encoder_down(shift=self.is_shift_pressed())
+
+            # Also when encoder is pressed, save the current time it was pressed and clear any delayed execution timer that existed
+            self.encoder_pressing_log.append(time.time())
+            self.encoder_pressing_log = self.encoder_pressing_log[-2:]  # Keep only last 2 records (needed to check double presses)
+            if self.encoder_timer is not None:
+                self.encoder_timer.setClearTimer()
+        else:
+            # Trigger the raw release action
+            state_manager.current_state.on_encoder_up(shift=self.is_shift_pressed())
+
+            # Also when encoder is released check the following:
+            # * If pressed for longer than BUTTON_LONG_PRESS_TIME, trigger a "long press" action
+            # * If pressed for shorter than BUTTON_LONG_PRESS_TIME, set up a delayed action to trigger the encoder press and decide whether it should be "single" or "double" press
+            last_time_pressed = self.encoder_pressing_log[-1]
+            if time.time() - last_time_pressed > BUTTON_LONG_PRESS_TIME:
+                # If encoder pressed for long time, trigger long press action
+                state_manager.current_state.on_encoder_long_pressed(shift=self.is_shift_pressed())
+            else:
+                self.encoder_timer = Timer()
+                self.encoder_timer.setTimeout(delayed_double_press_encoder_check, [], BUTTON_DOUBLE_PRESS_TIME)
+    
 
     def handle_encoder(self, direction):
-        shift_button_pressed = self.buttons_state.get(0, 0) == 1
-        state_manager.current_state.on_encoder_rotated(direction, shift=shift_button_pressed)
+        state_manager.current_state.on_encoder_rotated(direction, shift=self.is_shift_pressed())
         
-        #-
-
-        if not shift_button_pressed:
-            # Cycle parameter pages
-            self.current_parameter_page += direction
-            if self.current_parameter_page < 0:
-                self.current_parameter_page = len(parameter_pages) - 1
-            elif self.current_parameter_page > len(parameter_pages) - 1:
-                self.current_parameter_page = 0
-        
-        else:
-            # Change preset
-            if plugin_state_xml is not None:
-                current_loaded_preset = int(plugin_state_xml.find_all("SourcePresetState".lower())[0].get("presetNumber".lower(), "-1"))
-                current_loaded_preset += direction
-                if current_loaded_preset < 0:
-                    current_loaded_preset = 0
-                osc_client.send_message("/load_preset", [current_loaded_preset])
-
     def run(self):
 
         if self.ui is not None:
@@ -331,13 +284,27 @@ class ElkBridge(object):
         # Start loop to call refresh for the display
         starttime = time.time()
         counter = 0
+        leds_have_been_unset_after_animation = False
         while True:
             time.sleep(1.0/elk_bridge_refresh_fps)
             counter += 1
             time_since_start = time.time() - starttime
             if time_since_start < START_ANIMATION_DURATION:
-                frame = frame_from_start_animation(time_since_start/START_ANIMATION_DURATION)
+                frame = frame_from_start_animation(time_since_start/START_ANIMATION_DURATION, counter)
+                if self.ui is not None:
+                    led_counter = counter % (N_LEDS + 1)
+                    if led_counter == 0:
+                        # Stop all leds
+                        for i in range(0, N_LEDS):
+                            self.ui.set_led(i, 0)
+                    else:
+                        # Light current led
+                        self.ui.set_led(led_counter - 1, 1)
             else:
+                if not leds_have_been_unset_after_animation:
+                    for i in range(0, N_LEDS):
+                        self.ui.set_led(i, 0)
+                    leds_have_been_unset_after_animation = True
                 frame = self.compute_display_frame(counter)
 
             # Save frame to "global_frame" var (used by simulator)
@@ -349,166 +316,41 @@ class ElkBridge(object):
                 self.ui.set_display_frame(frame)
                 self.ui.refresh()
 
-    def show_global_message(self, text, duration=2):
-        global global_message
-        global_message = (text, time.time(), duration)
-
     def compute_display_frame(self, counter):
         global connection_with_plugin_ok
         global time_post_state_received
-        global plugin_state_xml
-        global current_frame
-        global global_message
+        global plugin_state_dict
 
-        # Before setting new display lines, pre-compute some variables form the state
+        # Process plugin state information and send it to state manager
+        source_state = {}
 
         # Check plugin connection status
         if time_post_state_received is not None and time.time() - time_post_state_received < 0.5:
-            shoudl_state_received_mark = True
+            should_show_state_received_mark = True
         else:
-            shoudl_state_received_mark = None
+            should_show_state_received_mark = None
         if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
             if connection_with_plugin_ok == True:
                 connection_with_plugin_ok = False
-                elk_bridge.show_global_message("Pl. disconnected :(")
+                plugin_state_dict = {}
+                state_manager.show_global_message("Pl. disconnected :(")
+        source_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = connection_with_plugin_ok
+        source_state[StateNames.STATE_UPDATED_RECENTLY] = should_show_state_received_mark
 
-        # Get info to show in indicator icons
-        is_querying_and_downloading = False
-        if plugin_state_xml is not None:
-            is_querying_and_downloading = plugin_state_xml.find_all("VolatileState".lower())[0].get('isQueryingAndDownloadingSounds'.lower(), '') != "0"       
-        
-        network_is_connected = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
-         
-        volatile_state = None
-        preset_state = None
-        preset_number = -1
-        preset_name = "-"
-        if plugin_state_xml is not None:
-            volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
-            #num_active_voices = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-            preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
-            preset_number = int(preset_state.get("presetNumber".lower(), "-1"))
-            preset_name = preset_state.get("presetName".lower(), "no name")
-        
-        indicators = "{0}{1}{2}{3}".format("!" if not network_is_connected else "", "Q" if is_querying_and_downloading else "", "*" if shoudl_state_received_mark else "", ["|", "/", "-", "\\"][counter % 4])
+        # Check network connection status
+        source_state[StateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
 
-        header_line = {
-            "invert": True, 
-            "text": justify_text("{0}:{1}".format(preset_number, preset_name), indicators)
-        }
-        display_lines = [header_line]
+        # Add other system stats
+        source_state[StateNames.SYSTEM_STATS] = system_stats
 
-        # Check if a sound is selected to decide which info to show    
-        if self.selected_sound_idx is not None:
+        # Add plugin-specifc state variables
+        source_state.update(plugin_state_dict)
+      
+        # Send processed state to state manager
+        state_manager.update_source_state(source_state)
 
-            # Get properties from the selected sound
-            sound_name = ""
-            sound_id = 0
-            sound_duration = 0
-            sound_license = ""
-            sound_username = ""
-            sound_download_progress = 0
-            params_labels_values = []
-            if preset_state is not None:
-                sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
-                if self.selected_sound_idx < len(sounds_info):
-                    sound_info = sounds_info[self.selected_sound_idx]
-                    sound_name = sound_info.get('soundname', '-')
-                    sound_id = sound_info.get('soundid', 0)
-                    sound_duration = float(sound_info.get('sounddurationinseconds', 0))
-                    sound_license = translate_cc_license_url(sound_info.get('soundlicense', '-'))
-                    sound_username = sound_info.get('sounduser', '-')
-                    sound_download_progress = int(sound_info.get('downloadprogress', 0))
-
-                    if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
-                        for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
-                            for parameter in sound_info.find_all('samplersoundparameter'):
-                                val = parameter.get('parameter_value', '')
-                                if parameter.get('parameter_name', '') == parameter_name:
-                                    processed_val = get_func(val)
-                                    params_labels_values.append((parameter_label, value_label_template, processed_val))
-
-            display_lines.append({
-                "underline": True, 
-                "text": "S{0}:{1}".format(self.selected_sound_idx, sound_name)
-            })
-
-            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
-                # Display corresponding sound parameters
-                for parameter_label, value_label_template, param_value in params_labels_values:
-                    display_lines.append(justify_text(
-                        parameter_label + ":", 
-                        value_label_template.format(param_value)
-                    ))
-            else:
-                # Display extra sound info
-                display_lines += [
-                    justify_text('ID:', '{0}'.format(sound_id)),
-                    justify_text('User:', '{0}'.format(sound_username)),
-                    justify_text('CC License:', '{0}'.format(sound_license)),
-                    justify_text('Duration:', '{0:.2f}s'.format(sound_duration)) if sound_download_progress == 100 else justify_text('Downloading...', '{0:.1f}%'.format(sound_download_progress)),
-                ]
-
-        else:
-            # Get some properties from plugin state
-            num_loaded_sounds = 0
-            if preset_state is not None:
-                num_loaded_sounds = len(preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower()))
-
-            # Prepare parameters to show, check which parameters have been set globally because all sounds have the same
-            params_labels_values = []
-            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
-                if preset_state is not None:
-                    sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())     
-                    for parameter_name, _, get_func, parameter_label, value_label_template, _ in parameter_pages[self.current_parameter_page]:
-                        all_sounds_values = []
-                        last_value = None
-                        for sound_info in sounds_info:
-                            for parameter in sound_info.find_all('samplersoundparameter'):
-                                val = parameter.get('parameter_value', '')
-                                if parameter.get('parameter_name', '') == parameter_name:
-                                    processed_val = get_func(val)
-                                    all_sounds_values.append(processed_val)
-                                    last_value = processed_val
-                        if len(set(all_sounds_values)) == 1:
-                            # All sounds have the same value for that parameter, show the number
-                            params_labels_values.append((parameter_label, value_label_template, last_value))
-                        else:
-                            # Some sounds differ, don't show the number
-                            params_labels_values.append((parameter_label, "{0}", "-"))
-
-            # Update lines of text for the display
-            display_lines += [{
-                    "underline": True,
-                    "text": "{0} sounds".format(num_loaded_sounds),
-                }
-            ]
-
-            if parameter_pages[self.current_parameter_page] != SPECIAL_PAGE_NAME:
-                # Display corresponding sound parameters
-                for parameter_label, value_label_template, param_value in params_labels_values:
-                    display_lines.append(justify_text(
-                        parameter_label + ":", 
-                        value_label_template.format(param_value)
-                    ))
-            else:
-                # Display extra global system info
-                display_lines += [
-                    justify_text('Temp:', '{0}ºC'.format(system_stats.get("temp", ""))),
-                    justify_text('Memory:', '{0}%'.format(system_stats.get("mem", ""))),
-                    justify_text('CPU:', '{0}% | {1:.1f}%'.format(system_stats.get("cpu", ""), system_stats.get("xenomai_cpu", 0.0))), 
-                    justify_text('Network:', '{0}'.format(system_stats.get("network_ssid", "-")))
-                ]
-        
         # Generate new frame
-        frame = frame_from_lines(display_lines)
-
-        # If a global message should be added, do it here
-        if global_message[0] != '':
-            if time.time() - global_message[1] < global_message[2]:
-                add_global_message_to_frame(frame, global_message[0])
-            else:
-                global_message = ('', 0, 0)
+        frame = state_manager.draw_display_frame()
 
         return frame
 
@@ -630,15 +472,14 @@ def send_osc():
     osc_client.send_message(address, values)
     
     if address == '/new_query':
-        if elk_bridge is not None:
-            elk_bridge.show_global_message("Making query...")
+        state_manager.show_global_message("Making query...")
 
     return 'OSC sent'
 
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
 def state_from_plugin():
     global plugin_state
-    global plugin_state_xml
+    global plugin_state_dict
     global time_post_state_received
     global connection_with_plugin_ok
     global elk_bridge
@@ -646,22 +487,15 @@ def state_from_plugin():
     plugin_state = request.data
     used_parser = "lxml"
     plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
-    #print('Time loading XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
+    plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml)
+    connection_with_plugin_ok = True
+    #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
     
-    if connection_with_plugin_ok == False:
-        connection_with_plugin_ok = True
-        if elk_bridge is not None:
-            elk_bridge.show_global_message("Pl. connected :)")
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_state():
-    global connection_with_plugin_ok
     if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
-        if connection_with_plugin_ok == True:
-            connection_with_plugin_ok = False
-            if elk_bridge is not None:
-                elk_bridge.show_global_message("Pl. disconnected :(")
         return 'Maybe old'
     else:
         return Response(plugin_state, mimetype='text/xml')
@@ -720,6 +554,7 @@ if __name__ == "__main__":
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')
     osc_client = OSCClient(args.osc_ip, args.osc_port, encoding='utf8')
+    state_manager.set_osc_client(osc_client)
 
     print('* Running aconnect')
     get_status_output("aconnect 16 128")

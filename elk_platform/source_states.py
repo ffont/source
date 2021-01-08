@@ -1,29 +1,180 @@
 import time
 
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame
+
+try:
+    from elk_ui_custom import N_LEDS, N_FADERS
+except ModuleNotFoundError:
+    N_LEDS = 9
+
+
+sound_parameters_info_dict = {
+    "gain": (lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f} dB", "/set_sound_parameter"),
+    "pitch": (lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
+    "reverse": (lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
+    "launchMode": (lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
+    "startPosition": (lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
+    "endPosition": (lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
+    "loopStartPosition": (lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
+    "loopEndPosition": (lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
+    "ampADSR.attack": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A", "{0:.2f}s", "/set_sound_parameter"),
+    "ampADSR.decay": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D", "{0:.2f}s", "/set_sound_parameter"),
+    "ampADSR.sustain": (lambda x: x, lambda x: float(x), "S", "{0:.2f}", "/set_sound_parameter"),
+    "ampADSR.release": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R", "{0:.2f}s", "/set_sound_parameter"),
+    "filterCutoff": (lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff", "{0:.2f} Hz", "/set_sound_parameter"),
+    "filterRessonance": (lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
+    "filterKeyboardTracking": (lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
+    "filterADSR2CutoffAmt": (lambda x: 10.0 * x, lambda x: float(x), "Env amt", "{0:.2f}", "/set_sound_parameter"),    
+    "filterADSR.attack": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A", "{0:.2f}s", "/set_sound_parameter"),
+    "filterADSR.decay": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
+    "filterADSR.sustain": (lambda x: x, lambda x: float(x), "Filter S", "{0:.2f}", "/set_sound_parameter"),
+    "filterADSR.release": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
+    "noteMappingMode": (lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
+    "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
+    "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
+    "freezePlayheadSpeed": (lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
+}
+
+
+EXTRA_PAGE_1_NAME = "extra1"
+sound_parameter_pages = [
+    [
+        "gain",
+        "pitch",
+        "reverse",
+        "launchMode",
+    ], [
+        "startPosition",
+        "endPosition",
+        "loopStartPosition",
+        "loopEndPosition",
+    ], [
+        "ampADSR.attack",
+        "ampADSR.decay",
+        "ampADSR.sustain",
+        "ampADSR.release",
+    ], [
+        "filterCutoff",
+        "filterRessonance",
+        "filterKeyboardTracking",
+        "filterADSR2CutoffAmt",
+    ], [
+        "filterADSR.attack",
+        "filterADSR.decay",
+        "filterADSR.sustain",
+        "filterADSR.release",
+    ], [
+        "noteMappingMode",
+        "numSlices",
+        "playheadPosition",
+        "freezePlayheadSpeed"
+    ]
+]
+
+
 
 class StateManager(object):
 
     state_stack = []
+    global_message = ('', 0, 0)  # (text, starttime, duration)
+    osc_client = None
+    ui_client = None
+    source_state = {}
+    frame_counter = 0
 
-    def __init__(self, initial_state):
-        self.state_stack = [initial_state]
-        print('[SM] Initialized with state\n{0}'.format(self.current_state))
+    def set_osc_client(self, osc_client):
+        self.osc_client = osc_client
+
+    def set_ui_client(self, ui_client):
+        self.ui_client = ui_client
+
+    def update_source_state(self, source_state):
+        self.source_state = source_state
+        self.current_state.on_source_state_update()
+
+    def set_led(self, led_idx, unset_others=False):
+        if self.ui_client is not None:
+            if unset_others:
+                for led_idx2 in range(0, N_LEDS):
+                    if led_idx2 != led_idx:
+                        self.ui_client.set_led(led_idx2, 0)
+            self.ui_client.set_led(led_idx, 1)
+
+    def unset_led(self, led_idx):
+        if self.ui_client is not None:
+            self.ui_client.set_led(led_idx, 0)
+
+    def unset_all_leds(self):
+        if self.ui_client is not None:
+            for led_idx in range(0, N_LEDS):
+                self.ui_client.set_led(led_idx, 0)
+
+    def set_fader_led(self, fader_idx, unset_others=False):
+        if self.ui_client is not None:
+            if unset_others:
+                for fader_idx2 in range(0, N_FADERS):
+                    if fader_idx2 != fader_idx:
+                        self.ui_client.set_fader_led(fader_idx2, 0)
+            self.ui_client.set_fader_led(fader_idx, 1)
+
+    def unset_all_fader_leds(self):
+        if self.ui_client is not None:
+            for fader_idx in range(0, N_FADERS):
+                self.ui_client.set_fader_led(fader_idx, 0)
+
+    def set_all_fader_leds(self):
+        if self.ui_client is not None:
+            for fader_idx in range(0, N_FADERS):
+                self.ui_client.set_fader_led(fader_idx, 1)
+
+    def send_osc_to_plugin(self, address, values):
+        if self.osc_client is not None:
+            self.osc_client.send_message(address, values)
+
+    def draw_display_frame(self):
+        self.frame_counter += 1
+
+        # Compute display frame of the current ui state and plugin state variables
+        frame = self.current_state.draw_display_frame()
+
+        # If a global message should be added, do it here
+        if self.global_message[0] != '':
+            if time.time() - self.global_message[1] < self.global_message[2]:
+                add_global_message_to_frame(frame, self.global_message[0])
+            else:
+                self.global_message = ('', 0, 0)
+
+        return frame
+
+    def show_global_message(self, text, duration=2):
+        self.global_message = (text, time.time(), duration)
 
     def move_to(self, new_state, replace_current=False):
         if replace_current:
+            self.current_state.on_deactivating_state()
             self.state_stack.pop()
         self.state_stack.append(new_state)
-        print('[SM] New state is\n{0}'.format(self.current_state))
+        self.current_state.on_activating_state()
 
     def go_back(self):
         if len(self.state_stack) > 1:
+            self.current_state.on_deactivating_state()
             self.state_stack.pop()
-            print('[SM] New state\n{0}'.format(self.current_state))
+            self.current_state.on_activating_state()
+
+    def get_source_state_selected_sound_property(self, sound_idx, property_name):
+        if self.source_state is not None and StateNames.SOUNDS_INFO in self.source_state:
+            if sound_idx < self.source_state.get(StateNames.NUM_SOUNDS, 0):
+                return self.source_state[StateNames.SOUNDS_INFO][sound_idx][property_name]
+        return '-'
+
+    def gsp(self, sound_idx, property_name):
+        return self.get_source_state_selected_sound_property(sound_idx, property_name)
 
     @property
     def current_state(self):
         return self.state_stack[-1]
-    
+
 
 class State(object):
 
@@ -46,42 +197,120 @@ class State(object):
     def seconds_since_activation(self):
         return time.time() - self.activation_time
 
+    def draw_display_frame(self):
+        lines = [
+            self.get_default_header_line(),
+            {"underline": True, 
+            "text": self.name},
+            str(self.get_properties())
+        ]
+        return frame_from_lines(lines)
+
+    def get_default_header_line(self):
+        indicators = "{0}{1}{2}{3}".format(
+            "!" if not sm.source_state[StateNames.NETWORK_IS_CONNECTED] else "", 
+            "Q" if sm.source_state.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False) else "", 
+            "*" if sm.source_state[StateNames.STATE_UPDATED_RECENTLY] else "", 
+            ["|", "/", "-", "\\"][sm.frame_counter % 4]
+        )
+        return {
+            "invert": True, 
+            "text": justify_text("{0}:{1}".format(
+                sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1), 
+                sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')), 
+                indicators)
+        }
+
     def get_sound_idx_from_buttons(self, button_idx, shift=False):
         sound_idx = -1
         if button_idx > 0:
             sound_idx = button_idx - 1   # from 0-7
             if shift:  # if "shift" button is pressed, sound index is form 8-15
                 sound_idx += 8
-        # TODO: should check with number of loaded sounds
-        return sound_idx
+    
+            num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
+            if sound_idx < num_sounds:
+                return sound_idx
+            else:
+                return num_sounds
+
+    def on_activating_state(self):
+        # Called when state gets activated by the state manager (when it becomes visible)
+        pass
+
+    def on_deactivating_state(self):
+        # Called right before the state gets deactivated by the state manager
+        pass
+
+    def on_source_state_update(self):
+        # Called everytime the state manager gets an updated version of the APP state dict
+        pass
 
     def on_encoder_rotated(self, direction, shift=False):
-        print('- Encoder rotated ({0}) in state {1} (shift={2})'.format(direction, self.name, shift))
+        #print('- Encoder rotated ({0}) in state {1} (shift={2})'.format(direction, self.name, shift))
+        pass
 
     def on_encoder_pressed(self, shift=False):
-        print('- Encoder pressed in state {0} (shift={1})'.format(self.name, shift))
+        #print('- Encoder pressed in state {0} (shift={1})'.format(self.name, shift))
+        pass
 
-    def on_encoder_released(self, shift=False):
-        print('- Encoder released in state {0} (shift={1})'.format(self.name, shift))
+    def on_encoder_double_pressed(self, shift=False):
+        #print('- Encoder double pressed in state {0} (shift={1})'.format(self.name, shift))
+        pass
 
+    def on_encoder_long_pressed(self, shift=False):
+        #print('- Encoder long pressed in state {0} (shift={1})'.format(self.name, shift))
+        pass
+
+    def on_encoder_down(self, shift=False):
+        #print('- Encoder down in state {0} (shift={1})'.format(self.name, shift))
+        pass
+
+    def on_encoder_up(self, shift=False):
+        #print('- Encoder up in state {0} (shift={1})'.format(self.name, shift))
+        pass
+    
     def on_button_pressed(self, button_idx, shift=False):
-        print('- Button pressed ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        #print('- Button pressed ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        pass
 
-    def on_button_released(self, button_idx, shift=False):
-        print('- Button released ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+    def on_button_double_pressed(self, button_idx, shift=False):
+        #print('- Button double pressed ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        pass
+
+    def on_button_long_pressed(self, button_idx, shift=False):
+        #print('- Button long pressed ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        pass
+    
+    def on_button_down(self, button_idx, shift=False):
+        #print('- Button down ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        pass
+
+    def on_button_up(self, button_idx, shift=False):
+        #print('- Button up ({0}) in state {1} (shift={2})'.format(button_idx, self.name, shift))
+        pass
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        print('- Fader moved ({0}, {1}) in state {2} (shift={3})'.format(fader_idx, value, self.name, shift))
+        #print('- Fader moved ({0}, {1}) in state {2} (shift={3})'.format(fader_idx, value, self.name, shift))
+        pass
 
 
 class PaginatedState(State):
 
     current_page = 0
-    num_pages = 1
+    pages = [None]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.current_page = kwargs.get('current_page', 0)
+    
+    @property
+    def num_pages(self):
+        return len(self.pages)
+
+    @property
+    def current_page_data(self):
+        return self.pages[self.current_page]
 
     def get_properties(self):
         properties = super().get_properties().copy()
@@ -100,44 +329,125 @@ class PaginatedState(State):
         if self.current_page < 0:
             self.current_page = self.num_pages - 1
 
+    def draw_scroll_bar(self, frame):
+        return add_scroll_bar_to_frame(frame, self.current_page, self.num_pages)     
+
     def on_encoder_rotated(self, direction, shift=False):
         if direction > 0:
             self.next_page()
         else:
             self.previous_page()
-        print(self)
 
 
-class HomeState(PaginatedState):
+class GoBackOnEncoderLongPressedStateMixin(object):
+
+    def on_encoder_long_pressed(self, shift=False):
+        sm.go_back()
+
+
+class ChangePresetOnEncoderShiftRotatedStateMixin(object):
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if shift:
+            # Change current loaded preset
+            current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
+            if current_preset_index > -1:
+                current_preset_index += direction
+                if current_preset_index < 0:
+                    current_preset_index = 0
+                sm.send_osc_to_plugin("/load_preset", [current_preset_index])
+        else:
+            super().on_encoder_rotated(direction, shift=True)
+
+
+class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
     name = "HomeState"
-    num_pages = 4
+    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
 
-    def on_button_released(self, button_idx, shift=False):
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text":  "{0} sounds".format(sm.source_state.get(StateNames.NUM_SOUNDS, 0)),
+        }]
+
+        if self.current_page_data == EXTRA_PAGE_1_NAME:
+            # Show some sound information
+            lines += [
+                justify_text('Temp:', '{0}ºC'.format(sm.source_state[StateNames.SYSTEM_STATS].get("temp", ""))),
+                justify_text('Memory:', '{0}%'.format(sm.source_state[StateNames.SYSTEM_STATS].get("mem", ""))),
+                justify_text('CPU:', '{0}% | {1:.1f}%'.format(sm.source_state[StateNames.SYSTEM_STATS].get("cpu", ""), 
+                                                              sm.source_state[StateNames.SYSTEM_STATS].get("xenomai_cpu", 0.0))), 
+                justify_text('Network:', '{0}'.format(sm.source_state[StateNames.SYSTEM_STATS].get("network_ssid", "-")))
+            ]
+        else:
+            # Show page parameter values
+            for parameter_name in self.current_page_data:
+                _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
+                
+                # Check if all loaded sounds have the same value for that parameter. If that is the case, show the value, otherwise don't show any value
+                all_sounds_values = []
+                last_value = None
+                for sound_idx in range(0, sm.source_state.get(StateNames.NUM_SOUNDS, 0)):
+                    processed_val = get_func(sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS)[parameter_name])
+                    all_sounds_values.append(processed_val)
+                    last_value = processed_val
+
+                if len(set(all_sounds_values)) == 1:
+                    # All sounds have the same value for that parameter, show the number
+                    lines.append(justify_text(
+                        parameter_label + ":", 
+                        value_label_template.format(last_value)
+                    ))
+                else:
+                    # Some sounds differ, don't show the number
+                    lines.append(justify_text(parameter_label + ":", "-"))
+
+        return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
+
+    def on_activating_state(self):
+        sm.unset_all_leds()
+        sm.set_all_fader_leds()
+
+    def on_deactivating_state(self):
+        sm.unset_all_fader_leds()
+
+    def on_button_pressed(self, button_idx, shift=False):
         # Select a sound
         sound_idx = self.get_sound_idx_from_buttons(button_idx, shift=shift)
         if sound_idx > -1:
-            state_manager.move_to(SoundSelectedState(sound_idx))
+            sm.move_to(SoundSelectedState(sound_idx))
 
-    def on_encoder_released(self, shift=False):
-        if shift:
-            # Do nothing (we don't have more levels to go back)
-            # TODO: maybe add some handy action here?
-            pass
-        else:
-            # Open home contextual menu
-            state_manager.move_to(HomeContextualMenuState())
+    def on_encoder_pressed(self, shift=False):
+        # Open home contextual menu
+        sm.move_to(HomeContextualMenuState())
+
+    def on_encoder_long_pressed(self, shift=False):
+        current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
+        current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
+        if current_preset_index > -1:
+            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, current_preset_index])
+            sm.show_global_message("Saving...")
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        # TODO: set parameter via OSC
-        pass
+        if self.current_page_data == EXTRA_PAGE_1_NAME:
+            pass
+        else:
+            # Set sound parameters for all sounds
+            parameter_name = self.current_page_data[fader_idx]
+            send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
+            send_value = send_func(value)
+            if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
+                send_value = send_value * 0.3333333  # Reduced range mode
+            sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
 
 
-class SoundSelectedState(PaginatedState):
+class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     name = "SoundSelectedState"
+    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
     sound_idx = -1
-    num_pages = 4
+    selected_sound_is_playing = False
 
     def __init__(self, sound_idx, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -149,38 +459,110 @@ class SoundSelectedState(PaginatedState):
             'sound_idx': self.sound_idx
         })
         return properties
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+        }]
+
+        if self.current_page_data == EXTRA_PAGE_1_NAME:
+            # Show some sound information
+            sound_download_progress = sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS)
+            lines += [
+                justify_text('ID:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_ID))),
+                justify_text('User:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_AUTHOR))),
+                justify_text('CC License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE))),
+                justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION))) if sound_download_progress == '100' \
+                    else justify_text('Downloading...', '{0}%'.format(sound_download_progress)),
+            ]
+        else:
+            # Show page parameter values
+            for parameter_name in self.current_page_data:
+                _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
+                sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS)
+                if (type(sound_parameters) == dict):
+                    state_val = sound_parameters[parameter_name]
+                    parameter_value_label = value_label_template.format(get_func(state_val))
+                else:
+                    parameter_value_label = "-"
+
+                lines.append(justify_text(
+                    parameter_label + ":", 
+                    parameter_value_label
+                ))
+
+        return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
+
+    def play_selected_sound(self):
+        if self.selected_sound_is_playing:
+            self.stop_selected_sound()
+        sm.send_osc_to_plugin("/play_sound", [self.sound_idx])
+        self.selected_sound_is_playing = True
+
+    def stop_selected_sound(self):
+        if self.selected_sound_is_playing:
+            sm.send_osc_to_plugin("/stop_sound", [self.sound_idx])
+            self.selected_sound_is_playing = False
+
+    def on_activating_state(self):
+        sm.set_led((self.sound_idx % 8) + 1, unset_others=True)
+
+    def on_deactivating_state(self):
+        self.stop_selected_sound()
+
+    def on_source_state_update(self):
+        # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
+        num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
+        if self.sound_idx >= num_sounds:
+            sm.move_to(SoundSelectedState(num_sounds -1, current_page=self.current_page), replace_current=True)
+        elif self.sound_idx < 0 and num_sounds > 0:
+            sm.move_to(SoundSelectedState(0, current_page=self.current_page), replace_current=True)
     
-    def on_button_released(self, button_idx, shift=False):
+    def on_button_pressed(self, button_idx, shift=False):
+        # Stop current sound
+        self.stop_selected_sound()
+        
         # Select another sound
         sound_idx = self.get_sound_idx_from_buttons(button_idx, shift=shift)
         if sound_idx > -1:
-            state_manager.move_to(SoundSelectedState(sound_idx, current_page=self.current_page), replace_current=True)
+            sm.move_to(SoundSelectedState(sound_idx, current_page=self.current_page), replace_current=True)
 
-    def on_encoder_released(self, shift=False):
-        if shift:
-            # Go back to home state
-            state_manager.go_back()
-        else:
+    def on_button_double_pressed(self, button_idx, shift=False):
+        # If button corresponds to current sound, play it
+        sound_idx = self.get_sound_idx_from_buttons(button_idx, shift=shift)
+        if sound_idx > -1:
+            if sound_idx == self.sound_idx:
+                self.stop_selected_sound()
+                self.play_selected_sound()
+    
+    def on_encoder_pressed(self, shift=False):
+        if not shift:
             # Open sound contextual menu
-            state_manager.move_to(SoundSelectedContextualMenuState(sound_idx=self.sound_idx))
+            sm.move_to(SoundSelectedContextualMenuState(sound_idx=self.sound_idx))
+        else:
+            # Trigger the selected sound
+            self.play_selected_sound()
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        # TODO: set parameter via OSC
-        pass
+        if self.current_page_data == EXTRA_PAGE_1_NAME:
+            pass
+        else:
+            # Set sound parameters for selected sound
+            parameter_name = self.current_page_data[fader_idx]
+            send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
+            send_value = send_func(value)
+            if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
+                send_value = send_value * 0.3333333  # Reduced range mode
+            sm.send_osc_to_plugin(osc_address, [self.sound_idx, parameter_name, send_value])
 
 
-
-class HomeContextualMenuState(State):
+class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, State):
 
     name = "HomeContextualMenuState"
 
-    def on_encoder_released(self, shift=False):
-        if shift:
-            # Go back to home state
-            state_manager.go_back()
 
-
-class SoundSelectedContextualMenuState(State):
+class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, State):
 
     name = "SoundSelectedContextualMenuState"
     sound_idx = -1
@@ -196,10 +578,13 @@ class SoundSelectedContextualMenuState(State):
         })
         return properties
 
-    def on_encoder_released(self, shift=False):
-        if shift:
-            # Go back to sound selected state
-            state_manager.go_back()
+    def on_source_state_update(self):
+        # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
+        num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
+        if self.sound_idx >= num_sounds:
+            sm.move_to(SoundSelectSoundSelectedContextualMenuStateedState(num_sounds -1), replace_current=True)
+        elif self.sound_idx < 0 and num_sounds > 0:
+            sm.move_to(SoundSelectedContextualMenuState(0), replace_current=True)
 
 
 class SoundParameterMIDILearnMenuState(State):
@@ -207,4 +592,6 @@ class SoundParameterMIDILearnMenuState(State):
     name = "SoundParameterMIDILearnMenuState"
 
 
-state_manager = StateManager(HomeState())
+state_manager = StateManager()
+sm = state_manager
+state_manager.move_to(HomeState())
