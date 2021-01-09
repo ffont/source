@@ -372,6 +372,11 @@ float SourceSamplerSound::getLengthInSeconds(){
     return (float)getLengthInSamples()/sourceSampleRate;
 }
 
+void SourceSamplerSound::setIdx(int newIdx)
+{
+    idx = newIdx;
+}
+
 int SourceSamplerSound::getIdx(){
     return idx;
 }

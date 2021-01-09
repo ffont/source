@@ -261,6 +261,10 @@
         function stopSound(soundIdx){
             sendOsc('/stop_sound', [soundIdx], 'int')
         }
+                                       
+        function removeSound(soundIdx){
+            sendOsc('/remove_sound', [soundIdx], 'int')
+        }
 
         function savePreset(){
             var name = document.getElementsByName('presetName')[0].value;
@@ -439,7 +443,7 @@
             } else {
                 // Sound already loaded, show all info (if it has not been already shown)
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
-                    html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><br>';
+                    html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><button onclick="removeSound(' + idx + ')">remove</button><br>';
                     html += sound.getAttribute('soundName') + '<br>';
                     var licenseURL = sound.getAttribute('soundLicense');
                     var licenseName = "-";

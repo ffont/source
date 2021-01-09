@@ -273,8 +273,15 @@ public:
                 String actionMessage = String(ACTION_SET_STATE_TIMER_HZ) + ":" + (String)newHz;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_REMOVE_SOUND){
+            if (message.size() == 1)  {
+                int soundIndex = message[0].getInt32();
+                String actionMessage = String(ACTION_REMOVE_SOUND) + ":" + (String)soundIndex;
+                sendActionMessage(actionMessage);
+            }
         }
     }
+    
     #if ENABLE_EMBEDDED_HTTP_SERVER
     HTTPServer httpServer;
     #endif

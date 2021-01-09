@@ -728,6 +728,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int newHz = message.substring(String(ACTION_SET_STATE_TIMER_HZ).length() + 1).getIntValue();
         stopTimer();
         startTimerHz(newHz);
+        
+    } else if (message.startsWith(String(ACTION_REMOVE_SOUND))){
+        int soundIndex = message.substring(String(ACTION_REMOVE_SOUND).length() + 1).getIntValue();
+        removeSound(soundIndex);
     }
 }
 
@@ -915,11 +919,6 @@ bool SourceSamplerAudioProcessor::allSoundsFinishedDownloading(){
     return true;
 }
 
-void SourceSamplerAudioProcessor::loadDownloadedSoundsIntoSampler(){
-    setSourceSamplerSoundObjects();  // Load the sounds in the sampler, includes setting sound parameters from state (e.g. frequency cutoff, etc...)
-    isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
-}
-
 void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx)
 {
     // Clear existing sound for this soundIdx in sampler (if any)
@@ -1015,16 +1014,35 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
     }
 }
 
-void SourceSamplerAudioProcessor::setSourceSamplerSoundObjects()
+
+void SourceSamplerAudioProcessor::removeSound(int soundIndex)
 {
-    int nSounds = loadedSoundsInfo.getNumChildren();
-    logToState("Loading " + (String)nSounds + " sounds to sampler");
-    if (nSounds > 0){
-        for (int i = 0; i < nSounds; i++) {
-            setSingleSourceSamplerSoundObject(i);
+    // Clear existing sound for this soundIdx in sampler (if any)
+    sampler.cleartSourceSamplerSoundByIdx(soundIndex);
+    
+    // Update "loadedSoundsInfo" to remove this element and, at the same time, update the "idx" in SamplerSound objects to be in sync with new "loadedSoundsInfo"
+    ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
+    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
+        if (i != soundIndex){
+            newLoadedSoundsInfo.appendChild(loadedSoundsInfo.getChild(i).createCopy(), nullptr);
+            if (i >= soundIndex){
+                // In this case the sound will have moved one position down in the new list of "loadedSoundsInfo", so idx in the sampler should be updated
+                auto* sound = sampler.getSourceSamplerSoundByIdx(i);
+                if (sound != nullptr){
+                    sound->setIdx(sound->getIdx() - 1);
+                }
+            }
+        } else {
+            // Do nothing here, don't add the sound we are removing to new "loadedSoundsInfo" and also don't update the index of the sound in the sampler because it was already removed
         }
     }
-    logToState("Sampler sources configured with " + (String)sampler.getNumSounds() + " sounds and " + (String)sampler.getNumVoices() + " voices");
+    loadedSoundsInfo = newLoadedSoundsInfo;
+    
+}
+
+void SourceSamplerAudioProcessor::replaceSound(int soundIdx, ValueTree soundInfo)
+{
+    
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff)

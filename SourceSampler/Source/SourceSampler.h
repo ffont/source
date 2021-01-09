@@ -105,8 +105,10 @@ public:
     //==============================================================================
     int getLengthInSamples();
     float getLengthInSeconds();
-    int getIdx();
     float getPlayingPositionPercentage();
+    
+    void setIdx(int newIdx);
+    int getIdx();
     
     //==============================================================================
     int getNumberOfMappedMidiNotes();

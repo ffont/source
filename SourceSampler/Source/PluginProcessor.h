@@ -105,9 +105,10 @@ public:
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void downloadSounds(bool blocking);
     bool allSoundsFinishedDownloading();
-    void loadDownloadedSoundsIntoSampler();
-    void setSingleSourceSamplerSoundObject(int soundIdx);
-    void setSourceSamplerSoundObjects();
+    
+    void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
+    void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
+    void replaceSound(int soundIdx, ValueTree soundInfo);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
     
     void addToMidiBuffer(int soundIndex, bool doNoteOff);
 

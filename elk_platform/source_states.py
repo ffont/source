@@ -241,6 +241,7 @@ class State(object):
                 return sound_idx
             else:
                 return num_sounds
+        return sound_idx
 
     def save_current_preset(self):
         current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
@@ -260,7 +261,11 @@ class State(object):
 
     def replace_sound_by(self, *args, **kwargs):
         # TOOD: implement that when plugin supports it
-        pass       
+        pass
+
+    def remove_sound(self, sound_idx):
+        sm.send_osc_to_plugin('/remove_sound', [sound_idx])
+        sm.show_global_message("Sound removed!")
 
     def on_activating_state(self):
         # Called when state gets activated by the state manager (when it becomes visible)
@@ -417,7 +422,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 all_sounds_values = []
                 last_value = None
                 for sound_idx in range(0, sm.source_state.get(StateNames.NUM_SOUNDS, 0)):
-                    processed_val = get_func(sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS)[parameter_name])
+                    processed_val = get_func(sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS).get(parameter_name, 0))
                     all_sounds_values.append(processed_val)
                     last_value = processed_val
 
@@ -506,7 +511,7 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
             for parameter_name in self.current_page_data:
                 _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
                 sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS)
-                if (type(sound_parameters) == dict):
+                if (type(sound_parameters) == dict) and parameter_name in sound_parameters:
                     state_val = sound_parameters[parameter_name]
                     parameter_value_label = value_label_template.format(get_func(state_val))
                 else:
@@ -714,6 +719,9 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     def perform_action(self, action_name):
         if action_name == self.OPTION_REPLACE:
             sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", callback=self.replace_sound_by))
+        elif action_name == self.OPTION_DELETE:
+            self.remove_sound(self.sound_idx)
+            sm.go_back()
         else:
             sm.show_global_message('Not implemented...')
 

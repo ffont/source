@@ -60,6 +60,7 @@
 #define ACTION_ADD_OR_UPDATE_CC_MAPPING "ACTION_ADD_OR_UPDATE_CC_MAPPING"
 #define ACTION_REMOVE_CC_MAPPING "ACTION_REMOVE_CC_MAPPING"
 #define ACTION_SET_STATE_TIMER_HZ "ACTION_SET_STATE_TIMER_HZ"
+#define ACTION_REMOVE_SOUND "ACTION_REMOVE_SOUND"
 
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
 #define OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
@@ -75,6 +76,7 @@
 #define OSC_ADDRESS_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
 #define OSC_ADDRESS_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define OSC_ADDRESS_SET_STATE_TIMER_HZ "/set_state_timer_hz"
+#define OSC_ADDRESS_REMOVE_SOUND "/remove_sound"
 
 #define OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define OSC_ADDRESS_REMOVE_CC_MAPPING "/remove_cc_mapping"
