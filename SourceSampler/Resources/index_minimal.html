@@ -58,11 +58,58 @@
         .controls_card {
             vertical-align: top;
             margin-bottom: 40px;
+            display: none;
         }
-        
+
     </style>
 
     <script>
+
+        var updateStateTimer;
+        var updateStateInterval = 500;
+
+        function init() {
+            showDefault();
+            updateStateTimer = setInterval(function () {
+                updateMinimalInterfaceState();
+            }, updateStateInterval);
+        }
+
+        function updateMinimalInterfaceState(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    var response = JSON.parse(this.response);
+                    if (response.should_ask_for_data){
+                        showById(response.web_form_id);
+                    }
+                }
+            };
+            xhr.open('GET', '/update_minimal_interface_state', true);
+            xhr.send();
+        }
+
+        function setAllClassElementsDisplayTo(className, displayType){
+            var all = document.getElementsByClassName(className);
+            for (var i = 0; i < all.length; i++) {
+                all[i].style.display = displayType; 
+            }
+        }
+
+        function showDefault() {
+            setAllClassElementsDisplayTo("controls_card", "none");
+            setAllClassElementsDisplayTo("show_as_default", "block");
+        }
+
+        function hideDefault() {
+            setAllClassElementsDisplayTo("show_as_default", "none");
+        }       
+
+        function showById(elementID){
+            hideDefault();
+            document.getElementById(elementID).style.display = "block";
+        }
 
         function sendOsc(address, values, types) {
             var xhr = new XMLHttpRequest();
@@ -75,35 +122,59 @@
             xhr.send();
         }
 
+        function sendDataToserver(data) {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                }
+            };
+            xhr.open('GET', '/receive_data_from_web?data=' + data);
+            xhr.send();
+        }
+
         function makeQuery(){
-            var query = document.getElementsByName('query')[0].value;
-            var numSounds = document.getElementsByName('numSounds')[0].value || 16;
-            var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
-            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-            var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+            var element = document.getElementById('newQuery');
+            var query = element.querySelector("input[name='query']").value;
+            var numSounds = element.querySelector("input[name='numSounds']").value || 16;
+            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
+            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 300;
+            var noteMappingType = element.querySelector("select[name='noteMappingType']").value;
             sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int');
         }
 
         function savePreset(){
-            var name = document.getElementsByName('presetName')[0].value;
-            var idx = document.getElementsByName('presetIdx')[0].value;
+            var element = document.getElementById('savePreset');
+            var name = element.querySelector("input[name='presetName']").value;
+            var idx = element.querySelector("input[name='presetIdx']").value;
             sendOsc('/save_current_preset', [name, idx], 'str;int');
         }
 
         function loadPreset() {
-            var idx = document.getElementsByName('presetIdxLoad')[0].value;
+            var element = document.getElementById('loadPreset');
+            var idx = element.querySelector("input[name='presetIdx']").value;
             sendOsc('/load_preset', [idx], 'int')
+        }
+
+        function makeReplaceSoundQuery(){
+            var element = document.getElementById('replaceSound');
+            var query = element.querySelector("input[name='query']").value;
+            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
+            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 300;
+            var data = 'query:' + query + ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength
+            sendDataToserver(data);
+            showDefault();
         }
         
     </script>
 </head>
 
-<body>
+<body onload="init();">
 
     <div id="wrapper">
         <h1>SOURCE</h1>
 
-        <div class="controls_card">
+        <div id="newQuery" class="controls_card show_as_default">
             <h2>Make new preset</h2>
             Query:<input name="query" value="" type="text" placeholder="percussion"><br>
             Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
@@ -116,7 +187,15 @@
             <button onclick="makeQuery()">Go!</button>
         </div>
 
-        <div class="controls_card">
+        <div id="replaceSound" class="controls_card">
+            <h2>Replace sound with new query</h2>
+            Query:<input name="query" value="" type="text" placeholder="percussion"><br>
+            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="300"><br>
+            <br>
+            <button onclick="makeReplaceSoundQuery()">Go!</button>
+        </div>
+
+        <div id="savePreset" class="controls_card show_as_default">
             <h2>Save preset</h2>
             Preset number:<input name="presetIdx" value="" type="number"><br>
             Preset name:<br><input name="presetName" value="" type="text">
@@ -124,9 +203,9 @@
             <button onclick="savePreset()">Save</button>
         </div>
 
-        <div class="controls_card">
+        <div id="loadPreset" class="controls_card show_as_default">
             <h2>Load preset</h2>
-            Preset number:<input name="presetIdxLoad" value="" type="number">
+            Preset number:<input name="presetIdx" value="" type="number">
             <br>
             <button onclick="loadPreset()">Load</button>
         </div>

@@ -33,7 +33,7 @@ from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMA
 
 from source_states import state_manager
 
-from flask import Flask, render_template, request, redirect, url_for, Response
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 from oscpy.client import OSCClient
 import threading
 
@@ -419,7 +419,17 @@ def index_minimal():
     tvars = {}
     return render_template("index_minimal.html", **tvars)
 
-@http_server.route('/index', methods=['GET'])  # Serve main interface HTML file
+@http_server.route('/update_minimal_interface_state', methods=['GET'])  # Client requests to get an updated version of the state
+def update_minimal_interface_state():
+    state = {
+        'should_ask_for_data': False
+    }
+    if state_manager.is_waiting_for_data_from_web():
+        state['should_ask_for_data'] = True
+        state['web_form_id'] = state_manager.current_state.web_form_id
+    return jsonify(state)
+
+@http_server.route('/index', methods=['GET'])  # Serve interface HTML file with all the available controls
 def index():
     tvars = {}
     return render_template("index.html", **tvars)
@@ -480,11 +490,9 @@ def receive_data_from_web():
 def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    osc_client.send_message(address, values)
-    
+    osc_client.send_message(address, values)    
     if address == '/new_query':
         state_manager.show_global_message("Making query...")
-
     return 'OSC sent'
 
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
@@ -501,7 +509,6 @@ def state_from_plugin():
     plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml)
     connection_with_plugin_ok = True
     #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
-    
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state

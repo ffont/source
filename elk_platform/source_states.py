@@ -713,7 +713,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_REPLACE:
-            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", callback=self.replace_sound_by))
+            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", callback=self.replace_sound_by))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -776,11 +776,13 @@ class EnterDataViaWebInterfaceState(State):
 
     title = "NoTitle"
     callback = None
+    web_form_id = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = kwargs.get('title', "NoTitle")
         self.callback = kwargs.get('callback', None)
+        self.web_form_id = kwargs.get('web_form_id', None)
 
     def draw_display_frame(self):
         lines = [{
