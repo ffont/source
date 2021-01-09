@@ -103,12 +103,18 @@ public:
     
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
-    void downloadSounds(bool blocking);
+    void downloadSounds(bool blocking, int soundIndexFilter);
     bool allSoundsFinishedDownloading();
     
     void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
     void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
-    void replaceSound(int soundIdx, ValueTree soundInfo);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
+    void replaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
+    void replaceSoundFromBasicSoundProperties(int soundIdx,
+                                              int soundID,
+                                              const String& soundName,
+                                              const String& soundUser,
+                                              const String& soundLicense,
+                                              const String& oggDownloadURL);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
     
     void addToMidiBuffer(int soundIndex, bool doNoteOff);
 

@@ -407,7 +407,7 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
     if (soundsInfo.isValid()){
         loadedSoundsInfo = soundsInfo;
-        downloadSounds(false);
+        downloadSounds(false, -1);
         // the loading of the sounds will be triggered automaticaly when download finishes
     }
 }
@@ -732,6 +732,18 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (message.startsWith(String(ACTION_REMOVE_SOUND))){
         int soundIndex = message.substring(String(ACTION_REMOVE_SOUND).length() + 1).getIntValue();
         removeSound(soundIndex);
+        
+    } else if (message.startsWith(String(ACTION_REPLACE_SOUND_FROM_BASIC_PROPERTIES))){
+        String serializedParameters = message.substring(String(ACTION_REPLACE_SOUND_FROM_BASIC_PROPERTIES).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIdx = tokens[0].getIntValue();
+        int soundID = tokens[1].getIntValue();
+        String soundName = tokens[2];
+        String soundUser = tokens[3];
+        String soundLicense = tokens[4];
+        String oggDownloadURL = tokens[5];
+        replaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL);
     }
 }
 
@@ -822,14 +834,14 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             soundsInfo.appendChild(soundInfo, nullptr);
         }
         loadedSoundsInfo = soundsInfo;
-        downloadSounds(false);
+        downloadSounds(false, -1);
         // The loading of sounds will be triggered automatically when sounds finish downloading
     } else {
         logToState("Query got no results...");
     }
 }
 
-void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
+void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexFilter)
 {
     // NOTE: blocking only has effect in non-elk situation
     
@@ -839,11 +851,13 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     
     std::vector<std::pair<File, String>> soundTargetLocationsAndUrlsToDownload = {};
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-        String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
-        File location = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
-        String url = soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL);
-        soundTargetLocationsAndUrlsToDownload.emplace_back(location, url);
+        if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
+            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
+            String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
+            File location = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
+            String url = soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL);
+            soundTargetLocationsAndUrlsToDownload.emplace_back(location, url);
+        }
     }
     
     // Download the sounds (if not already downloaded)
@@ -863,18 +877,20 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking)
     int nAlreadyDownloaded = 0;
     int nSentToDownload = 0;
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-        // Check if file exists, if it already exists trigger action to load it, otherwise
-        // add URL to list of sounds to download
-        String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
-        File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
-        if (audioSample.exists() && audioSample.getSize() > 0){
-            String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + audioSample.getFullPathName();
-            actionListenerCallback(actionMessage);
-            nAlreadyDownloaded += 1;
-        } else {
-            urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
-            nSentToDownload += 1;
+        if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
+            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
+            // Check if file exists, if it already exists trigger action to load it, otherwise
+            // add URL to list of sounds to download
+            String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
+            File audioSample = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
+            if (audioSample.exists() && audioSample.getSize() > 0){
+                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + audioSample.getFullPathName();
+                actionListenerCallback(actionMessage);
+                nAlreadyDownloaded += 1;
+            } else {
+                urlsParam = urlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
+                nSentToDownload += 1;
+            }
         }
     }
     url = url.withParameter("urls", urlsParam);
@@ -1040,9 +1056,50 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
     
 }
 
-void SourceSamplerAudioProcessor::replaceSound(int soundIdx, ValueTree soundInfo)
+void SourceSamplerAudioProcessor::replaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
 {
+    // Replace the corresponding position of the loadedSoundsInfo ValueTree with the new sound
+    ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
+    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
+        if (i == soundIndex){
+            // Check if newSoundInfo has sotred sound sampler parameters, if not, create an empty value tree for them
+            ValueTree samplerSoundParameters = newSoundInfo.getChildWithName(STATE_SAMPLER_SOUND);
+            if (!samplerSoundParameters.isValid()){ samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND); }
+            if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
+                // If sampler sound parameters have no MIDI notes assigned, copy them form the sound we are replacing
+                ValueTree existingSoundInfo = loadedSoundsInfo.getChild(i);
+                samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES,
+                                                   existingSoundInfo.getChildWithName(STATE_SAMPLER_SOUND).getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)
+                                                   , nullptr);
+            }
+            
+            // Finally add new modified newSoundInfo to the new loadedSoundsInfo list
+            newLoadedSoundsInfo.appendChild(newSoundInfo, nullptr);
+        } else {
+            newLoadedSoundsInfo.appendChild(loadedSoundsInfo.getChild(i).createCopy(), nullptr);
+        }
+    }
+    loadedSoundsInfo = newLoadedSoundsInfo;
     
+    // Trigger download (and further loading) of the new sound
+    downloadSounds(false, soundIndex);
+}
+
+void SourceSamplerAudioProcessor::replaceSoundFromBasicSoundProperties(int soundIdx,
+                                                                       int soundID,
+                                                                       const String& soundName,
+                                                                       const String& soundUser,
+                                                                       const String& soundLicense,
+                                                                       const String& oggDownloadURL)
+{
+    ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
+    soundInfo.setProperty(STATE_SOUND_INFO_ID, soundID, nullptr);
+    soundInfo.setProperty(STATE_SOUND_INFO_NAME, soundName, nullptr);
+    soundInfo.setProperty(STATE_SOUND_INFO_USER, soundUser, nullptr);
+    soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, soundLicense, nullptr);
+    soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL, oggDownloadURL, nullptr);
+    
+    replaceSoundFromSoundInfoValueTree(soundIdx, soundInfo);
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff)

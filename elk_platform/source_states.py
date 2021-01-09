@@ -1,5 +1,9 @@
 import math
+import random
+import requests
 import time
+
+from freesound_api_key import FREESOUND_API_KEY
 
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame
 
@@ -260,8 +264,25 @@ class State(object):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
     def replace_sound_by(self, *args, **kwargs):
-        # TOOD: implement that when plugin supports it
-        pass
+        sound_idx = kwargs.get('sound_idx', -1)
+        if sound_idx >  -1:
+            # TODO: refactor this to use proper Freesound python API client (?)
+            sm.show_global_message("Finding sound...")
+            query = kwargs.get('query', "")
+            min_length = float(kwargs.get('minSoundLength', '0'))
+            max_length = float(kwargs.get('maxSoundLength', '300'))
+            url = 'https://freesound.org/apiv2/search/text/?query={0}&filter=duration:[{1}+TO+{2}]&fields=id,previews,license,name,username&token={3}'.format(query, min_length, max_length, FREESOUND_API_KEY)
+            try:
+                r = requests.get(url)
+                response = r.json()
+                print(response)
+                selected_sound = random.choice(response['results'])
+                sm.show_global_message("Replacing sound...")
+                sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+            except Exception as e:
+                print("ERROR while querying Freesound: {0}".format(e))
+                sm.show_global_message("Error :(")
+            sm.go_back()
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -718,7 +739,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_REPLACE:
-            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", callback=self.replace_sound_by))
+            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by))
         elif action_name == self.OPTION_DELETE:
             self.remove_sound(self.sound_idx)
             sm.go_back()
@@ -785,12 +806,14 @@ class EnterDataViaWebInterfaceState(State):
     title = "NoTitle"
     callback = None
     web_form_id = ""
+    extra_data_for_callback = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = kwargs.get('title', "NoTitle")
         self.callback = kwargs.get('callback', None)
         self.web_form_id = kwargs.get('web_form_id', None)
+        self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
 
     def draw_display_frame(self):
         lines = [{
@@ -802,6 +825,7 @@ class EnterDataViaWebInterfaceState(State):
 
     def on_data_received(self, data):
         # data should be a dictionary here
+        data.update(self.extra_data_for_callback)
         if self.callback is not None:
             self.callback(**data)
         sm.go_back()
