@@ -149,7 +149,7 @@ class ElkUIController(object):
             self.set_fader_led(n, 0)
 
         self._fader_values = [0.0] * N_FADERS
-        self._enc_value = 10.0
+        self._enc_value = 0.0
         self._osc_server.start()
 
     def refresh(self):

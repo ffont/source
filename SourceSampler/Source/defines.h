@@ -107,6 +107,8 @@
 #define STATE_SAMPLER "Sampler"
 #define STATE_PRESET_NAME "presetName"
 #define STATE_PRESET_NUMBER "presetNumber"
+#define STATE_PRESET_NUMVOICES "NumVoices"
+#define STATE_PRESET_NOTE_LAYOUT_TYPE "noteLayoutType"
 
 #define STATE_CURRENT_PORT "currentPort"
 #define STATE_LOG_MESSAGES "logMessages"
@@ -126,8 +128,6 @@
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET "onset"
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME "time"
 #define STATE_SOUND_INFO_FS_ANALYSIS_ONSET_TIMES "fsAnalysisOnsetTimes"
-
-#define STATE_NUMVOICES "NumVoices"
 
 #define STATE_REVERB_PARAMETERS "ReverbParameters"
 #define STATE_REVERB_ROOMSIZE "reverb_roomSize"

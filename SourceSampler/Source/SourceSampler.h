@@ -370,7 +370,7 @@ public:
         
         ValueTree state = ValueTree(STATE_SAMPLER);
         
-        state.setProperty(STATE_NUMVOICES, getNumVoices(), nullptr);
+        state.setProperty(STATE_PRESET_NUMVOICES, getNumVoices(), nullptr);
         
         // Add reverb settings to state
         ValueTree reverbParameters = ValueTree(STATE_REVERB_PARAMETERS);
@@ -400,8 +400,8 @@ public:
         // NOTE: this loads the sampeler's state but excludes individual sounds' state (see loadStateForSound to load the state for a sound)
                 
         // Load number of voices
-        if (samplerState.hasProperty(STATE_NUMVOICES)){
-            int numVoices = (int)samplerState.getProperty(STATE_NUMVOICES);
+        if (samplerState.hasProperty(STATE_PRESET_NUMVOICES)){
+            int numVoices = (int)samplerState.getProperty(STATE_PRESET_NUMVOICES);
             setSamplerVoices(numVoices);
         }
         

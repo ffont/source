@@ -315,6 +315,7 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     // Add general stuff
     state.setProperty(STATE_PRESET_NAME, presetName, nullptr);
     state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
+    state.setProperty(STATE_PRESET_NOTE_LAYOUT_TYPE, noteLayoutType, nullptr);
     
     // Add sampler main settings (not including individual sound settings because it will be in soundsData value tree)
     state.appendChild(sampler.getState(), nullptr);
@@ -395,6 +396,11 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
     }
     if (state.hasProperty(STATE_PRESET_NUMBER)){
         currentPresetIndex = (int)state.getProperty(STATE_PRESET_NUMBER);
+    }
+    
+    // Load layout type
+    if (state.hasProperty(STATE_PRESET_NOTE_LAYOUT_TYPE)){
+        noteLayoutType = (int)state.getProperty(STATE_PRESET_NOTE_LAYOUT_TYPE);
     }
     
     // Now load sampler state (does not include sound properties)
@@ -601,7 +607,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         float minSoundLength = tokens[2].getFloatValue();
         float maxSoundLength = tokens[3].getFloatValue();
         int noteMappingType = tokens[4].getFloatValue();
-        currentNoteMappingType = noteMappingType; // Set currentNoteMappingType so when sounds are actually downloaded and loaded, the requested mode is used
+        noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
         
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
@@ -671,8 +677,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
         String presetName = tokens[0];
         int index = tokens[1].getIntValue();
-        saveCurrentPresetToFile(presetName, index);  // Save to file
-        setCurrentProgram(index);  // And then reload from the file
+        saveCurrentPresetToFile(presetName, index);  // Save to file...
+        currentPresetIndex = index; // ...and update current preset index and name in case it was changed
         
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
         int index = message.substring(String(ACTION_LOAD_PRESET).length() + 1).getIntValue();
@@ -987,14 +993,14 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
         }
         if (midiRootNote == -1){
             // root note was not found on sound propperties, generate considering the note mapping type
-            if (currentNoteMappingType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
                 // Set midi root note to the center of the assigned range
                 samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                     .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                     .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
                     .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
                     nullptr);
-            } else if (currentNoteMappingType == NOTE_MAPPING_TYPE_INTERLEAVED){
+            } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
                 // Set midi root note starting at C2 (midi note=36)
                 samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                     .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
@@ -1007,10 +1013,10 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
         // Check if midiNotes is in the provided sound sampelr state, if not, add it with an appropriate value
         if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
             BigInteger midiNotes;
-            if (currentNoteMappingType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
                 // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
                 midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
-            } else if (currentNoteMappingType == NOTE_MAPPING_TYPE_INTERLEAVED){
+            } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
                 // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
                 int rootNoteForSound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx;
                 for (int i=rootNoteForSound; i<128; i=i+nSounds){

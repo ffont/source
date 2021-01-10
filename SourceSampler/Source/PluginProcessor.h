@@ -136,7 +136,7 @@ private:
     bool aconnectWasRun = false;
     String query = "";
     String presetName = "empty";
-    int currentNoteMappingType = NOTE_MAPPING_TYPE_CONTIGUOUS;
+    int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
     ValueTree loadedSoundsInfo;
     bool midiOutForwardsMidiIn = true;
     

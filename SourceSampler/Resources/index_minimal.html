@@ -67,6 +67,7 @@
 
         var updateStateTimer;
         var updateStateInterval = 500;
+        var currentlyInDefault = true;
 
         function init() {
             showDefault();
@@ -82,7 +83,12 @@
                 if (this.status == 200) {
                     var response = JSON.parse(this.response);
                     if (response.should_ask_for_data){
+                        currentlyInDefault = false;
                         showById(response.web_form_id);
+                    } else {
+                        if (!currentlyInDefault){
+                            showDefault();
+                        }
                     }
                 }
             };
