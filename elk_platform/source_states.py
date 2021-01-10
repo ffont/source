@@ -263,11 +263,11 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def replace_sound_by(self, *args, **kwargs):
+    def replace_sound_by_query(self, *args, **kwargs):
         sound_idx = kwargs.get('sound_idx', -1)
         if sound_idx >  -1:
             # TODO: refactor this to use proper Freesound python API client (?)
-            sm.show_global_message("Finding sound...")
+            sm.show_global_message("Finding sound...", duration=10)
             query = kwargs.get('query', "")
             min_length = float(kwargs.get('minSoundLength', '0'))
             max_length = float(kwargs.get('maxSoundLength', '300'))
@@ -275,14 +275,37 @@ class State(object):
             try:
                 r = requests.get(url)
                 response = r.json()
-                print(response)
-                selected_sound = random.choice(response['results'])
-                sm.show_global_message("Replacing sound...")
-                sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+                if len(response['results']) > 0:
+                    selected_sound = random.choice(response['results'])
+                    sm.show_global_message("Replacing sound...")
+                    sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+                else:
+                    sm.show_global_message("No results found!")
             except Exception as e:
                 print("ERROR while querying Freesound: {0}".format(e))
                 sm.show_global_message("Error :(")
             sm.go_back()
+            sm.go_back()  # Go back 2 times because "replace sound" options are 2 levels deep in menu
+
+    def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
+        # TODO: refactor this to use proper Freesound python API client (?)
+        sm.show_global_message("Finding sound...", duration=10)
+        url = 'https://freesound.org/apiv2/sounds/{0}/similar?fields=id,previews,license,name,username&token={1}'.format(selected_sound_id, FREESOUND_API_KEY)
+        try:
+            r = requests.get(url)
+            response = r.json()
+            selected_sound = random.choice(response['results'])
+            if len(response['results']) > 0:
+                selected_sound = random.choice(response['results'])
+                sm.show_global_message("Replacing sound...")
+                sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+            else:
+                sm.show_global_message("No results found!")
+        except Exception as e:
+            print("ERROR while querying Freesound: {0}".format(e))
+            sm.show_global_message("Error :(")
+        sm.go_back()
+        sm.go_back()  # Go back 2 times because "replace sound" options are 2 levels deep in menu
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -493,6 +516,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
 
 
+
 class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     name = "SoundSelectedState"
@@ -698,6 +722,51 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.show_global_message('Not implemented...')
 
 
+class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+
+    OPTION_BY_QUERY = "New query"
+    OPTION_BY_SIMILARITY = "Find similar"
+    OPTION_FROM_DISK = "Load from disk"
+
+    name = "ReplaceByOptionsMenuState"
+    sound_idx = -1
+    items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_FROM_DISK]
+    page_size = 3
+
+    def __init__(self, sound_idx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sound_idx = sound_idx
+
+    def get_properties(self):
+        properties = super().get_properties().copy()
+        properties.update({
+            'sound_idx': self.sound_idx
+        })
+        return properties
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+        }, {
+            "underline": True, 
+            "text": "Replace by..."
+        }]
+        lines += self.get_menu_item_lines()
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def perform_action(self, action_name):
+        if action_name == self.OPTION_BY_QUERY:
+            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by_query))
+        elif action_name == self.OPTION_BY_SIMILARITY:
+            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            if selected_sound_id != '-':
+                self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
+        else:
+            sm.show_global_message('Not implemented...')
+
+
+
 class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_REPLACE = "Replace by..."
@@ -739,7 +808,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_REPLACE:
-            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by))
+            sm.move_to(ReplaceByOptionsMenuState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_DELETE:
             self.remove_sound(self.sound_idx)
             sm.go_back()
