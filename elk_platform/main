@@ -289,7 +289,7 @@ class ElkBridge(object):
             time.sleep(1.0/elk_bridge_refresh_fps)
             counter += 1
             time_since_start = time.time() - starttime
-            if time_since_start < START_ANIMATION_DURATION:
+            if time_since_start < START_ANIMATION_DURATION and state_manager.should_show_start_animation:
                 frame = frame_from_start_animation(time_since_start/START_ANIMATION_DURATION, counter)
                 if self.ui is not None:
                     led_counter = counter % (N_LEDS + 1)
@@ -301,6 +301,9 @@ class ElkBridge(object):
                         # Light current led
                         self.ui.set_led(led_counter - 1, 1)
             else:
+                if state_manager.should_show_start_animation is True:
+                    state_manager.should_show_start_animation = False
+
                 if self.ui is not None:
                     if not leds_have_been_unset_after_animation:
                         for i in range(0, N_LEDS):

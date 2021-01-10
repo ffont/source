@@ -87,6 +87,7 @@ class StateManager(object):
     source_state = {}
     frame_counter = 0
     selected_open_sound_in_browser = None
+    should_show_start_animation = True
 
     def set_osc_client(self, osc_client):
         self.osc_client = osc_client
@@ -255,11 +256,20 @@ class State(object):
             sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, current_preset_index])
             sm.show_global_message("Saving...")
 
+    def load_preset(self, preset_idx):
+        sm.send_osc_to_plugin("/load_preset", [preset_idx])
+        sm.show_global_message("Loading {0}...".format(preset_idx), duration=5)
+        sm.go_back()  # Go back here because this is called from callback  (NOTE: this should be improved)
+
     def reload_current_preset(self):
         current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
         if current_preset_index > -1:
             sm.send_osc_to_plugin("/load_preset", [current_preset_index])
-            sm.show_global_message("Reloading...")
+            sm.show_global_message("Loading {0}...".format(current_preset_index), duration=5)
+
+    def reapply_note_layout(self, layout_type):
+        sm.send_osc_to_plugin("/reapply_layout", [layout_type]) 
+        sm.show_global_message("Updated layout")
 
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
@@ -497,8 +507,12 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             sm.move_to(SoundSelectedState(sound_idx))
 
     def on_encoder_pressed(self, shift=False):
-        # Open home contextual menu
-        sm.move_to(HomeContextualMenuState())
+        if sm.should_show_start_animation is True:
+            # Stop start animation
+            sm.should_show_start_animation = False
+        else:
+            # Open home contextual menu
+            sm.move_to(HomeContextualMenuState())
 
     def on_encoder_long_pressed(self, shift=False):
         # Save the preset in its location
@@ -691,17 +705,44 @@ class MenuState(State):
         pass
 
 
+class ReapplyNoteLayoutOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+
+    OPTION_CONTIGUOUS = "Contiguous"
+    OPTION_INTERLEAVED = "Interleaved"
+
+    name = "ReapplyNoteLayoutOptionsMenuState"
+    items = [OPTION_CONTIGUOUS, OPTION_INTERLEAVED]
+    page_size = 4
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "Apply note layout..."
+        }]
+        lines += self.get_menu_item_lines()
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def perform_action(self, action_name):
+        if action_name == self.OPTION_CONTIGUOUS:
+            self.reapply_note_layout(0)  # see NOTE_MAPPING_TYPE_CONTIGUOUS in defines.h
+            sm.go_back()
+            sm.go_back()  # Go back two times because layotu type is 2 levels deep in menu hierarchy
+        elif action_name == self.OPTION_INTERLEAVED:
+            self.reapply_note_layout(1)  # see NOTE_MAPPING_TYPE_INTERLEAVED in defines.h
+            sm.go_back()
+            sm.go_back()  # Go back two times because layotu type is 2 levels deep in menu hierarchy
+
+
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
     OPTION_RELOAD = "Reload preset"
-    OPTION_RELAYOUT_C = "Re-layout (cont.)"
-    OPTION_RELAYOUT_I = "Re-layout (int.)"
-    OPTION_NUM_VOICES = "Num voices..."
+    OPTION_RELAYOUT = "Apply note layout..."
+    OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_RELAYOUT_C, OPTION_RELAYOUT_I, OPTION_NUM_VOICES, OPTION_LOAD_PRESET]
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_RELAYOUT, OPTION_NUM_VOICES, OPTION_LOAD_PRESET]
     page_size = 5
 
     def draw_display_frame(self):
@@ -709,16 +750,20 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def perform_action(self, action_name):
-
         if action_name == self.OPTION_SAVE:
             self.save_current_preset()
             sm.go_back()
         elif action_name == self.OPTION_RELOAD:
             self.reload_current_preset()
             sm.go_back()
+        elif action_name == self.OPTION_RELAYOUT:
+            sm.move_to(ReapplyNoteLayoutOptionsMenuState())
         elif action_name == self.OPTION_NUM_VOICES:
             current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
             sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title="Num voices", callback=self.set_num_voices))
+        elif action_name == self.OPTION_LOAD_PRESET:
+            current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, 0)
+            sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title="Load preset...", callback=self.load_preset))
         else:
             sm.show_global_message('Not implemented...')
 

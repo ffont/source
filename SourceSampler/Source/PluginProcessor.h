@@ -116,6 +116,8 @@ public:
                                               const String& soundLicense,
                                               const String& oggDownloadURL);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
     
+    void reapplyNoteLayout(int newNoteLayoutType);
+    
     void addToMidiBuffer(int soundIndex, bool doNoteOff);
 
     double getStartTime();

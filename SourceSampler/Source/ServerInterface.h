@@ -296,6 +296,12 @@ public:
                 String actionMessage = String(ACTION_REPLACE_SOUND_FROM_BASIC_PROPERTIES) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_REAPPLY_LAYOUT){
+            if (message.size() == 1)  {
+                int layoutType = message[0].getInt32();
+                String actionMessage = String(ACTION_REAPPLY_LAYOUT) + ":" + (String)layoutType;
+                sendActionMessage(actionMessage);
+            }
         }
     }
     

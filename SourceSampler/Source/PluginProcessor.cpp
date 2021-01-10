@@ -750,7 +750,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String soundLicense = tokens[4];
         String oggDownloadURL = tokens[5];
         replaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL);
+        
+    } else if (message.startsWith(String(ACTION_REAPPLY_LAYOUT))){
+        int newNoteLayout = message.substring(String(ACTION_REAPPLY_LAYOUT).length() + 1).getIntValue();
+        reapplyNoteLayout(newNoteLayout);
+        
     }
+    
 }
 
 void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state)
@@ -1117,6 +1123,57 @@ void SourceSamplerAudioProcessor::replaceSoundFromBasicSoundProperties(int sound
     soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL, oggDownloadURL, nullptr);
     
     replaceSoundFromSoundInfoValueTree(soundIdx, soundInfo);
+}
+
+void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
+{
+    // TODO: this function uses code repeaded from "setSingleSourceSamplerSoundObject" method, we should abstract that
+    
+    noteLayoutType = newNoteLayoutType;
+    
+    int nSounds = loadedSoundsInfo.getNumChildren();
+    int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
+    
+    for (int soundIdx=0; soundIdx<loadedSoundsInfo.getNumChildren(); soundIdx++){
+        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIdx);
+        
+        ValueTree samplerSoundParametersToUpdate = ValueTree(STATE_SAMPLER_SOUND);
+        
+        if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+            // Set midi root note to the center of the assigned range
+            samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
+                nullptr);
+        } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
+            // Set midi root note starting at C2 (midi note=36)
+            samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx, nullptr),
+                nullptr);
+        }
+        
+        BigInteger midiNotes;
+        if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+            // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+            midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
+        } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
+            // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
+            int rootNoteForSound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx;
+            for (int i=rootNoteForSound; i<128; i=i+nSounds){
+                midiNotes.setBit(i);  // Map notes in upwards direction
+            }
+            for (int i=rootNoteForSound; i>=0; i=i-nSounds){
+                midiNotes.setBit(i);  // Map notes in downwards direction
+            }
+        }
+        samplerSoundParametersToUpdate.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+        
+        // Now to load all parameters that set the layout to the sound
+        sound->loadState(samplerSoundParametersToUpdate);
+    }
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff)
