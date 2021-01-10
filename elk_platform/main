@@ -422,11 +422,15 @@ def index_minimal():
 @http_server.route('/update_minimal_interface_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_minimal_interface_state():
     state = {
-        'should_ask_for_data': False
+        'should_ask_for_data': False,
+        'should_load_url': False
     }
     if state_manager.is_waiting_for_data_from_web():
         state['should_ask_for_data'] = True
         state['web_form_id'] = state_manager.current_state.web_form_id
+    if state_manager.selected_open_sound_in_browser is not None:
+        state['should_load_url'] = 'https://freesound.org/s/{0}'.format(state_manager.selected_open_sound_in_browser)
+        state_manager.selected_open_sound_in_browser = None
     return jsonify(state)
 
 @http_server.route('/index', methods=['GET'])  # Serve interface HTML file with all the available controls

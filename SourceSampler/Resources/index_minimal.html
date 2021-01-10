@@ -90,6 +90,9 @@
                             showDefault();
                         }
                     }
+                    if (response.should_load_url){
+                        window.location.href = response.should_load_url;
+                    }
                 }
             };
             xhr.open('GET', '/update_minimal_interface_state', true);

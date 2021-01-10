@@ -86,6 +86,7 @@ class StateManager(object):
     ui_client = None
     source_state = {}
     frame_counter = 0
+    selected_open_sound_in_browser = None
 
     def set_osc_client(self, osc_client):
         self.osc_client = osc_client
@@ -772,11 +773,12 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     OPTION_REPLACE = "Replace by..."
     OPTION_ASSIGNED_NOTES = "Assigned notes..."
     OPTION_PRECISION_EDITOR = "Precision editor..."
+    OPTION_OPEN_IN_FREESOUND = "Open in Freesound"
     OPTION_DELETE = "Delete"
 
     name = "SoundSelectedContextualMenuState"
     sound_idx = -1
-    items = [OPTION_REPLACE, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_DELETE]
+    items = [OPTION_REPLACE, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE]
     page_size = 4
 
     def __init__(self, sound_idx, *args, **kwargs):
@@ -811,6 +813,12 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.move_to(ReplaceByOptionsMenuState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_DELETE:
             self.remove_sound(self.sound_idx)
+            sm.go_back()
+        elif action_name == self.OPTION_OPEN_IN_FREESOUND:
+            sm.show_global_message('Check browser')
+            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            if selected_sound_id != '-':
+                sm.selected_open_sound_in_browser = selected_sound_id
             sm.go_back()
         else:
             sm.show_global_message('Not implemented...')

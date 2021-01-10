@@ -341,7 +341,7 @@ public:
         return nullptr;
     }
     
-    void cleartSourceSamplerSoundByIdx (int idx) {
+    void clearSourceSamplerSoundByIdx (int idx) {
         int indexInSamplerSoundsList = -1;
         for (int i=0; i<getNumSounds(); i++){
             auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());

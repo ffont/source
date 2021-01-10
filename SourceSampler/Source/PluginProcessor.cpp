@@ -811,6 +811,8 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");
+        
+        // Generate ValueTree for loadedSoundsInfo
         Array<FSSound> sounds = list.toArrayOfSounds();
         std::random_shuffle(sounds.begin(), sounds.end());
         sounds.resize(jmin(numSounds, list.getCount()));
@@ -839,9 +841,15 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             soundInfo.appendChild(soundAnalysis, nullptr);
             soundsInfo.appendChild(soundInfo, nullptr);
         }
-        loadedSoundsInfo = soundsInfo;
-        downloadSounds(false, -1);
+        
+        // Clear existing sounds in sampler
+        sampler.clearSounds();
+        
+        // Save the generated ValueTree to loadedSoundsInfo and trigger download of sounds
         // The loading of sounds will be triggered automatically when sounds finish downloading
+        loadedSoundsInfo = soundsInfo; 
+        downloadSounds(false, -1);
+        
     } else {
         logToState("Query got no results...");
     }
@@ -944,7 +952,7 @@ bool SourceSamplerAudioProcessor::allSoundsFinishedDownloading(){
 void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx)
 {
     // Clear existing sound for this soundIdx in sampler (if any)
-    sampler.cleartSourceSamplerSoundByIdx(soundIdx);
+    sampler.clearSourceSamplerSoundByIdx(soundIdx);
     
     int nSounds = loadedSoundsInfo.getNumChildren();
     int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
@@ -1040,7 +1048,7 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
 void SourceSamplerAudioProcessor::removeSound(int soundIndex)
 {
     // Clear existing sound for this soundIdx in sampler (if any)
-    sampler.cleartSourceSamplerSoundByIdx(soundIndex);
+    sampler.clearSourceSamplerSoundByIdx(soundIndex);
     
     // Update "loadedSoundsInfo" to remove this element and, at the same time, update the "idx" in SamplerSound objects to be in sync with new "loadedSoundsInfo"
     ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
@@ -1064,6 +1072,9 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
 
 void SourceSamplerAudioProcessor::replaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
 {
+    // Clear existing sound for this soundIdx in sampler (if any)
+    sampler.clearSourceSamplerSoundByIdx(soundIndex);
+    
     // Replace the corresponding position of the loadedSoundsInfo ValueTree with the new sound
     ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
