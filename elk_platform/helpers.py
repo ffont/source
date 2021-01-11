@@ -34,6 +34,7 @@ class StateNames(Enum):
     SOUND_DOWNLOAD_PROGRESS = auto()
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
+    SOUND_SLICES = auto()
 
     NUM_ACTIVE_VOICES = auto()
     
@@ -65,6 +66,10 @@ def process_xml_state_from_plugin(plugin_state_xml):
     processed_sounds_info = []
     for sound_info in sounds_info:
 
+        slices = []
+        for onset in sound_info.find_all('onset'):
+            slices.append(onset['time'])
+
         processed_sound_parameters_info = {}
         for parameter in sound_info.find_all('samplersoundparameter'):
             val = parameter['parameter_value']
@@ -79,7 +84,8 @@ def process_xml_state_from_plugin(plugin_state_xml):
             StateNames.SOUND_DURATION: float(sound_info.get('sounddurationinseconds', 0)),
             StateNames.SOUND_OGG_URL: sound_info.get('soundoggurl', ''),
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
-            StateNames.SOUND_PARAMETERS: processed_sound_parameters_info
+            StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
+            StateNames.SOUND_SLICES: slices,
         })
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info

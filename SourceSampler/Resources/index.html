@@ -138,7 +138,7 @@
                 } else if (labelElement.id.indexOf("noteMappingMode") > -1){
                     labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
                 } else if (labelElement.id.indexOf("numSlices") > -1){
-                    var names =  ["auto (n notes)", "auto (onsets)"]
+                    var names =  ["auto (onsets)", "auto (n notes)"]
                     for (var i=2; i<=128; i++){
                         names.push(i);
                     }

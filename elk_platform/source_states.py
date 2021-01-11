@@ -318,8 +318,12 @@ class State(object):
     def set_sound_params_from_precision_editor(self, *args, **kwargs):
         sound_idx = kwargs.get('sound_idx', -1)
         if sound_idx >  -1:
-            print('Setting parameters from precision editor')
-            print(kwargs)
+            duration = float(kwargs['duration'])
+            for parameter_name in ['startPosition', 'endPosition', 'loopStartPosition', 'loopEndPosition']:
+                sm.send_osc_to_plugin('/set_sound_parameter', [sound_idx, parameter_name, float(kwargs[parameter_name])/duration])
+            
+            slices = sorted([val for key, val in kwargs.items() if key.startswith("slice_")])
+            sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])            
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -908,6 +912,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, default={})
             sm.move_to(EnterDataViaWebInterfaceState(
                 title="Precision editor", 
                 web_form_id="soundEditor", 
@@ -916,7 +921,12 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                     'soundID': selected_sound_id, 
                     'soundName': sm.gsp(self.sound_idx, StateNames.SOUND_NAME),
                     'soundOGGURL': sm.gsp(self.sound_idx, StateNames.SOUND_OGG_URL),
-                    'soundPath': os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), '{0}.ogg'.format(selected_sound_id))
+                    'soundPath': os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), '{0}.ogg'.format(selected_sound_id)),
+                    'startPosition': float(sound_parameters.get('startPosition', 0)),
+                    'endPosition': float(sound_parameters.get('endPosition', 1)),
+                    'loopStartPosition': float(sound_parameters.get('loopStartPosition', 0)),
+                    'loopEndPosition': float(sound_parameters.get('loopEndPosition', 1)),
+                    'slices': sm.gsp(self.sound_idx, StateNames.SOUND_SLICES),
                     },
                 extra_data_for_callback={'sound_idx': self.sound_idx}, 
                 callback=self.set_sound_params_from_precision_editor, 

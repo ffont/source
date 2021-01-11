@@ -759,8 +759,52 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int newNoteLayout = message.substring(String(ACTION_REAPPLY_LAYOUT).length() + 1).getIntValue();
         reapplyNoteLayout(newNoteLayout);
         
+    } else if (message.startsWith(String(ACTION_SET_SOUND_SLICES))){
+        String serializedParameters = message.substring(String(ACTION_SET_SOUND_SLICES).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();
+        String serializedSlices = tokens[1];
+        StringArray slices;
+        slices.addTokens(serializedSlices, ",", "");
+        
+        // Add slices to sound info
+        ValueTree soundInfo = loadedSoundsInfo.getChild(soundIndex);
+        ValueTree onsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);  // TODO: this should be renamed or something to store slices with a proper name instead of fs analysis onsets
+        for (int i=0; i<slices.size(); i++){
+            ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
+            onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, slices[i].getFloatValue(), nullptr);
+            onsetTimes.appendChild(onset, nullptr);
+        }
+        ValueTree existingFsAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
+        if (!existingFsAnalysis.isValid()){ existingFsAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS); }
+        
+        if (existingFsAnalysis.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS).isValid()){
+            // An onset analysis is preset, delete it first so then we can update with the new one
+            existingFsAnalysis.removeChild(existingFsAnalysis.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS), nullptr);
+        }
+        existingFsAnalysis.appendChild(onsetTimes, nullptr);
+        
+        // Replace the objects in the value trees
+        if (soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS).isValid()){
+            soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS) = existingFsAnalysis;
+        } else {
+            soundInfo.appendChild(existingFsAnalysis, nullptr);
+        }
+        loadedSoundsInfo.getChild(soundIndex) = soundInfo;
+        
+        // Load them into sound object
+        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        if (sound != nullptr){
+            std::vector<float> onsets = {};
+            for (int i=0; i<onsetTimes.getNumChildren(); i++){
+                ValueTree onsetVT = onsetTimes.getChild(i);
+                float onset = (float)(onsetVT.getProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME));
+                onsets.push_back(onset);
+            }
+            sound->setOnsetTimesSamples(onsets);
+        }
     }
-    
 }
 
 void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state)

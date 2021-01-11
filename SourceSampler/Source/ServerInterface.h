@@ -302,6 +302,15 @@ public:
                 String actionMessage = String(ACTION_REAPPLY_LAYOUT) + ":" + (String)layoutType;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_SLICES){
+            if (message.size() == 2)  {
+                int soundIndex = message[0].getInt32();
+                String serializedSlices = message[1].getString();
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                               serializedSlices + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_SET_SOUND_SLICES) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
         }
     }
     

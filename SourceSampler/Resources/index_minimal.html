@@ -115,14 +115,19 @@
                 scrollParent: true,
                 waveColor: 'gray',
                 progressColor: 'gray',
-                cursorColor: 'white',
+                cursorColor: 'gray',
                 cursorWidth: 1,
                 normalize: true,
             });
 
-            console.log(wavesurfer.zoom())
-            document.querySelector('#zoom_slider').value = wavesurfer.params.pixelRatio;
+            wavesurfer.on('region-dblclick', function(region, event){  
+                if (region.id.startsWith("slice")){
+                    region.remove();
+                }
+            });
+  
 
+            document.querySelector('#zoom_slider').value = wavesurfer.params.pixelRatio;
             document.querySelector('#zoom_slider').oninput = function () {
                 wavesurfer.zoom(Number(this.value));
             };
@@ -257,12 +262,16 @@
             //wavesurfer.load('/serve_sound/?path=' + data.soundPath);
 
             wavesurfer.on('ready', function(){
-                // Add start/end positions wavesurfer regions
+                wavesurfer.clearRegions();
+
                 var duration = wavesurfer.getDuration();
-                var startPosition = 0;
-                var endPosition = duration;
-                var startLoopPosition = startPosition;
-                var endLoopPosition = endPosition;
+                regionLength = duration/500;
+
+                // Add start/end positions wavesurfer regions
+                var startPosition = data.startPosition * duration;
+                var endPosition = data.endPosition * duration;
+                var startLoopPosition = data.loopStartPosition * duration;
+                var endLoopPosition = data.loopEndPosition * duration;
 
                 var regions = [
                     {
@@ -280,14 +289,14 @@
                         resize: false
                     },
                     {
-                        id: "startLoopPosition",
+                        id: "loopStartPosition",
                         start: startLoopPosition,
                         end: startLoopPosition + regionLength,
                         color: 'rgba(255, 43, 43, 0.8)',
                         resize: false
                     },
                     {
-                        id: "endLoopPosition",
+                        id: "loopEndPosition",
                         start: endLoopPosition - regionLength,
                         end: endLoopPosition,
                         color: 'rgba(255, 43, 43, 0.8)',
@@ -297,18 +306,35 @@
                 for (i in regions){
                     wavesurfer.addRegion(regions[i]);
                 }
+
+                var slices = data.slices;
+                for (i in slices){
+                    addSlice(slices[i]);
+                }
             })            
         }
 
-        function addRegion(){
-            var time = wavesurfer.getCurrentTime();
+        function addSlice(time){
+            if (time === undefined){
+                time = wavesurfer.getCurrentTime();
+            }
             wavesurfer.addRegion({
-                id: "onset_" + (Object.keys(wavesurfer.regions.list).length - 4),
-                start: time,
-                end: time + regionLength,
+                id: "slice_" + (Object.keys(wavesurfer.regions.list).length - 4),
+                start: parseFloat(time, 10),
+                end: parseFloat(time, 10) + regionLength,
                 color: 'rgba(255, 255, 0, 0.8)',
                 resize: false
             })
+        }
+
+        function clearSlices(time){
+            var keys = Object.keys(wavesurfer.regions.list);
+            for (i in keys){
+                var key = keys[i];
+                if (key.startsWith("slice_")){
+                    wavesurfer.regions.list[key].remove();
+                }
+            }
         }
 
         function getPrecisionEditorMarkers(){
@@ -322,14 +348,11 @@
         }
 
         function sendPrecisionEditorParams(){
-            data = "";
+            data = "duration:" + wavesurfer.getDuration();
             var markers = getPrecisionEditorMarkers();
             for (i in markers){
                 var marker = markers[i];
-                if (i > 0){
-                    data += ",";
-                }
-                data += marker[0] + ":" + marker[1];
+                data += "," + marker[0] + ":" + marker[1];
             }
             sendDataToServer(data);
             showDefault();
@@ -374,7 +397,9 @@
             <div class="sliderWrapper">
                 <input id="zoom_slider" type="range" min="20" max="3000" value="0">
             </div>
-            <button onclick="addRegion()">+ onset</button>
+            <br>
+            <button onclick="addSlice()">+ slice</button>
+            <button onclick="clearSlices()">clear slices</button>
             <br>
             <button onclick="sendPrecisionEditorParams()">Ok</button>
         </div>
