@@ -522,6 +522,10 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     ValueTree state = ValueTree(STATE_VOLATILE_IDENTIFIER);
     
+    state.setProperty(STATE_VOLATILE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
+    state.setProperty(STATE_VOLATILE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
+    state.setProperty(STATE_VOLATILE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
+    
     state.setProperty(STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS, isQueryDownloadingAndLoadingSounds, nullptr);
     
     String voiceActivations = "";

@@ -10,6 +10,10 @@ class StateNames(Enum):
 
     SYSTEM_STATS = auto()
 
+    SOURCE_DATA_LOCATION = auto()
+    SOUNDS_DATA_LOCATION = auto()
+    PRESETS_DATA_LOCATION = auto()
+
     STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
     NETWORK_IS_CONNECTED = auto()
@@ -40,6 +44,11 @@ def process_xml_state_from_plugin(plugin_state_xml):
     volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
     preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
     sampler_state = preset_state.find_all("Sampler".lower())[0]
+
+    # Source settings
+    source_state[StateNames.SOURCE_DATA_LOCATION] = volatile_state.get('sourceDataLocation'.lower(), None)
+    source_state[StateNames.SOUNDS_DATA_LOCATION] = volatile_state.get('soundsDataLocation'.lower(), None)
+    source_state[StateNames.PRESETS_DATA_LOCATION] = volatile_state.get('presetsDataLocation'.lower(), None)
     
     # Is plugin currently querying and downloading?
     source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"

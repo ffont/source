@@ -171,6 +171,9 @@
 #define STATE_VOLATILE_VOICE_SOUND_IDXS "voiceSoundIdxs"
 #define STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION "voiceSoundPlayPosition"
 #define STATE_VOLATILE_AUDIO_LEVELS "audioLevels"
+#define STATE_VOLATILE_SOURCE_DATA_LOCATION "sourceDataLocation"
+#define STATE_VOLATILE_SOUNDS_DATA_LOCATION "soundsDataLocation"
+#define STATE_VOLATILE_PRESETS_DATA_LOCATION "presetsDataLocation"
 
 #define SERIALIZATION_SEPARATOR ";"
 

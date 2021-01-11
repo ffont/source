@@ -165,12 +165,26 @@
             sendOsc('/load_preset', [idx], 'int')
         }
 
+        function isNumeric(str) {
+            // https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+            if (typeof str != "string") return false // we only process strings!  
+            return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
+                    !isNaN(parseFloat(str)) // ...and ensure strings of whitespace fail
+        }
+
         function makeReplaceSoundQuery(){
             var element = document.getElementById('replaceSound');
             var query = element.querySelector("input[name='query']").value;
             var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
-            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 300;
-            var data = 'query:' + query + ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength
+            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 0.5;
+            var data = 'query:' + query;
+            if (!isNumeric(query)){
+                data += ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength;
+            } else {
+                // if query is numeric only, don'y apply length filter because user is indicating sound id, but limit results to 1 so we don't radomply pick another result
+                data += ',pageSize:1'
+
+            }
             sendDataToserver(data);
             showDefault();
         }
@@ -199,7 +213,7 @@
         <div id="replaceSound" class="controls_card">
             <h2>Replace sound with new query</h2>
             Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="300"><br>
+            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             <br>
             <button onclick="makeReplaceSoundQuery()">Go!</button>
         </div>

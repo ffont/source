@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import requests
 import time
@@ -259,7 +260,6 @@ class State(object):
     def load_preset(self, preset_idx):
         sm.send_osc_to_plugin("/load_preset", [preset_idx])
         sm.show_global_message("Loading {0}...".format(preset_idx), duration=5)
-        sm.go_back()  # Go back here because this is called from callback  (NOTE: this should be improved)
 
     def reload_current_preset(self):
         current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
@@ -282,7 +282,8 @@ class State(object):
             query = kwargs.get('query', "")
             min_length = float(kwargs.get('minSoundLength', '0'))
             max_length = float(kwargs.get('maxSoundLength', '300'))
-            url = 'https://freesound.org/apiv2/search/text/?query={0}&filter=duration:[{1}+TO+{2}]&fields=id,previews,license,name,username&token={3}'.format(query, min_length, max_length, FREESOUND_API_KEY)
+            page_size = float(kwargs.get('pageSize', '50'))
+            url = 'https://freesound.org/apiv2/search/text/?query={0}&filter=duration:[{1}+TO+{2}]&fields=id,previews,license,name,username&page_size={3}&token={4}'.format(query, min_length, max_length, page_size, FREESOUND_API_KEY)
             try:
                 r = requests.get(url)
                 response = r.json()
@@ -295,8 +296,6 @@ class State(object):
             except Exception as e:
                 print("ERROR while querying Freesound: {0}".format(e))
                 sm.show_global_message("Error :(")
-            sm.go_back()
-            sm.go_back()  # Go back 2 times because "replace sound" options are 2 levels deep in menu
 
     def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
         # TODO: refactor this to use proper Freesound python API client (?)
@@ -315,8 +314,6 @@ class State(object):
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             sm.show_global_message("Error :(")
-        sm.go_back()
-        sm.go_back()  # Go back 2 times because "replace sound" options are 2 levels deep in menu
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -705,32 +702,43 @@ class MenuState(State):
         pass
 
 
-class ReapplyNoteLayoutOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+class MenuCallbackState(MenuState):
 
-    OPTION_CONTIGUOUS = "Contiguous"
-    OPTION_INTERLEAVED = "Interleaved"
-
-    name = "ReapplyNoteLayoutOptionsMenuState"
-    items = [OPTION_CONTIGUOUS, OPTION_INTERLEAVED]
+    callback = None
+    title1 = "NoTitle1"
+    title2 = "NoTitle2"
     page_size = 4
+    go_back_n_times = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.selected_item = kwargs.get('selected_item', 0)
+        self.items = kwargs.get('items', [])
+        self.title1 = kwargs.get('title1', None)
+        self.title2 = kwargs.get('title2', None)
+        self.page_size = kwargs.get('page_size', 4)
+        self.callback = kwargs.get('callback', None)
+        self.go_back_n_times = kwargs.get('go_back_n_times', 0)
 
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "Apply note layout..."
+            "text": self.title1
         }]
+        if self.page_size == 3:
+            # Page size of 3 gives space for ane extra title
+            lines.append({
+                "underline": True, 
+                "text": self.title2
+            })
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def perform_action(self, action_name):
-        if action_name == self.OPTION_CONTIGUOUS:
-            self.reapply_note_layout(0)  # see NOTE_MAPPING_TYPE_CONTIGUOUS in defines.h
+        if self.callback is not None:
+            self.callback(self.selected_item)
+        for i in range(0, self.go_back_n_times):
             sm.go_back()
-            sm.go_back()  # Go back two times because layotu type is 2 levels deep in menu hierarchy
-        elif action_name == self.OPTION_INTERLEAVED:
-            self.reapply_note_layout(1)  # see NOTE_MAPPING_TYPE_INTERLEAVED in defines.h
-            sm.go_back()
-            sm.go_back()  # Go back two times because layotu type is 2 levels deep in menu hierarchy
 
 
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -742,7 +750,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_RELAYOUT, OPTION_NUM_VOICES, OPTION_LOAD_PRESET]
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_RELAYOUT, OPTION_NUM_VOICES]
     page_size = 5
 
     def draw_display_frame(self):
@@ -757,13 +765,33 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             self.reload_current_preset()
             sm.go_back()
         elif action_name == self.OPTION_RELAYOUT:
-            sm.move_to(ReapplyNoteLayoutOptionsMenuState())
+            # see NOTE_MAPPING_TYPE_CONTIGUOUS in defines.h, contiguous and interleaved indexes must match with those in that file (0 and 1)
+            sm.move_to(MenuCallbackState(items=['Contiguous', 'Interleaved'], selected_item=0, title1="Apply note layout...", callback=self.reapply_note_layout, go_back_n_times=2))
         elif action_name == self.OPTION_NUM_VOICES:
             current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
-            sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title="Num voices", callback=self.set_num_voices))
+            sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Num voices", callback=self.set_num_voices))
         elif action_name == self.OPTION_LOAD_PRESET:
+            # Scan existing .xml files to know preset names
+            # TODO: the presetting system should be imporved so we don't need to scan the presets folder every time
+            preset_names = {}
+            presets_folder = sm.source_state.get(StateNames.PRESETS_DATA_LOCATION, None)
+            if presets_folder is not None:
+                for filename in os.listdir(presets_folder):
+                    if filename.endswith('.xml'):
+                        try:
+                            preset_id = int(filename.split('.xml')[0])
+                        except ValueError:
+                            # Not a valid preset file
+                            continue
+                        file_contents = open(os.path.join(presets_folder, filename), 'r').read()
+                        preset_name = file_contents.split('SourcePresetState presetName="')[1].split('"')[0]
+                        preset_names[preset_id] = preset_name
+
             current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, 0)
-            sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title="Load preset...", callback=self.load_preset))
+            if not preset_names:
+                sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
+            else:
+                sm.move_to(MenuCallbackState(items=['{0}:{1}'.format(i, preset_names.get(i, 'empty')) for i in range(0, 128)], selected_item=current_preset_index, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -803,11 +831,13 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
-            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by_query))
+            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by_query, go_back_n_times=3))
         elif action_name == self.OPTION_BY_SIMILARITY:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
                 self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
+                sm.go_back()
+                sm.go_back()  # Go back 2 times because option is 2-levels deep in menu hierarchy
         else:
             sm.show_global_message('Not implemented...')
 
@@ -879,16 +909,20 @@ class EnterNumberState(State):
     value = 0
     minimum = 0
     maximum = 128
-    title = "NoTitle"
+    title1 = "NoTitle1"
+    title2 = "NoTitle2"
     callback = None
+    go_back_n_times = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.value = kwargs.get('initial', 0)
         self.minimum = kwargs.get('minimum', 0)
         self.maximum = kwargs.get('maximum', 128)
-        self.title = kwargs.get('title', "NoTitle")
+        self.title1 = kwargs.get('title1', None)
+        self.title2 = kwargs.get('title2', None)
         self.callback = kwargs.get('callback', None)
+        self.go_back_n_times = kwargs.get('go_back_n_times', 0)
 
     def increase(self):
         self.value += 1
@@ -903,8 +937,13 @@ class EnterNumberState(State):
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": self.title
+            "text": self.title1
         }]
+        if self.title2:
+            lines += [{
+                "underline": True, 
+                "text": self.title1
+            }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         return add_centered_value_to_frame(frame, self.value)
 
@@ -917,6 +956,8 @@ class EnterNumberState(State):
     def on_encoder_pressed(self, shift=False):
         if self.callback is not None:
             self.callback(self.value)
+        for i in range(0, self.go_back_n_times):
+            sm.go_back()
         sm.go_back()
 
     def on_encoder_long_pressed(self, shift=False):
@@ -929,6 +970,8 @@ class EnterDataViaWebInterfaceState(State):
     callback = None
     web_form_id = ""
     extra_data_for_callback = {}
+    go_back_n_times = 0
+    
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -936,6 +979,7 @@ class EnterDataViaWebInterfaceState(State):
         self.callback = kwargs.get('callback', None)
         self.web_form_id = kwargs.get('web_form_id', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
+        self.go_back_n_times = kwargs.get('go_back_n_times', 0)
 
     def draw_display_frame(self):
         lines = [{
@@ -950,7 +994,8 @@ class EnterDataViaWebInterfaceState(State):
         data.update(self.extra_data_for_callback)
         if self.callback is not None:
             self.callback(**data)
-        sm.go_back()
+        for i in range(0, self.go_back_n_times):
+            sm.go_back()
 
     def on_encoder_long_pressed(self, shift=False):
         sm.go_back()
