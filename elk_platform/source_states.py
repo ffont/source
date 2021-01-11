@@ -170,14 +170,14 @@ class StateManager(object):
             self.state_stack.pop()
             self.current_state.on_activating_state()
 
-    def get_source_state_selected_sound_property(self, sound_idx, property_name):
+    def get_source_state_selected_sound_property(self, sound_idx, property_name, default="-"):
         if self.source_state is not None and StateNames.SOUNDS_INFO in self.source_state:
             if sound_idx < self.source_state.get(StateNames.NUM_SOUNDS, 0):
                 return self.source_state[StateNames.SOUNDS_INFO][sound_idx][property_name]
-        return '-'
+        return default
 
-    def gsp(self, sound_idx, property_name):
-        return self.get_source_state_selected_sound_property(sound_idx, property_name)
+    def gsp(self, sound_idx, property_name, default=None):
+        return self.get_source_state_selected_sound_property(sound_idx, property_name, default)
 
     def is_waiting_for_data_from_web(self):
         return type(self.current_state) == EnterDataViaWebInterfaceState
@@ -314,6 +314,12 @@ class State(object):
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             sm.show_global_message("Error :(")
+
+    def set_sound_params_from_precision_editor(self, *args, **kwargs):
+        sound_idx = kwargs.get('sound_idx', -1)
+        if sound_idx >  -1:
+            print('Setting parameters from precision editor')
+            print(kwargs)
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -831,7 +837,12 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
-            sm.move_to(EnterDataViaWebInterfaceState(title="Replace sound by", web_form_id="replaceSound", extra_data_for_callback={'sound_idx': self.sound_idx}, callback=self.replace_sound_by_query, go_back_n_times=3))
+            sm.move_to(EnterDataViaWebInterfaceState(
+                title="Replace sound by", 
+                web_form_id="replaceSound", 
+                extra_data_for_callback={'sound_idx': self.sound_idx}, 
+                callback=self.replace_sound_by_query, 
+                go_back_n_times=3))
         elif action_name == self.OPTION_BY_SIMILARITY:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
@@ -895,6 +906,21 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             if selected_sound_id != '-':
                 sm.selected_open_sound_in_browser = selected_sound_id
             sm.go_back()
+        elif action_name == self.OPTION_PRECISION_EDITOR:
+            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            sm.move_to(EnterDataViaWebInterfaceState(
+                title="Precision editor", 
+                web_form_id="soundEditor", 
+                data_for_web_form_id={
+                    'soundIdx': self.sound_idx, 
+                    'soundID': selected_sound_id, 
+                    'soundName': sm.gsp(self.sound_idx, StateNames.SOUND_NAME),
+                    'soundOGGURL': sm.gsp(self.sound_idx, StateNames.SOUND_OGG_URL),
+                    'soundPath': os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), '{0}.ogg'.format(selected_sound_id))
+                    },
+                extra_data_for_callback={'sound_idx': self.sound_idx}, 
+                callback=self.set_sound_params_from_precision_editor, 
+                go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -969,6 +995,7 @@ class EnterDataViaWebInterfaceState(State):
     title = "NoTitle"
     callback = None
     web_form_id = ""
+    data_for_web_form_id = {}
     extra_data_for_callback = {}
     go_back_n_times = 0
     
@@ -978,6 +1005,7 @@ class EnterDataViaWebInterfaceState(State):
         self.title = kwargs.get('title', "NoTitle")
         self.callback = kwargs.get('callback', None)
         self.web_form_id = kwargs.get('web_form_id', None)
+        self.data_for_web_form_id = kwargs.get('data_for_web_form_id', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
 

@@ -33,7 +33,7 @@ from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMA
 
 from source_states import state_manager
 
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
 import threading
 
@@ -431,6 +431,7 @@ def update_minimal_interface_state():
     if state_manager.is_waiting_for_data_from_web():
         state['should_ask_for_data'] = True
         state['web_form_id'] = state_manager.current_state.web_form_id
+        state['web_form_data'] = state_manager.current_state.data_for_web_form_id
     if state_manager.selected_open_sound_in_browser is not None:
         state['should_load_url'] = 'https://freesound.org/s/{0}'.format(state_manager.selected_open_sound_in_browser)
         state_manager.selected_open_sound_in_browser = None
@@ -440,6 +441,13 @@ def update_minimal_interface_state():
 def index():
     tvars = {}
     return render_template("index.html", **tvars)
+
+@http_server.route('/serve_sound/', methods=['GET'])  # This is used to serve downloaded files as static files for web UI to load them
+def serve_sound():
+    path = request.args['path']
+    filename = path.split('/')[-1]
+    base_path = path.split(filename)[0]
+    return send_from_directory(base_path, filename)
 
 @http_server.route('/simulator', methods=['GET'])  # Serve the interface which simulates blackboard
 def simulator():

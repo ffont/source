@@ -4,6 +4,9 @@
 <head>
     <title>Source, a Freesound-powered sampler</title>
     <meta name="viewport" content="width=300, user-scalable=no">
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js"></script>
 
     <style>
         body {
@@ -21,6 +24,18 @@
         #wrapper {
             padding: 5px;
             width: 290px;
+        }
+        
+        #waveformWrapper {
+            margin-bottom: 10px;
+        }
+
+        .sliderWrapper {
+            background-color:rgb(37, 37, 37);
+            display:inline-block;
+            border-radius: 4px;
+            border: 0px;
+            padding: 2px;
         }
     
         input {
@@ -50,6 +65,10 @@
             color:white;
         }
 
+        button:active {
+            background-color: rgb(110, 110, 110);
+        }
+
         select {
             font-size: 120%;
             width: 180px;
@@ -68,12 +87,45 @@
         var updateStateTimer;
         var updateStateInterval = 500;
         var currentlyInDefault = true;
+        var wavesurfer;
+        var regionLength = 0.05;
 
         function init() {
             showDefault();
             updateStateTimer = setInterval(function () {
                 updateMinimalInterfaceState();
             }, updateStateInterval);
+
+            wavesurfer = WaveSurfer.create({
+                container: '#waveform',
+                plugins: [
+                    WaveSurfer.regions.create({}),
+                    WaveSurfer.timeline.create({
+                        container: '#wave-timeline',
+                        primaryColor: 'white',
+                        secondaryColor: 'white',
+                        primaryFontColor: 'white',
+                        secondaryFontColor: 'white',
+                        timeInterval: 1.0,
+                        primaryLabelInterval: 1,
+                        primaryLabelInterval: 0.5,    
+                    })
+                ],
+                minPxPerSec: 50,
+                scrollParent: true,
+                waveColor: 'gray',
+                progressColor: 'gray',
+                cursorColor: 'white',
+                cursorWidth: 1,
+                normalize: true,
+            });
+
+            console.log(wavesurfer.zoom())
+            document.querySelector('#zoom_slider').value = wavesurfer.params.pixelRatio;
+
+            document.querySelector('#zoom_slider').oninput = function () {
+                wavesurfer.zoom(Number(this.value));
+            };
         }
 
         function updateMinimalInterfaceState(){
@@ -84,7 +136,7 @@
                     var response = JSON.parse(this.response);
                     if (response.should_ask_for_data){
                         currentlyInDefault = false;
-                        showById(response.web_form_id);
+                        showById(response.web_form_id, response.web_form_data);
                     } else {
                         if (!currentlyInDefault){
                             showDefault();
@@ -107,6 +159,10 @@
         }
 
         function showDefault() {
+            if (wavesurfer !== undefined){
+                wavesurfer.empty();
+                wavesurfer.clearRegions();
+            }
             setAllClassElementsDisplayTo("controls_card", "none");
             setAllClassElementsDisplayTo("show_as_default", "block");
         }
@@ -115,9 +171,15 @@
             setAllClassElementsDisplayTo("show_as_default", "none");
         }       
 
-        function showById(elementID){
-            hideDefault();
-            document.getElementById(elementID).style.display = "block";
+        function showById(elementID, data){
+            if (document.getElementById(elementID).style.display != "block"){
+                hideDefault();
+                document.getElementById(elementID).style.display = "block";
+
+                if (elementID == "soundEditor"){
+                    initSoundEditor(data);
+                }
+            }
         }
 
         function sendOsc(address, values, types) {
@@ -131,7 +193,7 @@
             xhr.send();
         }
 
-        function sendDataToserver(data) {
+        function sendDataToServer(data) {
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (this.readyState != 4) return;
@@ -185,7 +247,91 @@
                 data += ',pageSize:1'
 
             }
-            sendDataToserver(data);
+            sendDataToServer(data);
+            showDefault();
+        }
+
+        function initSoundEditor(data){
+            document.getElementById("precision_editor_sound_id").innerHTML = data.soundID;
+            wavesurfer.load(data.soundOGGURL.replace('ogg', 'mp3')); // Use MP3 instead so it can be loaded in Safari as well...
+            //wavesurfer.load('/serve_sound/?path=' + data.soundPath);
+
+            wavesurfer.on('ready', function(){
+                // Add start/end positions wavesurfer regions
+                var duration = wavesurfer.getDuration();
+                var startPosition = 0;
+                var endPosition = duration;
+                var startLoopPosition = startPosition;
+                var endLoopPosition = endPosition;
+
+                var regions = [
+                    {
+                        id: "startPosition",
+                        start: startPosition,
+                        end: startPosition + regionLength,
+                        color: 'rgba(171, 255, 43, 0.8)',
+                        resize: false
+                    },
+                    {
+                        id: "endPosition",
+                        start: endPosition - regionLength,
+                        end: endPosition,
+                        color: 'rgba(171, 255, 43, 0.8)',
+                        resize: false
+                    },
+                    {
+                        id: "startLoopPosition",
+                        start: startLoopPosition,
+                        end: startLoopPosition + regionLength,
+                        color: 'rgba(255, 43, 43, 0.8)',
+                        resize: false
+                    },
+                    {
+                        id: "endLoopPosition",
+                        start: endLoopPosition - regionLength,
+                        end: endLoopPosition,
+                        color: 'rgba(255, 43, 43, 0.8)',
+                        resize: false
+                    }
+                ]
+                for (i in regions){
+                    wavesurfer.addRegion(regions[i]);
+                }
+            })            
+        }
+
+        function addRegion(){
+            var time = wavesurfer.getCurrentTime();
+            wavesurfer.addRegion({
+                id: "onset_" + (Object.keys(wavesurfer.regions.list).length - 4),
+                start: time,
+                end: time + regionLength,
+                color: 'rgba(255, 255, 0, 0.8)',
+                resize: false
+            })
+        }
+
+        function getPrecisionEditorMarkers(){
+            var markers = [];
+            var keys = Object.keys(wavesurfer.regions.list);
+            for (i in keys){
+                var key = keys[i];
+                markers.push([wavesurfer.regions.list[key].id, wavesurfer.regions.list[key].start]);
+            }
+            return markers;
+        }
+
+        function sendPrecisionEditorParams(){
+            data = "";
+            var markers = getPrecisionEditorMarkers();
+            for (i in markers){
+                var marker = markers[i];
+                if (i > 0){
+                    data += ",";
+                }
+                data += marker[0] + ":" + marker[1];
+            }
+            sendDataToServer(data);
             showDefault();
         }
         
@@ -216,6 +362,21 @@
             Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             <br>
             <button onclick="makeReplaceSoundQuery()">Go!</button>
+        </div>
+
+        <div id="soundEditor" class="controls_card">
+            <h2>Precision editor sound <span id="precision_editor_sound_id"></span></h2>
+            <div id="waveformWrapper">
+                <div id="waveform"></div>
+                <div id="wave-timeline"></div>
+            </div>
+            Zoom: 
+            <div class="sliderWrapper">
+                <input id="zoom_slider" type="range" min="20" max="3000" value="0">
+            </div>
+            <button onclick="addRegion()">+ onset</button>
+            <br>
+            <button onclick="sendPrecisionEditorParams()">Ok</button>
         </div>
 
         <div id="savePreset" class="controls_card show_as_default">

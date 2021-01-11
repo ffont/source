@@ -33,6 +33,7 @@ class StateNames(Enum):
     SOUND_DURATION = auto()
     SOUND_DOWNLOAD_PROGRESS = auto()
     SOUND_PARAMETERS = auto()
+    SOUND_OGG_URL = auto()
 
     NUM_ACTIVE_VOICES = auto()
     
@@ -76,6 +77,7 @@ def process_xml_state_from_plugin(plugin_state_xml):
             StateNames.SOUND_LICENSE: translate_cc_license_url(sound_info.get('soundlicense', '-')),
             StateNames.SOUND_AUTHOR: sound_info.get('sounduser', '-'),
             StateNames.SOUND_DURATION: float(sound_info.get('sounddurationinseconds', 0)),
+            StateNames.SOUND_OGG_URL: sound_info.get('soundoggurl', ''),
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info
         })
