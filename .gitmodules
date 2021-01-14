@@ -7,6 +7,6 @@
 [submodule "SourceSampler/3rdParty/cpp-httplib"]
 	path = SourceSampler/3rdParty/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib
-[submodule "SourceSampler/3rdParty/ff_meters"]
-	path = SourceSampler/3rdParty/ff_meters
-	url = https://github.com/ffAudio/ff_meters.git
+[submodule "SourceSampler/3rdParty/twine"]
+	path = SourceSampler/3rdParty/twine
+	url = https://github.com/elk-audio/twine
