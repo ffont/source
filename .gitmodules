@@ -1,12 +1,12 @@
 [submodule "SourceSampler/3rdParty/JUCE"]
 	path = SourceSampler/3rdParty/JUCE
 	url = https://github.com/juce-framework/JUCE
-[submodule "SourceSampler/3rdParty/JUCE_ELK"]
-	path = SourceSampler/3rdParty/JUCE_ELK
-	url = https://github.com/ffont/JUCE_ELK
 [submodule "SourceSampler/3rdParty/cpp-httplib"]
 	path = SourceSampler/3rdParty/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib
 [submodule "SourceSampler/3rdParty/twine"]
 	path = SourceSampler/3rdParty/twine
 	url = https://github.com/elk-audio/twine
+[submodule "SourceSampler/3rdParty/ff_meters"]
+	path = SourceSampler/3rdParty/ff_meters
+	url = git@github.com:ffont/ff_meters.git
