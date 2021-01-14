@@ -256,17 +256,6 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
-    #if ELK_BUILD
-    // It is very ugly to do this here... should find an alternative!
-    // TODO: now doing this in a run script outside the plugin...
-    /*
-    if (!aconnectWasRun){
-        String aconnectCommandLine =  "aconnect " + String(ACONNECT_MIDI_INTERFACE_ID) + " " + String(ACONNECT_SUSHI_ID);
-        logToState("Calling aconnect to setup MIDI in to sushi connection");
-        exec(static_cast<const char*> (aconnectCommandLine.toUTF8()));
-        aconnectWasRun = true;
-    }*/
-    #endif
     
     // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
     // it gets played here

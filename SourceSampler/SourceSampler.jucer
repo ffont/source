@@ -4,7 +4,7 @@
               projectLineFeed="&#10;" companyName="Rita &amp; Aurora" companyWebsite="https://ritaandaurora.github.io"
               companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Source">
@@ -35,6 +35,27 @@
     </GROUP>
     <GROUP id="{25557E26-6D9E-17DA-4894-2F58087073FD}" name="Resources">
       <FILE id="xFci8w" name="index.html" compile="0" resource="0" file="Resources/index.html"/>
+    </GROUP>
+    <GROUP id="{6744226D-A4B5-8D8E-F2D5-42D61939B792}" name="3rdParty">
+      <GROUP id="{D188060C-1804-CFBA-6A3B-867B909CAF2A}" name="twine">
+        <GROUP id="{162EDE7C-16C4-40D6-22EC-ACC0C87940B9}" name="include">
+          <GROUP id="{49CAFD5F-8135-E6CE-D910-32E44FAAC396}" name="twine">
+            <FILE id="MoRLfv" name="twine.h" compile="0" resource="0" file="3rdParty/twine/include/twine/twine.h"/>
+          </GROUP>
+        </GROUP>
+        <GROUP id="{002A1744-0E72-5BBF-ED53-E2B3702D638F}" name="src">
+          <FILE id="HcagbN" name="thread_helpers.h" compile="0" resource="0"
+                file="3rdParty/twine/src/thread_helpers.h"/>
+          <FILE id="dIyXOn" name="twine.cpp" compile="1" resource="0" file="3rdParty/twine/src/twine.cpp"/>
+          <FILE id="z4JfbX" name="twine_internal.h" compile="0" resource="0"
+                file="3rdParty/twine/src/twine_internal.h"/>
+          <FILE id="AhaLta" name="worker_pool_common.h" compile="0" resource="0"
+                file="3rdParty/twine/src/worker_pool_common.h"/>
+          <FILE id="QjvOjS" name="worker_pool_implementation.h" compile="0" resource="0"
+                file="3rdParty/twine/src/worker_pool_implementation.h"/>
+          <FILE id="wTBWQ4" name="xenomai_stubs.h" compile="0" resource="0" file="3rdParty/twine/src/xenomai_stubs.h"/>
+        </GROUP>
+      </GROUP>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>

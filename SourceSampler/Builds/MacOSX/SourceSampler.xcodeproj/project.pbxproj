@@ -97,6 +97,10 @@
 			isa = PBXBuildFile;
 			fileRef = 81C399931B0DB13A690E16D7;
 		};
+		B5B93216BD5C267A93138702 = {
+			isa = PBXBuildFile;
+			fileRef = 39B46750D7C6962A170A9ABF;
+		};
 		1A1186452CA817A639F17376 = {
 			isa = PBXBuildFile;
 			fileRef = 2BA4D99B69EAE02FB77A8D14;
@@ -188,6 +192,13 @@
 			path = ../../Source/PluginProcessor.cpp;
 			sourceTree = "SOURCE_ROOT";
 		};
+		033342EB572F049A39C6B21A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "worker_pool_implementation.h";
+			path = "../../3rdParty/twine/src/worker_pool_implementation.h";
+			sourceTree = "SOURCE_ROOT";
+		};
 		042B13F5D6A591E5AA8E1FF6 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.h;
@@ -258,6 +269,13 @@
 			path = ../../Source/Downloader.h;
 			sourceTree = "SOURCE_ROOT";
 		};
+		1D60E7D5B1EF58ED10B71F7D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "xenomai_stubs.h";
+			path = "../../3rdParty/twine/src/xenomai_stubs.h";
+			sourceTree = "SOURCE_ROOT";
+		};
 		1DEE04B05B79DF8EA3A9E5DD = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.objcpp;
@@ -305,6 +323,13 @@
 			lastKnownFileType = sourcecode.c.h;
 			name = BinaryData.h;
 			path = ../../Source/BinaryData.h;
+			sourceTree = "SOURCE_ROOT";
+		};
+		39B46750D7C6962A170A9ABF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			name = twine.cpp;
+			path = ../../3rdParty/twine/src/twine.cpp;
 			sourceTree = "SOURCE_ROOT";
 		};
 		3B4E30020341734D174E0FFD = {
@@ -419,6 +444,13 @@
 			path = "../../JuceLibraryCode/include_juce_audio_formats.mm";
 			sourceTree = "SOURCE_ROOT";
 		};
+		63E83AC6DCE44B9FB257A26D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "twine_internal.h";
+			path = "../../3rdParty/twine/src/twine_internal.h";
+			sourceTree = "SOURCE_ROOT";
+		};
 		6A463BCE492C7AF8B1EE0AF4 = {
 			isa = PBXFileReference;
 			lastKnownFileType = file;
@@ -439,6 +471,13 @@
 			name = Foundation.framework;
 			path = System/Library/Frameworks/Foundation.framework;
 			sourceTree = SDKROOT;
+		};
+		74B0C74F1B02CE4876111261 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "worker_pool_common.h";
+			path = "../../3rdParty/twine/src/worker_pool_common.h";
+			sourceTree = "SOURCE_ROOT";
 		};
 		750DD7B579F6D47DA8B86F05 = {
 			isa = PBXFileReference;
@@ -510,6 +549,13 @@
 			path = "Info-Standalone_Plugin.plist";
 			sourceTree = "SOURCE_ROOT";
 		};
+		8DE2AF40D194C4508C5151C7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = twine.h;
+			path = ../../3rdParty/twine/include/twine/twine.h;
+			sourceTree = "SOURCE_ROOT";
+		};
 		8E697AC7EC717E5F9AFBDC48 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.objcpp;
@@ -529,13 +575,6 @@
 			lastKnownFileType = file;
 			name = "juce_dsp";
 			path = "../../3rdParty/JUCE/modules/juce_dsp";
-			sourceTree = "SOURCE_ROOT";
-		};
-		9B7E8E8451757249901CDD5C = {
-			isa = PBXFileReference;
-			lastKnownFileType = file;
-			name = "juce_audio_basics";
-			path = "../../3rdParty/JUCE/modules/juce_audio_basics";
 			sourceTree = "SOURCE_ROOT";
 		};
 		A7F15CCA91692BBC43414E81 = {
@@ -578,6 +617,13 @@
 			lastKnownFileType = file;
 			name = "juce_audio_processors";
 			path = "../../3rdParty/JUCE/modules/juce_audio_processors";
+			sourceTree = "SOURCE_ROOT";
+		};
+		9B7E8E8451757249901CDD5C = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_audio_basics";
+			path = "../../3rdParty/JUCE/modules/juce_audio_basics";
 			sourceTree = "SOURCE_ROOT";
 		};
 		A0D94CD81D7A0528B6351D81 = {
@@ -692,6 +738,13 @@
 			path = "../../JuceLibraryCode/include_juce_data_structures.mm";
 			sourceTree = "SOURCE_ROOT";
 		};
+		E65BCF506A583B20CBD8A993 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = "thread_helpers.h";
+			path = "../../3rdParty/twine/src/thread_helpers.h";
+			sourceTree = "SOURCE_ROOT";
+		};
 		E8B87AD77D80AAC0BF6059A4 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.cpp;
@@ -751,11 +804,58 @@
 			name = Resources;
 			sourceTree = "<group>";
 		};
+		AFE81A57462AAD9BF0A3C867 = {
+			isa = PBXGroup;
+			children = (
+				8DE2AF40D194C4508C5151C7,
+			);
+			name = twine;
+			sourceTree = "<group>";
+		};
+		584BAF9F54DA040316CB8EFA = {
+			isa = PBXGroup;
+			children = (
+				AFE81A57462AAD9BF0A3C867,
+			);
+			name = include;
+			sourceTree = "<group>";
+		};
+		49C2DEEB01261B3B3213BC15 = {
+			isa = PBXGroup;
+			children = (
+				E65BCF506A583B20CBD8A993,
+				39B46750D7C6962A170A9ABF,
+				63E83AC6DCE44B9FB257A26D,
+				74B0C74F1B02CE4876111261,
+				033342EB572F049A39C6B21A,
+				1D60E7D5B1EF58ED10B71F7D,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		7406BC47806397BEB37CF66D = {
+			isa = PBXGroup;
+			children = (
+				584BAF9F54DA040316CB8EFA,
+				49C2DEEB01261B3B3213BC15,
+			);
+			name = twine;
+			sourceTree = "<group>";
+		};
+		8C9715A3E0AF5980A2D12F0A = {
+			isa = PBXGroup;
+			children = (
+				7406BC47806397BEB37CF66D,
+			);
+			name = 3rdParty;
+			sourceTree = "<group>";
+		};
 		B581CF0AC49AC7944C3677B3 = {
 			isa = PBXGroup;
 			children = (
 				D6F4544776E0B949F646A967,
 				8CD54EDA8114AD8B4C8A6FFE,
+				8C9715A3E0AF5980A2D12F0A,
 			);
 			name = SourceSampler;
 			sourceTree = "<group>";
@@ -951,6 +1051,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -966,6 +1067,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1017,6 +1119,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1033,6 +1136,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1084,6 +1188,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1099,6 +1204,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1151,6 +1257,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1167,6 +1274,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1216,6 +1324,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1229,6 +1338,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1276,6 +1386,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1290,6 +1401,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1338,6 +1450,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1350,6 +1463,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1399,6 +1513,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1412,6 +1527,7 @@
 					"../../3rdParty/JUCE/modules",
 					"../../3rdParty/cpp-httplib/",
 					"../../3rdParty/ff_meters/LevelMeter/",
+					"../../3rdParty/twine/include/",
 					"../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
@@ -1814,6 +1930,7 @@
 				A4FB6FE8FE17AF5967D16FB6,
 				DF8FB1342E15E248CF2BB8FB,
 				332C87C6F36E349E37C4E660,
+				B5B93216BD5C267A93138702,
 				1A1186452CA817A639F17376,
 				39A0A3E4216481B5D1B8E5D5,
 				8C932076F004C8FABE6B6076,

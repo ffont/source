@@ -519,10 +519,17 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
     // This is called when note on is received
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
+        double pluginSampleRate = sound->pluginSampleRate;
+        if (pluginSampleRate == 0.0){
+            // TOOD: this is a hack to avoid this being wrongly initialized
+            // I should investigate why this happens from time to time
+            pluginSampleRate = 48000.0;
+        }
+        
         // Reset processor chain internal state
         processorChain.reset();
         auto& gain = processorChain.get<masterGainIndex>();
-        gain.setRampDurationSeconds(sound->pluginBlockSize/sound->pluginSampleRate);
+        gain.setRampDurationSeconds(sound->pluginBlockSize/pluginSampleRate);
         
         // Reset some parameters
         adsr.reset();
@@ -536,7 +543,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         currentlyPlayedNoteIndex = getCurrentlyPlayingNoteIndex();
         
         // Load and configure parameters from SourceSamplerSound
-        adsr.setSampleRate (sound->pluginSampleRate);
+        adsr.setSampleRate (pluginSampleRate);
         // TODO: what should really be the sample rate below?
         adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
         
@@ -665,12 +672,12 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
             if (soundLoopStartPosition != loopStartPositionSample){
                 // If the loop start position has changed, process it to move it to the next positive zero crossing
                 fixedLoopStartPositionSample = findNearestPositiveZeroCrossing(soundLoopStartPosition, signal, 2000);
-                DBG("Fixed start sample position by " << fixedLoopStartPositionSample - soundLoopStartPosition);
+                //DBG("Fixed start sample position by " << fixedLoopStartPositionSample - soundLoopStartPosition);
             }
             if (soundLoopEndPosition != loopEndPositionSample){
                 // If the loop end position has changed, process it to move it to the next positive zero crossing
                 fixedLoopEndPositionSample = findNearestPositiveZeroCrossing(soundLoopEndPosition, signal, -2000);
-                DBG("Fixed end sample position by " << fixedLoopEndPositionSample - soundLoopEndPosition);
+                //DBG("Fixed end sample position by " << fixedLoopEndPositionSample - soundLoopEndPosition);
             }
         }
         loopStartPositionSample = soundLoopStartPosition;
@@ -1016,7 +1023,7 @@ float SourceSamplerVoice::getPlayingPositionPercentage()
 
 void SourceSamplerVoice::startRecordingToDebugBuffer(int bufferSize){
     if (!isRecordingToDebugBuffer && !debugBufferFinishedRecording){
-        DBG("Started writing to buffer...");
+        //DBG("Started writing to buffer...");
         debugBuffer = AudioBuffer<float>(1, bufferSize);
         isRecordingToDebugBuffer = true;
     }
@@ -1049,7 +1056,7 @@ void SourceSamplerVoice::endRecordingToDebugBuffer(String outFilename){
         if (writer != nullptr){
             writer->writeFromAudioSampleBuffer (debugBuffer, 0, debugBuffer.getNumSamples());
             debugBufferFinishedRecording = true;
-            DBG("Writing buffer to file...");
+            //DBG("Writing buffer to file...");
         }
     }
 }
