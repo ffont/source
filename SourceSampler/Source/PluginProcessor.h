@@ -102,10 +102,50 @@ public:
     void setMidiThru(bool doMidiTrhu);
     
     //==============================================================================
+    class QueryMakerThread : private Thread
+    {
+    public:
+        QueryMakerThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
+        
+        void setQueryParameters(const String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
+            query = _query;
+            numSounds = _numSounds;
+            minSoundLength = _minSoundLength;
+            maxSoundLength = _maxSoundLength;
+        }
+        
+        void run() override
+        {
+            processor.makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
+        }
+        SourceSamplerAudioProcessor& processor;
+        String query;
+        int numSounds;
+        float minSoundLength;
+        float maxSoundLength;
+    };
+    QueryMakerThread queryMakerThread;
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void downloadSounds(bool blocking, int soundIndexFilter);
     bool allSoundsFinishedDownloading();
     
+    class SampleLoaderThread : private Thread
+    {
+    public:
+        SampleLoaderThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
+        
+        void setSoundToLoad(int _soundIdx){
+            soundIdx = _soundIdx;
+        }
+        
+        void run() override
+        {
+            processor.setSingleSourceSamplerSoundObject(soundIdx);
+        }
+        SourceSamplerAudioProcessor& processor;
+        int soundIdx;
+    };
+    SampleLoaderThread sampleLoaderThread;
     void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
     void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
     void replaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)

@@ -21,7 +21,7 @@
         #define STATE_UPDATE_HZ 2
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
-        #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
+        #define USE_EXTERNAL_HTTP_SERVER 0  // And also enable external HTTP server so we can test it
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
     #else
         #define STATE_UPDATE_HZ 15
@@ -33,7 +33,6 @@
 #endif
 #define ENABLE_DEBUG_BUFFER 0
 
-
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
@@ -43,6 +42,17 @@
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 
 #define MAX_SAMPLE_LENGTH 300
+
+#define ACONNECT_MIDI_INTERFACE_ID 16
+#define ACONNECT_SUSHI_ID 128
+
+#define FREESOUND_API_REQUEST_TIMEOUT 10000
+#define MAX_DOWNLOAD_WAITING_TIME_MS 20000
+#define MAX_QUERY_AND_DOWNLOADING_BUSY_TIME 40000
+
+#define LOAD_SAMPLES_IN_THREAD 1
+#define MAKE_QUERY_IN_THREAD 1
+
 
 #define ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER "ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "ACTION_SET_SOUND_PARAMETER_FLOAT"
@@ -177,10 +187,3 @@
 #define STATE_VOLATILE_PRESETS_DATA_LOCATION "presetsDataLocation"
 
 #define SERIALIZATION_SEPARATOR ";"
-
-#define ACONNECT_MIDI_INTERFACE_ID 16
-#define ACONNECT_SUSHI_ID 128
-
-#define FREESOUND_API_REQUEST_TIMEOUT 5000
-#define MAX_DOWNLOAD_WAITING_TIME_MS 20000
-#define MAX_QUERY_AND_DOWNLOADING_BUSY_TIME 10000

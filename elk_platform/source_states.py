@@ -224,7 +224,7 @@ class State(object):
     def get_default_header_line(self):
         indicators = "{0}{1}{2}{3}".format(
             "!" if not sm.source_state[StateNames.NETWORK_IS_CONNECTED] else "", 
-            "Q" if sm.source_state.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False) else "", 
+            "W" if sm.source_state.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False) else "", 
             "*" if sm.source_state[StateNames.STATE_UPDATED_RECENTLY] else "", 
             ["|", "/", "-", "\\"][sm.frame_counter % 4]
         )

@@ -58,7 +58,11 @@ plugin_state = "No sate"
 plugin_state_dict = {}
 time_post_state_received = None
 connection_with_plugin_ok = False
-old_state_seconds_threshold = 5
+last_is_querying_and_downloading_sounds_state = False
+PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT = 5
+PLUGIN_DISCONNECTED_THRESHOLD_WHILE_QUERYING = 100
+PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT
+
 
 system_stats = {}
 
@@ -333,7 +337,7 @@ class ElkBridge(object):
             should_show_state_received_mark = True
         else:
             should_show_state_received_mark = None
-        if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
+        if time_post_state_received is not None and time.time() - time_post_state_received > PLUGIN_DISCONNECTED_THRESHOLD:
             if connection_with_plugin_ok == True:
                 connection_with_plugin_ok = False
                 plugin_state_dict = {}
@@ -505,9 +509,10 @@ def receive_data_from_web():
 def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    osc_client.send_message(address, values)    
     if address == '/new_query':
-        state_manager.show_global_message("Making query...")
+        state_manager.show_global_message("Making query...", duration=25)
+        PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_WHILE_QUERYING
+    osc_client.send_message(address, values)    
     return 'OSC sent'
 
 @http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
@@ -517,18 +522,29 @@ def state_from_plugin():
     global time_post_state_received
     global connection_with_plugin_ok
     global elk_bridge
+    global last_is_querying_and_downloading_sounds_state
     time_post_state_received = time.time()
     plugin_state = request.data
     used_parser = "lxml"
     plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
     plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml)
+
+    if not last_is_querying_and_downloading_sounds_state and plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
+        # Stop showing "making query" message because it will be shown in menu bar with "W", PLUGIN_DISCONNECTED_THRESHOLD
+        state_manager.show_global_message("", duration=0)
+        PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT
+        last_is_querying_and_downloading_sounds_state = True
+    elif last_is_querying_and_downloading_sounds_state and not plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
+        # Finished doing the work 
+        last_is_querying_and_downloading_sounds_state = False
+
     connection_with_plugin_ok = True
     #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_state():
-    if time_post_state_received is not None and time.time() - time_post_state_received > old_state_seconds_threshold:
+    if time_post_state_received is not None and time.time() - time_post_state_received > PLUGIN_DISCONNECTED_THRESHOLD:
         return 'Maybe old'
     else:
         return Response(plugin_state, mimetype='text/xml')

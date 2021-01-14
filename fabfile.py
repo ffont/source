@@ -6,7 +6,7 @@ host = 'mind@source.local'
 remote_dir = '/udata/source/app/'
 remote_vst3_so_dir = '/udata/source/app/SourceSampler.vst3/Contents/aarch64-linux/'
 
-PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION '${PWD}/../VST_SDK/VST2_SDK' 
+PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION = '${PWD}/../VST_SDK/VST2_SDK' 
 
 
 @task

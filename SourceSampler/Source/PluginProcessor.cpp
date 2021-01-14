@@ -13,6 +13,7 @@
 #include "api_key.h"
 #include <climits>  // for using INT_MAX
 
+
 //==============================================================================
 SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -23,7 +24,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                       #endif
                        .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+    sampleLoaderThread (*this),
+    queryMakerThread (*this)
 #endif
 {
     
@@ -567,7 +570,15 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             File locationToCompare = soundsDownloadLocation.getChildFile(soundID).withFileExtension("ogg");
             if (soundTargetLocation == locationToCompare.getFullPathName()){
                 soundInfo.setProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS, 100, nullptr); // Set download progress to 100 to indicate download has finished
-                setSingleSourceSamplerSoundObject(i);  // The audio file for this sound has finished downloading, add it to the sampler
+                
+                #if LOAD_SAMPLES_IN_THREAD
+                    // Trigger loading of audio sample into the sampler in thread
+                    sampleLoaderThread.setSoundToLoad(i);
+                    sampleLoaderThread.run();
+                #else
+                    // Trigger loading of audio sample into the sampler
+                    setSingleSourceSamplerSoundObject(i);
+                #endif
             }
         }
         
@@ -601,7 +612,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         float maxSoundLength = tokens[3].getFloatValue();
         int noteMappingType = tokens[4].getFloatValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
-        makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
+        #if MAKE_QUERY_IN_THREAD
+            queryMakerThread.setQueryParameters(query, numSounds, minSoundLength, maxSoundLength);
+            queryMakerThread.run();
+        #else
+            makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
+        #endif
         
     } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
         String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
