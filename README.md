@@ -17,11 +17,10 @@ For development purposes (or to run Source in a desktop computer insead of the E
 Alternatively, you can also use the Python *Fabric 2* script (see below) provided im the `scripts` folder. Do it like that:
 
 ```
-cd scripts
 fab compile-macos
 ```
 
-This will create *Release* versions of Source (VST3, VST2, AU and Standalone) ready to work on the mac.
+This will create *Release* versions of Source (VST3, VST2, AU and Standalone) ready to work on the mac. If you need *Debug* build, you can run `fab compile-macos-debug`.
 
 **NOTE**: macOS build targets include a *pre-build shell script* phase which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). These files are generated with the `BinaryBuilder` util provided in the JUCE codebase. `BinaryBuilder` is compiled as part of the build process so you should encounter no issues with that.
 
@@ -31,7 +30,9 @@ This will create *Release* versions of Source (VST3, VST2, AU and Standalone) re
 
 **NOTE 4**: For development you might need to edit the `SourceSampler.jucer` Projucer file. To do that, you need a compatible version of Projucer installed. You can compile it (for macOS) from JUCE source files using a the *Fabric 2* Python script running: `fab compile-projucer-macos`. The generated executable will be in `/source/SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/build/Release/Projucer.app`.
 
-**NOTE 5**: it should be very easy to adapt these instructions for windows or linux. You'll basically need to create an exporter for these other platforms an make small changes to compile `BinaryBuilder`, `Projucer` and install/link the dependencies.
+**NOTE 5**: It should be very easy to adapt these instructions for Windows or Linux. You'll basically need to create an exporter for these other platforms an make small changes to compile `BinaryBuilder`, `Projucer` and install/link the dependencies.
+
+**NOTE 6**: Source is configured to build a VST2 version of the plugin (together with VST3, AudioUnit and StandAlone). VST2 is currently only needed for the ELK build as there still seem to be some issues with JUCE6 + VST3 in linux. However, VST is not really needed for the macOS compilation. If you don't have the VST2 SDK, just open `SourceSampler.jucer` and untick `VST Legacy` option.
 
 
 ### Build plugin for ELK platform
@@ -45,32 +46,40 @@ To do the cross compilation (and also deployment to the board) I prepared a Pyth
 
 The first thing to do is to prepare the ELK development SDK Docker image following the [instrucitons here](https://github.com/elk-audio/elkpi-sdk/blob/master/running_docker_container_on_macos.md). You need to run steps 1 to 3, no need to run the toolchain when everything installed.
 
+#### Prepare VST2 SDK
+
+Even though JUCE 6 has support for VST3 plugins in Linux, I've had some issues with VST3 versions of plugins in Linux and therefore Source is still being built as VST2. This means that you need the VST2 SDK installed in your computer to compile Source. Make sure that the `PATH_TO_VST2_SDK` variable in `fabfile.py` points to a valid distribution of the VST2 SDK. This will be mounted in the Docker container that does the cross-compilation.
 
 #### Do the cross-compilation
 
 With all this in place, you should be able to cross-compile Source for ELK in a very similar way as you would do it for the desktop, using the Fabric script:
 
 ```
-cd scripts
 fab compile-elk
 ```
 
-(if you need a debug build, you can use `fab compile-elk-debug`)
+(if you need a *Debug* build, you can use `fab compile-elk-debug`)
 
-This will take a while, specially the first time it runs. When it finished, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/` which is the VST3 plugin that you can run in ELK platform.
+This will take a while, specially the first time it runs. When it finishes, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/` which is the VST2 plugin that you can run in the ELK platform. It also generates a VST3 in `source/Builds/ELKAudioOS/build/SourceSampler.vst3` which should also compatible with the ELK platform but as I mentioend before it does not seem to work properly.
 
-**NOTE**: the build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/` or by running `fab compile-binary-builder-macos`.
+**NOTE**: The build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/` or by running `fab compile-binary-builder-macos`.
 
 
 #### Loading the built plugin in the ELK board
 
-Instructions for this section still need to be added.
+You can send the plugin to the board using the command:
+
+```
+fab send-elk
+```
+
+This will send both the generated plugin files and other Source configuration files.
 
 
 ### Note about JUCE version used for Source
 
-The current version of Source uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of Source, we don't need any patched version of JUCE and we can simply use the official release :)
-
+The current version of Source uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of Source, we don't need any patched version of JUCE and we can simply use the official release :) However, there still seem to be problems with VST3 and Linux, so we use VST2 
+builds.
 
 ## Running Source in the ELK platform (with Blackboard hat)
 
@@ -128,9 +137,9 @@ sudo systemctl enable sensei
 sudo systemctl enable source
 ```
 
-Now both services will start automatically on start up. You can still use `./start` to test new versions because the previous processes will be killed.
+Now all these services will start automatically on start up. The `send-elk` command of the `fabfile.py` triggers service restarts after deploying new versions of the files. However, you can manually restart the services using `sudo systemctl enable xxx`.
 
-When running from startup, you can check std out logs with:
+You can check std out logs for the services with:
 
 ```
 sudo journalctl -fu sushi
@@ -151,7 +160,7 @@ running `sensei` might also fail. To add sudo capabilities:
 
 Source is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/source/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
 
-* [juce](https://juce.com), available under GPLv3 license ([@76910b0](https://github.com/juce-framework/JUCE/tree/b8206e3604ebaca64779bf19f1613c373b9adf4f), v6.0.4)
+* [juce](https://juce.com), available under GPLv3 license ([@7c797c8](https://github.com/juce-framework/JUCE/tree/7c797c8105c2d41872e6e8d08972624f0afd335d), v6.0.5)
 * [cpp-httplib](https://github.com/yhirose/cpp-httplib), available under MIT license ([@3da4a0a](https://github.com/yhirose/cpp-httplib/tree/3da4a0a))
-* [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@71e05b8](https://github.com/ffAudio/ff_meters/commit/71e05b8f93ec3643fc7268b8da65d7b98bdefdf8))
-
+* [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@711ee87](https://github.com/ffont/ff_meters/tree/711ee87862e1c2485536e977ab57b1f78b84667f), I use a fork I made with a small patch for compatibility with ELK)
+* [twine](https://github.com/elk-audio/twine), vailable under GPLv3 license ([@1257d93](https://github.com/elk-audio/twine/tree/1257d93882cf9fd120539a2ce5497fcbef22af82))

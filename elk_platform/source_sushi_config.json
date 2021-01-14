@@ -15,7 +15,7 @@
             ],
             "plugins": [
                 {
-                    "path": "/udata/source/app/SourceSamplerJUCE5.so",
+                    "path": "/udata/source/app/SourceSampler.so",
                     "name": "SourceSampler",
                     "type": "vst2x",
                     "uid": "SourceSampler"

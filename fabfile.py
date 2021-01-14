@@ -6,6 +6,8 @@ host = 'mind@source.local'
 remote_dir = '/udata/source/app/'
 remote_vst3_so_dir = '/udata/source/app/SourceSampler.vst3/Contents/aarch64-linux/'
 
+PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION '${PWD}/../VST_SDK/VST2_SDK' 
+
 
 @task
 def clean(ctx):
@@ -52,9 +54,9 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
             ("SourceSampler/Resources/index_minimal.html", remote_dir),
         ]
 
-        plugin_files = [
-            ("elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSamplerJUCE5.so'),
-            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
+        plugin_files = [            
+            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSampler.so'),
+            #("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
         ]
 
         files_to_send = []
@@ -127,7 +129,7 @@ def compile_elk(ctx, configuration='Release'):
     # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
     print('\n* Cross-compiling')
     os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/SourceSampler/Builds/ELKAudioOS crops/extsdk-container')
+    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ' + PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/SourceSampler/Builds/ELKAudioOS crops/extsdk-container')
 
     # Undo file replacements
     print('\n* Restoring build files')
@@ -143,37 +145,19 @@ def compile_elk_debug(ctx):
 
 
 @task
-def compile_elk_juce5(ctx, configuration='Release'):
-
-    print('Coss-compiling Source for ELK platform (JUCE5 version)...')
-    print('*********************************************************')
-
-    # Generate binary files
-    print('\n* Building BinaryData')
-    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
-
-    # Cross-compile Source
-    print('\n* Cross-compiling')
-    os.system("find elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/elk_platform/SourceSamplerJUCE5Build/3rdParty/JUCE_ELK:/home/sdkuser/JUCE -v ${PWD}/../VST_SDK/VST2_SDK:/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/elk_platform/SourceSamplerJUCE5Build/Builds/ELKAudioOS crops/extsdk-container')
-
-    print('\nAll done!')
-
-
-@task
-def compile_elk_juce5_debug(ctx):
-    compile_elk_juce5(ctx, configuration='Debug')
-
-
-@task
-def compile_macos(ctx):
+def compile_macos(ctx, configuration='Release'):
 
     # Compile release Source for macOS platform
     print('Compiling Source for macOS platform...')
     print('*********************************************\n')
-    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration Release")    
+    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration {0}".format(configuration))    
 
     print('\nAll done!')
+
+
+@task
+def compile_macos_debug(ctx, configuration='Release'):
+    compile_macos(ctx, configuration='Debug')
 
 
 @task

@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.1"
               projectLineFeed="&#10;" companyName="Rita &amp; Aurora" companyWebsite="https://ritaandaurora.github.io"
-              companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST3"
+              companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler">
