@@ -21,7 +21,7 @@
         #define STATE_UPDATE_HZ 2
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
-        #define USE_EXTERNAL_HTTP_SERVER 0  // And also enable external HTTP server so we can test it
+        #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
     #else
         #define STATE_UPDATE_HZ 15

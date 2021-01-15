@@ -14,6 +14,7 @@ except ModuleNotFoundError:
     N_LEDS = 9
 
 
+#  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
 sound_parameters_info_dict = {
     "gain": (lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f} dB", "/set_sound_parameter"),
     "pitch": (lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
@@ -39,6 +40,13 @@ sound_parameters_info_dict = {
     "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
     "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
     "freezePlayheadSpeed": (lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
+    "pitchBendRangeUp": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend down", "{0:.1f}", "/set_sound_parameter"),
+    "pitchBendRangeDown": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend up", "{0:.1f}", "/set_sound_parameter"),
+    "mod2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Mod2Cutoff", "{0:.2f}", "/set_sound_parameter"),
+    "mod2GainAmt": (lambda x: 12.0 * 2 * (x - 0.5), lambda x: float(x), "Mod2Gain", "{0:.1f} dB", "/set_sound_parameter"),
+    "mod2PitchAmt": (lambda x: 12.0 * 2 * (x - 0.5), lambda x: float(x), "Mod2Pitch", "{0:.2f} st", "/set_sound_parameter"),
+    "vel2CutoffAmt": (lambda x: 10.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.1f}", "/set_sound_parameter"),
+    "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
 }
 
 
@@ -74,6 +82,16 @@ sound_parameter_pages = [
         "numSlices",
         "playheadPosition",
         "freezePlayheadSpeed"
+    ], [
+        "pitchBendRangeUp",
+        "pitchBendRangeDown",
+        "vel2CutoffAmt",
+        "vel2GainAmt"
+    ], [
+        "mod2CutoffAmt",
+        "mod2GainAmt",
+        "mod2PitchAmt",
+        None
     ]
 ]
 
@@ -478,25 +496,29 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
-                _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
-                
-                # Check if all loaded sounds have the same value for that parameter. If that is the case, show the value, otherwise don't show any value
-                all_sounds_values = []
-                last_value = None
-                for sound_idx in range(0, sm.source_state.get(StateNames.NUM_SOUNDS, 0)):
-                    processed_val = get_func(sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS).get(parameter_name, 0))
-                    all_sounds_values.append(processed_val)
-                    last_value = processed_val
+                if parameter_name is not None:
+                    _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
+                    
+                    # Check if all loaded sounds have the same value for that parameter. If that is the case, show the value, otherwise don't show any value
+                    all_sounds_values = []
+                    last_value = None
+                    for sound_idx in range(0, sm.source_state.get(StateNames.NUM_SOUNDS, 0)):
+                        processed_val = get_func(sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS).get(parameter_name, 0))
+                        all_sounds_values.append(processed_val)
+                        last_value = processed_val
 
-                if len(set(all_sounds_values)) == 1:
-                    # All sounds have the same value for that parameter, show the number
-                    lines.append(justify_text(
-                        parameter_label + ":", 
-                        value_label_template.format(last_value)
-                    ))
+                    if len(set(all_sounds_values)) == 1:
+                        # All sounds have the same value for that parameter, show the number
+                        lines.append(justify_text(
+                            parameter_label + ":", 
+                            value_label_template.format(last_value)
+                        ))
+                    else:
+                        # Some sounds differ, don't show the number
+                        lines.append(justify_text(parameter_label + ":", "-"))
                 else:
-                    # Some sounds differ, don't show the number
-                    lines.append(justify_text(parameter_label + ":", "-"))
+                    # Add blank line
+                    lines.append("")
 
         return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
 
@@ -531,11 +553,12 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         else:
             # Set sound parameters for all sounds
             parameter_name = self.current_page_data[fader_idx]
-            send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
-            send_value = send_func(value)
-            if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
-                send_value = send_value * 0.3333333  # Reduced range mode
-            sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
+            if parameter_name is not None:
+                send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
+                send_value = send_func(value)
+                if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
+                    send_value = send_value * 0.3333333  # Reduced range mode
+                sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
 
 
 
@@ -576,18 +599,22 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
-                _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
-                sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS)
-                if (type(sound_parameters) == dict) and parameter_name in sound_parameters:
-                    state_val = sound_parameters[parameter_name]
-                    parameter_value_label = value_label_template.format(get_func(state_val))
-                else:
-                    parameter_value_label = "-"
+                if parameter_name is not None:
+                    _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
+                    sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS)
+                    if (type(sound_parameters) == dict) and parameter_name in sound_parameters:
+                        state_val = sound_parameters[parameter_name]
+                        parameter_value_label = value_label_template.format(get_func(state_val))
+                    else:
+                        parameter_value_label = "-"
 
-                lines.append(justify_text(
-                    parameter_label + ":", 
-                    parameter_value_label
-                ))
+                    lines.append(justify_text(
+                        parameter_label + ":", 
+                        parameter_value_label
+                    ))
+                else:
+                    # Add blank line
+                    lines.append("")
 
         return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
 
@@ -647,11 +674,12 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
         else:
             # Set sound parameters for selected sound
             parameter_name = self.current_page_data[fader_idx]
-            send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
-            send_value = send_func(value)
-            if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
-                send_value = send_value * 0.3333333  # Reduced range mode
-            sm.send_osc_to_plugin(osc_address, [self.sound_idx, parameter_name, send_value])
+            if parameter_name is not None:
+                send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
+                send_value = send_func(value)
+                if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
+                    send_value = send_value * 0.3333333  # Reduced range mode
+                sm.send_osc_to_plugin(osc_address, [self.sound_idx, parameter_name, send_value])
 
 
 class MenuState(State):
