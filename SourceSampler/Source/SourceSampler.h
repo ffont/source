@@ -190,7 +190,7 @@ public:
     
     void updateParametersFromSourceSamplerSound(SourceSamplerSound* sound);
 
-    void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel) override;
+    void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel);
     void stopNote (float velocity, bool allowTailOff) override;
 
     void pitchWheelMoved (int newValue) override;
@@ -208,11 +208,15 @@ public:
     int getCurrentlyPlayingNoteIndex();
     
     SourceSamplerSound* getCurrentlyPlayingSourceSamplerSound() const noexcept;
+    
+    void setModWheelValue(int newValue);
 
 
 private:   
     int pluginNumChannelsSize = 0;
     int currentlyPlayedNoteIndex = 0;
+    
+    int currentModWheelValue = 0; // Configured on noteONn and updated when modwheel is moved. This is needed to make modWheel modulationm persist across voices
     
     //==============================================================================
     // Sample reading and rendering
@@ -439,6 +443,29 @@ public:
         }
     }
     
+    void noteOn (const int midiChannel,
+                 const int midiNoteNumber,
+                 const float velocity) override
+    {
+        const ScopedLock sl (lock);
+
+        for (auto* sound : sounds)
+        {
+            if (sound->appliesToNote (midiNoteNumber) && sound->appliesToChannel (midiChannel))
+            {
+                // If hitting a note that's still ringing, stop it first (it could be
+                // still playing because of the sustain or sostenuto pedal).
+                for (auto* voice : voices)
+                    if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel))
+                        stopVoice (voice, 1.0f, true);
+
+                auto* voice = findFreeVoice (sound, midiChannel, midiNoteNumber, isNoteStealingEnabled());
+                dynamic_cast<SourceSamplerVoice*>(voice)->setModWheelValue(lastModWheelValue);
+                startVoice (voice, sound, midiChannel, midiNoteNumber, velocity);
+            }
+        }
+    }
+    
     void handleMidiEvent (const MidiMessage& m) override
     {
         const int channel = m.getChannel();
@@ -476,7 +503,30 @@ public:
         }
         else if (m.isController())
         {
-            handleController (channel, m.getControllerNumber(), m.getControllerValue());
+            int number = m.getControllerNumber();
+            int value = m.getControllerValue();
+            
+            
+            // Store last value for mod wheel (used when triggering new notes)
+            if (number == 1){
+                lastModWheelValue = value;
+            }
+            
+            // Handle controller in active voices
+            handleController (channel, number, value);
+            
+            // Check midi mappings for the loaded sounds and update parameters if needed
+            for (auto* s : sounds)
+            {
+                if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
+                    std::vector<MidiCCMapping> mappings = sound->getMidiMappingsForCcNumber(number);
+                    for (int i=0; i<mappings.size(); i++){
+                        float normInputValue = (float)value/127.0;  // This goes from 0 to 1
+                        float value = jmap(normInputValue, mappings[i].minRange, mappings[i].maxRange);
+                        sound->setParameterByNameFloatNorm(mappings[i].parameterName, value);
+                    }
+                }
+            }
         }
         else if (m.isProgramChange())
         {
@@ -504,6 +554,7 @@ private:
         reverbIndex
     };
     
+    int lastModWheelValue = 0;
     int currentNumChannels = 0;
     int currentBlockSize = 0;
     juce::dsp::ProcessorChain<juce::dsp::Reverb> fxChain;

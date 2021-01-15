@@ -460,6 +460,11 @@ SourceSamplerSound* SourceSamplerVoice::getCurrentlyPlayingSourceSamplerSound() 
     return static_cast<SourceSamplerSound*> (getCurrentlyPlayingSound().get());
 }
 
+void SourceSamplerVoice::setModWheelValue(int newValue)
+{
+    currentModWheelValue = newValue;
+}
+
 bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
 {
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
@@ -699,10 +704,11 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // Filter
     filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = sound->filterRessonance;
+    float newFilterCutoffMod = filterCutoffMod + sound->mod2CutoffAmt * filterCutoff * (double)currentModWheelValue/127.0; //(float)jmin((double)(filterCutoffMod + sound->mod2CutoffAmt * (double)currentModWheelValue/127.0) * filterCutoff, (double)sound->mod2CutoffAmt * filterCutoff);  // Add mod wheel modulation here
     auto& filter = processorChain.get<filterIndex>();
     float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
-                           filterCutoffMod +  // Aftertouch mod/modulation wheel mod
+                           newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            sound->filterADSR2CutoffAmt * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
     filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
     filter.setResonance (filterRessonance);
@@ -710,7 +716,13 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // Amp and pan
     pan = sound->pan;
     auto& gain = processorChain.get<masterGainIndex>();
-    gain.setGainDecibels(sound->gain + gainMod);
+    float newGainMod;
+    if (sound->mod2GainAmt >= 0){  // Set a maximum gain modulation combining mod wheel and aftertouch
+        newGainMod = (float)jmin((double)(gainMod + sound->mod2GainAmt * (double)currentModWheelValue/127.0), (double)sound->mod2GainAmt);  // Add mod wheel modulation here
+    } else {
+        newGainMod = (float)jmax((double)(gainMod + sound->mod2GainAmt * (double)currentModWheelValue/127.0), (double)sound->mod2GainAmt);  // Add mod wheel modulation here
+    }
+    gain.setGainDecibels(sound->gain + newGainMod);
 }
 
 void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
@@ -749,10 +761,7 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         pitchModSemitones = sound->mod2PitchAmt * (double)newAftertouchValue/127.0;
-        
         filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newAftertouchValue/127.0;
-        processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
-        
         gainMod = sound->mod2GainAmt * (float)newAftertouchValue/127.0;
     }
 }
@@ -763,38 +772,16 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         pitchModSemitones = sound->mod2PitchAmt * (double)newChannelPressureValue/127.0;
-        
         filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newChannelPressureValue/127.0;
-        processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
-        
         gainMod = sound->mod2GainAmt * (float)newChannelPressureValue/127.0;
     }
 }
 
-void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue) {
-    
-    // Do the modwheel modulation
+void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue)
+{
+    // Set new modulation wheel value
     if (controllerNumber == 1){
-        if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
-        {
-            pitchModSemitones = sound->mod2PitchAmt * (double)newValue/127.0;
-            
-            filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newValue/127.0;
-            processorChain.get<filterIndex>().setCutoffFrequencyHz (filterCutoff + filterCutoffMod);
-            
-            gainMod = sound->mod2GainAmt * (float)newValue/127.0;
-        }
-    }
-    
-    // Check if there are other parameters mapped to this controller
-    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
-    {
-        std::vector<MidiCCMapping> mappings = sound->getMidiMappingsForCcNumber(controllerNumber);
-        for (int i=0; i<mappings.size(); i++){
-            float normInputValue = (float)newValue/127.0;  // This goes from 0 to 1
-            float value = jmap(normInputValue, mappings[i].minRange, mappings[i].maxRange);
-            sound->setParameterByNameFloatNorm(mappings[i].parameterName, value);
-        }
+        setModWheelValue(newValue);
     }
 }
 
@@ -814,7 +801,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         // Do some preparation (not all parameters will be used depending on the launch mode)
         int originalNumSamples = numSamples; // user later for filter processing
         double previousPitchRatio = pitchRatio;
-        float previousPitchModSemitones = pitchModSemitones;
+        float previousPitchModSemitones = (float)jmin((double)pitchModSemitones + sound->mod2PitchAmt * (double)currentModWheelValue/127.0, (double)sound->mod2PitchAmt);  // Add mod wheel position
         float previousPitchBendModSemitones = pitchBendModSemitones;
         float previousPan = pan;
         bool noteStoppedHard = false;
