@@ -172,6 +172,9 @@ private:
     
     MidiBuffer midiFromEditor;
     long midicounter;
+    bool midiOutForwardsMidiIn = true;
+    int lastReceivedMIDIControllerNumber = -1;
+    bool midiMessagesPresentInLastStateReport = false;
     bool isQueryDownloadingAndLoadingSounds = false;
     double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
@@ -180,7 +183,6 @@ private:
     String presetName = "empty";
     int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
     ValueTree loadedSoundsInfo;
-    bool midiOutForwardsMidiIn = true;
     
     ValueTree presetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
     

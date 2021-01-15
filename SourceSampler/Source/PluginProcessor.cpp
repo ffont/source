@@ -259,6 +259,18 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
+    // Check if there are MIDI CC message in the buffer which are directed to the channel we're listening to
+    // and store if we're receiving any message and the last MIDI CC controller number (if there's any)
+    // Also get timestamp of the last received message
+    for (const MidiMessageMetadata metadata : midiMessages){
+        MidiMessage message = metadata.getMessage();
+        if ((sampler.midiInChannel == 0) || (message.getChannel() == sampler.midiInChannel)){
+            midiMessagesPresentInLastStateReport = true;
+            if (message.isController()){
+                lastReceivedMIDIControllerNumber = message.getControllerNumber();
+            }
+        }
+    }
     
     // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
     // it gets played here
@@ -519,6 +531,10 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     state.setProperty(STATE_VOLATILE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
     
     state.setProperty(STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS, isQueryDownloadingAndLoadingSounds, nullptr);
+    
+    state.setProperty(STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT, midiMessagesPresentInLastStateReport, nullptr);
+    midiMessagesPresentInLastStateReport = false;
+    state.setProperty(STATE_VOLATILE_LAST_MIDI_CC, lastReceivedMIDIControllerNumber, nullptr);
     
     String voiceActivations = "";
     String voiceSoundIdxs = "";
