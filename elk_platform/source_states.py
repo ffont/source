@@ -556,7 +556,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             if parameter_name is not None:
                 send_func, _, _, _, osc_address = sound_parameters_info_dict[parameter_name]
                 send_value = send_func(value)
-                if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
+                if shift and parameter_name == "pitch" or shift and parameter_name == "gain" or shift and parameter_name == "mod2PitchAmt":
                     send_value = send_value * 0.3333333  # Reduced range mode
                 sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
 
