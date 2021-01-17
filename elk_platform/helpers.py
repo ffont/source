@@ -37,6 +37,8 @@ class StateNames(Enum):
     SOUND_SLICES = auto()
 
     NUM_ACTIVE_VOICES = auto()
+    MIDI_RECEIVED = auto()
+    LAST_CC_MIDI_RECEIVED = auto()
     
 
 def process_xml_state_from_plugin(plugin_state_xml):
@@ -90,8 +92,10 @@ def process_xml_state_from_plugin(plugin_state_xml):
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
 
-    # Number of active voices
+    # More volatile state stuff
     source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
+    source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
+    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = volatile_state.get('lastMIDICCNumber'.lower(), None)
 
     return source_state
 
