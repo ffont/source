@@ -31,7 +31,7 @@ except ModuleNotFoundError:
 
 from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin
 
-from source_states import state_manager
+from source_states import state_manager, sound_parameters_info_dict
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
@@ -527,7 +527,7 @@ def state_from_plugin():
     plugin_state = request.data
     used_parser = "lxml"
     plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
-    plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml)
+    plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict)
 
     if not last_is_querying_and_downloading_sounds_state and plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
         # Stop showing "making query" message because it will be shown in menu bar with "W", PLUGIN_DISCONNECTED_THRESHOLD

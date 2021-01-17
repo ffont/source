@@ -35,13 +35,20 @@ class StateNames(Enum):
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
     SOUND_SLICES = auto()
+    
+    SOUND_MIDI_CC_ASSIGNMENTS = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID = auto()
 
     NUM_ACTIVE_VOICES = auto()
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
     
 
-def process_xml_state_from_plugin(plugin_state_xml):
+def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state = {}
             
     # Get sub XML element to avoid repeating many queries
@@ -73,10 +80,35 @@ def process_xml_state_from_plugin(plugin_state_xml):
             slices.append(onset['time'])
 
         processed_sound_parameters_info = {}
-        for parameter in sound_info.find_all('samplersoundparameter'):
+        for parameter in sound_info.find_all('SamplerSoundParameter'.lower()):
+            """
+            <SamplerSoundParameter parameter_type="int" parameter_name="launchMode" parameter_value="1"/>
+            """
             val = parameter['parameter_value']
             name = parameter['parameter_name']
             processed_sound_parameters_info[name] = val
+
+        processed_sound_midi_cc_info = {}
+        for midi_cc in sound_info.find_all('SamplerSoundMidiCCMapping'.lower()):
+            """
+            <SamplerSoundMidiCCMapping
+                midiMappingRandomId="14562" 
+                midiMappingCcNumber="2" 
+                midiMappingParameterName="filterCutoff"
+                midiMappingMinRange="0.0" 
+                midiMappingMaxRange="1.0"
+            />
+            """
+            cc_number = int(midi_cc['midiMappingCcNumber'.lower()])
+            parameter_name = midi_cc['midiMappingParameterName'.lower()]
+            label = 'CC#{} > {}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
+            processed_sound_midi_cc_info[label] = {
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['midiMappingMinRange'.lower()]),
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['midiMappingMaxRange'.lower()]),
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID: int(midi_cc['midiMappingRandomId'.lower()]) ,
+            }
 
         processed_sounds_info.append({
             StateNames.SOUND_NAME: sound_info.get('soundname', '-'),
@@ -88,6 +120,7 @@ def process_xml_state_from_plugin(plugin_state_xml):
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,
+            StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
         })
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info

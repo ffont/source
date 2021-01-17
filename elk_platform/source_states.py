@@ -47,6 +47,7 @@ sound_parameters_info_dict = {
     "mod2PitchAmt": (lambda x: 12.0 * 2 * (x - 0.5), lambda x: float(x), "Mod2Pitch", "{0:.2f} st", "/set_sound_parameter"),
     "vel2CutoffAmt": (lambda x: 10.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.1f}", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
+    "pan": (lambda x: 2.0 * (x - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
 }
 
 
@@ -95,6 +96,7 @@ sound_parameter_pages = [
     ]
 ]
 
+midi_cc_available_parameters_list = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
 
 
 class StateManager(object):
@@ -741,9 +743,11 @@ class MenuState(State):
         pass
 
 
-class MenuCallbackState(MenuState):
+class MenuCallbackState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
-    callback = None
+    callback = None  # Triggered when encoder pressed
+    shift_callback = None  # Triggered when shift+encoder pressed
+    update_items_callback = None  # Callback to update available items when state is updated
     title1 = "NoTitle1"
     title2 = "NoTitle2"
     page_size = 4
@@ -757,7 +761,9 @@ class MenuCallbackState(MenuState):
         self.title2 = kwargs.get('title2', None)
         self.page_size = kwargs.get('page_size', 4)
         self.callback = kwargs.get('callback', None)
+        self.shift_callback = kwargs.get('shift_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
+        self.update_items_callback = kwargs.get('update_items_callback', None)
 
     def draw_display_frame(self):
         lines = [{
@@ -773,11 +779,23 @@ class MenuCallbackState(MenuState):
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
-    def perform_action(self, action_name):
+    def on_encoder_pressed(self, shift=False):
         if self.callback is not None:
-            self.callback(self.selected_item)
+            if self.shift_callback is None:
+                self.callback(self.selected_item_name)
+            else:
+                if shift:
+                    self.shift_callback(self.selected_item_name)
+                else:
+                    self.callback(self.selected_item_name)
         for i in range(0, self.go_back_n_times):
             sm.go_back()
+
+    def on_source_state_update(self):
+        if self.update_items_callback is not None:
+            self.items = self.update_items_callback()
+            if self.selected_item >= len(self.items):
+                self.selected_item = len(self.items) - 1
 
 
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -808,7 +826,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.move_to(MenuCallbackState(items=['Contiguous', 'Interleaved'], selected_item=0, title1="Apply note layout...", callback=self.reapply_note_layout, go_back_n_times=2))
         elif action_name == self.OPTION_NUM_VOICES:
             current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
-            sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Num voices", callback=self.set_num_voices))
+            sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Number of voices", callback=self.set_num_voices, go_back_n_times=2))
         elif action_name == self.OPTION_LOAD_PRESET:
             # Scan existing .xml files to know preset names
             # TODO: the presetting system should be imporved so we don't need to scan the presets folder every time
@@ -892,12 +910,15 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     OPTION_REPLACE = "Replace by..."
     OPTION_ASSIGNED_NOTES = "Assigned notes..."
     OPTION_PRECISION_EDITOR = "Precision editor..."
+    OPTION_MIDI_CC = "MIDI CC mappings..."
     OPTION_OPEN_IN_FREESOUND = "Open in Freesound"
     OPTION_DELETE = "Delete"
 
+    MIDI_CC_ADD_NEW_TEXT = "Add new..."
+
     name = "SoundSelectedContextualMenuState"
     sound_idx = -1
-    items = [OPTION_REPLACE, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE]
+    items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE]
     page_size = 4
 
     def __init__(self, sound_idx, *args, **kwargs):
@@ -960,23 +981,124 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 extra_data_for_callback={'sound_idx': self.sound_idx}, 
                 callback=self.set_sound_params_from_precision_editor, 
                 go_back_n_times=2))
+        elif action_name == self.OPTION_MIDI_CC:
+            sm.move_to(
+                MenuCallbackState(
+                items=self.get_midi_cc_items_for_midi_cc_assignments_menu(), 
+                selected_item=0, 
+                title1="MIDI CC mappings......", 
+                callback=self.handle_select_midi_cc_assignment, 
+                shift_callback=self.handle_delete_midi_cc_assignment,
+                update_items_callback=self.get_midi_cc_items_for_midi_cc_assignments_menu,
+                go_back_n_times=0)  # Don't go back because we go into another menu and we handle this individually in the callbacks of the inside options
+            )
         else:
             sm.show_global_message('Not implemented...')
 
+    def get_midi_cc_items_for_midi_cc_assignments_menu(self):
+        return [label for label in sorted(sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).keys())] + [self.MIDI_CC_ADD_NEW_TEXT]   
 
-class SoundParameterMIDILearnMenuState(State):
+    def handle_select_midi_cc_assignment(self, midi_cc_assignment_label):
+        if midi_cc_assignment_label == self.MIDI_CC_ADD_NEW_TEXT:
+            # Show "new assignment" menu
+            sm.move_to(EditMIDICCAssignmentState(sound_idx=self.sound_idx))
+        else:
+            midi_cc_assignment = sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
+            if midi_cc_assignment is not None:
+                # Show "edit assignment" menu
+                sm.move_to(EditMIDICCAssignmentState(
+                    cc_number = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER],
+                    parameter_name = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME],
+                    min_range = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE],
+                    max_range = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE],
+                    random_id = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID],
+                    sound_idx = self.sound_idx
+                ))
 
-    name = "SoundParameterMIDILearnMenuState"
+    def handle_delete_midi_cc_assignment(self, midi_cc_assignment_label):
+        midi_cc_assignment = sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
+        if midi_cc_assignment is not None:
+            sm.send_osc_to_plugin('/remove_cc_mapping', [self.sound_idx, int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID])])
+            sm.show_global_message('Removing mapping...')
+
+class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
+
+    cc_number = -1
+    parameter_name = ""
+    min_range = 0.0
+    max_range = 1.0
+    random_id = -1
+    sound_idx = -1
+    available_parameter_names = midi_cc_available_parameters_list
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cc_number = kwargs.get('cc_number', -1)  # Default to MIDI learn mode
+        self.parameter_name = kwargs.get('parameter_name', self.available_parameter_names[-1])
+        self.min_range = kwargs.get('min_range', 0.0)
+        self.max_range = kwargs.get('max_range', 1.0)
+        self.random_id = kwargs.get('random_id', -1)
+        self.sound_idx = kwargs.get('sound_idx', -1)
+
+    def draw_display_frame(self):
+        if self.cc_number > -1:
+            cc_number = str(self.cc_number)
+        else:
+            last_cc_received = int(sm.source_state.get(StateNames.LAST_CC_MIDI_RECEIVED, 0))
+            if last_cc_received < 0:
+                last_cc_received = 0
+            cc_number = 'MIDI Learn ({0})'.format(last_cc_received)
+            
+        lines = [{
+            "underline": True, 
+            "text": "Edit MIDI CC mappaing"
+            },
+            justify_text('Param:', sound_parameters_info_dict[self.parameter_name][2]),  # Show parameter label instead of raw name
+            justify_text('CC#:', cc_number),
+            justify_text('Min:', '{0:.1f}'.format(self.min_range)),
+            justify_text('Max:', '{0:.1f}'.format(self.max_range)),
+        ]
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def on_encoder_rotated(self, direction, shift=False):
+        self.cc_number += direction
+        if self.cc_number < -1:
+            self.cc_number = -1
+        elif self.cc_number > 127:
+            self.cc_number = 127
+
+    def on_encoder_pressed(self, shift=False):
+        # Save assignment and go back
+        if self.cc_number > -1:
+            cc_number = self.cc_number
+        else:
+            last_cc_received = int(sm.source_state.get(StateNames.LAST_CC_MIDI_RECEIVED, 0))
+            if last_cc_received < 0:
+                last_cc_received = 0
+            cc_number = last_cc_received
+        sm.send_osc_to_plugin('/add_or_update_cc_mapping', [self.sound_idx, int(self.random_id), cc_number, self.parameter_name, self.min_range, self.max_range])
+        sm.show_global_message('Adding mapping...')
+        sm.go_back()
+
+    def on_fader_moved(self, fader_idx, value, shift=False):
+        if fader_idx == 0:
+            self.parameter_name = self.available_parameter_names[int(value * (len(self.available_parameter_names) - 1))]
+        elif fader_idx == 1:
+            self.cc_number = int(value * 128) - 1
+        elif fader_idx == 2:
+            self.min_range = value
+        elif fader_idx == 3:
+            self.max_range = value
 
 
-class EnterNumberState(State):
+class EnterNumberState(GoBackOnEncoderLongPressedStateMixin, State):
 
     value = 0
     minimum = 0
     maximum = 128
     title1 = "NoTitle1"
     title2 = "NoTitle2"
-    callback = None
+    callback = None  # Triggered when encoder pressed
     go_back_n_times = 0
 
     def __init__(self, *args, **kwargs):
@@ -1023,16 +1145,12 @@ class EnterNumberState(State):
             self.callback(self.value)
         for i in range(0, self.go_back_n_times):
             sm.go_back()
-        sm.go_back()
-
-    def on_encoder_long_pressed(self, shift=False):
-        sm.go_back()
 
 
-class EnterDataViaWebInterfaceState(State):
+class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State):
 
     title = "NoTitle"
-    callback = None
+    callback = None  # Triggered when encoder pressed
     web_form_id = ""
     data_for_web_form_id = {}
     extra_data_for_callback = {}
@@ -1063,9 +1181,6 @@ class EnterDataViaWebInterfaceState(State):
             self.callback(**data)
         for i in range(0, self.go_back_n_times):
             sm.go_back()
-
-    def on_encoder_long_pressed(self, shift=False):
-        sm.go_back()
 
 
 
