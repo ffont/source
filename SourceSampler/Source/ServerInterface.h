@@ -279,21 +279,25 @@ public:
                 String actionMessage = String(ACTION_REMOVE_SOUND) + ":" + (String)soundIndex;
                 sendActionMessage(actionMessage);
             }
-        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_REPLACE_SOUND_FROM_BASIC_PROPERTIES){
-            if (message.size() == 6)  {
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_REPLACE_SOUND){
+            if (message.size() == 8)  {
                 int soundIdx = message[0].getInt32();
                 int soundID = message[1].getInt32();
                 String soundName = message[2].getString();
                 String soundUser = message[3].getString();
                 String soundLicense = message[4].getString();
                 String oggDownloadURL = message[5].getString();
+                String serializedSlices = message[6].getString();
+                String assignedNotes = message[7].getString();
                 String serializedParameters = (String)soundIdx + SERIALIZATION_SEPARATOR +
                                               (String)soundID + SERIALIZATION_SEPARATOR +
                                               soundName + SERIALIZATION_SEPARATOR +
                                               soundUser + SERIALIZATION_SEPARATOR +
                                               soundLicense + SERIALIZATION_SEPARATOR +
-                                              oggDownloadURL + SERIALIZATION_SEPARATOR;
-                String actionMessage = String(ACTION_REPLACE_SOUND_FROM_BASIC_PROPERTIES) + ":" + serializedParameters;
+                                              oggDownloadURL + SERIALIZATION_SEPARATOR +
+                                              serializedSlices + SERIALIZATION_SEPARATOR +
+                                              assignedNotes + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_ADD_OR_REPLACE_SOUND) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_REAPPLY_LAYOUT){

@@ -1,12 +1,10 @@
 import math
 import os
-import random
-import requests
 import time
 
-from freesound_api_key import FREESOUND_API_KEY
-
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame
+
+from freesound_interface import find_sound_by_similarity, find_sound_by_query
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -50,6 +48,29 @@ sound_parameters_info_dict = {
     "pan": (lambda x: 2.0 * (x - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
 }
 
+reverb_parameters_pages = [
+    [
+        "roomSize", 
+        "damping", 
+        "width", 
+        "freezeMode"
+    ], [
+        "wetLevel", 
+        "dryLevel",
+        None,
+        None
+    ]
+]
+
+#  parameter position in OSC message, parameter label
+reverb_parameters_info_dict = {
+    "roomSize": (0, "Room size"), 
+    "damping": (1, "Damping"), 
+    "wetLevel": (2, "Wet level"), 
+    "dryLevel": (3, "Dry level"),  
+    "width": (4, "Width"), 
+    "freezeMode": (5, "Freeze"), 
+}
 
 EXTRA_PAGE_1_NAME = "extra1"
 sound_parameter_pages = [
@@ -295,23 +316,40 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
+    def send_replace_sound_to_plugin(self, sound_idx, new_sound):
+        sound_onsets_list = []
+        if 'analysis' in new_sound:
+            if 'rhythm' in new_sound['analysis']:
+                if 'onset_times' in new_sound['analysis']['rhythm']:
+                    sound_onsets_list = new_sound['analysis']['rhythm']['onset_times']
+                    if type(sound_onsets_list) != list:
+                        # This can happen because when there's only one onset, FS api returns it as a number instead of a list of one element
+                        sound_onsets_list = [sound_onsets_list]
+
+        sm.send_osc_to_plugin("/add_or_replace_sound", [
+            sound_idx, 
+            new_sound['id'], 
+            new_sound['name'], 
+            new_sound['username'], 
+            new_sound['license'], 
+            new_sound['previews']['preview-hq-ogg'], 
+            ','.join(str(o) for o in sound_onsets_list),  # for use as slices
+            ""  # assigned notes
+            ])
+
     def replace_sound_by_query(self, *args, **kwargs):
         sound_idx = kwargs.get('sound_idx', -1)
         if sound_idx >  -1:
-            # TODO: refactor this to use proper Freesound python API client (?)
             sm.show_global_message("Finding sound...", duration=10)
             query = kwargs.get('query', "")
             min_length = float(kwargs.get('minSoundLength', '0'))
             max_length = float(kwargs.get('maxSoundLength', '300'))
             page_size = float(kwargs.get('pageSize', '50'))
-            url = 'https://freesound.org/apiv2/search/text/?query={0}&filter=duration:[{1}+TO+{2}]&fields=id,previews,license,name,username&page_size={3}&token={4}'.format(query, min_length, max_length, page_size, FREESOUND_API_KEY)
             try:
-                r = requests.get(url)
-                response = r.json()
-                if len(response['results']) > 0:
-                    selected_sound = random.choice(response['results'])
+                selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size)
+                if selected_sound is not None:
                     sm.show_global_message("Replacing sound...")
-                    sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+                    self.send_replace_sound_to_plugin(sound_idx, selected_sound)
                 else:
                     sm.show_global_message("No results found!")
             except Exception as e:
@@ -319,22 +357,18 @@ class State(object):
                 sm.show_global_message("Error :(")
 
     def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
-        # TODO: refactor this to use proper Freesound python API client (?)
         sm.show_global_message("Finding sound...", duration=10)
-        url = 'https://freesound.org/apiv2/sounds/{0}/similar?fields=id,previews,license,name,username&token={1}'.format(selected_sound_id, FREESOUND_API_KEY)
         try:
-            r = requests.get(url)
-            response = r.json()
-            selected_sound = random.choice(response['results'])
-            if len(response['results']) > 0:
-                selected_sound = random.choice(response['results'])
+            selected_sound = find_sound_by_similarity(selected_sound_id)
+            if selected_sound is not None:
                 sm.show_global_message("Replacing sound...")
-                sm.send_osc_to_plugin("/replace_sound_from_basic_info", [sound_idx, selected_sound['id'], selected_sound['name'], selected_sound['username'], selected_sound['license'], selected_sound['previews']['preview-hq-ogg']])
+                self.send_replace_sound_to_plugin(sound_idx, selected_sound)
             else:
                 sm.show_global_message("No results found!")
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             sm.show_global_message("Error :(")
+
 
     def set_sound_params_from_precision_editor(self, *args, **kwargs):
         sound_idx = kwargs.get('sound_idx', -1)
@@ -641,10 +675,13 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
     def on_source_state_update(self):
         # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
         num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
-        if self.sound_idx >= num_sounds:
-            sm.move_to(SoundSelectedState(num_sounds -1, current_page=self.current_page), replace_current=True)
-        elif self.sound_idx < 0 and num_sounds > 0:
-            sm.move_to(SoundSelectedState(0, current_page=self.current_page), replace_current=True)
+        if num_sounds == 0:
+            sm.go_back()
+        else:
+            if self.sound_idx >= num_sounds:
+                sm.move_to(SoundSelectedState(num_sounds -1, current_page=self.current_page), replace_current=True)
+            elif self.sound_idx < 0 and num_sounds > 0:
+                sm.move_to(SoundSelectedState(0, current_page=self.current_page), replace_current=True)
     
     def on_button_pressed(self, button_idx, shift=False):
         # Stop current sound
@@ -798,16 +835,55 @@ class MenuCallbackState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 self.selected_item = len(self.items) - 1
 
 
+class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
+
+    name = "ReverbSettingsMenuState"
+    pages = reverb_parameters_pages
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "Reverb settings..."
+        }]
+
+        # Show page parameter values
+        for parameter_name in self.current_page_data:
+            if parameter_name is not None:
+                parameter_position, parameter_label = reverb_parameters_info_dict[parameter_name]
+                reverb_params = sm.source_state.get(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+                lines.append(justify_text(
+                    parameter_label + ":", 
+                    '{0:.2f}'.format(reverb_params[parameter_position])
+                ))
+            else:
+                # Add blank line
+                lines.append("")
+
+        return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
+ 
+    def on_encoder_pressed(self, shift=False):
+        sm.go_back()
+
+    def on_fader_moved(self, fader_idx, value, shift=False):
+        parameter_name = self.current_page_data[fader_idx]
+        if parameter_name is not None:
+            param_position, _ = reverb_parameters_info_dict[parameter_name]
+            reverb_params = sm.source_state.get(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            reverb_params[param_position] = value
+            sm.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
+
+
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
     OPTION_RELOAD = "Reload preset"
+    OPTION_REVERB = "Reverb settings..."
     OPTION_RELAYOUT = "Apply note layout..."
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_RELAYOUT, OPTION_NUM_VOICES]
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_REVERB, OPTION_RELAYOUT, OPTION_NUM_VOICES]
     page_size = 5
 
     def draw_display_frame(self):
@@ -849,6 +925,8 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
             else:
                 sm.move_to(MenuCallbackState(items=['{0}:{1}'.format(i, preset_names.get(i, 'empty')) for i in range(0, 128)], selected_item=current_preset_index, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
+        elif action_name == self.OPTION_REVERB:
+            sm.move_to(ReverbSettingsMenuState())
         else:
             sm.show_global_message('Not implemented...')
 

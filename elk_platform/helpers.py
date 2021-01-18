@@ -44,6 +44,8 @@ class StateNames(Enum):
     SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE = auto()
     SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID = auto()
 
+    REVERB_SETTINGS = auto()
+
     NUM_ACTIVE_VOICES = auto()
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
@@ -69,6 +71,17 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("presetName".lower(), "Noname")
     source_state[StateNames.LOADED_PRESET_INDEX] = int(preset_state.get("presetNumber".lower(), "-1"))
     source_state[StateNames.NUM_VOICES] = int(sampler_state.get("NumVoices".lower(), "1"))
+
+    # Reverb settings
+    reverb_state = plugin_state_xml.find_all("ReverbParameters".lower())[0]
+    source_state[StateNames.REVERB_SETTINGS] = [
+        float(reverb_state.get('reverb_roomSize'.lower(), 0.0)),
+        float(reverb_state.get('reverb_damping'.lower(), 0.0)),
+        float(reverb_state.get('reverb_wetLevel'.lower(), 0.0)),
+        float(reverb_state.get('reverb_dryLevel'.lower(), 0.0)),
+        float(reverb_state.get('reverb_width'.lower(), 0.0)),
+        float(reverb_state.get('reverb_freezeMode'.lower(), 0.0)),
+    ]
     
     # Loaded sounds properties
     sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())

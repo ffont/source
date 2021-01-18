@@ -148,13 +148,16 @@ public:
     SampleLoaderThread sampleLoaderThread;
     void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
     void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
-    void replaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
-    void replaceSoundFromBasicSoundProperties(int soundIdx,
-                                              int soundID,
-                                              const String& soundName,
-                                              const String& soundUser,
-                                              const String& soundLicense,
-                                              const String& oggDownloadURL);  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
+    void addOrReplaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Add or replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
+    void addOrReplaceSoundFromBasicSoundProperties(int soundIdx,
+                                                   int soundID,
+                                                   const String& soundName,
+                                                   const String& soundUser,
+                                                   const String& soundLicense,
+                                                   const String& oggDownloadURL,
+                                                   StringArray slices,
+                                                   BigInteger midiNotes
+                                                   );  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
     
     void reapplyNoteLayout(int newNoteLayoutType);
     
