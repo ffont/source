@@ -280,7 +280,7 @@ public:
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_REPLACE_SOUND){
-            if (message.size() == 8)  {
+            if (message.size() == 9)  {
                 int soundIdx = message[0].getInt32();
                 int soundID = message[1].getInt32();
                 String soundName = message[2].getString();
@@ -289,6 +289,7 @@ public:
                 String oggDownloadURL = message[5].getString();
                 String serializedSlices = message[6].getString();
                 String assignedNotes = message[7].getString();
+                String triggerDownloadSoundAction = message[8].getString();
                 String serializedParameters = (String)soundIdx + SERIALIZATION_SEPARATOR +
                                               (String)soundID + SERIALIZATION_SEPARATOR +
                                               soundName + SERIALIZATION_SEPARATOR +
@@ -296,7 +297,8 @@ public:
                                               soundLicense + SERIALIZATION_SEPARATOR +
                                               oggDownloadURL + SERIALIZATION_SEPARATOR +
                                               serializedSlices + SERIALIZATION_SEPARATOR +
-                                              assignedNotes + SERIALIZATION_SEPARATOR;
+                                              assignedNotes + SERIALIZATION_SEPARATOR +
+                                              triggerDownloadSoundAction + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_ADD_OR_REPLACE_SOUND) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
@@ -313,6 +315,11 @@ public:
                 String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
                                                serializedSlices + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_SET_SOUND_SLICES) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_CLEAR_ALL_SOUNDS){
+            if (message.size() == 0)  {
+                String actionMessage = String(ACTION_CLEAR_ALL_SOUNDS);
                 sendActionMessage(actionMessage);
             }
         }

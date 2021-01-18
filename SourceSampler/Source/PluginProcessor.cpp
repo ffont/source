@@ -158,8 +158,7 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
         // No preset exists at that number, create a new empty one
         currentPresetIndex = index;
         presetName = "empty";
-        query = "";
-        loadedSoundsInfo = {};
+        loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
         sampler.clearSounds();
         sampler.setSamplerVoices(16);
     }
@@ -784,8 +783,9 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
+        String triggerDownloadSoundAction = tokens[8];
         
-        addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, slices, midiNotes);
+        addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, slices, midiNotes, triggerDownloadSoundAction);
         
     } else if (message.startsWith(String(ACTION_REAPPLY_LAYOUT))){
         int newNoteLayout = message.substring(String(ACTION_REAPPLY_LAYOUT).length() + 1).getIntValue();
@@ -836,6 +836,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
             sound->setOnsetTimesSamples(onsets);
         }
+    } else if (message.startsWith(String(ACTION_CLEAR_ALL_SOUNDS))){
+        loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
+        sampler.clearSounds();
+        
     }
 }
 
@@ -887,14 +891,13 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         logToState("Source is already busy querying and downloading sounds");
     }
     
-    query = textQuery;
     isQueryDownloadingAndLoadingSounds = true;
     startedQueryDownloadingAndLoadingSoundsTime = Time::getMillisecondCounter();
     
     FreesoundClient client(FREESOUND_API_KEY);
-    logToState("Querying new sounds for: " + query);
+    logToState("Querying new sounds for: " + textQuery);
     auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(query, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhythm.onset_times", 0);
+    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 150, "id,name,username,license,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");
         
@@ -1156,7 +1159,7 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
     
 }
 
-void SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
+int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
 {
     bool replacing = soundIndex > -1;  // If sound index > -1, we are replacing a sound, otherwise we're adding a new one
     
@@ -1188,15 +1191,13 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int so
             }
         }
         loadedSoundsInfo = newLoadedSoundsInfo;
-        
-        // Trigger download (and further loading) of the new sound
-        downloadSounds(false, soundIndex);
+        return soundIndex;
         
     } else {
-        // If creating a new sound, just add the ValueTree to loadedSoundsInfo, get the new ID and trigger download
+        // If creating a new sound, just add the ValueTree to loadedSoundsInfo, get the new ID and return it
         loadedSoundsInfo.appendChild(newSoundInfo, nullptr);
         int newSoundIndex = loadedSoundsInfo.getNumChildren() - 1;
-        downloadSounds(false, newSoundIndex);
+        return newSoundIndex;
     }
 }
 
@@ -1207,7 +1208,8 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
                                                                             const String& soundLicense,
                                                                             const String& oggDownloadURL,
                                                                             StringArray slices,
-                                                                            BigInteger midiNotes)
+                                                                            BigInteger midiNotes,
+                                                                            const String& triggerDownloadSoundAction)
 {
     ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
     soundInfo.setProperty(STATE_SOUND_INFO_ID, soundID, nullptr);
@@ -1235,57 +1237,70 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
         soundInfo.appendChild(soundAnalysis, nullptr);
     }
     
-    addOrReplaceSoundFromSoundInfoValueTree(soundIdx, soundInfo);
+    int newSoundIdx = addOrReplaceSoundFromSoundInfoValueTree(soundIdx, soundInfo);
+    
+    // If requested, trigger download (and further loading) of the new sound (or of all sounds if specificed like this)
+    if (triggerDownloadSoundAction == "none"){
+        // Trigger no download task
+    } else if (triggerDownloadSoundAction == "all"){
+        // Trigger download of all sounds
+        downloadSounds(false, -1);
+    } else {
+        // Trigger download of only the added/replaced sound
+        downloadSounds(false, newSoundIdx);
+    }
 }
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
 {
     // TODO: this function uses code repeaded from "setSingleSourceSamplerSoundObject" method, we should abstract that
-    
     noteLayoutType = newNoteLayoutType;
-    
     int nSounds = loadedSoundsInfo.getNumChildren();
-    int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
-    
-    for (int soundIdx=0; soundIdx<loadedSoundsInfo.getNumChildren(); soundIdx++){
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIdx);
+    if (nSounds > 0){
+        int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
         
-        ValueTree samplerSoundParametersToUpdate = ValueTree(STATE_SAMPLER_SOUND);
-        
-        if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-            // Set midi root note to the center of the assigned range
-            samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
-                nullptr);
-        } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
-            // Set midi root note starting at C2 (midi note=36)
-            samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx, nullptr),
-                nullptr);
-        }
-        
-        BigInteger midiNotes;
-        if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-            // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
-            midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
-        } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
-            // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
-            int rootNoteForSound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx;
-            for (int i=rootNoteForSound; i<128; i=i+nSounds){
-                midiNotes.setBit(i);  // Map notes in upwards direction
+        for (int soundIdx=0; soundIdx<loadedSoundsInfo.getNumChildren(); soundIdx++){
+            auto* sound = sampler.getSourceSamplerSoundByIdx(soundIdx);
+            if (sound != nullptr){
+            
+                ValueTree samplerSoundParametersToUpdate = ValueTree(STATE_SAMPLER_SOUND);
+                
+                if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+                    // Set midi root note to the center of the assigned range
+                    samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
+                        nullptr);
+                } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
+                    // Set midi root note starting at C2 (midi note=36)
+                    samplerSoundParametersToUpdate.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx, nullptr),
+                        nullptr);
+                }
+                
+                BigInteger midiNotes;
+                if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+                    // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+                    midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
+                } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
+                    // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
+                    int rootNoteForSound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx;
+                    for (int i=rootNoteForSound; i<128; i=i+nSounds){
+                        midiNotes.setBit(i);  // Map notes in upwards direction
+                    }
+                    for (int i=rootNoteForSound; i>=0; i=i-nSounds){
+                        midiNotes.setBit(i);  // Map notes in downwards direction
+                    }
+                }
+                samplerSoundParametersToUpdate.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+                
+                // Now to load all parameters that set the layout to the sound
+                sound->loadState(samplerSoundParametersToUpdate);
             }
-            for (int i=rootNoteForSound; i>=0; i=i-nSounds){
-                midiNotes.setBit(i);  // Map notes in downwards direction
-            }
         }
-        samplerSoundParametersToUpdate.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
-        
-        // Now to load all parameters that set the layout to the sound
-        sound->loadState(samplerSoundParametersToUpdate);
     }
 }
 
@@ -1300,37 +1315,35 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff
             midiNoteForNormalPitch = sound->getMidiRootNote();
             BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
             if (assignedMidiNotes[midiNoteForNormalPitch] == false){
-                // If the root note is not mapped to the sound, find the closes mapped one
+                // If the root note is not mapped to the sound, find the closest mapped one
                 midiNoteForNormalPitch = assignedMidiNotes.findNextSetBit(midiNoteForNormalPitch);
             }
         }
-        
-        int midiChannel = sampler.midiInChannel;
-        if (midiChannel == 0){
-            midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
-        }
-        
-        MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
-        if (doNoteOff){
-            message = MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (uint8)127);
-        }
-        
-        double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
-        message.setTimeStamp(timestamp);
+        if (midiNoteForNormalPitch < 0){
+            // If for some reason no note was found, don't play anything
+        } else {
+            int midiChannel = sampler.midiInChannel;
+            if (midiChannel == 0){
+                midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
+            }
+            
+            MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
+            if (doNoteOff){
+                message = MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (uint8)127);
+            }
+            
+            double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
+            message.setTimeStamp(timestamp);
 
-        auto sampleNumber = (int)(timestamp * getSampleRate());
+            auto sampleNumber = (int)(timestamp * getSampleRate());
 
-        midiFromEditor.addEvent(message,sampleNumber);
+            midiFromEditor.addEvent(message,sampleNumber);
+        }
     }
 }
 
 double SourceSamplerAudioProcessor::getStartTime(){
     return startTime;
-}
-
-String SourceSamplerAudioProcessor::getQuery()
-{
-    return query;
 }
 
 void SourceSamplerAudioProcessor::timerCallback()

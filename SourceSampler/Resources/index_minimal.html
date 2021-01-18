@@ -30,6 +30,19 @@
             margin-bottom: 10px;
         }
 
+        #workingIndicator {
+            background-color:rgb(37, 37, 37);
+            position: fixed;
+            width: 200px;
+            margin: auto;
+            text-align: center;
+            padding: 30px;
+            border-radius: 4px;
+            z-index: 9;
+            top: 200px;
+            left: 25px;
+        }
+
         .sliderWrapper {
             background-color:rgb(37, 37, 37);
             display:inline-block;
@@ -133,6 +146,10 @@
             };
         }
 
+        function showWorkingLabel(){
+            document.getElementById("workingIndicator").style.display = "block";
+        }
+
         function updateMinimalInterfaceState(){
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
@@ -164,6 +181,7 @@
         }
 
         function showDefault() {
+            document.getElementById("workingIndicator").style.display = "none";
             if (wavesurfer !== undefined){
                 wavesurfer.empty();
                 wavesurfer.clearRegions();
@@ -209,16 +227,6 @@
             xhr.send();
         }
 
-        function makeQuery(){
-            var element = document.getElementById('newQuery');
-            var query = element.querySelector("input[name='query']").value;
-            var numSounds = element.querySelector("input[name='numSounds']").value || 16;
-            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
-            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 300;
-            var noteMappingType = element.querySelector("select[name='noteMappingType']").value;
-            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int');
-        }
-
         function savePreset(){
             var element = document.getElementById('savePreset');
             var name = element.querySelector("input[name='presetName']").value;
@@ -239,6 +247,28 @@
                     !isNaN(parseFloat(str)) // ...and ensure strings of whitespace fail
         }
 
+        function makeNewPresetFromQuery(){
+            var element = document.getElementById('newPresetByQuery');
+            var query = element.querySelector("input[name='query']").value;
+            var numSounds = element.querySelector("input[name='numSounds']").value || 16;
+            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
+            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 0.5;
+            var noteMappingType = element.querySelector("select[name='noteMappingType']").value;
+            var data = 'query:' + query;
+            
+            if (!isNumeric(query)){
+                data += ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength;
+                data += ',numSounds:' + numSounds;
+            } else {
+                // if query is numeric only, don't apply length filter because user is indicating sound id, but limit results to 1 so we don't randomly pick another result
+                data += ',pageSize:1';
+                data += ',numSounds:1';
+            }
+            data += ',noteMappingType:' + noteMappingType;
+            showWorkingLabel();
+            sendDataToServer(data);
+        }
+
         function makeReplaceSoundQuery(){
             var element = document.getElementById('replaceSound');
             var query = element.querySelector("input[name='query']").value;
@@ -252,8 +282,8 @@
                 data += ',pageSize:1'
 
             }
+            showWorkingLabel();
             sendDataToServer(data);
-            showDefault();
         }
 
         function initSoundEditor(data){
@@ -354,8 +384,8 @@
                 var marker = markers[i];
                 data += "," + marker[0] + ":" + marker[1];
             }
+            showWorkingLabel();
             sendDataToServer(data);
-            showDefault();
         }
         
     </script>
@@ -366,21 +396,32 @@
     <div id="wrapper">
         <h1>SOURCE</h1>
 
-        <div id="newQuery" class="controls_card show_as_default">
-            <h2>Make new preset</h2>
+
+        <div id="info" class="controls_card show_as_default">
+            <p>
+                This page will be automatically updated when selecting options in the SOURCE user interface.
+            </p>
+        </div>
+
+        <div id="workingIndicator">
+            Searching Freesound...
+        </div>
+
+        <div id="newPresetByQuery" class="controls_card">
+            <h2>New sounds by query</h2>
             Query:<input name="query" value="" type="text" placeholder="percussion"><br>
             Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
             Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             Note mapping type: <select name="noteMappingType">
                 <option value="0">contiguous</option>
-                <option value="1">interleaved</option>
+                <option value="1" selected="selected">interleaved</option>
             </select>
             <br>
-            <button onclick="makeQuery()">Go!</button>
+            <button onclick="makeNewPresetFromQuery()">Go!</button>
         </div>
 
         <div id="replaceSound" class="controls_card">
-            <h2>Replace sound with new query</h2>
+            <h2>Find new sound with query</h2>
             Query:<input name="query" value="" type="text" placeholder="percussion"><br>
             Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             <br>
@@ -412,7 +453,7 @@
             <button onclick="savePreset()">Save</button>
         </div>
 
-        <div id="loadPreset" class="controls_card show_as_default">
+        <div id="loadPreset" class="controls_card">
             <h2>Load preset</h2>
             Preset number:<input name="presetIdx" value="" type="number">
             <br>

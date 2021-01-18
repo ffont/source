@@ -4,7 +4,7 @@ import time
 
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame
 
-from freesound_interface import find_sound_by_similarity, find_sound_by_query
+from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -317,9 +317,9 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound):
+    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", trigger_download=""):
         sound_onsets_list = []
-        if 'analysis' in new_sound:
+        if 'analysis' in new_sound and new_sound['analysis'] is not None:
             if 'rhythm' in new_sound['analysis']:
                 if 'onset_times' in new_sound['analysis']['rhythm']:
                     sound_onsets_list = new_sound['analysis']['rhythm']['onset_times']
@@ -335,12 +335,13 @@ class State(object):
             new_sound['license'], 
             new_sound['previews']['preview-hq-ogg'], 
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
-            ""  # assigned notes
+            assinged_notes,
+            trigger_download  # "" -> yes, "none" -> no, "all" -> all sounds
             ])
 
     def add_or_replace_sound_by_query(self, *args, **kwargs):
         sound_idx = kwargs.get('sound_idx', -1)  # If no sound_idx kwarg is passed, then -1 will be used (which means to add a new sound)
-        sm.show_global_message("Finding sound...", duration=10)
+        sm.show_global_message("Searching sound...", duration=10)
         query = kwargs.get('query', "")
         min_length = float(kwargs.get('minSoundLength', '0'))
         max_length = float(kwargs.get('maxSoundLength', '300'))
@@ -357,7 +358,7 @@ class State(object):
             sm.show_global_message("Error :(")
 
     def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
-        sm.show_global_message("Finding sound...", duration=10)
+        sm.show_global_message("Searching sound...", duration=10)
         try:
             selected_sound = find_sound_by_similarity(selected_sound_id)
             if selected_sound is not None:
@@ -368,6 +369,44 @@ class State(object):
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             sm.show_global_message("Error :(")
+
+    def new_preset_by_query(self, *args, **kwargs):
+        sm.show_global_message("Searching sounds...", duration=10)
+        query = kwargs.get('query', "")
+        min_length = float(kwargs.get('minSoundLength', '0'))
+        max_length = float(kwargs.get('maxSoundLength', '10'))
+        page_size = int(kwargs.get('pageSize', '150'))
+        n_sounds = int(kwargs.get('numSounds', '16'))
+        note_mapping_type = int(kwargs.get('noteMappingType', 'interleaved'))
+        try:
+            new_sounds = find_sounds_by_query(query=query, n_sounds=n_sounds, min_length=min_length, max_length=max_length, page_size=page_size)
+            if not new_sounds:
+                sm.show_global_message("No results found!")
+            else:
+                sm.send_osc_to_plugin('/clear_all_sounds', [])
+                time.sleep(0.2)
+                n_sounds = len(new_sounds)
+                n_notes_per_sound = 128 // n_sounds
+                for sound_idx, sound in enumerate(new_sounds):
+                    midi_notes = ["0"] * 128
+                    if note_layout_types[note_mapping_type] == 'Contiguous':
+                        # In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+                        for i in range(sound_idx * n_notes_per_sound, (sound_idx + 1) * n_notes_per_sound):
+                            midi_notes[i] = "1"
+                    else:
+                        # Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
+                        NOTE_MAPPING_INTERLEAVED_ROOT_NOTE = 36
+                        root_note_for_sound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + sound_idx
+                        for i in range(root_note_for_sound, 128, n_sounds):
+                            midi_notes[i] = "1"  # Map notes in upwards direction
+                        for i in range(root_note_for_sound, 0, -n_sounds):
+                            midi_notes[i] = "1"  # Map notes in downwards direction
+
+                    self.send_add_or_replace_sound_to_plugin(-1, sound, assinged_notes=hex(int("".join(reversed(midi_notes)), 2)), trigger_download="none" if sound_idx < n_sounds -1 else "all")
+                    
+        except Exception as e:
+            print("ERROR while querying Freesound: {0}".format(e))
+            sm.show_global_message("Error :(")    
 
 
     def set_sound_params_from_precision_editor(self, *args, **kwargs):
@@ -877,6 +916,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
     OPTION_RELOAD = "Reload preset"
+    OPTION_NEW_SOUNDS = "New sounds..."
     OPTION_ADD_NEW_SOUND = "Add new sound..."
     OPTION_REVERB = "Reverb settings..."
     OPTION_RELAYOUT = "Apply note layout..."
@@ -884,7 +924,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_REVERB, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_NUM_VOICES]
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES]
     page_size = 5
 
     def draw_display_frame(self):
@@ -934,6 +974,13 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 web_form_id="replaceSound", 
                 extra_data_for_callback={}, 
                 callback=self.add_or_replace_sound_by_query, 
+                go_back_n_times=2))
+        elif action_name == self.OPTION_NEW_SOUNDS:
+            sm.move_to(EnterDataViaWebInterfaceState(
+                title="New sounds...", 
+                web_form_id="newPresetByQuery", 
+                extra_data_for_callback={}, 
+                callback=self.new_preset_by_query, 
                 go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')

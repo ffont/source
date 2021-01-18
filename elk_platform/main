@@ -33,6 +33,8 @@ from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMA
 
 from source_states import state_manager, sound_parameters_info_dict
 
+from freesound_interface import find_sounds_by_query
+
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
 import threading
@@ -509,9 +511,6 @@ def receive_data_from_web():
 def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    if address == '/new_query':
-        state_manager.show_global_message("Making query...", duration=25)
-        PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_WHILE_QUERYING
     osc_client.send_message(address, values)    
     return 'OSC sent'
 

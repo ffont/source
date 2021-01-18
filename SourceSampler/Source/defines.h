@@ -22,7 +22,7 @@
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
         #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
-        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
+        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
     #else
         #define STATE_UPDATE_HZ 15
         #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
@@ -74,6 +74,7 @@
 #define ACTION_ADD_OR_REPLACE_SOUND "ACTION_ADD_OR_REPLACE_SOUND"
 #define ACTION_REAPPLY_LAYOUT "ACTION_REAPPLY_LAYOUT"
 #define ACTION_SET_SOUND_SLICES "ACTION_SET_SOUND_SLICES"
+#define ACTION_CLEAR_ALL_SOUNDS "ACTION_CLEAR_ALL_SOUNDS"
 
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
 #define OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
@@ -93,6 +94,7 @@
 #define OSC_ADDRESS_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
 #define OSC_ADDRESS_REAPPLY_LAYOUT "/reapply_layout"
 #define OSC_ADDRESS_SET_SOUND_SLICES "/set_slices"
+#define OSC_ADDRESS_CLEAR_ALL_SOUNDS "/clear_all_sounds"
 
 #define OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define OSC_ADDRESS_REMOVE_CC_MAPPING "/remove_cc_mapping"
