@@ -273,8 +273,14 @@ def add_global_message_to_frame(im, message_text):
     draw = ImageDraw.Draw(im)
     draw.rectangle((5, 5 + font_heihgt_px, DISPLAY_SIZE[0] - 5, DISPLAY_SIZE[1] - 5), outline="black", fill="white")
     draw.rectangle((6, 6 + font_heihgt_px, DISPLAY_SIZE[0] - 6, DISPLAY_SIZE[1] - 6), outline="white", fill="black")
-    text_width = draw.textsize(message_text, font=font)[0]
-    draw.text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px + int(((DISPLAY_SIZE[1] - font_heihgt_px) - FONT_SIZE)/2)), message_text, font=font, fill="white")
+    if '\n' not in message_text:    
+        # single-line text
+        text_width = draw.textsize(message_text, font=font)[0]
+        draw.text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px + int(((DISPLAY_SIZE[1] - font_heihgt_px) - FONT_SIZE)/2)), message_text, font=font, fill="white")
+    else:
+        # multi-line text
+        text_width, text_height = draw.multiline_textsize(message_text, font=font)
+        draw.multiline_text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px + (DISPLAY_SIZE[1] - font_heihgt_px - text_height) / 2), message_text, align="center", font=font, fill="white")
     return im
 
 
