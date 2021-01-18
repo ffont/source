@@ -119,6 +119,7 @@ sound_parameter_pages = [
 
 midi_cc_available_parameters_list = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
 
+note_layout_types = ['Contiguous', 'Interleaved']
 
 class StateManager(object):
 
@@ -310,13 +311,13 @@ class State(object):
             sm.show_global_message("Loading {0}...".format(current_preset_index), duration=5)
 
     def reapply_note_layout(self, layout_type):
-        sm.send_osc_to_plugin("/reapply_layout", [layout_type]) 
+        sm.send_osc_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
         sm.show_global_message("Updated layout")
 
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def send_replace_sound_to_plugin(self, sound_idx, new_sound):
+    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound):
         sound_onsets_list = []
         if 'analysis' in new_sound:
             if 'rhythm' in new_sound['analysis']:
@@ -337,24 +338,23 @@ class State(object):
             ""  # assigned notes
             ])
 
-    def replace_sound_by_query(self, *args, **kwargs):
-        sound_idx = kwargs.get('sound_idx', -1)
-        if sound_idx >  -1:
-            sm.show_global_message("Finding sound...", duration=10)
-            query = kwargs.get('query', "")
-            min_length = float(kwargs.get('minSoundLength', '0'))
-            max_length = float(kwargs.get('maxSoundLength', '300'))
-            page_size = float(kwargs.get('pageSize', '50'))
-            try:
-                selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size)
-                if selected_sound is not None:
-                    sm.show_global_message("Replacing sound...")
-                    self.send_replace_sound_to_plugin(sound_idx, selected_sound)
-                else:
-                    sm.show_global_message("No results found!")
-            except Exception as e:
-                print("ERROR while querying Freesound: {0}".format(e))
-                sm.show_global_message("Error :(")
+    def add_or_replace_sound_by_query(self, *args, **kwargs):
+        sound_idx = kwargs.get('sound_idx', -1)  # If no sound_idx kwarg is passed, then -1 will be used (which means to add a new sound)
+        sm.show_global_message("Finding sound...", duration=10)
+        query = kwargs.get('query', "")
+        min_length = float(kwargs.get('minSoundLength', '0'))
+        max_length = float(kwargs.get('maxSoundLength', '300'))
+        page_size = float(kwargs.get('pageSize', '50'))
+        try:
+            selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size)
+            if selected_sound is not None:
+                sm.show_global_message("Loading sound...")
+                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
+            else:
+                sm.show_global_message("No results found!")
+        except Exception as e:
+            print("ERROR while querying Freesound: {0}".format(e))
+            sm.show_global_message("Error :(")
 
     def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
         sm.show_global_message("Finding sound...", duration=10)
@@ -362,7 +362,7 @@ class State(object):
             selected_sound = find_sound_by_similarity(selected_sound_id)
             if selected_sound is not None:
                 sm.show_global_message("Replacing sound...")
-                self.send_replace_sound_to_plugin(sound_idx, selected_sound)
+                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
             else:
                 sm.show_global_message("No results found!")
         except Exception as e:
@@ -877,13 +877,14 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
     OPTION_RELOAD = "Reload preset"
+    OPTION_ADD_NEW_SOUND = "Add new sound..."
     OPTION_REVERB = "Reverb settings..."
     OPTION_RELAYOUT = "Apply note layout..."
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
 
     name = "HomeContextualMenuState"
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_REVERB, OPTION_RELAYOUT, OPTION_NUM_VOICES]
+    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_REVERB, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_NUM_VOICES]
     page_size = 5
 
     def draw_display_frame(self):
@@ -899,7 +900,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.go_back()
         elif action_name == self.OPTION_RELAYOUT:
             # see NOTE_MAPPING_TYPE_CONTIGUOUS in defines.h, contiguous and interleaved indexes must match with those in that file (0 and 1)
-            sm.move_to(MenuCallbackState(items=['Contiguous', 'Interleaved'], selected_item=0, title1="Apply note layout...", callback=self.reapply_note_layout, go_back_n_times=2))
+            sm.move_to(MenuCallbackState(items=note_layout_types, selected_item=0, title1="Apply note layout...", callback=self.reapply_note_layout, go_back_n_times=2))
         elif action_name == self.OPTION_NUM_VOICES:
             current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
             sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Number of voices", callback=self.set_num_voices, go_back_n_times=2))
@@ -927,6 +928,13 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 sm.move_to(MenuCallbackState(items=['{0}:{1}'.format(i, preset_names.get(i, 'empty')) for i in range(0, 128)], selected_item=current_preset_index, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
         elif action_name == self.OPTION_REVERB:
             sm.move_to(ReverbSettingsMenuState())
+        elif action_name == self.OPTION_ADD_NEW_SOUND:
+            sm.move_to(EnterDataViaWebInterfaceState(
+                title="Add new sound...", 
+                web_form_id="replaceSound", 
+                extra_data_for_callback={}, 
+                callback=self.add_or_replace_sound_by_query, 
+                go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -970,7 +978,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 title="Replace sound by", 
                 web_form_id="replaceSound", 
                 extra_data_for_callback={'sound_idx': self.sound_idx}, 
-                callback=self.replace_sound_by_query, 
+                callback=self.add_or_replace_sound_by_query, 
                 go_back_n_times=3))
         elif action_name == self.OPTION_BY_SIMILARITY:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
