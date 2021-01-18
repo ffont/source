@@ -1,5 +1,6 @@
 import threading
 
+from collections import defaultdict
 from enum import Enum, auto
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
@@ -75,10 +76,12 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     processed_sounds_info = []
     for sound_info in sounds_info:
 
+        # Consolidate sound slices into a list
         slices = []
         for onset in sound_info.find_all('onset'):
             slices.append(onset['time'])
 
+        # Consolidate all sound parameter values into a dict
         processed_sound_parameters_info = {}
         for parameter in sound_info.find_all('SamplerSoundParameter'.lower()):
             """
@@ -88,7 +91,10 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             name = parameter['parameter_name']
             processed_sound_parameters_info[name] = val
 
+        # Concoslidate MIDI CC mapping data into a dict
+        # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
         processed_sound_midi_cc_info = {}
+        processed_sound_midi_cc_info_list_aux = []
         for midi_cc in sound_info.find_all('SamplerSoundMidiCCMapping'.lower()):
             """
             <SamplerSoundMidiCCMapping
@@ -101,15 +107,26 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             """
             cc_number = int(midi_cc['midiMappingCcNumber'.lower()])
             parameter_name = midi_cc['midiMappingParameterName'.lower()]
-            label = 'CC#{} > {}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
-            processed_sound_midi_cc_info[label] = {
+            label = 'CC#{}->{}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
+            processed_sound_midi_cc_info_list_aux.append((label, {
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['midiMappingMinRange'.lower()]),
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['midiMappingMaxRange'.lower()]),
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID: int(midi_cc['midiMappingRandomId'.lower()]) ,
-            }
+            }))
+        # Sort by assignment random ID and then for label. In this way the sorting will be always consistent
+        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID])
+        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[0])
+        assignment_labels = [label for label, _ in processed_sound_midi_cc_info_list_aux]
+        added_labels_count = defaultdict(int)
+        for assignment_label, assignment_data in processed_sound_midi_cc_info_list_aux:
+            added_labels_count[assignment_label] += 1
+            if added_labels_count[assignment_label] > 1:
+                assignment_label = '{0} ({1})'.format(assignment_label, added_labels_count[assignment_label])
+            processed_sound_midi_cc_info[assignment_label] = assignment_data
 
+        # Put all sound data together into a dict
         processed_sounds_info.append({
             StateNames.SOUND_NAME: sound_info.get('soundname', '-'),
             StateNames.SOUND_ID: sound_info.get('soundid', 0),
