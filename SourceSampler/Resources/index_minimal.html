@@ -39,7 +39,7 @@
             padding: 30px;
             border-radius: 4px;
             z-index: 9;
-            top: 200px;
+            top: 150px;
             left: 25px;
         }
 
@@ -269,6 +269,14 @@
             sendDataToServer(data);
         }
 
+        function enterQuery(){
+            var element = document.getElementById('enterQuery');
+            var query = element.querySelector("input[name='query']").value;
+            var data = 'query:' + query;
+            showWorkingLabel();
+            sendDataToServer(data);
+        }
+
         function makeReplaceSoundQuery(){
             var element = document.getElementById('replaceSound');
             var query = element.querySelector("input[name='query']").value;
@@ -418,6 +426,13 @@
             </select>
             <br>
             <button onclick="makeNewPresetFromQuery()">Go!</button>
+        </div>
+
+        <div id="enterQuery" class="controls_card">
+            <h2>Enter your query</h2>
+            <input name="query" value="" type="text" placeholder=""><br>
+            <br>
+            <button onclick="enterQuery()">Go!</button>
         </div>
 
         <div id="replaceSound" class="controls_card">

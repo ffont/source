@@ -24,6 +24,7 @@ class StateNames(Enum):
     LOADED_PRESET_NAME = auto()
     LOADED_PRESET_INDEX = auto()
     NUM_VOICES = auto()
+    NOTE_LAYOUT_TYPE = auto()
     
     NUM_SOUNDS = auto()
     SOUNDS_INFO = auto()
@@ -36,6 +37,7 @@ class StateNames(Enum):
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
     SOUND_SLICES = auto()
+    SOUND_ASSIGNED_NOTES = auto()
     
     SOUND_MIDI_CC_ASSIGNMENTS = auto()
     SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
@@ -71,6 +73,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("presetName".lower(), "Noname")
     source_state[StateNames.LOADED_PRESET_INDEX] = int(preset_state.get("presetNumber".lower(), "-1"))
     source_state[StateNames.NUM_VOICES] = int(sampler_state.get("NumVoices".lower(), "1"))
+    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state.get("noteLayoutType".lower(), "1"))
 
     # Reverb settings
     reverb_state = plugin_state_xml.find_all("ReverbParameters".lower())[0]
@@ -89,14 +92,16 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     processed_sounds_info = []
     for sound_info in sounds_info:
 
+        sampler_sound = sound_info.find_all("SamplerSound".lower())[0]
+
         # Consolidate sound slices into a list
         slices = []
-        for onset in sound_info.find_all('onset'):
+        for onset in sampler_sound.find_all('onset'):
             slices.append(onset['time'])
 
         # Consolidate all sound parameter values into a dict
         processed_sound_parameters_info = {}
-        for parameter in sound_info.find_all('SamplerSoundParameter'.lower()):
+        for parameter in sampler_sound.find_all('SamplerSoundParameter'.lower()):
             """
             <SamplerSoundParameter parameter_type="int" parameter_name="launchMode" parameter_value="1"/>
             """
@@ -108,7 +113,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
         # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
         processed_sound_midi_cc_info = {}
         processed_sound_midi_cc_info_list_aux = []
-        for midi_cc in sound_info.find_all('SamplerSoundMidiCCMapping'.lower()):
+        for midi_cc in sampler_sound.find_all('SamplerSoundMidiCCMapping'.lower()):
             """
             <SamplerSoundMidiCCMapping
                 midiMappingRandomId="14562" 
@@ -150,6 +155,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,
+            StateNames.SOUND_ASSIGNED_NOTES: sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
         })
 
@@ -256,16 +262,13 @@ def add_scroll_bar_to_frame(im, current, total, width=1):
     return im
 
 
-def add_centered_value_to_frame(im, value, font_size_big=True):
+def add_centered_value_to_frame(im, value, font_size_big=True, y_offset_lines=2):
     draw = ImageDraw.Draw(im)
     message_text = "{0}".format(value)
-    text_width = draw.textsize(message_text, font=font_big if font_size_big else font)[0]
-    y_offset = font_heihgt_px * 2 + 2
-    height = DISPLAY_SIZE[1] - y_offset
-    if font_size_big:
-        draw.text(((DISPLAY_SIZE[0] - text_width) / 2, y_offset + (height - FONT_SIZE_BIG)/2), message_text, font=font_big, fill="white")
-    else:
-        draw.text(((DISPLAY_SIZE[0] - text_width) / 2, y_offset + (height - FONT_SIZE)/2), message_text, font=font, fill="white")
+    font_to_use = font_big if font_size_big else font
+    text_width, text_height = draw.multiline_textsize(message_text, font=font_to_use)
+    y_offset = font_heihgt_px * y_offset_lines
+    draw.multiline_text(((DISPLAY_SIZE[0] - text_width) / 2, y_offset + (DISPLAY_SIZE[1] - y_offset - text_height) / 2), message_text, align="center", font=font_to_use, fill="white")    
     return im
 
 

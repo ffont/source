@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.1"
+<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.2"
               projectLineFeed="&#10;" companyName="Rita &amp; Aurora" companyWebsite="https://ritaandaurora.github.io"
               companyEmail="frederic.font@gmail.com" reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
