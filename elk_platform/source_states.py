@@ -4,7 +4,7 @@ import random
 import time
 import traceback
 
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
 
@@ -245,6 +245,7 @@ class State(object):
 
     def __init__(self, *args, **kwargs):
         self.activation_time = time.time()
+        self.name = self.__class__.__name__
 
     def __str__(self):
         serialized = 'STATE: {0}'.format(self.name)
@@ -629,7 +630,6 @@ class ChangePresetOnEncoderShiftRotatedStateMixin(object):
 
 class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
-    name = "HomeState"
     pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
 
     def draw_display_frame(self):
@@ -717,7 +717,6 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
 class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
-    name = "SoundSelectedState"
     pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
     sound_idx = -1
     selected_sound_is_playing = False
@@ -961,7 +960,6 @@ class MenuCallbackState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
 class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
-    name = "ReverbSettingsMenuState"
     pages = reverb_parameters_pages
 
     def draw_display_frame(self):
@@ -1065,7 +1063,6 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     OPTION_BY_SIMILARITY = "By sound similarity"
     OPTION_RANDOM = "Random sounds"
     
-    name = "NewPresetOptionsMenuState"
     items = [OPTION_BY_QUERY, OPTION_BY_PREDEFINED_QUERY, OPTION_BY_SIMILARITY, OPTION_RANDOM]
     page_size = 4
 
@@ -1143,7 +1140,6 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
 
-    name = "HomeContextualMenuState"
     items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES]
     page_size = 5
 
@@ -1207,7 +1203,6 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     OPTION_BY_SIMILARITY = "Find similar"
     OPTION_FROM_DISK = "Load from disk"
 
-    name = "ReplaceByOptionsMenuState"
     sound_idx = -1
     items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_FROM_DISK]
     page_size = 3
@@ -1264,7 +1259,6 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     MIDI_CC_ADD_NEW_TEXT = "Add new..."
 
-    name = "SoundSelectedContextualMenuState"
     sound_idx = -1
     items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE]
     page_size = 4
@@ -1309,6 +1303,8 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 sm.selected_open_sound_in_browser = selected_sound_id
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
+            sm.move_to(SoundPrecisionEditorState())
+            '''
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, default={})
             sm.move_to(EnterDataViaWebInterfaceState(
@@ -1329,6 +1325,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 extra_data_for_callback={'sound_idx': self.sound_idx}, 
                 callback=self.set_sound_params_from_precision_editor, 
                 go_back_n_times=2))
+            '''
         elif action_name == self.OPTION_MIDI_CC:
             sm.move_to(
                 MenuCallbackState(
@@ -1532,6 +1529,62 @@ class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State)
             sm.go_back()
 
 
+
+import numpy
+import pyogg
+import os
+import random
+
+class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
+
+    def to_array(self, vorbis_file):
+        bytes_per_sample = 2
+        dtype = {
+            1: numpy.int8,
+            2: numpy.int16
+        }
+        # Convert the ctypes buffer to a NumPy array
+        array = numpy.frombuffer(
+            vorbis_file.buffer,
+            dtype=dtype[bytes_per_sample]
+        )
+        # Reshape the array
+        return array.reshape(
+            (len(vorbis_file.buffer) // bytes_per_sample // vorbis_file.channels,
+            vorbis_file.channels)
+        )
+
+    cursor_position = 0
+    sound_data_array = None
+    sound_length = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        filename = random.choice(list(os.listdir(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''))))
+        if filename.endswith('.ogg'):
+            vorbis_file = pyogg.VorbisFile(os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename))
+            self.sound_data_array = self.to_array(vorbis_file)[:, 0]
+            #max_value = numpy.amax(self.sound_data_array)
+            #self.sound_data_array = self.sound_data_array * (32768/max_value)
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "Precision editor"  # TODO add sound name here
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        if self.sound_data_array is not None:
+            return add_sound_waveform_and_extras_to_frame(frame, self.sound_data_array, self.cursor_position)
+        else:
+            return add_centered_value_to_frame(frame, "No sound loaded", font_size_big=False)
+
+    def on_encoder_rotated(self, direction, shift=False):
+        self.cursor_position += direction * 300
+        if self.cursor_position < 0:
+            self.cursor_position = 0
+        if self.cursor_position >= self.sound_data_array.shape[0]:
+            self.cursor_position = self.sound_data_array.shape[0] - 1
+        
 
 state_manager = StateManager()
 sm = state_manager

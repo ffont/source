@@ -286,6 +286,29 @@ def add_global_message_to_frame(im, message_text):
         draw.multiline_text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px + (DISPLAY_SIZE[1] - font_heihgt_px - text_height) / 2), message_text, align="center", font=font, fill="white")
     return im
 
+def add_sound_waveform_and_extras_to_frame(im, sound_data_array, cursor_position):
+    draw = ImageDraw.Draw(im)
+    samples = []
+    sound_length = sound_data_array.shape[0]
+    for i in range(0, sound_length, sound_length//DISPLAY_SIZE[0]):
+        samples.append(sound_data_array[i])
+
+    waveform_height = DISPLAY_SIZE[1] - font_heihgt_px * 2
+    y_offset = font_heihgt_px * 2 + waveform_height // 2  # Center of the waveform
+    
+    # Draw waveform
+    for i in range(0, len(samples) - 1):
+        norm_sample = (samples[i] * 1.0 / 32768) * (waveform_height / 2)
+        next_norm_sample = (samples[i + 1] * 1.0 / 32768) * (waveform_height / 2)
+        draw.line([(i, y_offset - 1 + norm_sample), (i + 1, y_offset + next_norm_sample)], width=1, fill="white")
+    
+    # Draw cursor
+    cursor_x = int((cursor_position * 1.0 / sound_length) * DISPLAY_SIZE[0])
+    draw.line([(cursor_x, y_offset - 1 + waveform_height // 2), (cursor_x, y_offset - waveform_height // 2)], width=1, fill="white")
+    
+    return im
+
+
 
 # -- Timer for delayed actions
 
