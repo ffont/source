@@ -679,10 +679,6 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
     def on_activating_state(self):
         sm.unset_all_leds()
-        sm.set_all_fader_leds()
-
-    def on_deactivating_state(self):
-        sm.unset_all_fader_leds()
 
     def on_button_pressed(self, button_idx, shift=False):
         # Select a sound
