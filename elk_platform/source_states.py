@@ -1,12 +1,13 @@
 import math
+import numpy
 import os
+import pyogg
 import random
 import time
 import traceback
 
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame
-
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -398,7 +399,7 @@ class State(object):
             sm.show_global_message("Error :(")
 
     def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
-        sm.show_global_message("Searching similar...", duration=3600)
+        sm.show_global_message("Searching\nsimilar...", duration=3600)
         try:
             selected_sound = find_sound_by_similarity(selected_sound_id)
             if selected_sound is not None:
@@ -1303,7 +1304,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 sm.selected_open_sound_in_browser = selected_sound_id
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
-            sm.move_to(SoundPrecisionEditorState())
+            sm.move_to(SoundPrecisionEditorState(sound_idx=self.sound_idx))
             '''
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, default={})
@@ -1530,10 +1531,7 @@ class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State)
 
 
 
-import numpy
-import pyogg
-import os
-import random
+
 
 class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
 
@@ -1554,36 +1552,110 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
             vorbis_file.channels)
         )
 
-    cursor_position = 0
-    sound_data_array = None
-    sound_length = 0
+    sound_idx = -1
+    sound_data_array = None  # numpy array of shape (x, 1)
+    cursor_position = 0  # In samples
+    sound_length = 0  # In samples
+    sound_sr = 44100 # In samples
+    min_zoom = 100  # In samples/pixel (the furthest away we can get)
+    max_zoom = 1  # In samples/pixel (the closer we can get)
+    current_zoom = min_zoom  # In samples/pixel
+    display_width = DISPLAY_SIZE[0]  # In pixels
+    half_display_width = display_width // 2  # In pixels
+    scale = 1.0
+    max_scale = 20.0
+    min_scale = 0.2
+    slices = []  # list slices to show (in samples)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        filename = random.choice(list(os.listdir(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''))))
-        if filename.endswith('.ogg'):
-            vorbis_file = pyogg.VorbisFile(os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename))
-            self.sound_data_array = self.to_array(vorbis_file)[:, 0]
-            #max_value = numpy.amax(self.sound_data_array)
-            #self.sound_data_array = self.sound_data_array * (32768/max_value)
-
+        self.sound_idx = kwargs.get('sound_idx', -1)
+        if self.sound_idx > -1:
+            sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID, default=None)
+            if sound_id is not None:
+                filename = '{}.ogg'.format(sound_id)
+                path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
+                if os.path.exists(path):
+                    vorbis_file = pyogg.VorbisFile(path)
+                    self.sound_sr = vorbis_file.frequency
+                    self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
+                    self.sound_data_array = self.to_array(vorbis_file)[:, 0]
+                    self.sound_length = self.sound_data_array.shape[0]
+                    self.min_zoom = (self.sound_length // self.display_width) + 1
+                    self.current_zoom = self.min_zoom
+                    
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "Precision editor"  # TODO add sound name here
+            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         if self.sound_data_array is not None:
-            return add_sound_waveform_and_extras_to_frame(frame, self.sound_data_array, self.cursor_position)
+            start_sample = int(self.cursor_position - self.half_display_width * self.current_zoom)
+            end_sample = int(self.cursor_position + self.half_display_width * self.current_zoom)
+            n_samples_covered = end_sample - start_sample
+            if start_sample < 0 and end_sample <= self.sound_length:
+                # We're at the beggning of the sound, align it to the left
+                start_sample = 0
+                end_sample = start_sample + n_samples_covered
+            elif start_sample < self.sound_length and end_sample >= self.sound_length:
+                # We're at the end of the sound, align it to the right
+                end_sample = self.sound_length - 1
+                start_sample = end_sample - n_samples_covered
+            elif 0 <= start_sample < self.sound_length and 0 <= end_sample < self.sound_length:
+                # Normal case in which we're not in sound edges
+                pass
+
+            sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, {})
+            start_position = int(float(sound_parameters.get('startPosition', 0.0)) * self.sound_length)
+            end_position = int(float(sound_parameters.get('endPosition', 1.0)) * self.sound_length)
+            loop_start_position = int(float(sound_parameters.get('loopStartPosition', 0.0)) * self.sound_length)
+            loop_end_position = int(float(sound_parameters.get('loopEndPosition', 1.0)) * self.sound_length)
+
+            if self.current_zoom < 10:
+                current_time_label = '{:.4f}s'.format(self.cursor_position / self.sound_sr)
+            else:
+                current_time_label = '{:.2f}s'.format(self.cursor_position / self.sound_sr)
+
+            return add_sound_waveform_and_extras_to_frame(
+                frame, 
+                self.sound_data_array, 
+                start_sample=start_sample, 
+                end_sample=end_sample, 
+                cursor_position=self.cursor_position, 
+                scale=self.scale,
+                slices=self.slices,
+                start_position=start_position,
+                end_position=end_position,
+                loop_start_position=loop_start_position,
+                loop_end_position=loop_end_position,
+                current_time_label=current_time_label)
         else:
             return add_centered_value_to_frame(frame, "No sound loaded", font_size_big=False)
 
     def on_encoder_rotated(self, direction, shift=False):
-        self.cursor_position += direction * 300
+        self.cursor_position += direction * self.current_zoom * (5 if not shift else 1)
         if self.cursor_position < 0:
             self.cursor_position = 0
         if self.cursor_position >= self.sound_data_array.shape[0]:
             self.cursor_position = self.sound_data_array.shape[0] - 1
+
+    def on_encoder_pressed(self, shift):
+        # TODO: save new slices and go back
+        pass
+
+    def on_button_pressed(self, button_idx, shift):
+        # TODO: save current selected point as start/end or loop start/end points
+        # Also: delete closest onset and delete all onsets
+        pass
+
+    def on_fader_moved(self, fader_idx, value, shift=False):
+        if fader_idx == 0:
+            # Change zoom
+            self.current_zoom = (((value - 0) * (self.min_zoom - self.max_zoom)) / 1) + self.max_zoom
+        elif fader_idx == 1:
+            # Change scaling
+            self.scale  = (((value - 0) * (self.max_scale - self.min_scale)) / 1) + self.min_scale
         
 
 state_manager = StateManager()

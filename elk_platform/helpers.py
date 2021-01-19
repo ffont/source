@@ -1,3 +1,4 @@
+import numpy
 import threading
 
 from collections import defaultdict
@@ -96,8 +97,8 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
 
         # Consolidate sound slices into a list
         slices = []
-        for onset in sampler_sound.find_all('onset'):
-            slices.append(onset['time'])
+        for onset in sound_info.find_all('onset'):
+            slices.append(float(onset['time']))
 
         # Consolidate all sound parameter values into a dict
         processed_sound_parameters_info = {}
@@ -286,25 +287,71 @@ def add_global_message_to_frame(im, message_text):
         draw.multiline_text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px + (DISPLAY_SIZE[1] - font_heihgt_px - text_height) / 2), message_text, align="center", font=font, fill="white")
     return im
 
-def add_sound_waveform_and_extras_to_frame(im, sound_data_array, cursor_position):
+def add_sound_waveform_and_extras_to_frame(im, 
+                                           sound_data_array, 
+                                           start_sample=0, 
+                                           end_sample=-1, 
+                                           cursor_position=0, 
+                                           scale=1.0, 
+                                           slices=[],
+                                           start_position=None,
+                                           end_position=None,
+                                           loop_start_position=None,
+                                           loop_end_position=None,
+                                           current_time_label=None):
     draw = ImageDraw.Draw(im)
-    samples = []
     sound_length = sound_data_array.shape[0]
-    for i in range(0, sound_length, sound_length//DISPLAY_SIZE[0]):
+    if end_sample == -1:
+        end_sample = sound_length
+
+    # Select samples to draw
+    samples = []
+    displayed_section_length = end_sample - start_sample
+    for i in range(start_sample, end_sample, int(displayed_section_length//DISPLAY_SIZE[0])):
         samples.append(sound_data_array[i])
 
     waveform_height = DISPLAY_SIZE[1] - font_heihgt_px * 2
-    y_offset = font_heihgt_px * 2 + waveform_height // 2  # Center of the waveform
+    y_offset = (font_heihgt_px * 2 + waveform_height // 2) + 1  # Center of the waveform
     
     # Draw waveform
     for i in range(0, len(samples) - 1):
-        norm_sample = (samples[i] * 1.0 / 32768) * (waveform_height / 2)
-        next_norm_sample = (samples[i + 1] * 1.0 / 32768) * (waveform_height / 2)
-        draw.line([(i, y_offset - 1 + norm_sample), (i + 1, y_offset + next_norm_sample)], width=1, fill="white")
-    
+        norm_sample = numpy.clip(scale * (samples[i] * 1.0 / 32768), -1.0, 1.0) * (waveform_height // 2)
+        next_norm_sample = numpy.clip(scale * (samples[i + 1] * 1.0 / 32768), -1.0, 1.0) * (waveform_height // 2)
+        draw.line([(i, y_offset + norm_sample), (i + 1, y_offset + next_norm_sample)], width=1, fill="white")
+
+    # Draw slices (vertical lines on lower half of waveform)
+    if slices:
+        for slice_position in slices:
+            if start_sample <= slice_position <= end_sample:
+                slice_x = int(((slice_position - start_sample) * 1.0 / displayed_section_length) * DISPLAY_SIZE[0])
+                draw.line([(slice_x, y_offset), (slice_x, y_offset + waveform_height // 2)], width=1, fill="white")
+
+    # Draw start/end + loop start/end positions (vertical lines on higher half of waveform)
+    for position, label in [
+        (start_position, 'S'),
+        (end_position, 'E'),
+        (loop_start_position, 'SL'),
+        (loop_end_position, 'EL'),
+    ]:
+        if position is not None:
+            position_x = int(((position - start_sample) * 1.0 / displayed_section_length) * DISPLAY_SIZE[0])
+            draw.line([(position_x, y_offset - waveform_height // 2), (position_x, y_offset)], width=2, fill="white")
+            if 'S' in label:
+                # Draw to the right of marker
+                draw.text((position_x + 3, y_offset - waveform_height // 2 + 1), label, font=font, fill="white")
+            else:
+                # Draw to the left of marker
+                draw.text((position_x - font_width_px * len(label) , y_offset - waveform_height // 2 + 1), label, font=font, fill="white")
+            
+    # Draw current time label
+    if current_time_label is not None:
+        label_width, label_height = draw.textsize(current_time_label, font=font)
+        draw.text((DISPLAY_SIZE[0] - label_width - 1, DISPLAY_SIZE[1] - label_height - 1), current_time_label, font=font, fill="white")
+
     # Draw cursor
-    cursor_x = int((cursor_position * 1.0 / sound_length) * DISPLAY_SIZE[0])
-    draw.line([(cursor_x, y_offset - 1 + waveform_height // 2), (cursor_x, y_offset - waveform_height // 2)], width=1, fill="white")
+    if start_sample <= cursor_position <= end_sample:
+        cursor_x = int(((cursor_position - start_sample) * 1.0 / displayed_section_length) * DISPLAY_SIZE[0])
+        draw.line([(cursor_x, y_offset + waveform_height // 2), (cursor_x, y_offset - waveform_height // 2)], width=1, fill="white")
     
     return im
 
