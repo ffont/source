@@ -489,15 +489,9 @@ class State(object):
             traceback.print_tb(e.__traceback__)
             sm.show_global_message("Error :(")
 
-    def set_sound_params_from_precision_editor(self, *args, **kwargs):
-        sound_idx = kwargs.get('sound_idx', -1)
+    def set_slices_for_sound(self, sound_idx, slices):
         if sound_idx >  -1:
-            duration = float(kwargs['duration'])
-            for parameter_name in ['startPosition', 'endPosition', 'loopStartPosition', 'loopEndPosition']:
-                sm.send_osc_to_plugin('/set_sound_parameter', [sound_idx, parameter_name, float(kwargs[parameter_name])/duration])
-            
-            slices = sorted([val for key, val in kwargs.items() if key.startswith("slice_")])
-            sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])            
+            sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -1249,7 +1243,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     OPTION_REPLACE = "Replace by..."
     OPTION_ASSIGNED_NOTES = "Assigned notes..."
-    OPTION_PRECISION_EDITOR = "Precision editor..."
+    OPTION_PRECISION_EDITOR = "Slices editor..."
     OPTION_MIDI_CC = "MIDI CC mappings..."
     OPTION_OPEN_IN_FREESOUND = "Open in Freesound"
     OPTION_DELETE = "Delete"
@@ -1301,28 +1295,6 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
             sm.move_to(SoundPrecisionEditorState(sound_idx=self.sound_idx))
-            '''
-            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
-            sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, default={})
-            sm.move_to(EnterDataViaWebInterfaceState(
-                title="Precision editor", 
-                web_form_id="soundEditor", 
-                data_for_web_form_id={
-                    'soundIdx': self.sound_idx, 
-                    'soundID': selected_sound_id, 
-                    'soundName': sm.gsp(self.sound_idx, StateNames.SOUND_NAME),
-                    'soundOGGURL': sm.gsp(self.sound_idx, StateNames.SOUND_OGG_URL),
-                    'soundPath': os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), '{0}.ogg'.format(selected_sound_id)),
-                    'startPosition': float(sound_parameters.get('startPosition', 0)),
-                    'endPosition': float(sound_parameters.get('endPosition', 1)),
-                    'loopStartPosition': float(sound_parameters.get('loopStartPosition', 0)),
-                    'loopEndPosition': float(sound_parameters.get('loopEndPosition', 1)),
-                    'slices': sm.gsp(self.sound_idx, StateNames.SOUND_SLICES),
-                    },
-                extra_data_for_callback={'sound_idx': self.sound_idx}, 
-                callback=self.set_sound_params_from_precision_editor, 
-                go_back_n_times=2))
-            '''
         elif action_name == self.OPTION_MIDI_CC:
             sm.move_to(
                 MenuCallbackState(
@@ -1526,9 +1498,6 @@ class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State)
             sm.go_back()
 
 
-
-
-
 class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
 
     def to_array(self, vorbis_file):
@@ -1637,13 +1606,43 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
             self.cursor_position = self.sound_data_array.shape[0] - 1
 
     def on_encoder_pressed(self, shift):
-        # TODO: save new slices and go back
-        pass
+        if not shift:
+            # Save slices
+            time_slices = [s * 1.0 / self.sound_sr for s in self.slices]
+            self.set_slices_for_sound(self.sound_idx, time_slices)
+            sm.show_global_message('Updated {} slices'.format(len(time_slices)))
+            sm.go_back()
+            sm.go_back()
+        else:
+            # Add slice
+            if self.cursor_position not in self.slices:
+                self.slices = sorted(self.slices + [self.cursor_position])
 
-    def on_button_pressed(self, button_idx, shift):
-        # TODO: save current selected point as start/end or loop start/end points
-        # Also: delete closest onset and delete all onsets
-        pass
+    def on_button_pressed(self, button_idx, shift=False):
+        if button_idx == 1:
+            # Set start position
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "startPosition", self.cursor_position * 1.0 / self.sound_length])
+        elif button_idx == 2:
+            # Set loop start position
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
+        elif button_idx == 3:
+            # Set loop end position
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
+        elif button_idx == 4:
+            # Set end position
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "endPosition", self.cursor_position * 1.0 / self.sound_length])
+        elif button_idx == 5:
+            # Add slice
+            if self.cursor_position not in self.slices:
+                self.slices = sorted(self.slices + [self.cursor_position])
+        elif button_idx == 6:
+            # Remove closest slice
+            if self.slices:
+                slice_to_remove_idx = min(range(len(self.slices)), key=lambda i: abs(self.slices[i] - self.cursor_position))
+                self.slices = [s for i, s in enumerate(self.slices) if i != slice_to_remove_idx]
+        elif button_idx == 7:
+            # Remove all slices
+            self.slices = [] 
 
     def on_fader_moved(self, fader_idx, value, shift=False):
         if fader_idx == 0:
@@ -1652,6 +1651,13 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
         elif fader_idx == 1:
             # Change scaling
             self.scale  = (((value - 0) * (self.max_scale - self.min_scale)) / 1) + self.min_scale
+        elif fader_idx == 2:
+            # Current position
+            self.cursor_position = int(self.sound_length * value)
+            if self.cursor_position < 0:
+                self.cursor_position = 0
+            if self.cursor_position >= self.sound_data_array.shape[0]:
+                self.cursor_position = self.sound_data_array.shape[0] - 1
         
 
 state_manager = StateManager()

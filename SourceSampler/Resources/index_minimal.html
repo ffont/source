@@ -4,9 +4,6 @@
 <head>
     <title>Source, a Freesound-powered sampler</title>
     <meta name="viewport" content="width=300, user-scalable=no">
-    <script src="https://unpkg.com/wavesurfer.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js"></script>
 
     <style>
         body {
@@ -24,10 +21,6 @@
         #wrapper {
             padding: 5px;
             width: 290px;
-        }
-        
-        #waveformWrapper {
-            margin-bottom: 10px;
         }
 
         #workingIndicator {
@@ -108,42 +101,6 @@
             updateStateTimer = setInterval(function () {
                 updateMinimalInterfaceState();
             }, updateStateInterval);
-
-            wavesurfer = WaveSurfer.create({
-                container: '#waveform',
-                plugins: [
-                    WaveSurfer.regions.create({}),
-                    WaveSurfer.timeline.create({
-                        container: '#wave-timeline',
-                        primaryColor: 'white',
-                        secondaryColor: 'white',
-                        primaryFontColor: 'white',
-                        secondaryFontColor: 'white',
-                        timeInterval: 1.0,
-                        primaryLabelInterval: 1,
-                        primaryLabelInterval: 0.5,    
-                    })
-                ],
-                minPxPerSec: 50,
-                scrollParent: true,
-                waveColor: 'gray',
-                progressColor: 'gray',
-                cursorColor: 'gray',
-                cursorWidth: 1,
-                normalize: true,
-            });
-
-            wavesurfer.on('region-dblclick', function(region, event){  
-                if (region.id.startsWith("slice")){
-                    region.remove();
-                }
-            });
-  
-
-            document.querySelector('#zoom_slider').value = wavesurfer.params.pixelRatio;
-            document.querySelector('#zoom_slider').oninput = function () {
-                wavesurfer.zoom(Number(this.value));
-            };
         }
 
         function showWorkingLabel(){
@@ -293,109 +250,6 @@
             showWorkingLabel();
             sendDataToServer(data);
         }
-
-        function initSoundEditor(data){
-            document.getElementById("precision_editor_sound_id").innerHTML = data.soundID;
-            wavesurfer.load(data.soundOGGURL.replace('ogg', 'mp3')); // Use MP3 instead so it can be loaded in Safari as well...
-            //wavesurfer.load('/serve_sound/?path=' + data.soundPath);
-
-            wavesurfer.on('ready', function(){
-                wavesurfer.clearRegions();
-
-                var duration = wavesurfer.getDuration();
-                regionLength = duration/500;
-
-                // Add start/end positions wavesurfer regions
-                var startPosition = data.startPosition * duration;
-                var endPosition = data.endPosition * duration;
-                var startLoopPosition = data.loopStartPosition * duration;
-                var endLoopPosition = data.loopEndPosition * duration;
-
-                var regions = [
-                    {
-                        id: "startPosition",
-                        start: startPosition,
-                        end: startPosition + regionLength,
-                        color: 'rgba(171, 255, 43, 0.8)',
-                        resize: false
-                    },
-                    {
-                        id: "endPosition",
-                        start: endPosition - regionLength,
-                        end: endPosition,
-                        color: 'rgba(171, 255, 43, 0.8)',
-                        resize: false
-                    },
-                    {
-                        id: "loopStartPosition",
-                        start: startLoopPosition,
-                        end: startLoopPosition + regionLength,
-                        color: 'rgba(255, 43, 43, 0.8)',
-                        resize: false
-                    },
-                    {
-                        id: "loopEndPosition",
-                        start: endLoopPosition - regionLength,
-                        end: endLoopPosition,
-                        color: 'rgba(255, 43, 43, 0.8)',
-                        resize: false
-                    }
-                ]
-                for (i in regions){
-                    wavesurfer.addRegion(regions[i]);
-                }
-
-                var slices = data.slices;
-                for (i in slices){
-                    addSlice(slices[i]);
-                }
-            })            
-        }
-
-        function addSlice(time){
-            if (time === undefined){
-                time = wavesurfer.getCurrentTime();
-            }
-            wavesurfer.addRegion({
-                id: "slice_" + (Object.keys(wavesurfer.regions.list).length - 4),
-                start: parseFloat(time, 10),
-                end: parseFloat(time, 10) + regionLength,
-                color: 'rgba(255, 255, 0, 0.8)',
-                resize: false
-            })
-        }
-
-        function clearSlices(time){
-            var keys = Object.keys(wavesurfer.regions.list);
-            for (i in keys){
-                var key = keys[i];
-                if (key.startsWith("slice_")){
-                    wavesurfer.regions.list[key].remove();
-                }
-            }
-        }
-
-        function getPrecisionEditorMarkers(){
-            var markers = [];
-            var keys = Object.keys(wavesurfer.regions.list);
-            for (i in keys){
-                var key = keys[i];
-                markers.push([wavesurfer.regions.list[key].id, wavesurfer.regions.list[key].start]);
-            }
-            return markers;
-        }
-
-        function sendPrecisionEditorParams(){
-            data = "duration:" + wavesurfer.getDuration();
-            var markers = getPrecisionEditorMarkers();
-            for (i in markers){
-                var marker = markers[i];
-                data += "," + marker[0] + ":" + marker[1];
-            }
-            showWorkingLabel();
-            sendDataToServer(data);
-        }
-        
     </script>
 </head>
 
@@ -441,23 +295,6 @@
             Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
             <br>
             <button onclick="makeReplaceSoundQuery()">Go!</button>
-        </div>
-
-        <div id="soundEditor" class="controls_card">
-            <h2>Precision editor sound <span id="precision_editor_sound_id"></span></h2>
-            <div id="waveformWrapper">
-                <div id="waveform"></div>
-                <div id="wave-timeline"></div>
-            </div>
-            Zoom: 
-            <div class="sliderWrapper">
-                <input id="zoom_slider" type="range" min="20" max="3000" value="0">
-            </div>
-            <br>
-            <button onclick="addSlice()">+ slice</button>
-            <button onclick="clearSlices()">clear slices</button>
-            <br>
-            <button onclick="sendPrecisionEditorParams()">Ok</button>
         </div>
 
         <div id="savePreset" class="controls_card show_as_default">
