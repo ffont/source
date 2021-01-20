@@ -52,6 +52,7 @@ class StateNames(Enum):
     NUM_ACTIVE_VOICES = auto()
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
+    LAST_NOTE_MIDI_RECEIVED = auto()
     
 
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
@@ -165,7 +166,8 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     # More volatile state stuff
     source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
     source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
-    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = volatile_state.get('lastMIDICCNumber'.lower(), None)
+    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
+    source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
 
     return source_state
 
@@ -355,6 +357,60 @@ def add_sound_waveform_and_extras_to_frame(im,
     
     return im
 
+
+def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes=[], currently_selected_range=[], show_last_note_received=-1, blinking_state=False):
+    draw = ImageDraw.Draw(im)
+
+    octave_n = cursor_position // 12
+    cursor_in_octave = cursor_position % 12
+
+    keyboard_height = DISPLAY_SIZE[1] - font_heihgt_px * 3 - 2 # Save space for two lines on top and 1 line bottom
+    y_offset = font_heihgt_px * 2 + 1  # Top of the keyboard
+
+    note_positions = [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6]
+        
+    # Draw "white" keys
+    for i in range(0, 12):
+        note = i + 1
+        is_black_key = note in [2, 4, 7, 9, 11]
+        corresponding_midi_note = octave_n * 12 + i
+        is_assigned = corresponding_midi_note in assigned_notes
+        is_currently_selected = corresponding_midi_note in currently_selected_range
+        if not is_black_key:            
+            note_height = keyboard_height
+            note_width = DISPLAY_SIZE[0] / 7
+            x_offset = note_positions[i] * note_width
+            fill = "black" if not is_assigned else "white"
+            if i is cursor_in_octave or is_currently_selected:
+                fill = "black" if not blinking_state else "white"
+            draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+
+    # Draw "black" keys
+    for i in range(0, 12):
+        note = i + 1
+        is_black_key = note in [2, 4, 7, 9, 11]
+        corresponding_midi_note = octave_n * 12 + i
+        is_assigned = corresponding_midi_note in assigned_notes
+        is_currently_selected = corresponding_midi_note in currently_selected_range
+        if is_black_key:  
+            note_height = keyboard_height * 0.6    
+            note_width = DISPLAY_SIZE[0] / 7
+            x_offset = note_positions[i] * note_width
+            fill = "black" if not is_assigned else "white"
+            if i is cursor_in_octave or is_currently_selected:
+                fill = "black" if not blinking_state else "white"
+            draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+
+    # Draw info text
+    note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    if show_last_note_received == -1:
+        info_label = 'Sel: {} Current: {}{}'.format(len(assigned_notes), note_names[cursor_in_octave], octave_n - 2)
+    else:
+        info_label = 'Last received: {}{}'.format(note_names[show_last_note_received % 12], (show_last_note_received // 12) - 2)
+    label_width, label_height = draw.textsize(info_label, font=font)
+    draw.text((DISPLAY_SIZE[0] // 2 - label_width // 2 - 1, DISPLAY_SIZE[1] - label_height - 1), info_label, font=font, fill="white")
+
+    return im
 
 
 # -- Timer for delayed actions

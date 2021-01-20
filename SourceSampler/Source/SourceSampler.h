@@ -112,6 +112,7 @@ public:
     
     //==============================================================================
     int getNumberOfMappedMidiNotes();
+    void setMappedMidiNotes(BigInteger newMappedMidiNotes);
     BigInteger getMappedMidiNotes();
     int getMidiRootNote();
     

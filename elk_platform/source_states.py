@@ -7,7 +7,7 @@ import time
 import traceback
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -492,6 +492,16 @@ class State(object):
     def set_slices_for_sound(self, sound_idx, slices):
         if sound_idx >  -1:
             sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])
+
+    def set_assigned_notes_for_sound(self, sound_idx, assinged_notes):
+        # assigned_notes here is a list with the midi note numbers
+        assinged_notes = sorted(list(set(assinged_notes)))  # make sure they're all sorted and there are no duplicates
+        if sound_idx > -1:
+            assinged_notes_aux = ['0'] * 128
+            for note in assinged_notes:
+                assinged_notes_aux[note] = '1'
+            midi_notes = hex(int("".join(reversed(''.join(assinged_notes_aux))), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
+            sm.send_osc_to_plugin('/set_assigned_notes', [sound_idx, midi_notes])
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -1310,6 +1320,8 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
             sm.move_to(SoundPrecisionEditorState(sound_idx=self.sound_idx))
+        elif action_name == self.OPTION_ASSIGNED_NOTES:
+            sm.move_to(SoundAssignedNotesEditorState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_MIDI_CC:
             sm.move_to(
                 MenuCallbackState(
@@ -1673,7 +1685,108 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
                 self.cursor_position = 0
             if self.cursor_position >= self.sound_data_array.shape[0]:
                 self.cursor_position = self.sound_data_array.shape[0] - 1
-        
+
+
+class SoundAssignedNotesEditorState(GoBackOnEncoderLongPressedStateMixin, State):
+
+    sound_idx = -1
+    assigned_notes = []
+    cursor_position = 64  # In midi notes
+    frame_count = 0
+    range_start = None
+    selecting_range_mode = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sound_idx = kwargs.get('sound_idx', -1)
+        if self.sound_idx > -1:
+            sound_assigned_notes = sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
+            if sound_assigned_notes is not None:
+                bits_raw = [bit == '1' for bit in "{0:b}".format(int(sound_assigned_notes, 16))]
+                bits = [False] * (128 - len(bits_raw)) + bits_raw
+                self.assigned_notes = [i for i, bit in enumerate(reversed(bits)) if bit]
+                if self.assigned_notes:
+                    self.cursor_position = self.assigned_notes[0]
+                    
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        self.frame_count += 1
+        if self.range_start is not None:
+            currently_selected_range = list(range(min(self.range_start, self.cursor_position), max(self.range_start, self.cursor_position) + 1))
+        else:
+            currently_selected_range = []
+        if sm.source_state.get(StateNames.MIDI_RECEIVED, False):
+            show_last_note_received = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+        else:
+            show_last_note_received = -1
+        return add_midi_keyboard_and_extras_to_frame(
+            frame, 
+            cursor_position=self.cursor_position, 
+            assigned_notes=self.assigned_notes, 
+            currently_selected_range=currently_selected_range, 
+            show_last_note_received=show_last_note_received,
+            blinking_state=self.frame_count % 2 == 0
+            )
+
+    def on_encoder_rotated(self, direction, shift=False):
+        self.cursor_position += direction * (1 if not shift else 12)
+        if self.cursor_position < 0:
+            self.cursor_position = 0
+        if self.cursor_position >= 128:
+            self.cursor_position = 127
+
+    def on_encoder_pressed(self, shift):
+        if not shift:
+            # Save new assigned notes
+            self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes)
+            sm.show_global_message('Updated {}\n assigned notes'.format(len(self.assigned_notes)))
+            sm.go_back()
+            sm.go_back()
+        else:
+            # Toggle note in cursor position
+            if self.cursor_position not in self.assigned_notes:
+                self.assigned_notes = sorted(self.assigned_notes + [self.cursor_position])
+            else:
+                self.assigned_notes = [note for note in self.assigned_notes if note != self.cursor_position]
+
+    def on_button_pressed(self, button_idx, shift=False):
+        if button_idx == 1:
+            # Toggle note in cursor position
+            if self.cursor_position not in self.assigned_notes:
+                self.assigned_notes = sorted(self.assigned_notes + [self.cursor_position])
+            else:
+                self.assigned_notes = [note for note in self.assigned_notes if note != self.cursor_position]
+        elif button_idx == 2:
+            # Set start of range
+            if not self.selecting_range_mode:
+                # If not in range select mode, start range
+                self.selecting_range_mode = True
+                self.range_start = self.cursor_position
+            else:
+                # If already in range select mode, cancel current range
+                self.selecting_range_mode = False
+                self.range_start = None
+            
+        elif button_idx == 3:
+            # Set end of range
+            if not self.selecting_range_mode:
+                # If not in range select mode, do nothing
+                pass
+            else:
+                if self.range_start is not None:
+                    # If in range select mode, finish range
+                    self.assigned_notes = sorted(list(set(self.assigned_notes + list(range(min(self.range_start, self.cursor_position), max(self.range_start, self.cursor_position) + 1)))))
+                    self.range_start = None
+                self.selecting_range_mode = False
+            
+        elif button_idx == 4:
+            # Clear all assigned notes
+            self.assigned_notes = []
+
 
 state_manager = StateManager()
 sm = state_manager

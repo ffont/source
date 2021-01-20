@@ -391,6 +391,11 @@ BigInteger SourceSamplerSound::getMappedMidiNotes()
     return midiNotes;
 }
 
+void SourceSamplerSound::setMappedMidiNotes(BigInteger newMappedMidiNotes)
+{
+    midiNotes = newMappedMidiNotes;
+}
+
 int SourceSamplerSound::getMidiRootNote()
 {
     return midiRootNote;

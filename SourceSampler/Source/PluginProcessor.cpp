@@ -267,6 +267,8 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
             midiMessagesPresentInLastStateReport = true;
             if (message.isController()){
                 lastReceivedMIDIControllerNumber = message.getControllerNumber();
+            } else if (message.isNoteOn()){
+                lastReceivedMIDINoteNumber = message.getNoteNumber();
             }
         }
     }
@@ -534,6 +536,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     state.setProperty(STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT, midiMessagesPresentInLastStateReport, nullptr);
     midiMessagesPresentInLastStateReport = false;
     state.setProperty(STATE_VOLATILE_LAST_MIDI_CC, lastReceivedMIDIControllerNumber, nullptr);
+    state.setProperty(STATE_VOLATILE_LAST_MIDI_NOE, lastReceivedMIDINoteNumber, nullptr);
     
     String voiceActivations = "";
     String voiceSoundIdxs = "";
@@ -836,6 +839,22 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
             sound->setOnsetTimesSamples(onsets);
         }
+    } else if (message.startsWith(String(ACTION_SET_SOUND_ASSIGNED_NOTES))){
+        String serializedParameters = message.substring(String(ACTION_SET_SOUND_ASSIGNED_NOTES).length() + 1);
+        StringArray tokens;
+        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+        int soundIndex = tokens[0].getIntValue();
+        String assignedNotesBigInteger = tokens[1];
+        BigInteger midiNotes;
+        if (assignedNotesBigInteger != ""){
+            midiNotes.parseString(assignedNotesBigInteger, 16);
+        }
+        
+        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        if (sound != nullptr){
+            sound->setMappedMidiNotes(midiNotes);
+        }
+        
     } else if (message.startsWith(String(ACTION_CLEAR_ALL_SOUNDS))){
         loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
         sampler.clearSounds();

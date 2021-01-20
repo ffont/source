@@ -177,6 +177,7 @@ private:
     long midicounter;
     bool midiOutForwardsMidiIn = true;
     int lastReceivedMIDIControllerNumber = -1;
+    int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;
     bool isQueryDownloadingAndLoadingSounds = false;
     double startedQueryDownloadingAndLoadingSoundsTime = 0;

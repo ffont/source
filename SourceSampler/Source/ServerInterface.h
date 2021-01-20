@@ -317,6 +317,15 @@ public:
                 String actionMessage = String(ACTION_SET_SOUND_SLICES) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_ASSIGNED_NOTES){
+            if (message.size() == 2)  {
+                int soundIndex = message[0].getInt32();
+                String assignedNotes = message[1].getString();
+                String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
+                                              assignedNotes + SERIALIZATION_SEPARATOR;
+                String actionMessage = String(ACTION_SET_SOUND_ASSIGNED_NOTES) + ":" + serializedParameters;
+                sendActionMessage(actionMessage);
+            }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_CLEAR_ALL_SOUNDS){
             if (message.size() == 0)  {
                 String actionMessage = String(ACTION_CLEAR_ALL_SOUNDS);
