@@ -628,9 +628,13 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
     pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
 
     def draw_display_frame(self):
+        text = "{0} sounds".format(sm.source_state.get(StateNames.NUM_SOUNDS, 0))
+        n_sounds_downloading = len([sound for count, sound in enumerate(sm.source_state.get(StateNames.SOUNDS_INFO, [])) if sm.gsp(count, StateNames.SOUND_DOWNLOAD_PROGRESS, default=0) < 100])
+        if n_sounds_downloading:
+            text += " ({} downloading)".format(n_sounds_downloading)
         lines = [{
             "underline": True, 
-            "text":  "{0} sounds".format(sm.source_state.get(StateNames.NUM_SOUNDS, 0)),
+            "text":  text,
         }]
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:
