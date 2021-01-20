@@ -1,4 +1,4 @@
-# Source, a Freesound-powered hardware sampler
+# SOURCE, a Freesound-powered hardware sampler
 
 
 ## Building Source
