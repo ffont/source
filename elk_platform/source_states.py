@@ -51,30 +51,6 @@ sound_parameters_info_dict = {
     "pan": (lambda x: 2.0 * (x - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
 }
 
-reverb_parameters_pages = [
-    [
-        "roomSize", 
-        "damping", 
-        "width", 
-        "freezeMode"
-    ], [
-        "wetLevel", 
-        "dryLevel",
-        None,
-        None
-    ]
-]
-
-#  parameter position in OSC message, parameter label
-reverb_parameters_info_dict = {
-    "roomSize": (0, "Room size"), 
-    "damping": (1, "Damping"), 
-    "wetLevel": (2, "Wet level"), 
-    "dryLevel": (3, "Dry level"),  
-    "width": (4, "Width"), 
-    "freezeMode": (5, "Freeze"), 
-}
-
 EXTRA_PAGE_1_NAME = "extra1"
 sound_parameter_pages = [
     [
@@ -120,9 +96,67 @@ sound_parameter_pages = [
     ]
 ]
 
-midi_cc_available_parameters_list = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
+reverb_parameters_pages = [
+    [
+        "roomSize", 
+        "damping", 
+        "width", 
+        "freezeMode"
+    ], [
+        "wetLevel", 
+        "dryLevel",
+        None,
+        None
+    ]
+]
+
+#  parameter position in OSC message, parameter label
+reverb_parameters_info_dict = {
+    "roomSize": (0, "Room size"), 
+    "damping": (1, "Damping"), 
+    "wetLevel": (2, "Wet level"), 
+    "dryLevel": (3, "Dry level"),  
+    "width": (4, "Width"), 
+    "freezeMode": (5, "Freeze"), 
+}
 
 note_layout_types = ['Contiguous', 'Interleaved']
+ac_descriptors_positions = 10
+
+query_settings_info_dict = {
+    'num_sounds': (lambda x:int(x * 128), 'Num sounds', '{}', 16),
+    'min_length': (lambda x:float(pow(x, 4) * 300), 'Min length', '{0:.1f}s', 0.0),
+    'max_length': (lambda x:float(pow(x, 4) * 300), 'Max length', '{0:.1f}s', 0.5),
+    'layout': (lambda x:note_layout_types[int(x + 0.5 * (len(note_layout_types) - 1))], 'Layout', '{}', note_layout_types[1]),
+    'brightness': (lambda x:int(x * ac_descriptors_positions), 'Brightness', '{}', 0),
+    'hardness': (lambda x:int(x * ac_descriptors_positions), 'Hardness', '{}', 0),
+    'depth': (lambda x:int(x * ac_descriptors_positions), 'Depth', '{}', 0),
+    'roughness': (lambda x:int(x * ac_descriptors_positions), 'Roughness', '{}', 0),
+    'boominess': (lambda x:int(x * ac_descriptors_positions), 'Boominess', '{}', 0),
+    'warmth': (lambda x:int(x * ac_descriptors_positions), 'Warmth', '{}', 0),
+    'sharpness': (lambda x:int(x * ac_descriptors_positions), 'Sharpness', '{}', 0),
+}
+
+query_settings_pages = [
+    [
+        'num_sounds',
+        'min_length',
+        'max_length',
+        'layout'
+    ], [
+        'brightness',
+        'hardness',
+        'depth',
+        'roughness'
+    ], [
+        'boominess',
+        'warmth',
+        'sharpness',
+        None
+    ]
+]
+
+midi_cc_available_parameters_list = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
 
 predefined_queries = ['wind', 'rain', 'piano', 'explosion', 'music', 'whoosh', 'woosh', 'intro', 'birds', 'footsteps', 'fire', '808', 'scream', 'water', 'bell', 'click', 'thunder', 'guitar', 'bass', 'beep', 'swoosh', 'pop', 'cartoon', 'magic', 'car', 'horror', 'vocal', 'game', 'trap', 'lofi', 'clap', 'happy', 'forest', 'ding', 'drum', 'kick', 'glitch', 'drop', 'transition', 'animal', 'gun', 'door', 'hit', 'punch', 'nature', 'jump', 'flute', 'sad', 'beat', 'christmas']
 predefined_queries = sorted(predefined_queries)
@@ -396,9 +430,9 @@ class State(object):
         sound_idx = kwargs.get('sound_idx', -1)  # If no sound_idx kwarg is passed, then -1 will be used (which means to add a new sound)
         query = kwargs.get('query', "")
         sm.show_global_message("Searching {}...".format(query), duration=3600)
-        min_length = float(kwargs.get('minSoundLength', '0'))
-        max_length = float(kwargs.get('maxSoundLength', '300'))
-        page_size = float(kwargs.get('pageSize', '50'))
+        min_length = float(kwargs.get('min_length', '0'))
+        max_length = float(kwargs.get('max_length', '300'))
+        page_size = int(kwargs.get('page_size', '50'))
         try:
             selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size)
             if selected_sound is not None:
@@ -428,11 +462,11 @@ class State(object):
     def new_preset_by_query(self, *args, **kwargs):
         query = kwargs.get('query', "")
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
-        min_length = float(kwargs.get('minSoundLength', '0'))
-        max_length = float(kwargs.get('maxSoundLength', '10'))
-        page_size = int(kwargs.get('pageSize', '150'))
-        n_sounds = int(kwargs.get('numSounds', '16'))
-        note_mapping_type = int(kwargs.get('noteMappingType', '1'))
+        min_length = float(kwargs.get('min_length', '0'))
+        max_length = float(kwargs.get('max_length', '10'))
+        page_size = int(kwargs.get('page_size', '150'))
+        n_sounds = int(kwargs.get('num_sounds', '16'))
+        note_mapping_type = int(kwargs.get('layout', '1'))
         try:
             new_sounds = find_sounds_by_query(query=query, n_sounds=n_sounds, min_length=min_length, max_length=max_length, page_size=page_size)
             if not new_sounds:
@@ -456,10 +490,10 @@ class State(object):
             sm.show_global_message("Entering the\nunknown... [{}/{}]".format(count + 1, total), duration=3600)
 
         sm.show_global_message("Entering the\nunknown...", duration=3600)
-        min_length = float(kwargs.get('minSoundLength', '0'))
-        max_length = float(kwargs.get('maxSoundLength', '10'))
-        n_sounds = int(kwargs.get('numSounds', '16'))
-        note_mapping_type = int(kwargs.get('noteMappingType', '1'))
+        min_length = float(kwargs.get('min_length', '0'))
+        max_length = float(kwargs.get('max_length', '10'))
+        n_sounds = int(kwargs.get('num_sounds', '16'))
+        note_mapping_type = int(kwargs.get('layout', '1'))
         try:
             new_sounds = find_random_sounds(n_sounds=n_sounds, min_length=min_length, max_length=max_length, report_callback=show_progress_message)
             if not new_sounds:
@@ -1026,12 +1060,8 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
             sm.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
 
 
-class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, State):
+class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
-    num_sounds = 16
-    min_length = 0.0
-    max_length = 0.5
-    layout = note_layout_types[1]
     callback = None
     extra_data_for_callback = None
     go_back_n_times = 0
@@ -1039,49 +1069,53 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, State):
     allow_change_layout = True
     title = ""
 
+    query_settings_values = {}
+    pages = query_settings_pages
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = kwargs.get('title', "Query settings...") 
-        self.num_sounds = kwargs.get('num_sounds', 16) 
-        self.min_length = kwargs.get('min_length', 0.0)
-        self.max_length = kwargs.get('max_length', 0.5)
-        self.layout = kwargs.get('layout', note_layout_types[1])
+
+        # Set default parameters
+        for parameter_name in query_settings_info_dict.keys():
+            self.query_settings_values[parameter_name] = query_settings_info_dict[parameter_name][3]
+        # Overwrite num sounds if passed in query
+        self.query_settings_values['num_sounds'] = kwargs.get('num_sounds', 16)      
         self.callback = kwargs.get('callback', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
         self.allow_change_num_sounds = kwargs.get('allow_change_num_sounds', True)
         self.allow_change_layout = kwargs.get('allow_change_layout', True)
 
+    def parameter_is_allowed(self, parameter_name):
+        if parameter_name == 'num_sounds' and not self.allow_change_num_sounds:
+            return False
+        if parameter_name == 'layout' and not self.allow_change_layout:
+            return False
+        return True
+    
     def draw_display_frame(self):    
         lines = [{
             "underline": True, 
             "text": self.title
-            },
-            justify_text('Num sounds:', '{0}'.format(self.num_sounds) if self.allow_change_num_sounds else '-'),  # Show parameter label instead of raw name
-            justify_text('Min length:', '{0:.1f}s'.format(self.min_length)),
-            justify_text('Max length:', '{0:.1f}s'.format(self.max_length)),
-            justify_text('Layout:', self.layout if self.allow_change_layout else '-'),
-            
+            }
         ]
-        return frame_from_lines([self.get_default_header_line()] + lines)
-
-    def on_encoder_rotated(self, direction, shift=False):
-        if self.allow_change_num_sounds:
-            self.num_sounds += direction
-            if self.num_sounds < 1:
-                self.num_sounds = 1
-            elif self.num_sounds > 128:
-                self.num_sounds = 128
+        for parameter_name in self.current_page_data:
+            if parameter_name is not None:
+                _, label, value_template, default = query_settings_info_dict[parameter_name]
+                value = self.query_settings_values.get(parameter_name, default)
+                lines += [justify_text(label + ':', value_template.format(value) if self.parameter_is_allowed(parameter_name) else '-')]
+            else:
+                lines += [""]
+       
+        return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
 
     def on_encoder_pressed(self, shift=False):
         # Move to query chooser state
         if self.callback is not None:
-            callback_data = {
-                'num_sounds': self.num_sounds,
-                'min_length': self.min_length,
-                'max_length': self.max_length,
-                'layout': self.layout
-            }
+            query_settings = self.query_settings_values.copy()
+            query_settings.update({'layout': note_layout_types.index(query_settings['layout'])})  # Change the format of layout parameter
+            callback_data = {'query_settings': query_settings}
             if self.extra_data_for_callback is not None:
                 callback_data.update(self.extra_data_for_callback)
             self.callback(**callback_data)
@@ -1089,16 +1123,10 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, State):
             sm.go_back()
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        if fader_idx == 0:
-            if self.allow_change_num_sounds:
-                self.num_sounds = int(value * 128)
-        elif fader_idx == 1:
-            self.min_length = float(pow(value, 4) * 300)
-        elif fader_idx == 2:
-            self.max_length = float(pow(value, 4) * 300)
-        elif fader_idx == 3:
-            if self.allow_change_layout:
-                self.layout = note_layout_types[int(value * (len(note_layout_types) - 1))]
+        parameter_name = self.current_page_data[fader_idx]
+        if parameter_name is not None and self.parameter_is_allowed(parameter_name):
+            send_func, _, _, _ = query_settings_info_dict[parameter_name]
+            self.query_settings_values[parameter_name] = send_func(value)
 
 
 class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -1119,41 +1147,26 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
-    def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
+    def move_to_enter_query_on_device_menu(self, query_settings):
         sm.move_to(EnterTextViaHWOrWebInterfaceState(
                 title="New query", 
                 web_form_id="enterQuery", 
                 callback=self.new_preset_by_query, 
-                extra_data_for_callback={
-                    'minSoundLength': min_length,
-                    'maxSoundLength': max_length,
-                    'numSounds': num_sounds, 
-                    'noteMappingType': note_layout_types.index(layout)
-                },
+                extra_data_for_callback=query_settings,
                 go_back_n_times=4)) 
     
-    def move_to_select_predefined_query_menu(self, num_sounds, min_length, max_length, layout):
+    def move_to_select_predefined_query_menu(self, query_settings):
         sm.move_to(MenuCallbackState(
                 items=predefined_queries, 
                 selected_item=random.choice(range(0, len(predefined_queries))), 
                 title1="Predefined query",
                 callback=self.new_preset_from_predefined_query, 
-                extra_data_for_callback={
-                    'minSoundLength': min_length,
-                    'maxSoundLength': max_length,
-                    'numSounds': num_sounds, 
-                    'noteMappingType': note_layout_types.index(layout)
-                },
+                extra_data_for_callback=query_settings,
                 go_back_n_times=4
                 ))
 
-    def call_new_preset_by_random_sounds_helper(self, num_sounds, min_length, max_length, layout):
-        self.new_preset_by_random_sounds(
-            minSoundLength = min_length,
-            maxSoundLength = max_length,
-            numSounds = num_sounds, 
-            noteMappingType = note_layout_types.index(layout)
-        )
+    def call_new_preset_by_random_sounds_helper(self, query_settings):
+        self.new_preset_by_random_sounds(**query_settings)
         sm.go_back()
         sm.go_back()
         sm.go_back()
@@ -1203,17 +1216,12 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         lines = self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
-    def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
+    def move_to_enter_query_on_device_menu(self, query_settings):
         sm.move_to(EnterTextViaHWOrWebInterfaceState(
                 title="New query", 
                 web_form_id="enterQuery", 
                 callback=self.add_or_replace_sound_by_query, 
-                extra_data_for_callback={
-                    'minSoundLength': min_length,
-                    'maxSoundLength': max_length,
-                    'numSounds': num_sounds, 
-                    'noteMappingType': note_layout_types.index(layout)
-                },
+                extra_data_for_callback=query_settings,
                 go_back_n_times=3)) 
 
     def get_exising_presets_list(self):
@@ -1330,19 +1338,14 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
-    def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
+    def move_to_enter_query_on_device_menu(self, query_settings):
+        query_settings.update({'sound_idx': self.sound_idx})
         sm.move_to(EnterTextViaHWOrWebInterfaceState(
-                title="New query", 
-                web_form_id="enterQuery", 
-                callback=self.add_or_replace_sound_by_query, 
-                extra_data_for_callback={
-                    'sound_idx': self.sound_idx,
-                    'minSoundLength': min_length,
-                    'maxSoundLength': max_length,
-                    'numSounds': num_sounds, 
-                    'noteMappingType': note_layout_types.index(layout)
-                },
-                go_back_n_times=4)) 
+            title="New query", 
+            web_form_id="enterQuery", 
+            callback=self.add_or_replace_sound_by_query, 
+            extra_data_for_callback=query_settings,
+            go_back_n_times=4)) 
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
