@@ -7,7 +7,7 @@ import time
 import traceback
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -228,7 +228,7 @@ class StateManager(object):
         return self.get_source_state_selected_sound_property(sound_idx, property_name, default)
 
     def is_waiting_for_data_from_web(self):
-        return type(self.current_state) == EnterDataViaWebInterfaceState
+        return type(self.current_state) == EnterDataViaWebInterfaceState or type(self.current_state) == EnterTextViaHWOrWebInterfaceState
 
     def process_data_from_web(self, data):
         if self.is_waiting_for_data_from_web():
@@ -304,18 +304,31 @@ class State(object):
         current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
         current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
         if current_preset_index > -1:
-            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, current_preset_index])
-            sm.show_global_message("Saving...")
+            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, int(current_preset_index)])
+            sm.show_global_message("Saving {}\n{}...".format(current_preset_index, current_preset_name))
+
+    def save_current_preset_to(self, query, preset_idx):
+        preset_name = query  # NOTE: the parameter is called query because it reuses some classes used for entering queries. We might want to change that
+        sm.send_osc_to_plugin("/save_current_preset", [preset_name, int(preset_idx)])
+        sm.show_global_message("Saving {}\n{}...".format(preset_idx, preset_name))
 
     def load_preset(self, preset_idx):
-        sm.send_osc_to_plugin("/load_preset", [preset_idx])
-        sm.show_global_message("Loading {0}...".format(preset_idx), duration=5)
+        preset_name = ""
+        if ':' in preset_idx:
+            preset_name = preset_idx.split(':')[1]
+            preset_idx = int(preset_idx.split(':')[0])  # This is because we're passing preset_idx:preset_name format (some callbacks might use it)
+        sm.send_osc_to_plugin("/load_preset", [int(preset_idx)])
+        if preset_name:
+            sm.show_global_message("Loading {}\n{}...".format(preset_idx, preset_name), duration=5)
+        else:
+            sm.show_global_message("Loading {}...".format(preset_idx), duration=5)
 
     def reload_current_preset(self):
         current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
+        current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, "unnamed")
         if current_preset_index > -1:
-            sm.send_osc_to_plugin("/load_preset", [current_preset_index])
-            sm.show_global_message("Loading {0}...".format(current_preset_index), duration=5)
+            sm.send_osc_to_plugin("/load_preset", [int(current_preset_index)])
+            sm.show_global_message("Loading {}\n{}...".format(current_preset_index, current_preset_name), duration=5)
 
     def reapply_note_layout(self, layout_type):
         sm.send_osc_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
@@ -702,10 +715,6 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             # Open home contextual menu
             sm.move_to(HomeContextualMenuState())
 
-    def on_encoder_long_pressed(self, shift=False):
-        # Save the preset in its location
-        self.save_current_preset()
-
     def on_fader_moved(self, fader_idx, value, shift=False):
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             pass
@@ -720,7 +729,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
 
 
-class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
+class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
     sound_idx = -1
@@ -811,6 +820,23 @@ class SoundSelectedState(ChangePresetOnEncoderShiftRotatedStateMixin, GoBackOnEn
         sound_idx = self.get_sound_idx_from_buttons(button_idx, shift=shift)
         if sound_idx > -1:
             sm.move_to(SoundSelectedState(sound_idx, current_page=self.current_page), replace_current=True)
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if shift:
+            # Stop current sound
+            self.stop_selected_sound()
+            
+            # Select another sound
+            num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
+            if num_sounds:
+                sound_idx = self.sound_idx + direction
+                if sound_idx < 0:
+                    sound_idx = num_sounds - 1
+                if sound_idx >= num_sounds:
+                    sound_idx = 0
+                sm.move_to(SoundSelectedState(sound_idx, current_page=self.current_page), replace_current=True)
+        else:
+            super().on_encoder_rotated(direction, shift=False)
 
     def on_button_double_pressed(self, button_idx, shift=False):
         # If button corresponds to current sound, play it
@@ -1007,21 +1033,27 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
     max_length = 0.5
     layout = note_layout_types[1]
     callback = None
+    extra_data_for_callback = None
     go_back_n_times = 0
+    allow_change_num_sounds = True
+    title = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.title = kwargs.get('title', "Query settings...") 
         self.num_sounds = kwargs.get('num_sounds', 16) 
         self.min_length = kwargs.get('min_length', 0.0)
         self.max_length = kwargs.get('max_length', 0.5)
         self.layout = kwargs.get('layout', note_layout_types[1])
         self.callback = kwargs.get('callback', None)
+        self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
+        self.allow_change_num_sounds = kwargs.get('allow_change_num_sounds', True)
 
     def draw_display_frame(self):    
         lines = [{
             "underline": True, 
-            "text": "New sounds settings..."
+            "text": self.title
             },
             justify_text('Num sounds:', '{0}'.format(self.num_sounds)),  # Show parameter label instead of raw name
             justify_text('Min length:', '{0:.1f}s'.format(self.min_length)),
@@ -1032,27 +1064,32 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def on_encoder_rotated(self, direction, shift=False):
-        self.num_sounds += direction
-        if self.num_sounds < 1:
-            self.num_sounds = 1
-        elif self.num_sounds > 128:
-            self.num_sounds = 128
+        if self.allow_change_num_sounds:
+            self.num_sounds += direction
+            if self.num_sounds < 1:
+                self.num_sounds = 1
+            elif self.num_sounds > 128:
+                self.num_sounds = 128
 
     def on_encoder_pressed(self, shift=False):
         # Move to query chooser state
         if self.callback is not None:
-            self.callback(
-                num_sounds=self.num_sounds,
-                min_length=self.min_length,
-                max_length=self.max_length,
-                layout=self.layout
-            )
+            callback_data = {
+                'num_sounds': self.num_sounds,
+                'min_length': self.min_length,
+                'max_length': self.max_length,
+                'layout': self.layout
+            }
+            if self.extra_data_for_callback is not None:
+                callback_data.update(self.extra_data_for_callback)
+            self.callback(**callback_data)
         for i in range(0, self.go_back_n_times):
             sm.go_back()
 
     def on_fader_moved(self, fader_idx, value, shift=False):
         if fader_idx == 0:
-            self.num_sounds = int(value * 128)
+            if self.allow_change_num_sounds:
+                self.num_sounds = int(value * 128)
         elif fader_idx == 1:
             self.min_length = float(pow(value, 4) * 300)
         elif fader_idx == 2:
@@ -1080,7 +1117,7 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
-        sm.move_to(EnterDataViaWebInterfaceState(
+        sm.move_to(EnterTextViaHWOrWebInterfaceState(
                 title="New query", 
                 web_form_id="enterQuery", 
                 callback=self.new_preset_by_query, 
@@ -1090,7 +1127,6 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     'numSounds': num_sounds, 
                     'noteMappingType': note_layout_types.index(layout)
                 },
-                message="Enter query\non device...",
                 go_back_n_times=4)) 
     
     def move_to_select_predefined_query_menu(self, num_sounds, min_length, max_length, layout):
@@ -1148,6 +1184,7 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
+    OPTION_SAVE_AS = "Save preset as..."
     OPTION_RELOAD = "Reload preset"
     OPTION_NEW_SOUNDS = "Get new sounds..."
     OPTION_ADD_NEW_SOUND = "Add new sound..."
@@ -1156,17 +1193,76 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
 
-    items = [OPTION_SAVE, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES]
+    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES]
     page_size = 5
 
     def draw_display_frame(self):
         lines = self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
+    def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
+        sm.move_to(EnterTextViaHWOrWebInterfaceState(
+                title="New query", 
+                web_form_id="enterQuery", 
+                callback=self.add_or_replace_sound_by_query, 
+                extra_data_for_callback={
+                    'minSoundLength': min_length,
+                    'maxSoundLength': max_length,
+                    'numSounds': num_sounds, 
+                    'noteMappingType': note_layout_types.index(layout)
+                },
+                go_back_n_times=3)) 
+
+    def get_exising_presets_list(self):
+        # Scan existing .xml files to know preset names
+        # TODO: the presetting system should be imporved so we don't need to scan the presets folder every time
+        preset_names = {}
+        presets_folder = sm.source_state.get(StateNames.PRESETS_DATA_LOCATION, None)
+        if presets_folder is not None:
+            for filename in os.listdir(presets_folder):
+                if filename.endswith('.xml'):
+                    try:
+                        preset_id = int(filename.split('.xml')[0])
+                    except ValueError:
+                        # Not a valid preset file
+                        continue
+                    file_contents = open(os.path.join(presets_folder, filename), 'r').read()
+                    preset_name = file_contents.split('SourcePresetState presetName="')[1].split('"')[0]
+                    preset_names[preset_id] = preset_name
+        return preset_names
+
+    def move_to_choose_preset_name_state(self, preset_idx_name):
+        preset_idx = int(preset_idx_name.split(':')[0])
+        current_preset_name = current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_NAME, "") # preset_idx_name.split(':')[1]
+        sm.move_to(EnterTextViaHWOrWebInterfaceState(
+                title="Preset name", 
+                web_form_id="enterName", 
+                callback=self.save_current_preset_to, 
+                current_text=current_preset_name,
+                extra_data_for_callback={
+                    'preset_idx': preset_idx,
+                },
+                go_back_n_times=4)) 
+
     def perform_action(self, action_name):
         if action_name == self.OPTION_SAVE:
             self.save_current_preset()
             sm.go_back()
+        elif action_name == self.OPTION_SAVE_AS:
+            preset_names = self.get_exising_presets_list()
+            current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, 0)
+            if not preset_names:
+                sm.show_global_message('Some error\noccurred...')
+                sm.go_back()
+                sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
+            else:
+                sm.move_to(MenuCallbackState(
+                    items=['{0}:{1}'.format(i, preset_names.get(i, 'empty')) for i in range(0, 128)], 
+                    selected_item=current_preset_index, 
+                    title1="Where to save...", 
+                    callback=self.move_to_choose_preset_name_state, 
+                    go_back_n_times=0))
+
         elif action_name == self.OPTION_RELOAD:
             self.reload_current_preset()
             sm.go_back()
@@ -1177,22 +1273,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             current_num_voices = sm.source_state.get(StateNames.NUM_VOICES, 1)
             sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Number of voices", callback=self.set_num_voices, go_back_n_times=2))
         elif action_name == self.OPTION_LOAD_PRESET:
-            # Scan existing .xml files to know preset names
-            # TODO: the presetting system should be imporved so we don't need to scan the presets folder every time
-            preset_names = {}
-            presets_folder = sm.source_state.get(StateNames.PRESETS_DATA_LOCATION, None)
-            if presets_folder is not None:
-                for filename in os.listdir(presets_folder):
-                    if filename.endswith('.xml'):
-                        try:
-                            preset_id = int(filename.split('.xml')[0])
-                        except ValueError:
-                            # Not a valid preset file
-                            continue
-                        file_contents = open(os.path.join(presets_folder, filename), 'r').read()
-                        preset_name = file_contents.split('SourcePresetState presetName="')[1].split('"')[0]
-                        preset_names[preset_id] = preset_name
-
+            preset_names = self.get_exising_presets_list()
             current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, 0)
             if not preset_names:
                 sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
@@ -1201,12 +1282,12 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_REVERB:
             sm.move_to(ReverbSettingsMenuState())
         elif action_name == self.OPTION_ADD_NEW_SOUND:
-            sm.move_to(EnterDataViaWebInterfaceState(
-                title="Add new sound...", 
-                web_form_id="replaceSound", 
-                extra_data_for_callback={}, 
-                callback=self.add_or_replace_sound_by_query, 
-                go_back_n_times=2))
+            sm.move_to(NewPresetDetailedSettingsState(
+                callback=self.move_to_enter_query_on_device_menu,
+                num_sounds=1,
+                allow_change_num_sounds=False,
+                go_back_n_times=0
+            ))
         elif action_name == self.OPTION_NEW_SOUNDS:
             sm.move_to(NewPresetOptionsMenuState())
         else:
@@ -1245,14 +1326,28 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
 
+    def move_to_enter_query_on_device_menu(self, num_sounds, min_length, max_length, layout):
+        sm.move_to(EnterTextViaHWOrWebInterfaceState(
+                title="New query", 
+                web_form_id="enterQuery", 
+                callback=self.add_or_replace_sound_by_query, 
+                extra_data_for_callback={
+                    'sound_idx': self.sound_idx,
+                    'minSoundLength': min_length,
+                    'maxSoundLength': max_length,
+                    'numSounds': num_sounds, 
+                    'noteMappingType': note_layout_types.index(layout)
+                },
+                go_back_n_times=4)) 
+
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
-            sm.move_to(EnterDataViaWebInterfaceState(
-                title="Replace sound by", 
-                web_form_id="replaceSound", 
-                extra_data_for_callback={'sound_idx': self.sound_idx}, 
-                callback=self.add_or_replace_sound_by_query, 
-                go_back_n_times=3))
+            sm.move_to(NewPresetDetailedSettingsState(
+                callback=self.move_to_enter_query_on_device_menu,
+                num_sounds=1,
+                allow_change_num_sounds=False,
+                go_back_n_times=0
+            ))
         elif action_name == self.OPTION_BY_SIMILARITY:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
@@ -1524,6 +1619,95 @@ class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State)
         for i in range(0, self.go_back_n_times):
             sm.go_back()
 
+
+class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
+
+    max_length = 100
+    current_text = []
+    cursor_position = 0
+    available_chars = [char for char in " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"]
+    char_position = 1
+    data_received_key = 'query'
+    title = 'Enter query'
+    frame_count = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.current_text = [char for char in kwargs.get('current_text', ' ')]
+        self.current_text = self.current_text + [' '] * (self.max_length - len(self.current_text))
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": self.title
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        self.frame_count += 1
+        chars_in_display = 9
+        start_char = self.cursor_position - 4  # chars_in_display / 2
+        end_char = self.cursor_position + 5  # chars_in_display / 2
+
+        if start_char < 0 and end_char <= self.max_length:
+            # We're at the beggning of the text, align it to the left
+            start_char = 0
+            end_char = start_char + chars_in_display
+        elif start_char < self.max_length and end_char >= self.max_length:
+            # We're at the end of the text, align it to the right
+            end_char = self.max_length - 1
+            start_char = end_char - chars_in_display
+        elif 0 <= start_char < self.max_length and 0 <= end_char < self.max_length:
+            # Normal case in which we're not in text edges
+            pass
+
+        return add_text_input_to_frame(
+            frame, 
+            text=self.current_text,
+            cursor_position=self.cursor_position,
+            blinking_state=self.frame_count % 2 == 0,
+            start_char=start_char,
+            end_char=end_char,
+            )
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if not shift:
+            self.cursor_position += direction
+            if self.cursor_position < 0:
+                self.cursor_position = 0
+            if self.cursor_position >= self.max_length:
+                self.cursor_position = self.max_length - 1
+            try:
+                self.char_position = self.available_chars.index(self.current_text[self.cursor_position])
+            except ValueError:
+                self.char_position = 1
+        else:
+            self.char_position += direction
+            self.current_text[self.cursor_position] = self.available_chars[self.char_position % len(self.available_chars)]
+
+    def on_encoder_pressed(self, shift=False):
+        self.on_data_received({self.data_received_key: ''.join(self.current_text).strip()})
+
+    def on_button_pressed(self, button_idx, shift=False):
+        if button_idx == 1:
+            # Move cursor left
+            self.cursor_position += 1
+            if self.cursor_position >= self.max_length:
+                self.cursor_position = self.max_length - 1
+        elif button_idx == 2:
+            # Move cursor right
+            self.cursor_position -= 1
+            if self.cursor_position < 0:
+                self.cursor_position = 0
+        elif button_idx == 3:
+            # Delete char in current cursor
+            self.current_text[self.cursor_position] = ' '
+        elif button_idx == 4:
+            # Delete all chars
+            self.current_text = [' '] * self.max_length
+        elif button_idx == 5:
+            # Load a random query from the prefined list
+            random_query = random.choice(predefined_queries)
+            self.current_text = [char for char in random_query] + [' '] * (self.max_length - len(random_query))
+    
 
 class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
 

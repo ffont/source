@@ -269,19 +269,6 @@
             Searching Freesound...
         </div>
 
-        <div id="newPresetByQuery" class="controls_card">
-            <h2>New sounds by query</h2>
-            Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-            Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
-            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
-            Note mapping type: <select name="noteMappingType">
-                <option value="0">contiguous</option>
-                <option value="1" selected="selected">interleaved</option>
-            </select>
-            <br>
-            <button onclick="makeNewPresetFromQuery()">Go!</button>
-        </div>
-
         <div id="enterQuery" class="controls_card">
             <h2>Enter your query</h2>
             <input name="query" value="" type="text" placeholder=""><br>
@@ -289,12 +276,11 @@
             <button onclick="enterQuery()">Go!</button>
         </div>
 
-        <div id="replaceSound" class="controls_card">
-            <h2>Find new sound with query</h2>
-            Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-            Sound length:<br><input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
+        <div id="enterName" class="controls_card">
+            <h2>Enter your query</h2>
+            <input name="query" value="" type="text" placeholder=""><br>
             <br>
-            <button onclick="makeReplaceSoundQuery()">Go!</button>
+            <button onclick="enterQuery()">Go!</button>
         </div>
 
         <div id="savePreset" class="controls_card show_as_default">

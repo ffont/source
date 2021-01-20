@@ -192,6 +192,8 @@ font_width_px = font_heihgt_px * 0.6   # This is particular to LiberationMono fo
 n_chars_in_line = int(DISPLAY_SIZE[0]/font_width_px)
 
 font_big = ImageFont.truetype(FONT_PATH, FONT_SIZE_BIG)
+font_big_heihgt_px = FONT_SIZE_BIG
+font_big_width_px = font_big_heihgt_px * 0.6   # This is particular to LiberationMono font
 
 title_text_width = None
 title_font = ImageFont.truetype(FONT_PATH_TITLE, FONT_SIZE_TITLE)
@@ -411,6 +413,27 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
     draw.text((DISPLAY_SIZE[0] // 2 - label_width // 2 - 1, DISPLAY_SIZE[1] - label_height - 1), info_label, font=font, fill="white")
 
     return im
+
+
+def add_text_input_to_frame(im, text, cursor_position=0, start_char=0, end_char=-1, y_offset_lines=2, blinking_state=False):
+    draw = ImageDraw.Draw(im)
+
+    if end_char == -1:
+        end_char = len(text)
+
+    cursor_position_in_window = cursor_position - start_char
+    n_chars = end_char - start_char
+    y_offset = font_heihgt_px * y_offset_lines
+
+    for i, char_n in enumerate(range(start_char, end_char)):
+        x_offset = i * ((DISPLAY_SIZE[0] // n_chars))
+        if char_n == cursor_position and blinking_state:
+            caret_y_offset_top = y_offset + 2 + (DISPLAY_SIZE[1] - y_offset)//2 - font_big_heihgt_px//2
+            caret_y_offset_bottom = y_offset + 2 + (DISPLAY_SIZE[1] - y_offset)//2 + font_big_heihgt_px//2
+            draw.rectangle(((x_offset, caret_y_offset_top), (x_offset + font_big_width_px, caret_y_offset_bottom)), fill="white")
+        draw.text((x_offset, y_offset + (DISPLAY_SIZE[1] - y_offset)//2 - font_big_heihgt_px//2), text[char_n], font=font_big, fill="black" if char_n == cursor_position and blinking_state else "white")    
+        
+    return im 
 
 
 # -- Timer for delayed actions

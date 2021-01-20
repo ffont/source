@@ -12,7 +12,7 @@ descriptor_names = "rhythm.onset_times"
 def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_size=50):
     if n_sounds > 128:
         n_sounds = 128
-    url = 'https://freesound.org/apiv2/search/text/?query={0}&filter=duration:[{1}+TO+{2}]&fields={3}&page_size={4}&descriptors={5}&group_by_pack=1&token={6}'.format(query, min_length, max_length, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
+    url = 'https://freesound.org/apiv2/search/text/?query="{0}"&filter=duration:[{1}+TO+{2}]&fields={3}&page_size={4}&descriptors={5}&group_by_pack=1&token={6}'.format(query, min_length, max_length, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
     print(url)
     r = requests.get(url, timeout=30)
     response = r.json()
