@@ -1026,7 +1026,7 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
             sm.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
 
 
-class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State):
+class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, State):
 
     num_sounds = 16
     min_length = 0.0
@@ -1036,6 +1036,7 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
     extra_data_for_callback = None
     go_back_n_times = 0
     allow_change_num_sounds = True
+    allow_change_layout = True
     title = ""
 
     def __init__(self, *args, **kwargs):
@@ -1049,16 +1050,17 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
         self.allow_change_num_sounds = kwargs.get('allow_change_num_sounds', True)
+        self.allow_change_layout = kwargs.get('allow_change_layout', True)
 
     def draw_display_frame(self):    
         lines = [{
             "underline": True, 
             "text": self.title
             },
-            justify_text('Num sounds:', '{0}'.format(self.num_sounds)),  # Show parameter label instead of raw name
+            justify_text('Num sounds:', '{0}'.format(self.num_sounds) if self.allow_change_num_sounds else '-'),  # Show parameter label instead of raw name
             justify_text('Min length:', '{0:.1f}s'.format(self.min_length)),
             justify_text('Max length:', '{0:.1f}s'.format(self.max_length)),
-            justify_text('Layout:', self.layout),
+            justify_text('Layout:', self.layout if self.allow_change_layout else '-'),
             
         ]
         return frame_from_lines([self.get_default_header_line()] + lines)
@@ -1095,7 +1097,8 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
         elif fader_idx == 2:
             self.max_length = float(pow(value, 4) * 300)
         elif fader_idx == 3:
-            self.layout = note_layout_types[int(value * (len(note_layout_types) - 1))]
+            if self.allow_change_layout:
+                self.layout = note_layout_types[int(value * (len(note_layout_types) - 1))]
 
 
 class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -1157,17 +1160,17 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
-            sm.move_to(NewPresetDetailedSettingsState(
+            sm.move_to(EnterQuerySettingsState(
                 callback=self.move_to_enter_query_on_device_menu,
                 go_back_n_times=0
             ))
         elif action_name == self.OPTION_BY_PREDEFINED_QUERY:
-            sm.move_to(NewPresetDetailedSettingsState(
+            sm.move_to(EnterQuerySettingsState(
                 callback=self.move_to_select_predefined_query_menu,
                 go_back_n_times=0
             ))
         elif action_name == self.OPTION_RANDOM:
-            sm.move_to(NewPresetDetailedSettingsState(
+            sm.move_to(EnterQuerySettingsState(
                 callback=self.call_new_preset_by_random_sounds_helper,
                 go_back_n_times=0
             ))
@@ -1282,10 +1285,11 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_REVERB:
             sm.move_to(ReverbSettingsMenuState())
         elif action_name == self.OPTION_ADD_NEW_SOUND:
-            sm.move_to(NewPresetDetailedSettingsState(
+            sm.move_to(EnterQuerySettingsState(
                 callback=self.move_to_enter_query_on_device_menu,
                 num_sounds=1,
                 allow_change_num_sounds=False,
+                allow_change_layout=False,
                 go_back_n_times=0
             ))
         elif action_name == self.OPTION_NEW_SOUNDS:
@@ -1342,10 +1346,11 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
-            sm.move_to(NewPresetDetailedSettingsState(
+            sm.move_to(EnterQuerySettingsState(
                 callback=self.move_to_enter_query_on_device_menu,
                 num_sounds=1,
                 allow_change_num_sounds=False,
+                allow_change_layout=False,
                 go_back_n_times=0
             ))
         elif action_name == self.OPTION_BY_SIMILARITY:
@@ -1356,7 +1361,6 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 sm.go_back()  # Go back 2 times because option is 2-levels deep in menu hierarchy
         else:
             sm.show_global_message('Not implemented...')
-
 
 
 class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
