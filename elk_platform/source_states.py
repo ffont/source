@@ -1040,9 +1040,9 @@ class NewPresetDetailedSettingsState(GoBackOnEncoderLongPressedStateMixin, State
         if fader_idx == 0:
             self.num_sounds = int(value * 128)
         elif fader_idx == 1:
-            self.min_length = float(pow(value, 2) * 300)
+            self.min_length = float(pow(value, 4) * 300)
         elif fader_idx == 2:
-            self.max_length = float(pow(value, 2) * 300)
+            self.max_length = float(pow(value, 4) * 300)
         elif fader_idx == 3:
             self.layout = note_layout_types[int(value * (len(note_layout_types) - 1))]
 
@@ -1094,6 +1094,17 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 go_back_n_times=4
                 ))
 
+    def call_new_preset_by_random_sounds_helper(self, num_sounds, min_length, max_length, layout):
+        self.new_preset_by_random_sounds(
+            minSoundLength = min_length,
+            maxSoundLength = max_length,
+            numSounds = num_sounds, 
+            noteMappingType = note_layout_types.index(layout)
+        )
+        sm.go_back()
+        sm.go_back()
+        sm.go_back()
+
     def perform_action(self, action_name):
         if action_name == self.OPTION_BY_QUERY:
             sm.move_to(NewPresetDetailedSettingsState(
@@ -1107,8 +1118,8 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
             ))
         elif action_name == self.OPTION_RANDOM:
             sm.move_to(NewPresetDetailedSettingsState(
-                callback=self.new_preset_by_random_sounds,
-                go_back_n_times=3
+                callback=self.call_new_preset_by_random_sounds_helper,
+                go_back_n_times=0
             ))
         elif action_name == self.OPTION_BY_SIMILARITY:
             current_note_mapping_type = sm.source_state.get(StateNames.NOTE_LAYOUT_TYPE, 1)

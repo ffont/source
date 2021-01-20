@@ -16,8 +16,9 @@ def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_
     print(url)
     r = requests.get(url, timeout=30)
     response = r.json()
-    n_results = len(response['results'])
-    return random.sample(response['results'], min(n_sounds, n_results)) 
+    if 'results' in response and len(response['results']) > 0:
+        n_results = len(response['results'])
+        return random.sample(response['results'], min(n_sounds, n_results)) 
 
 
 def find_sound_by_query(query, min_length=0, max_length=300, page_size=50):
@@ -33,7 +34,7 @@ def find_sound_by_similarity(sound_id):
     print(url)
     r = requests.get(url, timeout=30)
     response = r.json()
-    if len(response['results']) > 0:
+    if 'results' in response and len(response['results']) > 0:
         return random.choice(response['results'])
     else:
         return None
@@ -57,7 +58,8 @@ def find_random_sounds(n_sounds=15, min_length=0, max_length=300, report_callbac
         print(url)
         r = requests.get(url, timeout=30)
         response = r.json()
-        new_sounds.append(response['results'][0])  # Get the first (and only) result of the query
+        if 'results' in response and len(response['results']) > 0:
+            new_sounds.append(response['results'][0])  # Get the first (and only) result of the query
 
         if report_callback is not None:
             report_callback(count, len(selected_sounds))
