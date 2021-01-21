@@ -706,6 +706,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int index = tokens[1].getIntValue();
         saveCurrentPresetToFile(presetName, index);  // Save to file...
         currentPresetIndex = index; // ...and update current preset index and name in case it was changed
+        saveGlobalPersistentStateToFile();  // Save global state to reflect last loaded preset has the right index
         
     } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
         int index = message.substring(String(ACTION_LOAD_PRESET).length() + 1).getIntValue();
