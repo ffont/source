@@ -191,41 +191,6 @@
             sendOsc('/save_current_preset', [name, idx], 'str;int');
         }
 
-        function loadPreset() {
-            var element = document.getElementById('loadPreset');
-            var idx = element.querySelector("input[name='presetIdx']").value;
-            sendOsc('/load_preset', [idx], 'int')
-        }
-
-        function isNumeric(str) {
-            // https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
-            if (typeof str != "string") return false // we only process strings!  
-            return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
-                    !isNaN(parseFloat(str)) // ...and ensure strings of whitespace fail
-        }
-
-        function makeNewPresetFromQuery(){
-            var element = document.getElementById('newPresetByQuery');
-            var query = element.querySelector("input[name='query']").value;
-            var numSounds = element.querySelector("input[name='numSounds']").value || 16;
-            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
-            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 0.5;
-            var noteMappingType = element.querySelector("select[name='noteMappingType']").value;
-            var data = 'query:' + query;
-            
-            if (!isNumeric(query)){
-                data += ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength;
-                data += ',numSounds:' + numSounds;
-            } else {
-                // if query is numeric only, don't apply length filter because user is indicating sound id, but limit results to 1 so we don't randomly pick another result
-                data += ',pageSize:1';
-                data += ',numSounds:1';
-            }
-            data += ',noteMappingType:' + noteMappingType;
-            showWorkingLabel();
-            sendDataToServer(data);
-        }
-
         function enterQuery(){
             var element = document.getElementById('enterQuery');
             var query = element.querySelector("input[name='query']").value;
@@ -234,22 +199,6 @@
             sendDataToServer(data);
         }
 
-        function makeReplaceSoundQuery(){
-            var element = document.getElementById('replaceSound');
-            var query = element.querySelector("input[name='query']").value;
-            var minSoundLength = element.querySelector("input[name='minSoundLength']").value || 0.0;
-            var maxSoundLength = element.querySelector("input[name='maxSoundLength']").value || 0.5;
-            var data = 'query:' + query;
-            if (!isNumeric(query)){
-                data += ',minSoundLength:' + minSoundLength + ',maxSoundLength:' + maxSoundLength;
-            } else {
-                // if query is numeric only, don'y apply length filter because user is indicating sound id, but limit results to 1 so we don't radomply pick another result
-                data += ',pageSize:1'
-
-            }
-            showWorkingLabel();
-            sendDataToServer(data);
-        }
     </script>
 </head>
 
@@ -289,13 +238,6 @@
             <input name="presetName" value="" type="text" placeholder="Preset name">
             <br>
             <button onclick="savePreset()">Save</button>
-        </div>
-
-        <div id="loadPreset" class="controls_card">
-            <h2>Load preset</h2>
-            Number: <input name="presetIdx" value="" type="number">
-            <br>
-            <button onclick="loadPreset()">Load</button>
         </div>
 
         <br>

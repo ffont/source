@@ -195,7 +195,8 @@ class ElkBridge(object):
         return self.buttons_state.get(0, 0) == 1
 
     def handle_faders(self, fader_idx, val):
-        state_manager.current_state.on_fader_moved(fader_idx, val, shift=self.is_shift_pressed())
+        if not state_manager.block_ui_input:
+            state_manager.current_state.on_fader_moved(fader_idx, val, shift=self.is_shift_pressed())
 
     def handle_buttons(self, button_idx, val):
                 
@@ -207,14 +208,17 @@ class ElkBridge(object):
                 previous_time_pressed = 0
             if last_time_pressed - previous_time_pressed  < BUTTON_DOUBLE_PRESS_TIME:
                 # If time between last 2 pressings is shorter than BUTTON_DOUBLE_PRESS_TIME, trigger double press action
-                state_manager.current_state.on_button_double_pressed(button_idx, shift=self.is_shift_pressed())
+                if not state_manager.block_ui_input:
+                    state_manager.current_state.on_button_double_pressed(button_idx, shift=self.is_shift_pressed())
             else:
-                state_manager.current_state.on_button_pressed(button_idx, shift=self.is_shift_pressed())
+                if not state_manager.block_ui_input:
+                    state_manager.current_state.on_button_pressed(button_idx, shift=self.is_shift_pressed())
 
         is_being_pressed = int(val) == 1 
         if is_being_pressed:
             # Trigger the raw press action
-            state_manager.current_state.on_button_down(button_idx, shift=self.is_shift_pressed())
+            if not state_manager.block_ui_input:
+                state_manager.current_state.on_button_down(button_idx, shift=self.is_shift_pressed())
 
             # Also when button is pressed, save the current time it was pressed and clear any delayed execution timer that existed
             self.button_pressing_log[button_idx].append(time.time())
@@ -223,7 +227,8 @@ class ElkBridge(object):
                 self.button_timers[button_idx].setClearTimer()
         else:
             # Trigger the raw release action
-            state_manager.current_state.on_button_up(button_idx, shift=self.is_shift_pressed())
+            if not state_manager.block_ui_input:
+                state_manager.current_state.on_button_up(button_idx, shift=self.is_shift_pressed())
 
             # Also when button is released check the following:
             # * If pressed for longer than BUTTON_LONG_PRESS_TIME, trigger a "long press" action
@@ -231,7 +236,8 @@ class ElkBridge(object):
             last_time_pressed = self.button_pressing_log[button_idx][-1]
             if time.time() - last_time_pressed > BUTTON_LONG_PRESS_TIME:
                 # If button pressed for long time, trigger long press action
-                state_manager.current_state.on_button_long_pressed(button_idx, shift=self.is_shift_pressed())
+                if not state_manager.block_ui_input:
+                    state_manager.current_state.on_button_long_pressed(button_idx, shift=self.is_shift_pressed())
             else:
                 self.button_timers[button_idx] = Timer()
                 self.button_timers[button_idx].setTimeout(delayed_double_press_button_check, [button_idx], BUTTON_DOUBLE_PRESS_TIME)
@@ -265,7 +271,8 @@ class ElkBridge(object):
                 self.encoder_timer.setClearTimer()
         else:
             # Trigger the raw release action
-            state_manager.current_state.on_encoder_up(shift=self.is_shift_pressed())
+            if not state_manager.block_ui_input:
+                state_manager.current_state.on_encoder_up(shift=self.is_shift_pressed())
 
             # Also when encoder is released check the following:
             # * If pressed for longer than BUTTON_LONG_PRESS_TIME, trigger a "long press" action
@@ -273,14 +280,16 @@ class ElkBridge(object):
             last_time_pressed = self.encoder_pressing_log[-1]
             if time.time() - last_time_pressed > BUTTON_LONG_PRESS_TIME:
                 # If encoder pressed for long time, trigger long press action
-                state_manager.current_state.on_encoder_long_pressed(shift=self.is_shift_pressed())
+                if not state_manager.block_ui_input:
+                    state_manager.current_state.on_encoder_long_pressed(shift=self.is_shift_pressed())
             else:
                 self.encoder_timer = Timer()
                 self.encoder_timer.setTimeout(delayed_double_press_encoder_check, [], BUTTON_DOUBLE_PRESS_TIME)
     
 
     def handle_encoder(self, direction):
-        state_manager.current_state.on_encoder_rotated(direction, shift=self.is_shift_pressed())
+        if not state_manager.block_ui_input:
+            state_manager.current_state.on_encoder_rotated(direction, shift=self.is_shift_pressed())
         
     def run(self):
 

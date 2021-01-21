@@ -28,6 +28,8 @@ class StateNames(Enum):
     NOTE_LAYOUT_TYPE = auto()
     
     NUM_SOUNDS = auto()
+    NUM_SOUNDS_DOWNLOADING = auto()
+    NUM_SOUNDS_LOADED_IN_SAMPLER = auto()
     SOUNDS_INFO = auto()
     SOUND_NAME = auto()
     SOUND_ID = auto()
@@ -39,6 +41,7 @@ class StateNames(Enum):
     SOUND_OGG_URL = auto()
     SOUND_SLICES = auto()
     SOUND_ASSIGNED_NOTES = auto()
+    SOUND_LOADED_IN_SAMPLER = auto()
     
     SOUND_MIDI_CC_ASSIGNMENTS = auto()
     SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
@@ -95,6 +98,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     for sound_info in sounds_info:
 
         sampler_sound = sound_info.find_all("SamplerSound".lower())[0]
+        sound_parameters = sampler_sound.find_all('SamplerSoundParameter'.lower())
 
         # Consolidate sound slices into a list
         slices = []
@@ -103,7 +107,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
 
         # Consolidate all sound parameter values into a dict
         processed_sound_parameters_info = {}
-        for parameter in sampler_sound.find_all('SamplerSoundParameter'.lower()):
+        for parameter in sound_parameters:
             """
             <SamplerSoundParameter parameter_type="int" parameter_name="launchMode" parameter_value="1"/>
             """
@@ -159,9 +163,12 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             StateNames.SOUND_SLICES: slices,
             StateNames.SOUND_ASSIGNED_NOTES: sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
+            StateNames.SOUND_LOADED_IN_SAMPLER: len(sound_parameters) > 0,
         })
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
+    source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
+    source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if int(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
 
     # More volatile state stuff
     source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
@@ -498,3 +505,11 @@ def translate_cc_license_url(url):
     if '/publicdomain/' in url: return LICENSE_CC0
     if '/sampling+/' in url: return LICENSE_CC_SAMPLING_PLUS
     return LICENSE_UNKNOWN
+
+
+# -- Other
+
+def merge_dicts(dict_a, dict_b):
+    dict_merged = dict_a.copy()
+    dict_merged.update(dict_b)
+    return dict_merged
