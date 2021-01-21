@@ -27,16 +27,20 @@ else:
     }
 
 def add_recent_query(query):
-    recent_queries_and_filters['queries'].append(query)
-    if len(recent_queries_and_filters['queries']) > n_recent_items_to_store:
-        recent_queries_and_filters['queries'] = recent_queries_and_filters['queries'][len(recent_queries_and_filters['queries']) - n_recent_items_to_store:]
-    json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
+    if query not in recent_queries_and_filters['queries']:
+        recent_queries_and_filters['queries'].append(query)
+        if len(recent_queries_and_filters['queries']) > n_recent_items_to_store:
+            recent_queries_and_filters['queries'] = recent_queries_and_filters['queries'][len(recent_queries_and_filters['queries']) - n_recent_items_to_store:]
+        json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
 
 def add_recent_query_filter(query_filter):
-    recent_queries_and_filters['query_filters'].append(query_filter)
-    if len(recent_queries_and_filters['query_filters']) > n_recent_items_to_store:
-        recent_queries_and_filters['query_filters'] = recent_queries_and_filters['query_filters'][len(recent_queries_and_filters['query_filters']) - n_recent_items_to_store:]
-    json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
+    serialized_filter = json.dumps(query_filter)
+    recent_queries_serialized_filters = [json.dumps(recent_query_filter) for recent_query_filter in recent_queries_and_filters['query_filters']]
+    if serialized_filter not in recent_queries_serialized_filters:
+        recent_queries_and_filters['query_filters'].append(query_filter)
+        if len(recent_queries_and_filters['query_filters']) > n_recent_items_to_store:
+            recent_queries_and_filters['query_filters'] = recent_queries_and_filters['query_filters'][len(recent_queries_and_filters['query_filters']) - n_recent_items_to_store:]
+        json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
 
 
 #  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
@@ -252,7 +256,10 @@ class StateManager(object):
         self.frame_counter += 1
 
         # Compute display frame of the current ui state and plugin state variables
-        frame = self.current_state.draw_display_frame()
+        if not self.current_state.should_show_help():
+            frame = self.current_state.draw_display_frame()
+        else:
+            frame = self.current_state.get_help_page_frame()
 
         # If a global message should be added, do it here
         if self.global_message[0] != '':
@@ -267,6 +274,8 @@ class StateManager(object):
         self.global_message = (text, time.time(), duration)
 
     def move_to(self, new_state, replace_current=False):
+        if self.state_stack:
+            self.current_state.exit_help()
         if replace_current:
             self.current_state.on_deactivating_state()
             self.state_stack.pop()
@@ -305,6 +314,10 @@ class State(object):
 
     name = ""
     activation_time = None
+    current_help_page = None
+    help_pages = []
+    help_page_title = "Help"
+    trigger_help_page_button_id = 8
 
     def __init__(self, *args, **kwargs):
         self.activation_time = time.time()
@@ -322,6 +335,22 @@ class State(object):
     @property
     def seconds_since_activation(self):
         return time.time() - self.activation_time
+
+    def exit_help(self):
+        self.current_help_page = None
+
+    def should_show_help(self):
+        return self.current_help_page is not None
+
+    def get_help_page_frame(self):
+        lines = [{
+                "underline": True, 
+                "text": self.help_page_title
+                }
+            ]
+        if self.current_help_page != None:  
+            lines += self.help_pages[self.current_help_page]
+        return frame_from_lines(lines) 
 
     def draw_display_frame(self):
         lines = [
@@ -689,7 +718,26 @@ class PaginatedState(State):
 class GoBackOnEncoderLongPressedStateMixin(object):
 
     def on_encoder_long_pressed(self, shift=False):
-        sm.go_back()
+        if not self.should_show_help():
+            sm.go_back()
+        else:
+            self.exit_help()
+
+
+class ShowHelpPagesMixin(object):
+
+    def on_button_pressed(self, button_idx, shift=False):
+        # Activate/deactivate help mode and cycle through help pages
+        if button_idx == self.trigger_help_page_button_id:
+            if self.help_pages:
+                if self.current_help_page == None:
+                    self.current_help_page = 0
+                else:
+                    self.current_help_page += 1
+                    if self.current_help_page >= len(self.help_pages):
+                        self.current_help_page = None
+        else:
+            super().on_button_pressed(button_idx=button_idx, shift=shift)
 
 
 class ChangePresetOnEncoderShiftRotatedStateMixin(object):
@@ -1092,7 +1140,7 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
             sm.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
 
 
-class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
+class EnterQuerySettingsState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     callback = None
     extra_data_for_callback = None
@@ -1100,6 +1148,9 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
     allow_change_layout = True
     title = ""
     last_recent_loaded = 0
+    help_pages = [[
+        "B1 load recent"
+    ]]
 
     query_settings_values = {}
     pages = query_settings_pages
@@ -1125,7 +1176,7 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
             return False
         return True
     
-    def draw_display_frame(self):    
+    def draw_display_frame(self):
         lines = [{
             "underline": True, 
             "text": self.title
@@ -1167,6 +1218,8 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
                 sm.show_global_message('Loaded recent\n qeury filters ({})'.format(self.last_recent_loaded % len(recent_queries_and_filters['query_filters']) + 1), duration=0.5)
                 self.query_settings_values = recent_filter
                 self.last_recent_loaded += 1
+        else:
+            super().on_button_pressed(button_idx=button_idx, shift=shift)  # Needed for reach help page mixin
 
 
 class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -1648,7 +1701,7 @@ class EnterDataViaWebInterfaceState(GoBackOnEncoderLongPressedStateMixin, State)
         sm.go_back(n_times=self.go_back_n_times)
         
 
-class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
+class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInterfaceState):
 
     max_length = 100
     current_text = []
@@ -1659,6 +1712,12 @@ class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
     store_recent = True
     frame_count = 0
     last_recent_loaded = 0
+    help_pages = [[
+        "B1 clear current",
+        "B2 clear all",
+        "B3 load random",
+        "B4 load recent",
+    ]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1721,34 +1780,26 @@ class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
 
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
-            # Move cursor left
-            self.cursor_position += 1
-            if self.cursor_position >= self.max_length:
-                self.cursor_position = self.max_length - 1
-        elif button_idx == 2:
-            # Move cursor right
-            self.cursor_position -= 1
-            if self.cursor_position < 0:
-                self.cursor_position = 0
-        elif button_idx == 3:
             # Delete char in current cursor
             self.current_text[self.cursor_position] = ' '
-        elif button_idx == 4:
+        elif button_idx == 2:
             # Delete all chars
             self.current_text = [' '] * self.max_length
-        elif button_idx == 5:
+        elif button_idx == 3:
             # Load a random query from the prefined list
             random_query = random.choice(predefined_queries)
             self.current_text = [char for char in random_query] + [' '] * (self.max_length - len(random_query))
-        elif button_idx == 6:
+        elif button_idx == 4:
             # Load one of the recent stored queries (if any)
             if recent_queries_and_filters['queries']:
                 recent_query = recent_queries_and_filters['queries'][self.last_recent_loaded % len(recent_queries_and_filters['queries'])]
                 self.current_text = [char for char in recent_query] + [' '] * (self.max_length - len(recent_query))
                 self.last_recent_loaded += 1
+        else:
+            super().on_button_pressed(button_idx=button_idx, shift=shift)
 
 
-class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
+class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
 
     def to_array(self, vorbis_file):
         bytes_per_sample = 2
@@ -1781,6 +1832,17 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
     max_scale = 20.0
     min_scale = 0.2
     slices = []  # list slices to show (in samples)
+    help_pages = [[
+        "B1 set start",
+        "B2 set end",
+        "B3 set loop start",
+        "B4 set loop end",
+        "+",
+    ],[
+        "B5 add slice",
+        "B6 remove closest slice",
+        "B7 remove all slices"
+    ]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1892,6 +1954,8 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
         elif button_idx == 7:
             # Remove all slices
             self.slices = [] 
+        else:
+            super().on_button_pressed(button_idx=button_idx, shift=shift)
 
     def on_fader_moved(self, fader_idx, value, shift=False):
         if fader_idx == 0:
@@ -1909,7 +1973,7 @@ class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
                 self.cursor_position = self.sound_data_array.shape[0] - 1
 
 
-class SoundAssignedNotesEditorState(GoBackOnEncoderLongPressedStateMixin, State):
+class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
 
     sound_idx = -1
     assigned_notes = []
@@ -1917,6 +1981,12 @@ class SoundAssignedNotesEditorState(GoBackOnEncoderLongPressedStateMixin, State)
     frame_count = 0
     range_start = None
     selecting_range_mode = False
+    help_pages = [[
+        "B1 toggle current",
+        "B2 start range",
+        "B3 end range",
+        "B4 clear all"
+    ]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1990,8 +2060,7 @@ class SoundAssignedNotesEditorState(GoBackOnEncoderLongPressedStateMixin, State)
             else:
                 # If already in range select mode, cancel current range
                 self.selecting_range_mode = False
-                self.range_start = None
-            
+                self.range_start = None 
         elif button_idx == 3:
             # Set end of range
             if not self.selecting_range_mode:
@@ -2003,10 +2072,11 @@ class SoundAssignedNotesEditorState(GoBackOnEncoderLongPressedStateMixin, State)
                     self.assigned_notes = sorted(list(set(self.assigned_notes + list(range(min(self.range_start, self.cursor_position), max(self.range_start, self.cursor_position) + 1)))))
                     self.range_start = None
                 self.selecting_range_mode = False
-            
         elif button_idx == 4:
             # Clear all assigned notes
             self.assigned_notes = []
+        else:
+            super().on_button_pressed(button_idx=button_idx, shift=shift)
 
 
 state_manager = StateManager()
