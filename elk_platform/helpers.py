@@ -513,3 +513,10 @@ def merge_dicts(dict_a, dict_b):
     dict_merged = dict_a.copy()
     dict_merged.update(dict_b)
     return dict_merged
+
+
+def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
+    # raw_assigned_notes is  a hex string representation of the JUCE BigInteger for assigned midi notes
+    bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
+    bits = [False] * (128 - len(bits_raw)) + bits_raw
+    return [i for i, bit in enumerate(reversed(bits)) if bit]

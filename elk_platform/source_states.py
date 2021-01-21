@@ -8,7 +8,7 @@ import time
 import traceback
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -596,6 +596,15 @@ class State(object):
         if sound_idx >  -1:
             sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])
 
+    def get_sound_idx_from_note(self, midi_note):
+        # Iterate over sounds to find the first one that has that note assigned
+        for i, sound in enumerate(sm.source_state.get(StateNames.SOUNDS_INFO, [])):
+            raw_assigned_notes = sound.get(StateNames.SOUND_ASSIGNED_NOTES, None)
+            if raw_assigned_notes is not None:
+                if midi_note in raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
+                    return i
+        return 0
+
     def set_assigned_notes_for_sound(self, sound_idx, assinged_notes):
         # assigned_notes here is a list with the midi note numbers
         assinged_notes = sorted(list(set(assinged_notes)))  # make sure they're all sorted and there are no duplicates
@@ -1041,7 +1050,7 @@ class MenuState(State):
         pass
 
 
-class MenuCallbackState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+class MenuCallbackState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     callback = None  # Triggered when encoder pressed
     shift_callback = None  # Triggered when shift+encoder pressed
@@ -1063,6 +1072,7 @@ class MenuCallbackState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         self.shift_callback = kwargs.get('shift_callback', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
+        self.help_pages = kwargs.get('help_pages', [])
         self.update_items_callback = kwargs.get('update_items_callback', None)
 
     def draw_display_frame(self):
@@ -1289,8 +1299,9 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_RELAYOUT = "Apply note layout..."
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
+    OPTION_GO_TO_SOUND = "Go to sound..."
 
-    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES]
+    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES, OPTION_GO_TO_SOUND]
     page_size = 5
 
     def draw_display_frame(self):
@@ -1382,6 +1393,11 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             ))
         elif action_name == self.OPTION_NEW_SOUNDS:
             sm.move_to(NewPresetOptionsMenuState())
+        elif action_name == self.OPTION_GO_TO_SOUND:
+            sm.move_to(EnterNoteState(
+                title1="Go to sound...",
+                callback=lambda note: (sm.go_back(n_times=2), sm.move_to(SoundSelectedState(self.get_sound_idx_from_note(note)))),
+            ))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -1450,11 +1466,12 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     OPTION_MIDI_CC = "MIDI CC mappings..."
     OPTION_OPEN_IN_FREESOUND = "Open in Freesound"
     OPTION_DELETE = "Delete"
+    OPTION_GO_TO_SOUND = "Go to sound..."
 
     MIDI_CC_ADD_NEW_TEXT = "Add new..."
 
     sound_idx = -1
-    items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE]
+    items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE, OPTION_GO_TO_SOUND]
     page_size = 4
 
     def __init__(self, sound_idx, *args, **kwargs):
@@ -1505,12 +1522,18 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 MenuCallbackState(
                 items=self.get_midi_cc_items_for_midi_cc_assignments_menu(), 
                 selected_item=0, 
-                title1="MIDI CC mappings......", 
+                title1="MIDI CC mappings", 
                 callback=self.handle_select_midi_cc_assignment, 
                 shift_callback=self.handle_delete_midi_cc_assignment,
                 update_items_callback=self.get_midi_cc_items_for_midi_cc_assignments_menu,
+                help_pages=[['Sh+Enc remove current']],
                 go_back_n_times=0)  # Don't go back because we go into another menu and we handle this individually in the callbacks of the inside options
             )
+        elif action_name == self.OPTION_GO_TO_SOUND:
+            sm.move_to(EnterNoteState(
+                title1="Go to sound...",
+                callback=lambda note: (sm.go_back(n_times=3), sm.move_to(SoundSelectedState(self.get_sound_idx_from_note(note)))),
+            ))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -1652,6 +1675,49 @@ class EnterNumberState(GoBackOnEncoderLongPressedStateMixin, State):
             }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         return add_centered_value_to_frame(frame, self.value)
+
+    def on_encoder_rotated(self, direction, shift=False):
+        if direction > 0:
+            self.increase()
+        else:
+            self.decrease()
+
+    def on_encoder_pressed(self, shift=False):
+        if self.callback is not None:
+            self.callback(self.value)
+        sm.go_back(n_times=self.go_back_n_times)
+
+
+class EnterNoteState(GoBackOnEncoderLongPressedStateMixin, State):
+
+    title1 = "Title1"
+    callback = None  # Triggered when encoder pressed
+    go_back_n_times = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title1 = kwargs.get('title1', None)
+        self.callback = kwargs.get('callback', None)
+        self.go_back_n_times = kwargs.get('go_back_n_times', 0)
+
+    def draw_display_frame(self):
+
+        if sm.source_state.get(StateNames.MIDI_RECEIVED, False):
+            last_note_received = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+        else:
+            last_note_received = -1
+
+        if last_note_received != -1:
+            sm.go_back(n_times=self.go_back_n_times)
+            if self.callback is not None:
+                self.callback(last_note_received)
+
+        lines = [{
+            "underline": True, 
+            "text": self.title1
+        }]
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        return add_centered_value_to_frame(frame, "Enter a note...", font_size_big=False)
 
     def on_encoder_rotated(self, direction, shift=False):
         if direction > 0:
@@ -1994,9 +2060,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         if self.sound_idx > -1:
             sound_assigned_notes = sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
             if sound_assigned_notes is not None:
-                bits_raw = [bit == '1' for bit in "{0:b}".format(int(sound_assigned_notes, 16))]
-                bits = [False] * (128 - len(bits_raw)) + bits_raw
-                self.assigned_notes = [i for i, bit in enumerate(reversed(bits)) if bit]
+                self.assigned_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
                 if self.assigned_notes:
                     self.cursor_position = self.assigned_notes[0]
                     

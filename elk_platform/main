@@ -75,7 +75,7 @@ http_server = Flask(__name__, template_folder='/udata/source/app/' if platform =
 osc_client = None
 elk_bridge = None
 
-BUTTON_LONG_PRESS_TIME = 0.35
+BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
 
 
