@@ -1,3 +1,4 @@
+import json
 import math
 import numpy
 import os
@@ -13,6 +14,29 @@ try:
     from elk_ui_custom import N_LEDS, N_FADERS
 except ModuleNotFoundError:
     N_LEDS = 9
+
+
+n_recent_items_to_store = 10
+recent_queries_and_filters_path = 'recent_queries_and_filters.json'
+if os.path.exists(recent_queries_and_filters_path):
+    recent_queries_and_filters = json.load(open(recent_queries_and_filters_path, 'r'))
+else:
+    recent_queries_and_filters = {
+        'queries': [],
+        'query_filters': [],
+    }
+
+def add_recent_query(query):
+    recent_queries_and_filters['queries'].append(query)
+    if len(recent_queries_and_filters['queries']) > n_recent_items_to_store:
+        recent_queries_and_filters['queries'] = recent_queries_and_filters['queries'][len(recent_queries_and_filters['queries']) - n_recent_items_to_store:]
+    json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
+
+def add_recent_query_filter(query_filter):
+    recent_queries_and_filters['query_filters'].append(query_filter)
+    if len(recent_queries_and_filters['query_filters']) > n_recent_items_to_store:
+        recent_queries_and_filters['query_filters'] = recent_queries_and_filters['query_filters'][len(recent_queries_and_filters['query_filters']) - n_recent_items_to_store:]
+    json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
 
 
 #  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
@@ -123,19 +147,20 @@ reverb_parameters_info_dict = {
 note_layout_types = ['Contiguous', 'Interleaved']
 num_sounds_options = [1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 64]
 ac_descriptors_options = ['off', 'low', 'mid', 'high']
+ac_descriptors_names = ['brightness', 'hardness', 'depth', 'roughness','boominess', 'warmth', 'sharpness']
 
 query_settings_info_dict = {
-    'num_sounds': (lambda x:num_sounds_options[int(x * (len(num_sounds_options) - 1))], 'Num sounds', '{}', 16),
+    'num_sounds': (lambda x:num_sounds_options[int(round(x * (len(num_sounds_options) - 1)))], 'Num sounds', '{}', 16),
     'min_length': (lambda x:float(pow(x, 4) * 300), 'Min length', '{0:.1f}s', 0.0),
     'max_length': (lambda x:float(pow(x, 4) * 300), 'Max length', '{0:.1f}s', 0.5),
-    'layout': (lambda x:note_layout_types[int(x + 0.5 * (len(note_layout_types) - 1))], 'Layout', '{}', note_layout_types[1]),
-    'brightness': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Brightness', '{}', ac_descriptors_options[0]),
-    'hardness': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Hardness', '{}', ac_descriptors_options[0]),
-    'depth': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Depth', '{}', ac_descriptors_options[0]),
-    'roughness': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Roughness', '{}', ac_descriptors_options[0]),
-    'boominess': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Boominess', '{}', ac_descriptors_options[0]),
-    'warmth': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Warmth', '{}', ac_descriptors_options[0]),
-    'sharpness': (lambda x:ac_descriptors_options[int(x * (len(ac_descriptors_options) - 1))], 'Sharpness', '{}', ac_descriptors_options[0]),
+    'layout': (lambda x:note_layout_types[int(round(x * (len(note_layout_types) - 1)))], 'Layout', '{}', note_layout_types[1]),
+    'brightness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Brightness', '{}', ac_descriptors_options[0]),
+    'hardness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Hardness', '{}', ac_descriptors_options[0]),
+    'depth': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Depth', '{}', ac_descriptors_options[0]),
+    'roughness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Roughness', '{}', ac_descriptors_options[0]),
+    'boominess': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Boominess', '{}', ac_descriptors_options[0]),
+    'warmth': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Warmth', '{}', ac_descriptors_options[0]),
+    'sharpness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Sharpness', '{}', ac_descriptors_options[0]),
 }
 
 query_settings_pages = [
@@ -428,12 +453,16 @@ class State(object):
                 midi_notes = assigned_notes_per_sound_list[sound_idx]
 
             self.send_add_or_replace_sound_to_plugin(-1, sound, assinged_notes=midi_notes, trigger_download="none" if sound_idx < n_sounds -1 else "all")
-                    
+
+    def consolidate_ac_descriptors_from_kwargs(self, kwargs_dict):
+        return {key: value for key, value in kwargs_dict.items() if key in ac_descriptors_names and value != 'off'}
+
+
     def add_or_replace_sound_by_query(self, sound_idx=-1, query='', min_length=0, max_length=300, page_size=50, **kwargs):
         sm.show_global_message("Searching {}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
-            selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size)
+            selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if selected_sound is not None:
                 sm.show_global_message("Loading sound...")
                 self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
@@ -465,7 +494,7 @@ class State(object):
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
-            new_sounds = find_sounds_by_query(query=query, n_sounds=num_sounds, min_length=min_length, max_length=max_length, page_size=page_size)
+            new_sounds = find_sounds_by_query(query=query, n_sounds=num_sounds, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if not new_sounds:
                 sm.show_global_message("No results found!")
             else:
@@ -490,7 +519,7 @@ class State(object):
         sm.show_global_message("Entering the\nunknown...", duration=3600)
         sm.block_ui_input = True
         try:
-            new_sounds = find_random_sounds(n_sounds=num_sounds, min_length=min_length, max_length=max_length, report_callback=show_progress_message)
+            new_sounds = find_random_sounds(n_sounds=num_sounds, min_length=min_length, max_length=max_length, report_callback=show_progress_message, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if not new_sounds:
                 sm.show_global_message("No results found!")
             else:
@@ -1070,6 +1099,7 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
     allow_change_num_sounds = True
     allow_change_layout = True
     title = ""
+    last_recent_loaded = 0
 
     query_settings_values = {}
     pages = query_settings_pages
@@ -1116,6 +1146,7 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
         if self.callback is not None:
             query_settings = self.query_settings_values.copy()
             query_settings.update({'layout': note_layout_types.index(query_settings['layout'])})  # Change the format of layout parameter
+            add_recent_query_filter(query_settings)  # Store the filter settings
             callback_data = {'query_settings': query_settings}
             if self.extra_data_for_callback is not None:
                 callback_data.update(self.extra_data_for_callback)
@@ -1126,6 +1157,16 @@ class EnterQuerySettingsState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
         if parameter_name is not None and self.parameter_is_allowed(parameter_name):
             send_func, _, _, _ = query_settings_info_dict[parameter_name]
             self.query_settings_values[parameter_name] = send_func(value)
+
+    def on_button_pressed(self, button_idx, shift=False):
+        if button_idx == 1:
+            # Load one of the recent stored query filters (if any)
+            if recent_queries_and_filters['query_filters']:
+                recent_filter = recent_queries_and_filters['query_filters'][self.last_recent_loaded % len(recent_queries_and_filters['query_filters'])].copy()
+                recent_filter.update({'layout': note_layout_types[recent_filter['layout']]})
+                sm.show_global_message('Loaded recent\n qeury filters ({})'.format(self.last_recent_loaded % len(recent_queries_and_filters['query_filters']) + 1), duration=0.5)
+                self.query_settings_values = recent_filter
+                self.last_recent_loaded += 1
 
 
 class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
@@ -1229,6 +1270,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 web_form_id="enterName", 
                 callback=self.save_current_preset_to, 
                 current_text=current_preset_name,
+                store_recent=False,
                 extra_data_for_callback={
                     'preset_idx': preset_idx,
                 },
@@ -1614,10 +1656,13 @@ class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
     available_chars = [char for char in " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"]
     char_position = 1
     data_received_key = 'query'
+    store_recent = True
     frame_count = 0
+    last_recent_loaded = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.store_recent = kwargs.get('store_recent', True)
         self.current_text = [char for char in kwargs.get('current_text', ' ')]
         self.current_text = self.current_text + [' '] * (self.max_length - len(self.current_text))
 
@@ -1669,7 +1714,10 @@ class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
             self.current_text[self.cursor_position] = self.available_chars[self.char_position % len(self.available_chars)]
 
     def on_encoder_pressed(self, shift=False):
-        self.on_data_received({self.data_received_key: ''.join(self.current_text).strip()})
+        entered_text = ''.join(self.current_text).strip()
+        if self.store_recent:
+            add_recent_query(entered_text)
+        self.on_data_received({self.data_received_key: entered_text})
 
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
@@ -1692,7 +1740,13 @@ class EnterTextViaHWOrWebInterfaceState(EnterDataViaWebInterfaceState):
             # Load a random query from the prefined list
             random_query = random.choice(predefined_queries)
             self.current_text = [char for char in random_query] + [' '] * (self.max_length - len(random_query))
-    
+        elif button_idx == 6:
+            # Load one of the recent stored queries (if any)
+            if recent_queries_and_filters['queries']:
+                recent_query = recent_queries_and_filters['queries'][self.last_recent_loaded % len(recent_queries_and_filters['queries'])]
+                self.current_text = [char for char in recent_query] + [' '] * (self.max_length - len(recent_query))
+                self.last_recent_loaded += 1
+
 
 class SoundPrecisionEditorState(GoBackOnEncoderLongPressedStateMixin, State):
 
