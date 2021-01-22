@@ -860,6 +860,9 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
         sampler.clearSounds();
         
+    } else if (message.startsWith(String(ACTION_GET_VOLATILE_STATE))){
+        sendStateToExternalServer(collectVolatileStateInformation());
+        
     }
 }
 

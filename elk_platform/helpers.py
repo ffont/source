@@ -23,6 +23,9 @@ class StateNames(Enum):
     STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
     NETWORK_IS_CONNECTED = auto()
+
+    METER_L = auto()
+    METER_R = auto()
     
     IS_QUERYING_AND_DOWNLOADING = auto()
     
@@ -62,6 +65,33 @@ class StateNames(Enum):
     LAST_NOTE_MIDI_RECEIVED = auto()
 
 
+def process_xml_volatile_state_from_plugin(plugin_state_xml):
+    source_state = {}
+
+    volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
+
+    # Source settings (maybe these should be moved to some other state?)
+    source_state[StateNames.SOURCE_DATA_LOCATION] = volatile_state.get('sourceDataLocation'.lower(), None)
+    source_state[StateNames.SOUNDS_DATA_LOCATION] = volatile_state.get('soundsDataLocation'.lower(), None)
+    source_state[StateNames.PRESETS_DATA_LOCATION] = volatile_state.get('presetsDataLocation'.lower(), None)
+
+    # Is plugin currently querying and downloading?
+    source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
+
+    # More volatile state stuff
+    source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
+    source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
+    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
+    source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
+
+    # Audio meters
+    audio_levels = volatile_state.get('audioLevels'.lower(), "-1,-1").split(',') 
+    source_state[StateNames.METER_L] = float(audio_levels[0])
+    source_state[StateNames.METER_R] = float(audio_levels[1])
+
+    return source_state
+
+
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state = {}
     
@@ -73,17 +103,11 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     clear_old_items_in_sp_cache()  
             
     # Get sub XML element to avoid repeating many queries
-    volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
     preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
     sampler_state = preset_state.find_all("Sampler".lower())[0]
-
-    # Source settings
-    source_state[StateNames.SOURCE_DATA_LOCATION] = volatile_state.get('sourceDataLocation'.lower(), None)
-    source_state[StateNames.SOUNDS_DATA_LOCATION] = volatile_state.get('soundsDataLocation'.lower(), None)
-    source_state[StateNames.PRESETS_DATA_LOCATION] = volatile_state.get('presetsDataLocation'.lower(), None)
     
-    # Is plugin currently querying and downloading?
-    source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
+    # Get properties from the volatile state
+    source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
 
     # Basic preset properties
     source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("presetName".lower(), "Noname")
@@ -185,12 +209,6 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
     source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
     source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if int(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
-
-    # More volatile state stuff
-    source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-    source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
-    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
-    source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
 
     return source_state
 

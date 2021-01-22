@@ -82,6 +82,7 @@ sound_parameters_info_dict = {
 }
 
 EXTRA_PAGE_1_NAME = "extra1"
+EXTRA_PAGE_2_NAME = "volatile"
 sound_parameter_pages = [
     [
         "gain",
@@ -788,7 +789,7 @@ class ChangePresetOnEncoderShiftRotatedStateMixin(object):
 
 class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
-    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
+    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]
 
     def draw_display_frame(self):
         n_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
@@ -812,6 +813,14 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                                                               sm.source_state[StateNames.SYSTEM_STATS].get("xenomai_cpu", 0.0))), 
                 justify_text('Network:', '{0}'.format(sm.source_state[StateNames.SYSTEM_STATS].get("network_ssid", "-")))
             ]
+        elif self.current_page_data == EXTRA_PAGE_2_NAME:
+            # Show some volatile state informaion
+            lines += [
+                justify_text('Active voices:', '{}'.format(sm.source_state.get(StateNames.NUM_ACTIVE_VOICES, -1))),
+                justify_text('L:', '{}'.format(sm.source_state.get(StateNames.METER_L, -1))),
+                justify_text('R:', '{}'.format(sm.source_state.get(StateNames.METER_R, -1))),
+            ]
+        
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
@@ -861,7 +870,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             sm.move_to(HomeContextualMenuState())
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        if self.current_page_data == EXTRA_PAGE_1_NAME:
+        if self.current_page_data in [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]:
             pass
         else:
             # Set sound parameters for all sounds

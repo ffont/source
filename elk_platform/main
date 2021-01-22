@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
-from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, sound_usage_log_base_dir
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, sound_usage_log_base_dir
 
 from source_states import state_manager, sound_parameters_info_dict
 
@@ -52,6 +52,7 @@ if disable_flask_logging:
 
 elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
+volatile_state_refresh_fps = 20
 
 current_frame = None
 current_frame_directory = 'static/frame/' 
@@ -136,6 +137,16 @@ def run_collect_system_stats_loop():
     while True:
         time.sleep(1.0/system_stats_refresh_fps)
         collect_system_stats()
+
+
+def run_collect_volatile_state_loop():
+    print('* Starting collect volatile stats loop')
+    while True:
+        time.sleep(1.0/volatile_state_refresh_fps)
+        if osc_client is not None:
+            osc_client.send_message('/get_volatile_state', [])
+        
+
 
 
 # --- ELK Bridge ------------------------------------------------------------------------
@@ -544,7 +555,14 @@ def state_from_plugin():
     plugin_state = request.data
     used_parser = "lxml"
     plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
-    plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict)
+
+    if len(plugin_state_xml.find_all("SourcePresetState".lower())) == 0:
+        # Plugin has sent volatile state information only
+        volatile_state = process_xml_volatile_state_from_plugin(plugin_state_xml)
+        plugin_state_dict.update(volatile_state)
+    else:
+        # Plugin has sent full state update
+        plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict)
 
     if not last_is_querying_and_downloading_sounds_state and plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
         # Stop showing "making query" message because it will be shown in menu bar with "W"
@@ -600,6 +618,13 @@ class CollectSystemStatsThread(threading.Thread):
         run_collect_system_stats_loop()
 
 
+class RequestVolatileStateThread(threading.Thread):
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        run_collect_volatile_state_loop()
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--osc_ip", default="127.0.0.1", help="The IP to send OSC to")
@@ -615,6 +640,12 @@ if __name__ == "__main__":
     if system_stats_refresh_fps:
         collect_system_stats()
         CollectSystemStatsThread().start()
+
+    # Start the thread that will collect and update the volatile state periodically
+    # This works in parallell to the plugin posting the state because we want to make this as
+    # fast as possible
+    if volatile_state_refresh_fps:
+        RequestVolatileStateThread().start()
 
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')
