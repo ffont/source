@@ -1,4 +1,7 @@
+import datetime
+import json
 import numpy
+import os
 import threading
 
 from collections import defaultdict
@@ -56,7 +59,7 @@ class StateNames(Enum):
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
     LAST_NOTE_MIDI_RECEIVED = auto()
-    
+
 
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state = {}
@@ -151,7 +154,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             processed_sound_midi_cc_info[assignment_label] = assignment_data
 
         # Put all sound data together into a dict
-        processed_sounds_info.append({
+        processed_sound_info = {
             StateNames.SOUND_NAME: sound_info.get('soundname', '-'),
             StateNames.SOUND_ID: sound_info.get('soundid', 0),
             StateNames.SOUND_LICENSE: translate_cc_license_url(sound_info.get('soundlicense', '-')),
@@ -164,7 +167,12 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             StateNames.SOUND_ASSIGNED_NOTES: sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
             StateNames.SOUND_LOADED_IN_SAMPLER: len(sound_parameters) > 0,
-        })
+        }
+        processed_sounds_info.append(processed_sound_info)
+
+        # Log that this sound was used (the log_sound_used will avoid duplicates)
+        log_sound_used(processed_sound_info)
+
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
     source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
@@ -562,3 +570,26 @@ def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
     bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
     bits = [False] * (128 - len(bits_raw)) + bits_raw
     return [i for i, bit in enumerate(reversed(bits)) if bit]
+
+
+now = datetime.datetime.now()
+sound_usage_log_base_dir = 'sound_usage_log'
+if not os.path.exists(sound_usage_log_base_dir):
+    os.makedirs(sound_usage_log_base_dir)
+sound_usage_log_filename = os.path.join(sound_usage_log_base_dir, '{}_{}_{}_sound_usage.json'.format(now.year, now.month, now.day))
+
+if os.path.exists(sound_usage_log_filename):
+    sound_usage_log = json.load(open(sound_usage_log_filename, 'r'))
+else:
+    sound_usage_log = {}
+
+def log_sound_used(sound):
+    if sound[StateNames.SOUND_ID] not in sound_usage_log:
+        sound_usage_log[sound[StateNames.SOUND_ID]] = {
+            'name': sound[StateNames.SOUND_NAME],
+            'url': 'https://freesound.org/s/{}'.format(sound[StateNames.SOUND_ID]),
+            'username': sound[StateNames.SOUND_AUTHOR],
+            'license': sound[StateNames.SOUND_LICENSE],
+            'id': sound[StateNames.SOUND_ID],
+        }
+        json.dump(sound_usage_log, open(sound_usage_log_filename, 'w'), indent=4)

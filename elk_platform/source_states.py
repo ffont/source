@@ -201,7 +201,7 @@ class StateManager(object):
     ui_client = None
     source_state = {}
     frame_counter = 0
-    selected_open_sound_in_browser = None
+    open_url_in_browser = None
     should_show_start_animation = True
     block_ui_input = False
 
@@ -1302,8 +1302,9 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_NUM_VOICES = "Set num voices..."
     OPTION_LOAD_PRESET = "Load preset..."
     OPTION_GO_TO_SOUND = "Go to sound..."
+    OPTION_SOUND_USAGE_LOG = "Sound usage log..."
 
-    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES, OPTION_GO_TO_SOUND]
+    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG]
     page_size = 5
 
     def draw_display_frame(self):
@@ -1400,6 +1401,10 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 title1="Go to sound...",
                 callback=lambda note: (sm.go_back(n_times=2), sm.move_to(SoundSelectedState(self.get_sound_idx_from_note(note)))),
             ))
+        elif action_name == self.OPTION_SOUND_USAGE_LOG:
+            sm.show_global_message('Sound usage log\n opened in browser')
+            sm.open_url_in_browser = '/usage_log'
+            sm.go_back()
         else:
             sm.show_global_message('Not implemented...')
 
@@ -1513,7 +1518,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.show_global_message('Sound opened\nin browser')
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
-                sm.selected_open_sound_in_browser = selected_sound_id
+                sm.open_url_in_browser = 'https://freesound.org/s/{}'.format(selected_sound_id)
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
             sm.move_to(SoundPrecisionEditorState(sound_idx=self.sound_idx))

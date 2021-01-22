@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
-from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, sound_usage_log_base_dir
 
 from source_states import state_manager, sound_parameters_info_dict
 
@@ -447,10 +447,21 @@ def update_minimal_interface_state():
         state['should_ask_for_data'] = True
         state['web_form_id'] = state_manager.current_state.web_form_id
         state['web_form_data'] = state_manager.current_state.data_for_web_form_id
-    if state_manager.selected_open_sound_in_browser is not None:
-        state['should_load_url'] = 'https://freesound.org/s/{0}'.format(state_manager.selected_open_sound_in_browser)
-        state_manager.selected_open_sound_in_browser = None
+    if state_manager.open_url_in_browser is not None:
+        state['should_load_url'] = state_manager.open_url_in_browser
+        state_manager.open_url_in_browser = None
     return jsonify(state)
+
+@http_server.route('/usage_log', methods=['GET'])  # Serve interface HTML file with all the available controls
+def usage_log():
+    log = []
+    for filename in os.listdir(sound_usage_log_base_dir):
+        log.append((
+            filename.split('_sound_usage')[0].replace('_', '-'),
+            json.load(open(os.path.join(sound_usage_log_base_dir, filename), 'r')).values()
+        ))
+    tvars = {'log': log}
+    return render_template("usage_log.html", **tvars)
 
 @http_server.route('/index', methods=['GET'])  # Serve interface HTML file with all the available controls
 def index():
