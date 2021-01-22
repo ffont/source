@@ -10,7 +10,7 @@ import traceback
 import numpy as np
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, add_to_sp_cache, get_sp_parameter_value_from_cache
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -193,6 +193,7 @@ midi_cc_available_parameters_list = ["startPosition", "endPosition", "loopStartP
 predefined_queries = ['wind', 'rain', 'piano', 'explosion', 'music', 'whoosh', 'woosh', 'intro', 'birds', 'footsteps', 'fire', '808', 'scream', 'water', 'bell', 'click', 'thunder', 'guitar', 'bass', 'beep', 'swoosh', 'pop', 'cartoon', 'magic', 'car', 'horror', 'vocal', 'game', 'trap', 'lofi', 'clap', 'happy', 'forest', 'ding', 'drum', 'kick', 'glitch', 'drop', 'transition', 'animal', 'gun', 'door', 'hit', 'punch', 'nature', 'jump', 'flute', 'sad', 'beat', 'christmas']
 predefined_queries = sorted(predefined_queries)
 
+
 class StateManager(object):
 
     state_stack = []
@@ -252,6 +253,10 @@ class StateManager(object):
 
     def send_osc_to_plugin(self, address, values):
         if self.osc_client is not None:
+            if address in ['/set_sound_parameter', '/set_sound_parameter_int']:
+                # If we're setting a parameter, cache its value so we can use the cached value to display in UI
+                # before the plugin reports an updated state
+                add_to_sp_cache(*values)
             self.osc_client.send_message(address, values)
 
     def draw_display_frame(self):
@@ -298,7 +303,22 @@ class StateManager(object):
         return default
 
     def gsp(self, sound_idx, property_name, default=None):
-        return self.get_source_state_selected_sound_property(sound_idx, property_name, default)
+        # Shorthand for get_source_state_selected_sound_property
+        return self.get_source_state_selected_sound_property(sound_idx, property_name, default=default)
+
+    def get_source_state_selected_sound_sound_parameter(self, sound_idx, parameter_name, default="-"):
+        sound_parameters = self.gsp(sound_idx, StateNames.SOUND_PARAMETERS, default={})
+        if sound_parameters:
+            # Check if there's a cached version of the value, otherwise return the one on state
+            cached_val = get_sp_parameter_value_from_cache(sound_idx, parameter_name)
+            if cached_val is not None:
+                return cached_val
+            else:
+                return sound_parameters.get(parameter_name, default)
+        return default
+
+    def gsparam(self, sound_idx, parameter_name, default="-"):
+        return self.get_source_state_selected_sound_sound_parameter(sound_idx, parameter_name, default=default)
 
     def is_waiting_for_data_from_web(self):
         return type(self.current_state) == EnterDataViaWebInterfaceState or type(self.current_state) == EnterTextViaHWOrWebInterfaceState
@@ -802,9 +822,8 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                     all_sounds_values = []
                     last_value = None
                     for sound_idx in range(0, sm.source_state.get(StateNames.NUM_SOUNDS, 0)):
-                        sound_parameters = sm.gsp(sound_idx, StateNames.SOUND_PARAMETERS)
-                        if sound_parameters:
-                            raw_value = sound_parameters.get(parameter_name, 0)
+                        raw_value = sm.gsparam(sound_idx, parameter_name, default=None)
+                        if raw_value is not None:
                             processed_val = get_func(raw_value)
                             all_sounds_values.append(processed_val)
                             last_value = processed_val
@@ -893,10 +912,9 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             for parameter_name in self.current_page_data:
                 if parameter_name is not None:
                     _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
-                    sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS)
-                    if (type(sound_parameters) == dict) and parameter_name in sound_parameters:
-                        state_val = sound_parameters[parameter_name]
-                        parameter_value_label = value_label_template.format(get_func(state_val))
+                    raw_value = sm.gsparam(self.sound_idx, parameter_name, default=None)
+                    if raw_value is not None:
+                        parameter_value_label = value_label_template.format(get_func(raw_value))
                     else:
                         parameter_value_label = "-"
 
@@ -1963,11 +1981,10 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
                 # Normal case in which we're not in sound edges
                 pass
 
-            sound_parameters = sm.gsp(self.sound_idx, StateNames.SOUND_PARAMETERS, {})
-            start_position = int(float(sound_parameters.get('startPosition', 0.0)) * self.sound_length)
-            end_position = int(float(sound_parameters.get('endPosition', 1.0)) * self.sound_length)
-            loop_start_position = int(float(sound_parameters.get('loopStartPosition', 0.0)) * self.sound_length)
-            loop_end_position = int(float(sound_parameters.get('loopEndPosition', 1.0)) * self.sound_length)
+            start_position = int(float(sm.gsparam(self.sound_idx, 'startPosition', default=0.0)) * self.sound_length)
+            end_position = int(float(sm.gsparam(self.sound_idx, 'endPosition', default=1.0)) * self.sound_length)
+            loop_start_position = int(float(sm.gsparam(self.sound_idx, 'loopStartPosition', default=0.0)) * self.sound_length)
+            loop_end_position = int(float(sm.gsparam(self.sound_idx, 'loopEndPosition', default=1.0)) * self.sound_length)
 
             if self.current_zoom < 10:
                 current_time_label = '{:.4f}s'.format(self.cursor_position / self.sound_sr)

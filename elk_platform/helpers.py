@@ -2,6 +2,7 @@ import datetime
 import json
 import numpy
 import os
+import time
 import threading
 
 from collections import defaultdict
@@ -63,6 +64,13 @@ class StateNames(Enum):
 
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state = {}
+    
+    # Remove old entries in the sound parameter cache
+    # This might not be necessary because when receiving state all the parameters will be updated and
+    # cache would not be needed (so we could delete it instead of only clearing old items), however just 
+    # in case the received state contains a parameter value which is not yet up to date, it is good to 
+    # use the cache strategy with an expiry time
+    clear_old_items_in_sp_cache()  
             
     # Get sub XML element to avoid repeating many queries
     volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
@@ -98,7 +106,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
     source_state[StateNames.NUM_SOUNDS] = len(sounds_info)
     processed_sounds_info = []
-    for sound_info in sounds_info:
+    for sound_idx, sound_info in enumerate(sounds_info):
 
         sampler_sound = sound_info.find_all("SamplerSound".lower())[0]
         sound_parameters = sampler_sound.find_all('SamplerSoundParameter'.lower())
@@ -556,22 +564,6 @@ def translate_cc_license_url(url):
     if '/sampling+/' in url: return LICENSE_CC_SAMPLING_PLUS
     return LICENSE_UNKNOWN
 
-
-# -- Other
-
-def merge_dicts(dict_a, dict_b):
-    dict_merged = dict_a.copy()
-    dict_merged.update(dict_b)
-    return dict_merged
-
-
-def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
-    # raw_assigned_notes is  a hex string representation of the JUCE BigInteger for assigned midi notes
-    bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
-    bits = [False] * (128 - len(bits_raw)) + bits_raw
-    return [i for i, bit in enumerate(reversed(bits)) if bit]
-
-
 now = datetime.datetime.now()
 sound_usage_log_base_dir = 'sound_usage_log'
 if not os.path.exists(sound_usage_log_base_dir):
@@ -593,3 +585,43 @@ def log_sound_used(sound):
             'id': sound[StateNames.SOUND_ID],
         }
         json.dump(sound_usage_log, open(sound_usage_log_filename, 'w'), indent=4)
+
+
+# -- Other
+
+def merge_dicts(dict_a, dict_b):
+    dict_merged = dict_a.copy()
+    dict_merged.update(dict_b)
+    return dict_merged
+
+
+def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
+    # raw_assigned_notes is  a hex string representation of the JUCE BigInteger for assigned midi notes
+    bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
+    bits = [False] * (128 - len(bits_raw)) + bits_raw
+    return [i for i, bit in enumerate(reversed(bits)) if bit]
+
+
+# -- Cache for sound parameters
+
+sound_parameter_values_cache = {}
+
+def get_sp_cache_key(sound_idx, parameter_name):
+    return '{}-{}'.format(sound_idx, parameter_name)
+
+def add_to_sp_cache(sound_idx, parameter_name, value):
+    sound_parameter_values_cache[get_sp_cache_key(sound_idx, parameter_name)] = (time.time(), value)
+
+def clear_old_items_in_sp_cache(older_than_seconds=1):
+    global sound_parameter_values_cache
+    now = time.time()
+    sound_parameter_values_cache = {key: value for key, value in sound_parameter_values_cache.items() if now - value[0] < older_than_seconds}
+
+def get_sp_parameter_value_from_cache(sound_idx, parameter_name):
+    # Check if parameter is cached for all sounds globally (sound_idx=-1)
+    # Otherwise check if it is cached for that specific sound
+    global_cached = sound_parameter_values_cache.get(get_sp_cache_key(-1, parameter_name), (None, None))[1]
+    if global_cached:
+        return global_cached
+    else:
+        return sound_parameter_values_cache.get(get_sp_cache_key(sound_idx, parameter_name), (None, None))[1]

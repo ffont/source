@@ -61,9 +61,7 @@ plugin_state_dict = {}
 time_post_state_received = None
 connection_with_plugin_ok = False
 last_is_querying_and_downloading_sounds_state = False
-PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT = 5
-PLUGIN_DISCONNECTED_THRESHOLD_WHILE_QUERYING = 100
-PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT
+PLUGIN_DISCONNECTED_THRESHOLD = 8
 
 
 system_stats = {}
@@ -549,9 +547,8 @@ def state_from_plugin():
     plugin_state_dict = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict)
 
     if not last_is_querying_and_downloading_sounds_state and plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
-        # Stop showing "making query" message because it will be shown in menu bar with "W", PLUGIN_DISCONNECTED_THRESHOLD
+        # Stop showing "making query" message because it will be shown in menu bar with "W"
         state_manager.show_global_message("", duration=0)
-        PLUGIN_DISCONNECTED_THRESHOLD = PLUGIN_DISCONNECTED_THRESHOLD_DEFAULT
         last_is_querying_and_downloading_sounds_state = True
     elif last_is_querying_and_downloading_sounds_state and not plugin_state_dict[StateNames.IS_QUERYING_AND_DOWNLOADING]:
         # Finished doing the work 
