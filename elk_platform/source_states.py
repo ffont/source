@@ -1902,12 +1902,15 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
         "B1 set start",
         "B2 set end",
         "B3 set loop start",
-        "B4 set loop end",
-        "+",
+        "B4 set loop end"
     ],[
         "B5 add slice",
         "B6 remove closest slice",
         "B7 remove all slices"
+    ], [
+        "F1 zoom",
+        "F2 scale",
+        "F3 cursor"
     ]]
 
     def __init__(self, *args, **kwargs):
@@ -1926,6 +1929,11 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
                     self.sound_length = self.sound_data_array.shape[0]
                     self.min_zoom = (self.sound_length // self.display_width) + 1
                     self.current_zoom = self.min_zoom
+
+                    max_audio_value = max(self.sound_data_array.max(), abs(self.sound_data_array.min()))
+                    if max_audio_value < 32768 * 0.25:
+                        # If the file contains very low energy, auto-scale it a bit
+                        self.scale = 0.5 * 32768 / max_audio_value
                     
     def draw_display_frame(self):
         lines = [{
@@ -2026,7 +2034,7 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
     def on_fader_moved(self, fader_idx, value, shift=False):
         if fader_idx == 0:
             # Change zoom
-            self.current_zoom = (((value - 0) * (self.min_zoom - self.max_zoom)) / 1) + self.max_zoom
+            self.current_zoom = (((pow(value, 2) - 0) * (self.min_zoom - self.max_zoom)) / 1) + self.max_zoom
         elif fader_idx == 1:
             # Change scaling
             self.scale  = (((value - 0) * (self.max_scale - self.min_scale)) / 1) + self.min_scale

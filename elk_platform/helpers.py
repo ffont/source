@@ -316,19 +316,67 @@ def add_sound_waveform_and_extras_to_frame(im,
         end_sample = sound_length
 
     # Select samples to draw
-    samples = []
     displayed_section_length = end_sample - start_sample
-    for i in range(start_sample, end_sample, int(displayed_section_length//DISPLAY_SIZE[0])):
-        samples.append(sound_data_array[i])
+    samples_per_pixel = int(displayed_section_length//DISPLAY_SIZE[0])
+    max_samples_to_include_on_pixel_average_calculation = min(samples_per_pixel, 1000)  # This is to avoid too much computational cost when samples_per_pixel is very high
+    samples = []
+    for i in range(start_sample, end_sample, samples_per_pixel):
+        # Compute mean of the positive values of the audio chunk and also of the negative values
+        # Normalize by maximum value number, multiply by scale and clip to -1, 1
+        audio_chunk = sound_data_array[i:i+max_samples_to_include_on_pixel_average_calculation]
+        positive_samples = audio_chunk[audio_chunk >= 0]
+        if len(positive_samples) > 0:
+            avg_pos = positive_samples.mean()
+            avg_pos = numpy.clip(scale * (avg_pos / 32768), -1.0, 1.0)
+        else:
+            avg_pos = None
+        
+        negative_samples = audio_chunk[audio_chunk <= 0]
+        if len(negative_samples) > 0:
+            avg_neg = negative_samples.mean()
+            avg_neg = numpy.clip(scale * (avg_neg / 32768), -1.0, 1.0)
+        else:
+            avg_neg = None
+        
 
+        #if avg_pos is None and avg_neg is not None:
+        #    avg_pos = avg_neg
+        #elif avg_pos is not None and avg_neg is None:
+        #    avg_neg = avg_pos
+        #elif avg_pos is None and avg_neg is None:
+        #    avg_neg = avg_pos = 0.0
+
+        samples.append((avg_pos, avg_neg))
+
+
+    # Draw waveform
     waveform_height = DISPLAY_SIZE[1] - font_heihgt_px * 2
     y_offset = (font_heihgt_px * 2 + waveform_height // 2) + 1  # Center of the waveform
-    
-    # Draw waveform
-    for i in range(0, len(samples) - 1):
-        norm_sample = numpy.clip(scale * (samples[i] * 1.0 / 32768), -1.0, 1.0) * (waveform_height // 2)
-        next_norm_sample = numpy.clip(scale * (samples[i + 1] * 1.0 / 32768), -1.0, 1.0) * (waveform_height // 2)
-        draw.line([(i, y_offset + norm_sample), (i + 1, y_offset + next_norm_sample)], width=1, fill="white")
+    for i, (avg_pos, avg_neg) in enumerate(samples):
+
+        def get_non_none(val1, val2):
+            if val1 is not None:
+                return val1
+            elif val2 is not None:
+                return val2
+            else:
+                return 0.0
+
+        if avg_neg is None or avg_pos is None:
+            # The zoom is high enough so that the samples per pixel only contains samples on negative or positive side
+            # In that case, we draw a line from the current pixel to the next
+            current_pixel_val = get_non_none(avg_pos, avg_neg)
+            if i <= len(samples) - 2:
+                next_pixel_val = get_non_none(*samples[i + 1])
+            else:
+                next_pixel_val = 0
+            draw.line([(i, y_offset + current_pixel_val * waveform_height // 2), (i + 1, y_offset + next_pixel_val * waveform_height // 2)], width=1, fill="white")
+            
+        else:
+            # We have a positive value of the average ans also a negative value
+            # We draw a line from the positive to the negative
+            draw.line([(i, y_offset + avg_pos * waveform_height // 2), (i, y_offset + avg_neg * waveform_height // 2)], width=1, fill="white")
+
 
     # Draw slices (vertical lines on lower half of waveform)
     if slices:
@@ -354,10 +402,15 @@ def add_sound_waveform_and_extras_to_frame(im,
                 # Draw to the left of marker
                 draw.text((position_x - font_width_px * len(label) , y_offset - waveform_height // 2 + 1), label, font=font, fill="white")
             
-    # Draw current time label
+    # Draw current time
     if current_time_label is not None:
         label_width, label_height = draw.textsize(current_time_label, font=font)
         draw.text((DISPLAY_SIZE[0] - label_width - 1, DISPLAY_SIZE[1] - label_height - 1), current_time_label, font=font, fill="white")
+    
+    # Draw scale label
+    scale_label = '{:.1f}x'.format(scale)
+    label_width, label_height = draw.textsize(scale_label, font=font)
+    draw.text((2, DISPLAY_SIZE[1] - label_height - 1), scale_label, font=font, fill="white")
 
     # Draw cursor
     if start_sample <= cursor_position <= end_sample:
