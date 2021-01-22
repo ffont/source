@@ -7,6 +7,8 @@ import random
 import time
 import traceback
 
+import numpy as np
+
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes
 
@@ -1929,12 +1931,11 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
                     self.sound_length = self.sound_data_array.shape[0]
                     self.min_zoom = (self.sound_length // self.display_width) + 1
                     self.current_zoom = self.min_zoom
-
-                    max_audio_value = max(self.sound_data_array.max(), abs(self.sound_data_array.min()))
-                    if max_audio_value < 32768 * 0.25:
+                    audio_mean_value = np.absolute(self.sound_data_array).mean()
+                    if audio_mean_value < 32768 * 0.01:
                         # If the file contains very low energy, auto-scale it a bit
-                        self.scale = 0.5 * 32768 / max_audio_value
-                    
+                        self.scale = 10
+                        
     def draw_display_frame(self):
         lines = [{
             "underline": True, 

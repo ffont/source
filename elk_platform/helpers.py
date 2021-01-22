@@ -318,7 +318,7 @@ def add_sound_waveform_and_extras_to_frame(im,
     # Select samples to draw
     displayed_section_length = end_sample - start_sample
     samples_per_pixel = int(displayed_section_length//DISPLAY_SIZE[0])
-    max_samples_to_include_on_pixel_average_calculation = min(samples_per_pixel, 1000)  # This is to avoid too much computational cost when samples_per_pixel is very high
+    max_samples_to_include_on_pixel_average_calculation = min(samples_per_pixel, 10000)  # This is to avoid too much computational cost when samples_per_pixel is very high
     samples = []
     for i in range(start_sample, end_sample, samples_per_pixel):
         # Compute mean of the positive values of the audio chunk and also of the negative values
