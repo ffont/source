@@ -68,7 +68,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "filterADSR.decay") { filterADSR.decay = value; }
     else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
     else if (name == "filterADSR.release") { filterADSR.release = value; }
-    else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = jlimit(0.0f, 10.0f, value); }
+    else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = jlimit(0.0f, 100.0f, value); }
     else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
     else if (name == "ampADSR.attack") { ampADSR.attack = value; }
     else if (name == "ampADSR.decay") { ampADSR.decay = value; }
@@ -81,7 +81,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
     else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(-12.0f, 12.0f, value); }
     else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(-12.0f, 12.0f, value); }
-    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 10.0f, value); }
+    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 100.0f, value); }
     else if (name == "vel2GainAmt") { vel2GainAmt = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
     
@@ -115,7 +115,7 @@ void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float v
     else if (name == "filterADSR.decay") { setParameterByNameFloat("filterADSR.decay", value0to1); }
     else if (name == "filterADSR.sustain") { setParameterByNameFloat("filterADSR.sustain", value0to1); }
     else if (name == "filterADSR.release") { setParameterByNameFloat("filterADSR.release", value0to1); }
-    else if (name == "filterADSR2CutoffAmt") { setParameterByNameFloat("filterADSR2CutoffAmt", jmap(value0to1, 0.0f, 10.0f)); }
+    else if (name == "filterADSR2CutoffAmt") { setParameterByNameFloat("filterADSR2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
     else if (name == "gain") { setParameterByNameFloat("gain", jmap(value0to1, -80.0f, 12.0f)); }
     else if (name == "ampADSR.attack") { setParameterByNameFloat("ampADSR.attack", value0to1); }
     else if (name == "ampADSR.decay") { setParameterByNameFloat("ampADSR.decay", value0to1); }
@@ -128,7 +128,7 @@ void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float v
     else if (name == "mod2CutoffAmt") { setParameterByNameFloat("mod2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
     else if (name == "mod2GainAmt") { setParameterByNameFloat("mod2GainAmt", jmap(value0to1, -12.0f, 12.0f)); }
     else if (name == "mod2PitchAmt") { setParameterByNameFloat("mod2PitchAmt", jmap(value0to1, -12.0f, 12.0f)); }
-    else if (name == "vel2CutoffAmt") { setParameterByNameFloat("vel2CutoffAmt", jmap(value0to1, 0.0f, 10.0f)); }
+    else if (name == "vel2CutoffAmt") { setParameterByNameFloat("vel2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
     else if (name == "vel2GainAmt") { setParameterByNameFloat("vel2GainAmt", jmap(value0to1, 0.0f, 1.0f)); }
     // --> End auto-generated code D
 }
@@ -558,7 +558,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
         
         // Compute velocity modulations (only relevant at start of note)
-        filterCutoffVelMod = sound->filterCutoff * sound->vel2CutoffAmt * velocity;
+        filterCutoffVelMod = velocity * sound->filterCutoff * sound->vel2CutoffAmt;
         float velocityGain = (sound->vel2GainAmt * velocity) + (1 - sound->vel2GainAmt);
         lgain = velocityGain;
         rgain = velocityGain;
@@ -709,13 +709,16 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     // Filter
     filterCutoff = sound->filterCutoff; // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = sound->filterRessonance;
-    float newFilterCutoffMod = filterCutoffMod + sound->mod2CutoffAmt * filterCutoff * (double)currentModWheelValue/127.0; //(float)jmin((double)(filterCutoffMod + sound->mod2CutoffAmt * (double)currentModWheelValue/127.0) * filterCutoff, (double)sound->mod2CutoffAmt * filterCutoff);  // Add mod wheel modulation here
+    float newFilterCutoffMod = filterCutoffMod + (currentModWheelValue/127.0) * filterCutoff * sound->mod2CutoffAmt;  // Add mod wheel modulation and aftertouch here
+    float filterADSRMod = adsrFilter.getNextSample() * filterCutoff * sound->filterADSR2CutoffAmt;
     auto& filter = processorChain.get<filterIndex>();
     float computedCutoff = (1.0 - sound->filterKeyboardTracking) * filterCutoff + sound->filterKeyboardTracking * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->midiRootNote)/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
-                           sound->filterADSR2CutoffAmt * filterCutoff * adsrFilter.getNextSample(); // ADSR mod
+                           filterADSRMod; // ADSR mod
     filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
+    //std::cout << " vel:" << filterCutoffVelMod << " mod:" << newFilterCutoffMod << " adsr:" << filterADSRMod << std::endl;
+    //std::cout << filterCutoff << " to " << jmax(0.001f, computedCutoff) << std::endl;
     filter.setResonance (filterRessonance);
     
     // Amp and pan
@@ -766,7 +769,7 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         pitchModSemitones = sound->mod2PitchAmt * (double)newAftertouchValue/127.0;
-        filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newAftertouchValue/127.0;
+        filterCutoffMod = (newAftertouchValue/127.0) * filterCutoff * sound->mod2CutoffAmt;
         gainMod = sound->mod2GainAmt * (float)newAftertouchValue/127.0;
     }
 }
@@ -777,7 +780,7 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         pitchModSemitones = sound->mod2PitchAmt * (double)newChannelPressureValue/127.0;
-        filterCutoffMod = sound->mod2CutoffAmt * filterCutoff * (double)newChannelPressureValue/127.0;
+        filterCutoffMod = (newChannelPressureValue/127.0) * filterCutoff * sound->mod2CutoffAmt;
         gainMod = sound->mod2GainAmt * (float)newChannelPressureValue/127.0;
     }
 }
