@@ -329,25 +329,14 @@ def add_sound_waveform_and_extras_to_frame(im,
             avg_pos = positive_samples.mean()
             avg_pos = numpy.clip(scale * (avg_pos / 32768), -1.0, 1.0)
         else:
-            avg_pos = None
-        
+            avg_pos = None   
         negative_samples = audio_chunk[audio_chunk <= 0]
         if len(negative_samples) > 0:
             avg_neg = negative_samples.mean()
             avg_neg = numpy.clip(scale * (avg_neg / 32768), -1.0, 1.0)
         else:
-            avg_neg = None
-        
-
-        #if avg_pos is None and avg_neg is not None:
-        #    avg_pos = avg_neg
-        #elif avg_pos is not None and avg_neg is None:
-        #    avg_neg = avg_pos
-        #elif avg_pos is None and avg_neg is None:
-        #    avg_neg = avg_pos = 0.0
-
+            avg_neg = None     
         samples.append((avg_pos, avg_neg))
-
 
     # Draw waveform
     waveform_height = DISPLAY_SIZE[1] - font_heihgt_px * 2
@@ -408,7 +397,7 @@ def add_sound_waveform_and_extras_to_frame(im,
         draw.text((DISPLAY_SIZE[0] - label_width - 1, DISPLAY_SIZE[1] - label_height - 1), current_time_label, font=font, fill="white")
     
     # Draw scale label
-    scale_label = '{:.1f}x'.format(scale)
+    scale_label = 'x{:.1f}'.format(scale)
     label_width, label_height = draw.textsize(scale_label, font=font)
     draw.text((2, DISPLAY_SIZE[1] - label_height - 1), scale_label, font=font, fill="white")
 
