@@ -331,9 +331,10 @@ public:
                 String actionMessage = String(ACTION_CLEAR_ALL_SOUNDS);
                 sendActionMessage(actionMessage);
             }
-        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_GET_VOLATILE_STATE){
-            if (message.size() == 0)  {
-                String actionMessage = String(ACTION_GET_VOLATILE_STATE);
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_GET_STATE){
+            if (message.size() == 1)  {
+                String stateType = message[0].getString();
+                String actionMessage = String(ACTION_GET_STATE) + ":" + stateType;
                 sendActionMessage(actionMessage);
             }
         }

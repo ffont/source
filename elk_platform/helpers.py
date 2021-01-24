@@ -65,29 +65,48 @@ class StateNames(Enum):
     LAST_NOTE_MIDI_RECEIVED = auto()
 
 
-def process_xml_volatile_state_from_plugin(plugin_state_xml):
+def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_string=""):
     source_state = {}
 
-    volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
+    if plugin_state_xml is not None:
+        # Do it from XML version of the state
+        try:
+            volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
+        except IndexError:
+            # No volatile state present in state
+            return source_state
 
-    # Source settings (maybe these should be moved to some other state?)
-    source_state[StateNames.SOURCE_DATA_LOCATION] = volatile_state.get('sourceDataLocation'.lower(), None)
-    source_state[StateNames.SOUNDS_DATA_LOCATION] = volatile_state.get('soundsDataLocation'.lower(), None)
-    source_state[StateNames.PRESETS_DATA_LOCATION] = volatile_state.get('presetsDataLocation'.lower(), None)
+        # Is plugin currently querying and downloading?
+        source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
 
-    # Is plugin currently querying and downloading?
-    source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
+        # More volatile state stuff
+        source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
+        source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
+        source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
+        source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
 
-    # More volatile state stuff
-    source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-    source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
-    source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
-    source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
+        # Audio meters
+        audio_levels = volatile_state.get('audioLevels'.lower(), "-1,-1").split(',') 
+        source_state[StateNames.METER_L] = float(audio_levels[0])
+        source_state[StateNames.METER_R] = float(audio_levels[1])
 
-    # Audio meters
-    audio_levels = volatile_state.get('audioLevels'.lower(), "-1,-1").split(',') 
-    source_state[StateNames.METER_L] = float(audio_levels[0])
-    source_state[StateNames.METER_R] = float(audio_levels[1])
+    else:
+        # Do it from string serialized version of the state
+        is_querying_and_downloading, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = plugin_state_string.split(';')
+        
+        # Is plugin currently querying and downloading?
+        source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = is_querying_and_downloading != "0"
+
+        # More volatile state stuff
+        source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
+        source_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
+        source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
+        source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(last_note_received)
+
+        # Audio meters
+        audio_levels = audio_levels.split(',') 
+        source_state[StateNames.METER_L] = float(audio_levels[0])
+        source_state[StateNames.METER_R] = float(audio_levels[1])
 
     return source_state
 
@@ -105,6 +124,12 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     # Get sub XML element to avoid repeating many queries
     preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
     sampler_state = preset_state.find_all("Sampler".lower())[0]
+    global_state = plugin_state_xml.find_all("GlobalSettings".lower())[0]
+
+    # File paths
+    source_state[StateNames.SOURCE_DATA_LOCATION] = global_state.get('sourceDataLocation'.lower(), None)
+    source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
+    source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))

@@ -11,14 +11,14 @@
 #pragma once
 
 #if ELK_BUILD
-    #define STATE_UPDATE_HZ 1
+    #define STATE_UPDATE_HZ 0  // Don't send state with a timer, the plugin will request it
     #define ENABLE_OSC_SERVER 1
     #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
     #define USE_EXTERNAL_HTTP_SERVER 1
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
 #else
     #if JUCE_DEBUG
-        #define STATE_UPDATE_HZ 2
+        #define STATE_UPDATE_HZ 1
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
         #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
@@ -76,7 +76,7 @@
 #define ACTION_SET_SOUND_SLICES "ACTION_SET_SOUND_SLICES"
 #define ACTION_SET_SOUND_ASSIGNED_NOTES "ACTION_SET_SOUND_ASSIGNED_NOTES"
 #define ACTION_CLEAR_ALL_SOUNDS "ACTION_CLEAR_ALL_SOUNDS"
-#define ACTION_GET_VOLATILE_STATE "ACTION_GET_VOLATILE_STATE"
+#define ACTION_GET_STATE "ACTION_GET_STATE"
 
 #define OSC_ADDRESS_NEW_QUERY "/new_query"
 #define OSC_ADDRESS_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
@@ -98,7 +98,7 @@
 #define OSC_ADDRESS_SET_SOUND_SLICES "/set_slices"
 #define OSC_ADDRESS_SET_SOUND_ASSIGNED_NOTES "/set_assigned_notes"
 #define OSC_ADDRESS_CLEAR_ALL_SOUNDS "/clear_all_sounds"
-#define OSC_ADDRESS_GET_VOLATILE_STATE "/get_volatile_state"
+#define OSC_ADDRESS_GET_STATE "/get_state"
 
 #define OSC_ADDRESS_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define OSC_ADDRESS_REMOVE_CC_MAPPING "/remove_cc_mapping"
@@ -132,6 +132,9 @@
 
 #define STATE_CURRENT_PORT "currentPort"
 #define STATE_LOG_MESSAGES "logMessages"
+#define STATE_SOURCE_DATA_LOCATION "sourceDataLocation"
+#define STATE_SOUNDS_DATA_LOCATION "soundsDataLocation"
+#define STATE_PRESETS_DATA_LOCATION "presetsDataLocation"
 
 #define STATE_SOUNDS_INFO "soundsInfo"
 #define STATE_SOUND_INFO "soundInfo"
@@ -188,9 +191,6 @@
 #define STATE_VOLATILE_VOICE_SOUND_IDXS "voiceSoundIdxs"
 #define STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION "voiceSoundPlayPosition"
 #define STATE_VOLATILE_AUDIO_LEVELS "audioLevels"
-#define STATE_VOLATILE_SOURCE_DATA_LOCATION "sourceDataLocation"
-#define STATE_VOLATILE_SOUNDS_DATA_LOCATION "soundsDataLocation"
-#define STATE_VOLATILE_PRESETS_DATA_LOCATION "presetsDataLocation"
 #define STATE_VOLATILE_LAST_MIDI_CC "lastMIDICCNumber"
 #define STATE_VOLATILE_LAST_MIDI_NOE "lastMIDINoteNumber"
 #define STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT "midiInLastStateReportBlock"

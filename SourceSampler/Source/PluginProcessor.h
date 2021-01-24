@@ -81,8 +81,10 @@ public:
     void updatePresetNumberMapping(const String& presetName, int index);
     
     ValueTree collectVolatileStateInformation ();
+    String collectVolatileStateInformationAsString ();
     
-    void sendStateToExternalServer(ValueTree state);
+    ValueTree collectFullStateInformation (bool skipVolatile);
+    void sendStateToExternalServer(ValueTree state, String stringData);
     
     //==============================================================================
     // Action listener

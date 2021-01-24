@@ -385,11 +385,11 @@ class State(object):
         return frame_from_lines(lines)
 
     def get_default_header_line(self):
-        indicators = "{0}{1}{2}{3}{4}".format(
+        indicators = "{}{}{}{}".format(
             "M" if sm.source_state.get(StateNames.MIDI_RECEIVED, False) else "",
             "!" if not sm.source_state[StateNames.NETWORK_IS_CONNECTED] else "", 
             "W" if sm.source_state.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False) else "", 
-            "*" if sm.source_state[StateNames.STATE_UPDATED_RECENTLY] else "", 
+            #"*" if sm.source_state[StateNames.STATE_UPDATED_RECENTLY] else "", 
             ["|", "/", "-", "\\"][sm.frame_counter % 4]
         )
         return {
@@ -789,7 +789,7 @@ class ChangePresetOnEncoderShiftRotatedStateMixin(object):
 
 class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
-    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]
+    pages = [EXTRA_PAGE_2_NAME] + sound_parameter_pages + [EXTRA_PAGE_1_NAME]
 
     def draw_display_frame(self):
         n_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
@@ -816,9 +816,9 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         elif self.current_page_data == EXTRA_PAGE_2_NAME:
             # Show some volatile state informaion
             lines += [
-                justify_text('Active voices:', '{}'.format(sm.source_state.get(StateNames.NUM_ACTIVE_VOICES, -1))),
                 justify_text('L:', '{}'.format(sm.source_state.get(StateNames.METER_L, -1))),
                 justify_text('R:', '{}'.format(sm.source_state.get(StateNames.METER_R, -1))),
+                justify_text('Active voices:', '{}'.format(sm.source_state.get(StateNames.NUM_ACTIVE_VOICES, -1))),
             ]
         
         else:

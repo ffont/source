@@ -439,6 +439,9 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex, nullptr);
+    settings.setProperty(STATE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
+    settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
+    settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
     settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
@@ -527,10 +530,6 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     ValueTree state = ValueTree(STATE_VOLATILE_IDENTIFIER);
     
-    state.setProperty(STATE_VOLATILE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
-    state.setProperty(STATE_VOLATILE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
-    state.setProperty(STATE_VOLATILE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
-    
     state.setProperty(STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS, isQueryDownloadingAndLoadingSounds, nullptr);
     
     state.setProperty(STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT, midiMessagesPresentInLastStateReport, nullptr);
@@ -572,6 +571,53 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     
     return state;
 }
+
+String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
+    
+    StringArray stateAsStringParts = {};
+    
+    stateAsStringParts.add(isQueryDownloadingAndLoadingSounds ? "1" : "0");
+    stateAsStringParts.add(midiMessagesPresentInLastStateReport ? "1" : "0");
+    midiMessagesPresentInLastStateReport = false;
+    stateAsStringParts.add((String)lastReceivedMIDIControllerNumber);
+    stateAsStringParts.add((String)lastReceivedMIDINoteNumber);
+    
+    String voiceActivations = "";
+    String voiceSoundIdxs = "";
+    String voiceSoundPlayPositions = "";
+    
+    for (int i=0; i<sampler.getNumVoices(); i++){
+        SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
+        if (voice->isVoiceActive()){
+            voiceActivations += "1,";
+            if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
+            {
+                voiceSoundIdxs += (String)playingSound->getIdx() + ",";
+            } else {
+                voiceSoundIdxs += "-1,";
+            }
+            voiceSoundPlayPositions += (String)voice->getPlayingPositionPercentage() + ",";
+        } else {
+            voiceActivations += "0,";
+            voiceSoundIdxs += "-1,";
+            voiceSoundPlayPositions += "-1,";
+        }
+    }
+    
+    stateAsStringParts.add(voiceActivations);
+    stateAsStringParts.add(voiceSoundIdxs);
+    stateAsStringParts.add(voiceSoundPlayPositions);
+    
+    String audioLevels = "";
+    for (int i=0; i<getTotalNumOutputChannels(); i++){
+        audioLevels += (String)lms.getRMSLevel(i) + ",";
+    }
+    
+    stateAsStringParts.add(audioLevels);
+    
+    return stateAsStringParts.joinIntoString(";");
+}
+
 
 //==============================================================================
 
@@ -860,20 +906,43 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
         sampler.clearSounds();
         
-    } else if (message.startsWith(String(ACTION_GET_VOLATILE_STATE))){
-        sendStateToExternalServer(collectVolatileStateInformation());
-        
+    } else if (message.startsWith(String(ACTION_GET_STATE))){
+        String stateType = message.substring(String(ACTION_GET_STATE).length() + 1);
+        if (stateType == "volatile"){
+            sendStateToExternalServer(collectVolatileStateInformation(), "");
+        } else if (stateType == "volatileString"){
+            sendStateToExternalServer(ValueTree(), collectVolatileStateInformationAsString());
+        } else if (stateType == "full"){
+            sendStateToExternalServer(collectFullStateInformation(true), "");
+        }
     }
 }
 
-void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state)
+
+ValueTree SourceSamplerAudioProcessor::collectFullStateInformation(bool skipVolatile)
+{
+    ValueTree fullState = ValueTree(STATE_FULL_STATE);
+    fullState.appendChild(collectPresetStateInformation(), nullptr);
+    fullState.appendChild(collectGlobalSettingsStateInformation(), nullptr);
+    if (!skipVolatile){
+        fullState.appendChild(collectVolatileStateInformation(), nullptr);
+    }
+    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
+    
+    return fullState;
+}
+
+void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, String stringData)
 {
     // This is only used in ELK builds in which the HTTP server is running outside the plugin
     URL url = URL("http://localhost:8123/state_from_plugin");
     String header = "Content-Type: text/xml";
     int statusCode = -1;
     StringPairArray responseHeaders;
-    String data = state.toXmlString();
+    String data = stringData;
+    if (state.isValid()){
+        data = state.toXmlString();
+    }
     if (data.isNotEmpty()) { url = url.withPOSTData(data); }
     bool postLikeRequest = true;
     if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
@@ -1371,17 +1440,8 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
-    //std::cout << "Calling timer callback" << std::endl;
-    
     // Collect the state and update the serverInterface object with that state information so it can be used by the http server
-    ValueTree presetState = collectPresetStateInformation();
-    ValueTree globalSettings = collectGlobalSettingsStateInformation();
-    ValueTree volatileState = collectVolatileStateInformation();
-    ValueTree fullState = ValueTree(STATE_FULL_STATE);
-    fullState.appendChild(presetState, nullptr);
-    fullState.appendChild(globalSettings, nullptr);
-    fullState.appendChild(volatileState, nullptr);
-    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
+    ValueTree fullState = collectFullStateInformation(false);
     
     #if ENABLE_EMBEDDED_HTTP_SERVER
     fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
@@ -1389,9 +1449,8 @@ void SourceSamplerAudioProcessor::timerCallback()
     #endif
     
     #if USE_EXTERNAL_HTTP_SERVER
-    sendStateToExternalServer(fullState);
+    sendStateToExternalServer(fullState, "");
     #endif
-   
 }
 
 
