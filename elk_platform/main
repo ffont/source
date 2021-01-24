@@ -551,16 +551,16 @@ def send_osc():
     osc_client.send_message(address, values)    
     return 'OSC sent'
 
-@http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
-def state_from_plugin():
+
+def process_state_from_plugin(received_plugin_state):
     global plugin_state
     global plugin_state_dict
     global time_post_state_received
     global connection_with_plugin_ok
     global elk_bridge
     global last_is_querying_and_downloading_sounds_state
+    plugin_state = received_plugin_state
     time_post_state_received = time.time()
-    plugin_state = request.data
 
     if str(plugin_state).startswith("b'<?xml version"):
         # State is in XML format, parse it
@@ -590,6 +590,11 @@ def state_from_plugin():
 
     connection_with_plugin_ok = True
     #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
+
+
+@http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
+def state_from_plugin():
+    process_state_from_plugin(request.data)
     return 'State received'
 
 @http_server.route('/update_state', methods=['GET'])  # Client requests to get an updated version of the state
