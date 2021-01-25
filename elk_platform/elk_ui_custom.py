@@ -149,7 +149,7 @@ class ElkUIController(object):
             self.set_fader_led(n, 0)
 
         self._fader_values = [0.0] * N_FADERS
-        self._enc_value = 0.0
+        self._enc_value = None
         self._osc_server.start()
 
     def refresh(self):
@@ -205,7 +205,6 @@ class ElkUIController(object):
     def _handle_encoder_button(self, path, args):
         if self._enc_btn_cback is None:
             return
-
         val = args[0]
         self._enc_btn_cback(int(val))
 
@@ -214,11 +213,14 @@ class ElkUIController(object):
             return
 
         val = args[0]
-        val_diff = val - self._enc_value
-        if (abs(val_diff) > 0):
-            direction = int(math.copysign(1, val_diff))
-            self._enc_cback(direction)
+        if self._enc_value is None:
             self._enc_value = val
+        else:
+            val_diff = val - self._enc_value
+            if (abs(val_diff) > 0):
+                direction = int(math.copysign(1, val_diff))
+                self._enc_cback(direction)
+                self._enc_value = val
 
     def reset_display(self):
         osc_msg = liblo.Message('/set_output')
