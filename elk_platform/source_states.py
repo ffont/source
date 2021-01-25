@@ -2,7 +2,6 @@ import json
 import math
 import numpy
 import os
-import pyogg
 import random
 import time
 import traceback
@@ -1979,7 +1978,8 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 filename = '{}.ogg'.format(sound_id)
                 path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
                 if os.path.exists(path):
-                    sm.show_global_message('Loading waveform...', duration=10)
+                    sm.show_global_message('Loading\nwaveform...', duration=10)
+                    import pyogg  # Import it here to initially avoid problems with "collect system stats"
                     vorbis_file = pyogg.VorbisFile(path)
                     self.sound_sr = vorbis_file.frequency
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
