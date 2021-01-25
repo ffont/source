@@ -202,6 +202,9 @@ private:
     std::vector<String> recentLogMessages = {};
     String recentLogMessagesSerialized = "";
     
+    juce::OSCSender oscSender;  // Used to send state updates to glue app
+    bool oscSenderIsConnected = false;
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };

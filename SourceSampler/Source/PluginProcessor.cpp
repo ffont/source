@@ -915,7 +915,19 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         if (stateType == "volatile"){
             sendStateToExternalServer(collectVolatileStateInformation(), "");
         } else if (stateType == "volatileString"){
+            #if SEND_VOLATILE_STATE_OVER_OSC
+            if (!oscSenderIsConnected){
+                if (oscSender.connect ("127.0.0.1", 9002)){
+                    oscSenderIsConnected = true;
+                }
+            }
+            if (oscSenderIsConnected){
+                oscSender.send ("/volatile_state_osc", collectVolatileStateInformationAsString());
+            }
+            #else
             sendStateToExternalServer(ValueTree(), collectVolatileStateInformationAsString());
+            #endif
+            
         } else if (stateType == "full"){
             sendStateToExternalServer(collectFullStateInformation(true), "");
         }

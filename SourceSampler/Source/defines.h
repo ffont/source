@@ -13,6 +13,7 @@
 #if ELK_BUILD
     #define STATE_UPDATE_HZ 0  // Don't send state with a timer, the plugin will request it
     #define ENABLE_OSC_SERVER 1
+    #define SEND_VOLATILE_STATE_OVER_OSC 1
     #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
     #define USE_EXTERNAL_HTTP_SERVER 1
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
@@ -20,12 +21,14 @@
     #if JUCE_DEBUG
         #define STATE_UPDATE_HZ 0
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
+        #define SEND_VOLATILE_STATE_OVER_OSC 1
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
         #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
     #else
         #define STATE_UPDATE_HZ 15
         #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
+        #define SEND_VOLATILE_STATE_OVER_OSC 0
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
         #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
@@ -40,6 +43,7 @@
 #define OSC_LISTEN_PORT 9001
 #define HTTP_SERVER_LISTEN_PORT 8124
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
+#define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
 
 #define MAX_SAMPLE_LENGTH 300
 

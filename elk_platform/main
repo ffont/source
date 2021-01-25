@@ -37,6 +37,7 @@ from freesound_interface import find_sounds_by_query
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
+from oscpy.server import OSCThreadServer
 import threading
 
 if sys.platform == "linux" or sys.platform == "linux2":
@@ -53,7 +54,7 @@ if disable_flask_logging:
 elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
 full_state_refresh_fps = 1
-volatile_state_refresh_fps = 5
+volatile_state_refresh_fps = 15
 
 current_frame = None
 current_frame_directory = 'static/frame/' 
@@ -74,6 +75,7 @@ elk_bridge_thread = None
 http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else '../SourceSampler/Resources/')
 osc_client = None
 elk_bridge = None
+osc_server = None
 
 BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
@@ -651,6 +653,16 @@ class RequestFullStateThread(threading.Thread):
         run_collect_full_state_loop()
 
 
+def volatile_state_osc_handler(values):
+    process_state_from_plugin(values)
+
+class OSCReceiverThread(threading.Thread):
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        osc = OSCThreadServer()
+        sock = osc.listen(address='0.0.0.0', port=9002, default=True)
+        osc.bind(b'/volatile_state_osc', volatile_state_osc_handler)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -658,7 +670,7 @@ if __name__ == "__main__":
     parser.add_argument("--osc_port", type=int, default=9001, help="The port to send OSC messages to")
     parser.add_argument("--http_port", type=int, default=8123, help="The port the web server should listen at")
     args = parser.parse_args()
-
+  
     # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
     if elk_bridge_refresh_fps:
         ElkBridgeThread().start()
@@ -683,9 +695,13 @@ if __name__ == "__main__":
     osc_client = OSCClient(args.osc_ip, args.osc_port, encoding='utf8')
     state_manager.set_osc_client(osc_client)
 
+    # Start OSC receiver to receive OSC messages from the plugin
+    print('* Starting OSCReceiverThread')
+    OSCReceiverThread().start()
+
     print('* Running aconnect')
     get_status_output("aconnect 16 128")
 
     # Start HTTP server that will receive state updates from the plugin and implements the web interface
     print('* Starting HTTP server at {}'.format(args.http_port))
-    http_server.run(host='0.0.0.0', port=args.http_port, debug=True if platform == "desktop" else False)
+    http_server.run(host='0.0.0.0', port=args.http_port, debug=False)
