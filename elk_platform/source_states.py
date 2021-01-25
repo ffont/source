@@ -10,39 +10,16 @@ import traceback
 import numpy as np
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, add_to_sp_cache, get_sp_parameter_value_from_cache
+from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
+    translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
+    DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
+    add_to_sp_cache, get_sp_parameter_value_from_cache, add_recent_query, add_recent_query_filter, get_recent_queries, \
+    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
 except ModuleNotFoundError:
     N_LEDS = 9
-
-
-n_recent_items_to_store = 10
-recent_queries_and_filters_path = 'recent_queries_and_filters.json'
-if os.path.exists(recent_queries_and_filters_path):
-    recent_queries_and_filters = json.load(open(recent_queries_and_filters_path, 'r'))
-else:
-    recent_queries_and_filters = {
-        'queries': [],
-        'query_filters': [],
-    }
-
-def add_recent_query(query):
-    if query not in recent_queries_and_filters['queries']:
-        recent_queries_and_filters['queries'].append(query)
-        if len(recent_queries_and_filters['queries']) > n_recent_items_to_store:
-            recent_queries_and_filters['queries'] = recent_queries_and_filters['queries'][len(recent_queries_and_filters['queries']) - n_recent_items_to_store:]
-        json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
-
-def add_recent_query_filter(query_filter):
-    serialized_filter = json.dumps(query_filter)
-    recent_queries_serialized_filters = [json.dumps(recent_query_filter) for recent_query_filter in recent_queries_and_filters['query_filters']]
-    if serialized_filter not in recent_queries_serialized_filters:
-        recent_queries_and_filters['query_filters'].append(query_filter)
-        if len(recent_queries_and_filters['query_filters']) > n_recent_items_to_store:
-            recent_queries_and_filters['query_filters'] = recent_queries_and_filters['query_filters'][len(recent_queries_and_filters['query_filters']) - n_recent_items_to_store:]
-        json.dump(recent_queries_and_filters, open(recent_queries_and_filters_path, 'w'))
 
 
 #  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
@@ -79,6 +56,7 @@ sound_parameters_info_dict = {
     "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
     "pan": (lambda x: 2.0 * (x - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
+    "midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
 }
 
 EXTRA_PAGE_1_NAME = "extra1"
@@ -123,7 +101,7 @@ sound_parameter_pages = [
         "mod2CutoffAmt",
         "mod2GainAmt",
         "mod2PitchAmt",
-        None
+        "pan"
     ]
 ]
 
@@ -159,7 +137,7 @@ ac_descriptors_names = ['brightness', 'hardness', 'depth', 'roughness','boomines
 query_settings_info_dict = {
     'num_sounds': (lambda x:num_sounds_options[int(round(x * (len(num_sounds_options) - 1)))], 'Num sounds', '{}', 16),
     'min_length': (lambda x:float(pow(x, 4) * 300), 'Min length', '{0:.1f}s', 0.0),
-    'max_length': (lambda x:float(pow(x, 4) * 300), 'Max length', '{0:.1f}s', 0.5),
+    'max_length': (lambda x:float(pow(x, 4) * 300), 'Max length', '{0:.1f}s', 10.0),
     'layout': (lambda x:note_layout_types[int(round(x * (len(note_layout_types) - 1)))], 'Layout', '{}', note_layout_types[1]),
     'brightness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Brightness', '{}', ac_descriptors_options[0]),
     'hardness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Hardness', '{}', ac_descriptors_options[0]),
@@ -451,7 +429,7 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", trigger_download=""):
+    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download=""):
         sound_onsets_list = []
         if 'analysis' in new_sound and new_sound['analysis'] is not None:
             if 'rhythm' in new_sound['analysis']:
@@ -473,6 +451,7 @@ class State(object):
             new_sound['previews']['preview-hq-ogg'], 
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
             assinged_notes,  # This should be string representation of hex number
+            root_note, # The note to be used as root
             trigger_download  # "" -> yes, "none" -> no, "all" -> all sounds
             ])
 
@@ -486,32 +465,35 @@ class State(object):
                 # If assigned_notes_per_sound_list is not provided or its length is shorter than the sounds we're loading,
                 # make new note layout following note_mapping_type
                 midi_notes = ["0"] * 128
+                root_note = None
                 if note_layout_types[note_mapping_type] == 'Contiguous':
                     # In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+                    root_note = sound_idx * n_notes_per_sound + n_notes_per_sound // 2
                     for i in range(sound_idx * n_notes_per_sound, (sound_idx + 1) * n_notes_per_sound):
                         midi_notes[i] = "1"
                 else:
                     # Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
                     NOTE_MAPPING_INTERLEAVED_ROOT_NOTE = 36
-                    root_note_for_sound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + sound_idx
-                    for i in range(root_note_for_sound, 128, n_sounds):
+                    root_note = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + sound_idx
+                    for i in range(root_note, 128, n_sounds):
                         midi_notes[i] = "1"  # Map notes in upwards direction
-                    for i in range(root_note_for_sound, 0, -n_sounds):
+                    for i in range(root_note, 0, -n_sounds):
                         midi_notes[i] = "1"  # Map notes in downwards direction
                 
                 midi_notes = hex(int("".join(reversed(midi_notes)), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
             else:
                 # If assigned_notes_per_sound_list is provided, take midi notes info from there
                 midi_notes = assigned_notes_per_sound_list[sound_idx]
+                root_note = assigned_notes_per_sound_list[len(assigned_notes_per_sound_list)//2]
 
-            self.send_add_or_replace_sound_to_plugin(-1, sound, assinged_notes=midi_notes, trigger_download="none" if sound_idx < n_sounds -1 else "all")
+            self.send_add_or_replace_sound_to_plugin(-1, sound, assinged_notes=midi_notes, root_note=root_note, trigger_download="none" if sound_idx < n_sounds -1 else "all")
 
     def consolidate_ac_descriptors_from_kwargs(self, kwargs_dict):
         return {key: value for key, value in kwargs_dict.items() if key in ac_descriptors_names and value != 'off'}
 
 
     def add_or_replace_sound_by_query(self, sound_idx=-1, query='', min_length=0, max_length=300, page_size=50, **kwargs):
-        sm.show_global_message("Searching {}...".format(query), duration=3600)
+        sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
             selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
@@ -628,15 +610,20 @@ class State(object):
                     return i
         return 0
 
-    def set_assigned_notes_for_sound(self, sound_idx, assinged_notes):
+    def set_assigned_notes_for_sound(self, sound_idx, assinged_notes, root_note=None):
         # assigned_notes here is a list with the midi note numbers
         assinged_notes = sorted(list(set(assinged_notes)))  # make sure they're all sorted and there are no duplicates
+        if root_note is None:
+            if assinged_notes:
+                root_note = assinged_notes[len(assigned_notes)//2]  # Default to the middle note of the assigned notes
+            else:
+                root_note = 69
         if sound_idx > -1:
             assinged_notes_aux = ['0'] * 128
             for note in assinged_notes:
                 assinged_notes_aux[note] = '1'
             midi_notes = hex(int("".join(reversed(''.join(assinged_notes_aux))), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
-            sm.send_osc_to_plugin('/set_assigned_notes', [sound_idx, midi_notes])
+            sm.send_osc_to_plugin('/set_assigned_notes', [sound_idx, midi_notes, root_note])
 
     def remove_sound(self, sound_idx):
         sm.send_osc_to_plugin('/remove_sound', [sound_idx])
@@ -711,6 +698,8 @@ class PaginatedState(State):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.current_page = kwargs.get('current_page', 0)
+        if self.current_page >= len(self.pages):
+            self.current_page = 0
     
     @property
     def num_pages(self):
@@ -814,13 +803,8 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 justify_text('Network:', '{0}'.format(sm.source_state[StateNames.SYSTEM_STATS].get("network_ssid", "-")))
             ]
         elif self.current_page_data == EXTRA_PAGE_2_NAME:
-            # Show some volatile state informaion
-            lines += [
-                justify_text('L:', '{}'.format(sm.source_state.get(StateNames.METER_L, -1))),
-                justify_text('R:', '{}'.format(sm.source_state.get(StateNames.METER_R, -1))),
-                justify_text('Active voices:', '{}'.format(sm.source_state.get(StateNames.NUM_ACTIVE_VOICES, -1))),
-            ]
-        
+            # Show some volatile state informaion (meters and voice activations)
+            lines += ['L:', 'R:']
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
@@ -849,8 +833,16 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 else:
                     # Add blank line
                     lines.append("")
-
-        return self.draw_scroll_bar(frame_from_lines([self.get_default_header_line()] + lines))
+        
+        frame = frame_from_lines([self.get_default_header_line()] + lines)
+        if self.current_page_data == EXTRA_PAGE_2_NAME:
+            frame = add_meter_to_frame(frame, y_offset_lines=3, value=sm.source_state.get(StateNames.METER_R, 0))
+            frame = add_meter_to_frame(frame, y_offset_lines=2, value=sm.source_state.get(StateNames.METER_L, 0))
+            voice_sound_idxs = sm.source_state.get(StateNames.VOICE_SOUND_IDXS, [])
+            if voice_sound_idxs:
+                frame = add_voice_grid_to_frame(frame, voice_activations=voice_sound_idxs)
+            return frame  # Return before adding scrollbar if we're in first page
+        return self.draw_scroll_bar(frame)
 
     def on_activating_state(self):
         sm.unset_all_leds()
@@ -885,13 +877,21 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
 class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
-    pages = sound_parameter_pages + [EXTRA_PAGE_1_NAME]
+    pages = [EXTRA_PAGE_1_NAME]
     sound_idx = -1
     selected_sound_is_playing = False
 
     def __init__(self, sound_idx, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.sound_idx = sound_idx
+        if self.sound_is_loaded_in_sampler():
+            self.pages += sound_parameter_pages
+        super().__init__(*args, **kwargs)
+
+    def sound_is_downloading(self):
+        return sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default='0') != '100'
+
+    def sound_is_loaded_in_sampler(self):
+        return sm.gsp(self.sound_idx, StateNames.SOUND_LOADED_IN_SAMPLER, default=False)
 
     def get_properties(self):
         properties = super().get_properties().copy()
@@ -908,14 +908,20 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             # Show some sound information
-            sound_download_progress = sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS)
             lines += [
                 justify_text('ID:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_ID))),
                 justify_text('User:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_AUTHOR))),
-                justify_text('CC License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE))),
-                justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION))) if sound_download_progress == '100' \
-                    else justify_text('Downloading...', '{0}%'.format(sound_download_progress)),
+                justify_text('CC License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE)))
             ]
+            if self.sound_is_loaded_in_sampler():
+                lines += [justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION)))]
+            else:
+                sound_download_progress = int(sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default=0))
+                if sound_download_progress < 95:
+                    lines += [justify_text('Downloading...', '{0}%'.format(sound_download_progress))]
+                else:
+                    lines += ['Loading in sampler...']
+
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
@@ -964,6 +970,14 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                 sm.move_to(SoundSelectedState(num_sounds -1, current_page=self.current_page), replace_current=True)
             elif self.sound_idx < 0 and num_sounds > 0:
                 sm.move_to(SoundSelectedState(0, current_page=self.current_page), replace_current=True)
+            else:
+                if self.sound_is_loaded_in_sampler():
+                    # If sound is already loaded, show all pages
+                    self.pages = [EXTRA_PAGE_1_NAME] + sound_parameter_pages
+                else:
+                    # Oterwise only show the first one
+                    self.pages = [EXTRA_PAGE_1_NAME]
+                    self.current_page = 0
     
     def on_button_pressed(self, button_idx, shift=False):
         # Stop current sound
@@ -1002,7 +1016,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def on_encoder_pressed(self, shift=False):
         if not shift:
             # Open sound contextual menu
-            sm.move_to(SoundSelectedContextualMenuState(sound_idx=self.sound_idx))
+            sm.move_to(SoundSelectedContextualMenuState(sound_idx=self.sound_idx, sound_finished_loading=self.sound_is_loaded_in_sampler()))
         else:
             # Trigger the selected sound
             self.play_selected_sound()
@@ -1251,10 +1265,11 @@ class EnterQuerySettingsState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStat
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
             # Load one of the recent stored query filters (if any)
-            if recent_queries_and_filters['query_filters']:
-                recent_filter = recent_queries_and_filters['query_filters'][self.last_recent_loaded % len(recent_queries_and_filters['query_filters'])].copy()
+            recent_query_filters = get_recent_query_filters()
+            if recent_query_filters:
+                recent_filter = recent_query_filters[self.last_recent_loaded % len(recent_query_filters)].copy()
                 recent_filter.update({'layout': note_layout_types[recent_filter['layout']]})
-                sm.show_global_message('Loaded recent\n qeury filters ({})'.format(self.last_recent_loaded % len(recent_queries_and_filters['query_filters']) + 1), duration=0.5)
+                sm.show_global_message('Loaded recent\n qeury filters ({})'.format(self.last_recent_loaded % len(recent_query_filters) + 1), duration=0.5)
                 self.query_settings_values = recent_filter
                 self.last_recent_loaded += 1
         else:
@@ -1508,9 +1523,16 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE, OPTION_GO_TO_SOUND]
     page_size = 4
 
-    def __init__(self, sound_idx, *args, **kwargs):
+    def __init__(self, sound_idx, sound_finished_loading, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sound_idx = sound_idx
+
+        if not sound_finished_loading:
+            # If sound is not yet loaded in sampler, don't show precision editor option
+            self.items = [item for item in self.items if item not in [
+                self.OPTION_PRECISION_EDITOR,
+                self.OPTION_ASSIGNED_NOTES
+            ]]
 
     def get_properties(self):
         properties = super().get_properties().copy()
@@ -1548,7 +1570,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 sm.open_url_in_browser = 'https://freesound.org/s/{}'.format(selected_sound_id)
             sm.go_back()
         elif action_name == self.OPTION_PRECISION_EDITOR:
-            sm.move_to(SoundPrecisionEditorState(sound_idx=self.sound_idx))
+            sm.move_to(SoundSliceEditorState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_ASSIGNED_NOTES:
             sm.move_to(SoundAssignedNotesEditorState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_MIDI_CC:
@@ -1891,15 +1913,16 @@ class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInter
             self.current_text = [char for char in random_query] + [' '] * (self.max_length - len(random_query))
         elif button_idx == 4:
             # Load one of the recent stored queries (if any)
-            if recent_queries_and_filters['queries']:
-                recent_query = recent_queries_and_filters['queries'][self.last_recent_loaded % len(recent_queries_and_filters['queries'])]
+            recent_queries = get_recent_queries()
+            if recent_queries:
+                recent_query = recent_queries[self.last_recent_loaded % len(recent_queries)]
                 self.current_text = [char for char in recent_query] + [' '] * (self.max_length - len(recent_query))
                 self.last_recent_loaded += 1
         else:
             super().on_button_pressed(button_idx=button_idx, shift=shift)
 
 
-class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
+class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
 
     def to_array(self, vorbis_file):
         bytes_per_sample = 2
@@ -1956,6 +1979,7 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
                 filename = '{}.ogg'.format(sound_id)
                 path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
                 if os.path.exists(path):
+                    sm.show_global_message('Loading waveform...', duration=10)
                     vorbis_file = pyogg.VorbisFile(path)
                     self.sound_sr = vorbis_file.frequency
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
@@ -1967,6 +1991,7 @@ class SoundPrecisionEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedSt
                     if audio_mean_value < 32768 * 0.01:
                         # If the file contains very low energy, auto-scale it a bit
                         self.scale = 10
+                    sm.show_global_message('', duration=0)
                         
     def draw_display_frame(self):
         lines = [{
@@ -2083,15 +2108,21 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
 
     sound_idx = -1
     assigned_notes = []
+    root_note = None
     cursor_position = 64  # In midi notes
     frame_count = 0
     range_start = None
     selecting_range_mode = False
+    last_note_received_persistent = None
     help_pages = [[
         "B1 toggle current",
         "B2 start range",
         "B3 end range",
-        "B4 clear all"
+        "B4 clear all",
+        "B5 set all"
+    ],[
+        "B6 set root note",
+        "B7 set root to last",
     ]]
 
     def __init__(self, *args, **kwargs):
@@ -2100,9 +2131,13 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         if self.sound_idx > -1:
             sound_assigned_notes = sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
             if sound_assigned_notes is not None:
+                self.root_note = int(sm.gsparam(self.sound_idx, "midiRootNote", default=-1))
                 self.assigned_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
                 if self.assigned_notes:
-                    self.cursor_position = self.assigned_notes[0]
+                    if self.root_note > -1:
+                        self.cursor_position = self.root_note
+                    else:
+                        self.cursor_position = self.assigned_notes[0]
                     
     def draw_display_frame(self):
         lines = [{
@@ -2116,16 +2151,19 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         else:
             currently_selected_range = []
         if sm.source_state.get(StateNames.MIDI_RECEIVED, False):
-            show_last_note_received = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+            last_note_received = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
         else:
-            show_last_note_received = -1
+            last_note_received = -1
+        if last_note_received != -1:
+            self.last_note_received_persistent = last_note_received  # This is used for the "assign root note to last received" function
         return add_midi_keyboard_and_extras_to_frame(
             frame, 
             cursor_position=self.cursor_position, 
             assigned_notes=self.assigned_notes, 
             currently_selected_range=currently_selected_range, 
-            show_last_note_received=show_last_note_received,
-            blinking_state=self.frame_count % 2 == 0
+            last_note_received=last_note_received,
+            blinking_state=self.frame_count % 2 == 0,
+            root_note=self.root_note
             )
 
     def on_encoder_rotated(self, direction, shift=False):
@@ -2138,7 +2176,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
     def on_encoder_pressed(self, shift):
         if not shift:
             # Save new assigned notes
-            self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes)
+            self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
             sm.show_global_message('Updated {}\n assigned notes'.format(len(self.assigned_notes)))
             sm.go_back(n_times=2)
         else:
@@ -2179,6 +2217,16 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         elif button_idx == 4:
             # Clear all assigned notes
             self.assigned_notes = []
+        elif button_idx == 5:
+            # Sett all assigned notes
+            self.assigned_notes = list(range(0,128))
+        elif button_idx == 6:
+            # Set root note
+            self.root_note = self.cursor_position
+        elif button_idx == 7:
+            # Set root note from last received midi note
+            if self.last_note_received_persistent is not None:
+                self.root_note = self.last_note_received_persistent
         else:
             super().on_button_pressed(button_idx=button_idx, shift=shift)
 

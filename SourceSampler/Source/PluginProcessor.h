@@ -159,6 +159,7 @@ public:
                                                    const String& oggDownloadURL,
                                                    StringArray slices,
                                                    BigInteger midiNotes,
+                                                   int midiRootNote,
                                                    const String& triggerDownloadSoundAction
                                                    );  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
     

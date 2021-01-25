@@ -35,19 +35,6 @@ public:
         interface.reset(_interface);
     }
     
-    std::string exec(const char* cmd) {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-        if (!pipe) {
-            throw std::runtime_error("popen() failed!");
-        }
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        return result;
-    }
-    
     inline void run(); // Defined below
     
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
@@ -280,7 +267,7 @@ public:
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_REPLACE_SOUND){
-            if (message.size() == 9)  {
+            if (message.size() == 10)  {
                 int soundIdx = message[0].getInt32();
                 int soundID = message[1].getInt32();
                 String soundName = message[2].getString();
@@ -289,7 +276,8 @@ public:
                 String oggDownloadURL = message[5].getString();
                 String serializedSlices = message[6].getString();
                 String assignedNotes = message[7].getString();
-                String triggerDownloadSoundAction = message[8].getString();
+                int midiRootNote = message[8].getInt32();
+                String triggerDownloadSoundAction = message[9].getString();
                 String serializedParameters = (String)soundIdx + SERIALIZATION_SEPARATOR +
                                               (String)soundID + SERIALIZATION_SEPARATOR +
                                               soundName + SERIALIZATION_SEPARATOR +
@@ -298,6 +286,7 @@ public:
                                               oggDownloadURL + SERIALIZATION_SEPARATOR +
                                               serializedSlices + SERIALIZATION_SEPARATOR +
                                               assignedNotes + SERIALIZATION_SEPARATOR +
+                                              (String)midiRootNote + SERIALIZATION_SEPARATOR +
                                               triggerDownloadSoundAction + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_ADD_OR_REPLACE_SOUND) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
@@ -318,11 +307,13 @@ public:
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_SOUND_ASSIGNED_NOTES){
-            if (message.size() == 2)  {
+            if (message.size() == 3)  {
                 int soundIndex = message[0].getInt32();
                 String assignedNotes = message[1].getString();
+                int rootNote = message[2].getInt32();
                 String serializedParameters = (String)soundIndex + SERIALIZATION_SEPARATOR +
-                                              assignedNotes + SERIALIZATION_SEPARATOR;
+                                              assignedNotes + SERIALIZATION_SEPARATOR +
+                                              (String)rootNote + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_SET_SOUND_ASSIGNED_NOTES) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
             }
@@ -411,21 +402,6 @@ void HTTPServer::run()
             }
             interface->processActionFromOSCMessage(message);
         }
-    });
-    
-    server.Get("/get_system_stats", [this](const httplib::Request &, httplib::Response &res) {
-        std::string stats = "";
-        #if ELK_BUILD
-            stats += "----------- System stats:\n";
-            stats += "CPU temp: " + exec("sudo vcgencmd measure_temp");
-            stats += "Memory used (%): " + exec("free | grep Mem | awk '{print $3/$2 * 100.0}'");
-            stats += "CPU used (%): " + exec("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'");
-            stats += "MSW:\nCPU  PID    MSW        CSW        XSC        PF    STAT       %CPU  NAME\n" + exec("more /proc/xenomai/sched/stat | grep sushi") + "\n";
-            stats += "-----------\n";
-        #else
-            stats += "No system stats for this platform";
-        #endif
-        res.set_content(stats, "text/html");
     });
     
     server.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {

@@ -96,7 +96,6 @@
     <script>
 
         var updateStateTimer;
-        var updateSystemStatsTimer;
         var lastReceivedStateText;
         var lastReceivedStateXml;
         var updateStateInterval = 100;
@@ -112,15 +111,10 @@
             updateStateTimer = setInterval(function () {
                 updateState();
             }, updateStateInterval);
-
-            updateSystemStatsTimer = setInterval(function () {
-                getSystemStats();
-            }, 1000);
         }
 
         function stopAutoUpdate() {
             window.clearInterval(updateStateTimer);
-            window.clearInterval(updateSystemStatsTimer);
         }
 
         function updateAllSliderLabels(){
@@ -679,18 +673,6 @@
             xhr.open('GET', '/update_state', true);
             xhr.send();
         }
-
-        function getSystemStats(){
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (this.readyState != 4) return;
-                if (this.status == 200) {
-                    document.getElementById("systemStats").value = this.responseText;
-                }
-            };
-            xhr.open('GET', '/get_system_stats', true);
-            xhr.send();
-        }
         
     </script>
 </head>
@@ -758,12 +740,6 @@
     <div class="cards_container_slide">
         <div id="allSoundsEditor" style="background-color: honeydew;"></div>
         <div id="individualSoundEditors"></div>
-    </div>
-
-    <div class="controls_card">
-        <b>System stats</b><br>
-        <button onclick="getSystemStats();">Get system stats</button>
-        <textarea id="systemStats" style="width:100%;height:100px;"></textarea>
     </div>
     
     <div class="controls_card">

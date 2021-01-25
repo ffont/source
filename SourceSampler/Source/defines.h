@@ -18,7 +18,7 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
 #else
     #if JUCE_DEBUG
-        #define STATE_UPDATE_HZ 1
+        #define STATE_UPDATE_HZ 0
         #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
         #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
         #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it

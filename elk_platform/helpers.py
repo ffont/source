@@ -1,5 +1,6 @@
 import datetime
 import json
+import math
 import numpy
 import os
 import time
@@ -9,6 +10,7 @@ from collections import defaultdict
 from enum import Enum, auto
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
+
 
 # -- Porcessed state names
 
@@ -59,6 +61,7 @@ class StateNames(Enum):
 
     REVERB_SETTINGS = auto()
 
+    VOICE_SOUND_IDXS = auto()
     NUM_ACTIVE_VOICES = auto()
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
@@ -80,6 +83,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
         source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
 
         # More volatile state stuff
+        source_state[StateNames.VOICE_SOUND_IDXS] = [int(element) for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element]
         source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
         source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
         source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
@@ -87,8 +91,8 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
 
         # Audio meters
         audio_levels = volatile_state.get('audioLevels'.lower(), "-1,-1").split(',') 
-        source_state[StateNames.METER_L] = float(audio_levels[0])
-        source_state[StateNames.METER_R] = float(audio_levels[1])
+        source_state[StateNames.METER_L] = float(audio_levels[1])
+        source_state[StateNames.METER_R] = float(audio_levels[0])
 
     else:
         # Do it from string serialized version of the state
@@ -98,6 +102,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
         source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = is_querying_and_downloading != "0"
 
         # More volatile state stuff
+        source_state[StateNames.VOICE_SOUND_IDXS] = [int(element) for element in voice_sound_idxs.split(',') if element]
         source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
         source_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
         source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
@@ -112,6 +117,8 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
 
 
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
+    global recent_queries_and_filters
+
     source_state = {}
     
     # Remove old entries in the sound parameter cache
@@ -130,6 +137,9 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state[StateNames.SOURCE_DATA_LOCATION] = global_state.get('sourceDataLocation'.lower(), None)
     source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
     source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
+
+    if recent_queries_and_filters is None:
+        recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
@@ -468,7 +478,7 @@ def add_sound_waveform_and_extras_to_frame(im,
     return im
 
 
-def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes=[], currently_selected_range=[], show_last_note_received=-1, blinking_state=False):
+def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes=[], currently_selected_range=[], last_note_received=-1, blinking_state=False, root_note=None):
     draw = ImageDraw.Draw(im)
 
     octave_n = cursor_position // 12
@@ -494,6 +504,10 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
             if i is cursor_in_octave or is_currently_selected:
                 fill = "black" if not blinking_state else "white"
             draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+            if corresponding_midi_note == root_note  or corresponding_midi_note == last_note_received:
+                label = "*" if corresponding_midi_note == last_note_received else "R"
+                fill = "black" if fill == "white" else "white"
+                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 1), label, font=font, fill=fill)
 
     # Draw "black" keys
     for i in range(0, 12):
@@ -510,13 +524,17 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
             if i is cursor_in_octave or is_currently_selected:
                 fill = "black" if not blinking_state else "white"
             draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+            if corresponding_midi_note == root_note  or corresponding_midi_note == last_note_received:
+                label = "*" if corresponding_midi_note == last_note_received else "R"
+                fill = "black" if fill == "white" else "white"
+                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 1), label, font=font, fill=fill)
 
     # Draw info text
     note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    if show_last_note_received == -1:
-        info_label = 'Sel: {} Current: {}{}'.format(len(assigned_notes), note_names[cursor_in_octave], octave_n - 2)
+    if last_note_received == -1:
+        info_label = 'N:{} Cur:{}{} Root:{}{}'.format(len(assigned_notes), note_names[cursor_in_octave], octave_n - 2, note_names[root_note % 12], root_note // 12 - 2)
     else:
-        info_label = 'Last received: {}{}'.format(note_names[show_last_note_received % 12], (show_last_note_received // 12) - 2)
+        info_label = 'Last received: {}{}'.format(note_names[last_note_received % 12], (last_note_received // 12) - 2)
     label_width, label_height = draw.textsize(info_label, font=font)
     draw.text((DISPLAY_SIZE[0] // 2 - label_width // 2 - 1, DISPLAY_SIZE[1] - label_height - 1), info_label, font=font, fill="white")
 
@@ -541,6 +559,45 @@ def add_text_input_to_frame(im, text, cursor_position=0, start_char=0, end_char=
             draw.rectangle(((x_offset, caret_y_offset_top), (x_offset + font_big_width_px, caret_y_offset_bottom)), fill="white")
         draw.text((x_offset, y_offset + (DISPLAY_SIZE[1] - y_offset)//2 - font_big_heihgt_px//2), text[char_n], font=font_big, fill="black" if char_n == cursor_position and blinking_state else "white")    
         
+    return im 
+
+
+def add_meter_to_frame(im, y_offset_lines=3, value=0.5, margin_x_left=15, margin_x_right=-1):
+    draw = ImageDraw.Draw(im)
+    width = DISPLAY_SIZE[0] - margin_x_left - margin_x_right
+    draw.rectangle((margin_x_left, 1 + (font_heihgt_px) * y_offset_lines, margin_x_left + width, 2 + (font_heihgt_px) * (y_offset_lines + 1)), outline="white", fill="black")
+    draw.rectangle((margin_x_left, 1 +(font_heihgt_px) * y_offset_lines, margin_x_left + width * value, 2 + (font_heihgt_px) * (y_offset_lines + 1)), outline="white", fill="white")
+
+    value_in_db = 20 * numpy.log10(max(0.000001, value))
+    label = '{:.1f}dB'.format(value_in_db) if value_in_db > -100 else ''
+    label_width, _ = draw.textsize(label, font=font)
+    draw.text((margin_x_left + width - label_width -2, 1 + (font_heihgt_px) * y_offset_lines), label, font=font, fill="white")
+           
+    return im 
+
+
+def add_voice_grid_to_frame(im, y_offset_lines=4, voice_activations=[], max_columns=8):
+    draw = ImageDraw.Draw(im)
+    voice_activations = voice_activations[:16]  # Make sure we don't have more than 16 (so we wont' have more than 2 rows)
+    n_in_row = min(len(voice_activations), max_columns) 
+    n_rows = int(math.ceil(len(voice_activations) / n_in_row))
+    item_width =  DISPLAY_SIZE[0] // max_columns - 1
+    item_height = font_heihgt_px
+    total_height = item_height * n_rows
+    y_offset_grid = y_offset_lines * (font_heihgt_px)
+    if voice_activations:
+        for i in range(0, n_rows):
+            y_offset = y_offset_grid + (DISPLAY_SIZE[1] - y_offset_grid - total_height) // 2 + i * item_height + 1
+            activations_in_row = voice_activations[i * n_in_row:(i + 1) * n_in_row] 
+            margin_x = (DISPLAY_SIZE[0] - len(activations_in_row) * item_width) // 2
+            for j, activation in enumerate(activations_in_row):
+                x_offset = margin_x + j * item_width
+                draw.rectangle((x_offset, y_offset, x_offset + item_width, y_offset + item_height), outline="white", fill="black")
+                if activation > -1:
+                    draw.rectangle((x_offset, y_offset, x_offset + item_width, y_offset + item_height), outline="white", fill="white")
+                    width, _ = draw.textsize(str(activation), font=font)
+                    draw.text((x_offset + (item_width - width) // 2, y_offset), str(activation), font=font, fill="black")
+
     return im 
 
 
@@ -640,6 +697,7 @@ def merge_dicts(dict_a, dict_b):
 
 def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
     # raw_assigned_notes is  a hex string representation of the JUCE BigInteger for assigned midi notes
+    # This returns a list with the MIDI note numbers corresponding to the hex string
     bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
     bits = [False] * (128 - len(bits_raw)) + bits_raw
     return [i for i, bit in enumerate(reversed(bits)) if bit]
@@ -668,3 +726,66 @@ def get_sp_parameter_value_from_cache(sound_idx, parameter_name):
         return global_cached
     else:
         return sound_parameter_values_cache.get(get_sp_cache_key(sound_idx, parameter_name), (None, None))[1]
+
+
+# -- Recent queries and query filters
+
+class RecetQueriesAndQueryFiltersManager(object):
+
+    recent_queries_and_filters = {
+        'queries': [],
+        'query_filters': [],
+    }
+    recent_queries_and_filters_path = ''
+    n_recent_items_to_store = 10
+
+    def __init__(self, data_dir):
+        self.recent_queries_and_filters_path = os.path.join(data_dir, 'recent_queries_and_filters.json')
+        if os.path.exists(self.recent_queries_and_filters_path):
+            self.recent_queries_and_filters = json.load(open(self.recent_queries_and_filters_path, 'r'))
+        
+    def add_recent_query(self, query):
+        # If already present in list, remove it. We'll re-add it later
+        self.recent_queries_and_filters['queries'] = [item for item in self.recent_queries_and_filters['queries'] if item != query]
+        self.recent_queries_and_filters['queries'].append(query)
+        if len(self.recent_queries_and_filters['queries']) > self.n_recent_items_to_store:
+            self.recent_queries_and_filters['queries'] = self.recent_queries_and_filters['queries'][len(self.recent_queries_and_filters['queries']) - self.n_recent_items_to_store:]
+        json.dump(self.recent_queries_and_filters, open(self.recent_queries_and_filters_path, 'w'))
+
+    def add_recent_query_filter(self, query_filter):
+        # If already present in list, remove it. We'll re-add it later
+        self.recent_queries_and_filters['query_filters'] = [item for item in self.recent_queries_and_filters['query_filters'] if json.dumps(item) != json.dumps(query_filter)]
+        self.recent_queries_and_filters['query_filters'].append(query_filter)
+        if len(self.recent_queries_and_filters['query_filters']) > self.n_recent_items_to_store:
+            self.recent_queries_and_filters['query_filters'] = self.recent_queries_and_filters['query_filters'][len(self.recent_queries_and_filters['query_filters']) - self.n_recent_items_to_store:]
+        json.dump(self.recent_queries_and_filters, open(self.recent_queries_and_filters_path, 'w'))
+
+    def get_recent_queries(self):
+        return list(reversed(self.recent_queries_and_filters['queries']))
+
+    def get_recent_query_filters(self):
+        return list(reversed(self.recent_queries_and_filters['query_filters']))
+
+
+recent_queries_and_filters = None
+
+def add_recent_query(query):
+    if recent_queries_and_filters is not None:
+        recent_queries_and_filters.add_recent_query(query) 
+
+def add_recent_query_filter(query_filter):
+    if recent_queries_and_filters is not None:
+        recent_queries_and_filters.add_recent_query_filter(query_filter) 
+
+
+def get_recent_queries():
+    if recent_queries_and_filters is not None:
+        return recent_queries_and_filters.get_recent_queries()
+    else:
+        return []
+    
+def get_recent_query_filters():
+    if recent_queries_and_filters is not None:
+        return recent_queries_and_filters.get_recent_query_filters()
+    else:
+        return []

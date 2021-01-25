@@ -833,9 +833,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
-        String triggerDownloadSoundAction = tokens[8];
+        int midiRootNote = tokens[8].getIntValue();
+        String triggerDownloadSoundAction = tokens[9];
         
-        addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, slices, midiNotes, triggerDownloadSoundAction);
+        addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
         
     } else if (message.startsWith(String(ACTION_REAPPLY_LAYOUT))){
         int newNoteLayout = message.substring(String(ACTION_REAPPLY_LAYOUT).length() + 1).getIntValue();
@@ -892,6 +893,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
         int soundIndex = tokens[0].getIntValue();
         String assignedNotesBigInteger = tokens[1];
+        int rootNote = tokens[2].getIntValue();
+        
         BigInteger midiNotes;
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
@@ -900,6 +903,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->setMappedMidiNotes(midiNotes);
+            sound->setParameterByNameInt("midiRootNote", rootNote);
         }
         
     } else if (message.startsWith(String(ACTION_CLEAR_ALL_SOUNDS))){
@@ -1256,7 +1260,7 @@ int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int sou
     bool replacing = soundIndex > -1;  // If sound index > -1, we are replacing a sound, otherwise we're adding a new one
     
     if (replacing){
-        // If replacing an existing sound, first we need to remove it from the sampelr, then update "loadedSoundsInfo" with the info from the new sound (and copying note assignment information from the old sound if the new is not carrying it), and the trigger download of the new sound
+        // If replacing an existing sound, first we need to remove it from the sampelr, then update "loadedSoundsInfo" with the info from the new sound (and copying note assignment and midi root note information from the old sound if the new is not carrying it), and the trigger download of the new sound
         
         // Clear existing sound for this soundIdx in sampler (if any)
         sampler.clearSourceSamplerSoundByIdx(soundIndex);
@@ -1268,12 +1272,24 @@ int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int sou
                 // Check if newSoundInfo has sotred sound sampler parameters, if not, create an empty value tree for them
                 ValueTree samplerSoundParameters = newSoundInfo.getChildWithName(STATE_SAMPLER_SOUND);
                 if (!samplerSoundParameters.isValid()){ samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND); }
+                
+                // If sampler sound parameters have no MIDI notes assigned, copy them form the sound we are replacing
                 if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
-                    // If sampler sound parameters have no MIDI notes assigned, copy them form the sound we are replacing
                     ValueTree existingSoundInfo = loadedSoundsInfo.getChild(i);
                     samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES,
                                                        existingSoundInfo.getChildWithName(STATE_SAMPLER_SOUND).getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)
                                                        , nullptr);
+                }
+                
+                // If samplerSoundParameters have no midiRootNote sound parameter set, copy it from the existing sound
+                ValueTree midiRootNoteParameterVT = samplerSoundParameters.getChildWithProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote");
+                if (midiRootNoteParameterVT.isValid()){
+                    int midiRootNote = (int)midiRootNoteParameterVT.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
+                    samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
+                        nullptr);
                 }
                 
                 // Finally add new modified newSoundInfo to the new loadedSoundsInfo list
@@ -1301,6 +1317,7 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
                                                                             const String& oggDownloadURL,
                                                                             StringArray slices,
                                                                             BigInteger midiNotes,
+                                                                            int midiRootNote,
                                                                             const String& triggerDownloadSoundAction)
 {
     ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
@@ -1311,9 +1328,22 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
     soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL, oggDownloadURL, nullptr);
     soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL, oggDownloadURL, nullptr);
     
+    
+    ValueTree samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND);
+    
     if (!midiNotes.isZero()){
-        ValueTree samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND);
         samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+    }
+    
+    if (midiRootNote >  -1){
+        samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
+            nullptr);
+    }
+    
+    if (samplerSoundParameters.isValid()){
         soundInfo.appendChild(samplerSoundParameters, nullptr);
     }
     
