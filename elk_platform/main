@@ -100,14 +100,14 @@ def collect_system_stats():
         # Get system stats like cpu usage, temperature, etc.
         try:
             system_stats['temp'] = get_status_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
-            system_stats['cpu'] = get_status_output("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
-            system_stats['mem'] = get_status_output("free | grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
-            proc_xenomai_output = get_status_output("more /proc/xenomai/sched/stat | grep sushi_b64")
+            system_stats['cpu'] = get_status_output("/bin/grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
+            system_stats['mem'] = get_status_output("free | /bin/grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
+            proc_xenomai_output = get_status_output("/bin/more /proc/xenomai/sched/stat | /bin/grep sushi_b64")
             total_cpu = 0
             for line in proc_xenomai_output.split('\n'):
                 total_cpu += float(line.split('sushi_b64')[0].strip().split(' ')[-1])
             system_stats['xenomai_cpu'] = total_cpu
-            system_stats['n_sushi_proc'] = get_status_output("ps -e | grep sushi | wc -l")
+            system_stats['n_sushi_proc'] = get_status_output("/bin/ps -e | /bin/grep sushi | wc -l")
             
             # Check network status and reconnect if disconnected
             connmanctl_services_output = get_status_output("sudo connmanctl services")

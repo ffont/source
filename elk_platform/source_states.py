@@ -6,6 +6,8 @@ import random
 import time
 import traceback
 
+import pyogg
+
 import numpy as np
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
@@ -1978,8 +1980,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 filename = '{}.ogg'.format(sound_id)
                 path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
                 if os.path.exists(path):
-                    sm.show_global_message('Loading\nwaveform...', duration=10)
-                    import pyogg  # Import it here to initially avoid problems with "collect system stats"
+                    sm.show_global_message('Loading\nwaveform...', duration=10)                    
                     vorbis_file = pyogg.VorbisFile(path)
                     self.sound_sr = vorbis_file.frequency
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
