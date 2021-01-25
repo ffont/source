@@ -2114,6 +2114,9 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
     range_start = None
     selecting_range_mode = False
     last_note_received_persistent = None
+    hold_last_note = 1  # Show last played note for 1 second max
+    last_note_updated_time = 0
+    last_note_from_state = -1
     help_pages = [[
         "B1 toggle current",
         "B2 start range",
@@ -2150,12 +2153,19 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
             currently_selected_range = list(range(min(self.range_start, self.cursor_position), max(self.range_start, self.cursor_position) + 1))
         else:
             currently_selected_range = []
-        if sm.source_state.get(StateNames.MIDI_RECEIVED, False):
-            last_note_received = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+
+        current_last_note_from_state = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+        if current_last_note_from_state != self.last_note_from_state:
+            # A new note was triggered
+            self.last_note_from_state = current_last_note_from_state
+            self.last_note_updated_time = time.time()
+        
+        if time.time() - self.last_note_updated_time < self.hold_last_note:
+            last_note_received = self.last_note_from_state
+            self.last_note_received_persistent = last_note_received  # This is used for the "assign root note to last received" function
         else:
             last_note_received = -1
-        if last_note_received != -1:
-            self.last_note_received_persistent = last_note_received  # This is used for the "assign root note to last received" function
+       
         return add_midi_keyboard_and_extras_to_frame(
             frame, 
             cursor_position=self.cursor_position, 
