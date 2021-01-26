@@ -18,9 +18,17 @@
             margin-block-end: 0.33em;
         }
 
+        a {
+            color: rgb(209, 209, 209);
+        }
+
+        a:visited {
+            color: rgb(209, 209, 209);
+        }
+
         #wrapper {
             padding: 5px;
-            width: 290px;
+            /*width: 290px;*/
         }
 
         #workingIndicator {
@@ -106,7 +114,7 @@
             <ul>
                 {% for sound in logs %}
                     <li>
-                        <a href="{{ sound.url }}">{{ sound.name }}</a>, by {{sound.username}} ({{sound.license}})
+                        <a href="{{ sound.url }}">{{ sound.name }}</a>, by {{sound.username}} ({{sound.license}}, first loaded: {{sound.time_loaded[11:16]}}h)
                     </li>
                 {% endfor %}
             </ul>

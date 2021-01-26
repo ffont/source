@@ -118,6 +118,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
 
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     global recent_queries_and_filters
+    global sound_usage_log_manager
 
     source_state = {}
     
@@ -140,6 +141,9 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
 
     if recent_queries_and_filters is None:
         recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
+
+    if sound_usage_log_manager is None:
+        sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
@@ -649,12 +653,12 @@ class Timer():
 
 LICENSE_UNKNOWN = 'Unknown'
 LICENSE_CC0 = 'CC0'
-LICENSE_CC_BY = 'BY'
-LICENSE_CC_BY_SA = 'BY-SA'
-LICENSE_CC_BY_NC = 'BY-NC'
-LICENSE_CC_BY_ND = 'BY-ND'
-LICENSE_CC_BY_NC_SA = 'BY-NC-SA'
-LICENSE_CC_BY_NC_ND = 'BY-NC-ND'
+LICENSE_CC_BY = 'CC-BY'
+LICENSE_CC_BY_SA = 'CC-BY-SA'
+LICENSE_CC_BY_NC = 'CC-BY-NC'
+LICENSE_CC_BY_ND = 'CC-BY-ND'
+LICENSE_CC_BY_NC_SA = 'CC-BY-NC-SA'
+LICENSE_CC_BY_NC_ND = 'CC-BY-NC-ND'
 LICENSE_CC_SAMPLING_PLUS = 'SamplingPlus'
 
 def translate_cc_license_url(url):
@@ -669,28 +673,53 @@ def translate_cc_license_url(url):
     if '/sampling+/' in url: return LICENSE_CC_SAMPLING_PLUS
     return LICENSE_UNKNOWN
 
-now = datetime.datetime.now()
-sound_usage_log_base_dir = 'sound_usage_log'
-if not os.path.exists(sound_usage_log_base_dir):
-    os.makedirs(sound_usage_log_base_dir)
-sound_usage_log_filename = os.path.join(sound_usage_log_base_dir, '{}_{}_{}_sound_usage.json'.format(now.year, now.month, now.day))
 
-if os.path.exists(sound_usage_log_filename):
-    sound_usage_log = json.load(open(sound_usage_log_filename, 'r'))
-else:
+# -- Sound usage log
+
+class SoundUsageLogManager(object):
+
     sound_usage_log = {}
+    sound_usage_log_base_dir = ''
+    today_sound_usage_log_path = ''
+
+    def __init__(self, data_dir):
+        self.sound_usage_log_base_dir = os.path.join(data_dir, 'sound_usage_log')
+        if not os.path.exists(self.sound_usage_log_base_dir):
+            os.makedirs(self.sound_usage_log_base_dir )
+        
+        now = datetime.datetime.now()
+        self.today_sound_usage_log_path = os.path.join(self.sound_usage_log_base_dir, '{}_{}_{}_sound_usage.json'.format(now.year, now.month, now.day))
+        if os.path.exists(self.today_sound_usage_log_path):
+            self.sound_usage_log = json.load(open(self.today_sound_usage_log_path, 'r'))
+
+    def log_sound(self, sound):
+        if sound[StateNames.SOUND_ID] not in self.sound_usage_log:
+            self.sound_usage_log[sound[StateNames.SOUND_ID]] = {
+                'name': sound[StateNames.SOUND_NAME],
+                'url': 'https://freesound.org/s/{}'.format(sound[StateNames.SOUND_ID]),
+                'username': sound[StateNames.SOUND_AUTHOR],
+                'license': sound[StateNames.SOUND_LICENSE],
+                'id': sound[StateNames.SOUND_ID],
+                'time_loaded': str(datetime.datetime.today()) 
+            }
+            json.dump(self.sound_usage_log, open(self.today_sound_usage_log_path, 'w'), indent=4)
+
+sound_usage_log_manager = None
 
 def log_sound_used(sound):
-    if sound[StateNames.SOUND_ID] not in sound_usage_log:
-        sound_usage_log[sound[StateNames.SOUND_ID]] = {
-            'name': sound[StateNames.SOUND_NAME],
-            'url': 'https://freesound.org/s/{}'.format(sound[StateNames.SOUND_ID]),
-            'username': sound[StateNames.SOUND_AUTHOR],
-            'license': sound[StateNames.SOUND_LICENSE],
-            'id': sound[StateNames.SOUND_ID],
-        }
-        json.dump(sound_usage_log, open(sound_usage_log_filename, 'w'), indent=4)
+    if sound_usage_log_manager is not None:
+        sound_usage_log_manager.log_sound(sound)
 
+def get_all_sound_usage_logs():
+    log = []
+    if sound_usage_log_manager is not None:
+        for filename in os.listdir(sound_usage_log_manager.sound_usage_log_base_dir):
+            if '_sound_usage' in filename:
+                log.append((
+                    filename.split('_sound_usage')[0].replace('_', '-'),
+                    sorted(json.load(open(os.path.join(sound_usage_log_manager.sound_usage_log_base_dir, filename), 'r')).values(), key=lambda x: x['time_loaded'])
+                ))
+    return log
 
 # -- Other
 

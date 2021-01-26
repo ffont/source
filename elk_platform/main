@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
-from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, sound_usage_log_base_dir
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, get_all_sound_usage_logs
 
 from source_states import state_manager, sound_parameters_info_dict
 
@@ -473,13 +473,7 @@ def update_minimal_interface_state():
 
 @http_server.route('/usage_log', methods=['GET'])  # Serve interface HTML file with all the available controls
 def usage_log():
-    log = []
-    for filename in os.listdir(sound_usage_log_base_dir):
-        log.append((
-            filename.split('_sound_usage')[0].replace('_', '-'),
-            json.load(open(os.path.join(sound_usage_log_base_dir, filename), 'r')).values()
-        ))
-    tvars = {'log': log}
+    tvars = {'log': get_all_sound_usage_logs()}
     return render_template("usage_log.html", **tvars)
 
 @http_server.route('/index', methods=['GET'])  # Serve interface HTML file with all the available controls
