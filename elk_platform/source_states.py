@@ -870,6 +870,9 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
             # Open home contextual menu
             sm.move_to(HomeContextualMenuState())
 
+    def on_encoder_double_pressed(self, shift=False):
+        self.current_page = 0  # Move to first page
+
     def on_fader_moved(self, fader_idx, value, shift=False):
         if self.current_page_data in [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]:
             pass
