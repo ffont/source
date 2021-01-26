@@ -199,6 +199,14 @@
             sendDataToServer(data);
         }
 
+        function enterName(){
+            var element = document.getElementById('enterName');
+            var query = element.querySelector("input[name='query']").value;
+            var data = 'query:' + query;
+            showWorkingLabel();
+            sendDataToServer(data);
+        }
+
     </script>
 </head>
 
@@ -226,10 +234,10 @@
         </div>
 
         <div id="enterName" class="controls_card">
-            <h2>Enter your query</h2>
+            <h2>Enter a name</h2>
             <input name="query" value="" type="text" placeholder=""><br>
             <br>
-            <button onclick="enterQuery()">Go!</button>
+            <button onclick="enterName()">Go!</button>
         </div>
 
         <div id="savePreset" class="controls_card show_as_default">

@@ -400,7 +400,7 @@ class State(object):
             sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, int(current_preset_index)])
             sm.show_global_message("Saving {}\n{}...".format(current_preset_index, current_preset_name))
 
-    def save_current_preset_to(self, query, preset_idx):
+    def save_current_preset_to(self, query="", preset_idx=-1):
         preset_name = query  # NOTE: the parameter is called "query" because it reuses some classes used for entering queries. We might want to change that to "name"
         sm.send_osc_to_plugin("/save_current_preset", [preset_name, int(preset_idx)])
         sm.show_global_message("Saving {}\n{}...".format(preset_idx, preset_name))
@@ -1831,7 +1831,6 @@ class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInter
     cursor_position = 0
     available_chars = [char for char in " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"]
     char_position = 1
-    data_received_key = 'query'
     store_recent = True
     frame_count = 0
     last_recent_loaded = 0
@@ -1899,7 +1898,7 @@ class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInter
         entered_text = ''.join(self.current_text).strip()
         if self.store_recent:
             add_recent_query(entered_text)
-        self.on_data_received({self.data_received_key: entered_text})
+        self.on_data_received({'query': entered_text})
 
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
