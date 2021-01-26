@@ -378,7 +378,8 @@ def add_sound_waveform_and_extras_to_frame(im,
                                            end_position=None,
                                            loop_start_position=None,
                                            loop_end_position=None,
-                                           current_time_label=None):
+                                           current_time_label=None,
+                                           blinking_state=False):
     draw = ImageDraw.Draw(im)
     sound_length = sound_data_array.shape[0]
     if end_sample == -1:
@@ -460,6 +461,11 @@ def add_sound_waveform_and_extras_to_frame(im,
                 # Draw to the left of marker
                 draw.text((position_x - font_width_px * len(label) , y_offset - waveform_height // 2 + 1), label, font=font, fill="white")
             
+    # Draw cursor
+    if start_sample <= cursor_position <= end_sample:
+        cursor_x = int(((cursor_position - start_sample) * 1.0 / displayed_section_length) * DISPLAY_SIZE[0])
+        draw.line([(cursor_x, y_offset + waveform_height // 2), (cursor_x, y_offset - waveform_height // 2 + 1)], width=1, fill="white" if blinking_state else "black")
+    
     # Draw current time
     if current_time_label is not None:
         label_width, label_height = draw.textsize(current_time_label, font=font)
@@ -469,11 +475,6 @@ def add_sound_waveform_and_extras_to_frame(im,
     scale_label = 'x{:.1f}'.format(scale)
     label_width, label_height = draw.textsize(scale_label, font=font)
     draw.text((2, DISPLAY_SIZE[1] - label_height - 1), scale_label, font=font, fill="white")
-
-    # Draw cursor
-    if start_sample <= cursor_position <= end_sample:
-        cursor_x = int(((cursor_position - start_sample) * 1.0 / displayed_section_length) * DISPLAY_SIZE[0])
-        draw.line([(cursor_x, y_offset + waveform_height // 2), (cursor_x, y_offset - waveform_height // 2)], width=1, fill="white")
     
     return im
 
@@ -486,6 +487,8 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
 
     keyboard_height = DISPLAY_SIZE[1] - font_heihgt_px * 3 - 2 # Save space for two lines on top and 1 line bottom
     y_offset = font_heihgt_px * 2 + 1  # Top of the keyboard
+
+    selected_inset_margin = 3
 
     note_positions = [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6]
         
@@ -501,13 +504,14 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
             note_width = DISPLAY_SIZE[0] / 7
             x_offset = note_positions[i] * note_width
             fill = "black" if not is_assigned else "white"
-            if i is cursor_in_octave or is_currently_selected:
-                fill = "black" if not blinking_state else "white"
             draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+            if i is cursor_in_octave or is_currently_selected:
+                outline = "black" if not blinking_state else "white"
+                draw.rectangle(((x_offset + selected_inset_margin, y_offset + selected_inset_margin), (x_offset + note_width - selected_inset_margin, y_offset + note_height - selected_inset_margin)), outline=outline, fill=fill)
             if corresponding_midi_note == root_note  or corresponding_midi_note == last_note_received:
                 label = "*" if corresponding_midi_note == last_note_received else "R"
                 fill = "black" if fill == "white" else "white"
-                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 1), label, font=font, fill=fill)
+                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 2), label, font=font, fill=fill)
 
     # Draw "black" keys
     for i in range(0, 12):
@@ -521,13 +525,14 @@ def add_midi_keyboard_and_extras_to_frame(im, cursor_position=64, assigned_notes
             note_width = DISPLAY_SIZE[0] / 7
             x_offset = note_positions[i] * note_width
             fill = "black" if not is_assigned else "white"
-            if i is cursor_in_octave or is_currently_selected:
-                fill = "black" if not blinking_state else "white"
             draw.rectangle(((x_offset, y_offset), (x_offset + note_width, y_offset + note_height)), outline="white" if fill == "black" else "black", fill=fill)
+            if i is cursor_in_octave or is_currently_selected:
+                outline = "black" if not blinking_state else "white"
+                draw.rectangle(((x_offset + selected_inset_margin, y_offset + selected_inset_margin), (x_offset + note_width - selected_inset_margin, y_offset + note_height - selected_inset_margin)), outline=outline, fill=fill)
             if corresponding_midi_note == root_note  or corresponding_midi_note == last_note_received:
                 label = "*" if corresponding_midi_note == last_note_received else "R"
                 fill = "black" if fill == "white" else "white"
-                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 1), label, font=font, fill=fill)
+                draw.text((x_offset + note_width // 2 - font_width_px // 2 + 1, y_offset + note_height - font_heihgt_px - 4), label, font=font, fill=fill)
 
     # Draw info text
     note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

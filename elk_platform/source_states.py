@@ -1941,6 +1941,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
             vorbis_file.channels)
         )
 
+    frame_count = 0
     sound_idx = -1
     sound_data_array = None  # numpy array of shape (x, 1)
     cursor_position = 0  # In samples
@@ -1994,6 +1995,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                     sm.show_global_message('', duration=0)
                         
     def draw_display_frame(self):
+        self.frame_count += 1
         lines = [{
             "underline": True, 
             "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
@@ -2037,7 +2039,8 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 end_position=end_position,
                 loop_start_position=loop_start_position,
                 loop_end_position=loop_end_position,
-                current_time_label=current_time_label)
+                current_time_label=current_time_label,
+                blinking_state=self.frame_count % 2 == 0)
         else:
             return add_centered_value_to_frame(frame, "No sound loaded", font_size_big=False)
 
@@ -2049,16 +2052,13 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
             self.cursor_position = self.sound_data_array.shape[0] - 1
 
     def on_encoder_pressed(self, shift):
+        # Save slices
+        time_slices = [s * 1.0 / self.sound_sr for s in self.slices]
+        self.set_slices_for_sound(self.sound_idx, time_slices)
+        sm.show_global_message('Updated {} slices'.format(len(time_slices)))
         if not shift:
-            # Save slices
-            time_slices = [s * 1.0 / self.sound_sr for s in self.slices]
-            self.set_slices_for_sound(self.sound_idx, time_slices)
-            sm.show_global_message('Updated {} slices'.format(len(time_slices)))
+            # If shift is not pressed, go back to sound selected state
             sm.go_back(n_times=2)
-        else:
-            # Add slice
-            if self.cursor_position not in self.slices:
-                self.slices = sorted(self.slices + [self.cursor_position])
 
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
@@ -2118,14 +2118,15 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
     last_note_updated_time = 0
     last_note_from_state = -1
     help_pages = [[
-        "B1 toggle current",
+        "B1 toggle selected",
+        "B1+S toggle last r",
         "B2 start range",
         "B3 end range",
-        "B4 clear all",
-        "B5 set all"
     ],[
-        "B6 set root note",
-        "B7 set root to last",
+        "B4 clear all",
+        "B5 set all",
+        "B6 set root to sel",
+        "B7 set root to last r",
     ]]
 
     def __init__(self, *args, **kwargs):
@@ -2155,7 +2156,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
             currently_selected_range = []
 
         current_last_note_from_state = sm.source_state.get(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
-        if current_last_note_from_state != self.last_note_from_state:
+        if current_last_note_from_state != self.last_note_from_state or sm.source_state.get(StateNames.MIDI_RECEIVED, False):
             # A new note was triggered
             self.last_note_from_state = current_last_note_from_state
             self.last_note_updated_time = time.time()
@@ -2184,25 +2185,29 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
             self.cursor_position = 127
 
     def on_encoder_pressed(self, shift):
+        # Save new assigned notes 
+        self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
+        sm.show_global_message('Updated {}\n assigned notes'.format(len(self.assigned_notes)))
         if not shift:
-            # Save new assigned notes
-            self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
-            sm.show_global_message('Updated {}\n assigned notes'.format(len(self.assigned_notes)))
+            # If shift is not pressed, go back to sound selected state
             sm.go_back(n_times=2)
-        else:
-            # Toggle note in cursor position
-            if self.cursor_position not in self.assigned_notes:
-                self.assigned_notes = sorted(self.assigned_notes + [self.cursor_position])
-            else:
-                self.assigned_notes = [note for note in self.assigned_notes if note != self.cursor_position]
 
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
-            # Toggle note in cursor position
-            if self.cursor_position not in self.assigned_notes:
-                self.assigned_notes = sorted(self.assigned_notes + [self.cursor_position])
+            if not shift:
+                # Toggle note in cursor position
+                if self.cursor_position not in self.assigned_notes:
+                    self.assigned_notes = sorted(self.assigned_notes + [self.cursor_position])
+                else:
+                    self.assigned_notes = [note for note in self.assigned_notes if note != self.cursor_position]
             else:
-                self.assigned_notes = [note for note in self.assigned_notes if note != self.cursor_position]
+                # Toggle the last received note
+                if self.last_note_received_persistent is not None:
+                    if self.last_note_received_persistent not in self.assigned_notes:
+                        self.assigned_notes = sorted(self.assigned_notes + [self.last_note_received_persistent])
+                    else:
+                        self.assigned_notes = [note for note in self.assigned_notes if note != self.last_note_received_persistent]
+                    self.cursor_position = self.last_note_received_persistent  # Go to the one that was updated
         elif button_idx == 2:
             # Set start of range
             if not self.selecting_range_mode:
