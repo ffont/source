@@ -915,7 +915,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:
@@ -1487,7 +1487,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }, {
             "underline": True, 
             "text": "Replace by..."
@@ -1564,7 +1564,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
@@ -1976,10 +1976,13 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         "B5 add slice",
         "B6 remove closest slice",
         "B7 remove all slices"
-    ], [
+    ],[
         "F1 zoom",
         "F2 scale",
         "F3 cursor"
+    ],[
+        "E save and exit",
+        "E+S save"
     ]]
 
     def __init__(self, *args, **kwargs):
@@ -2009,7 +2012,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         self.frame_count += 1
         lines = [{
             "underline": True, 
-            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         if self.sound_data_array is not None:
@@ -2138,6 +2141,11 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         "B5 set all",
         "B6 set root to sel",
         "B7 set root to last r",
+    ],[
+        "E save and exit",
+        "E+S save",
+        "EE se and u others",
+        "EE+S s and u others",
     ]]
 
     def __init__(self, *args, **kwargs):
@@ -2153,11 +2161,27 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
                         self.cursor_position = self.root_note
                     else:
                         self.cursor_position = self.assigned_notes[0]
+
+    def save_assigned_notes(self, unassign_from_others=False):
+        self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
+        if unassign_from_others:
+            # Iterate over all sounds and make sure the notes for the current sound are not assinged
+            # to any other sound
+            for sound_idx, sound in enumerate(sm.source_state.get(StateNames.SOUNDS_INFO, [])):
+                if sound_idx != self.sound_idx: 
+                    sound_assigned_notes = sm.gsp(sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
+                    if sound_assigned_notes is not None:
+                        midi_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
+                        new_midi_notes = [note for note in midi_notes if note not in self.assigned_notes]
+                        if len(midi_notes) != len(new_midi_notes):
+                            self.set_assigned_notes_for_sound(sound_idx, new_midi_notes, root_note=int(sm.gsparam(sound_idx, "midiRootNote", default=-1)))
+
+        sm.show_global_message('Updated {}\n assigned notes{}'.format(len(self.assigned_notes), ' (U)' if unassign_from_others else ''))
                     
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
-            "text": "S{0}:{1}".format(self.sound_idx, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         self.frame_count += 1
@@ -2197,8 +2221,14 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
 
     def on_encoder_pressed(self, shift):
         # Save new assigned notes 
-        self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
-        sm.show_global_message('Updated {}\n assigned notes'.format(len(self.assigned_notes)))
+        self.save_assigned_notes(unassign_from_others=False)
+        if not shift:
+            # If shift is not pressed, go back to sound selected state
+            sm.go_back(n_times=2)
+
+    def on_encoder_double_pressed(self, shift):
+        # Save new assigned notes and remove notes from other sounds
+        self.save_assigned_notes(unassign_from_others=True)
         if not shift:
             # If shift is not pressed, go back to sound selected state
             sm.go_back(n_times=2)
