@@ -11,7 +11,7 @@ namespace BinaryData
     const int           index_htmlSize = 44093;
 
     extern const char*  usage_log_html;
-    const int           usage_log_htmlSize = 2771;
+    const int           usage_log_htmlSize = 2952;
 
     extern const char*  index_minimal_html;
     const int           index_minimal_htmlSize = 7736;

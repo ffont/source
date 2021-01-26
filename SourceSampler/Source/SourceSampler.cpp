@@ -475,34 +475,41 @@ bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
 }
 
-int SourceSamplerVoice::getCurrentlyPlayingNoteIndex()
+int SourceSamplerVoice::getNoteIndex(int midiNote)
 {
-    /* This function compares the MIDI note being currenlty played and the list of midi notes assigned to the
-     sound and returns the "index" of the currently note being played. For example, if the first MIDI note
-     assigned to the sound is C3 and the currently played note is also C3, this function returns 0. If sound
-     is assigned notes C3, C#3 and D3 and the currently played note is C5, this function returns 2. If no notes
+    /* This function compares the MIDI note passed as parameter and the list of midi notes assigned to the
+     sound and returns the "index" of the note passed as parameter. For example, if the first MIDI note
+     assigned to the sound is C3 and the passed note is also C3, this function returns 0. If sound
+     is assigned notes C3, C#3 and D3 and the passed note is C5, this function returns 2. If no notes
      are assigned to the sound or no sound is being played, this function returns 0 (this function will not be
      called in these cases anyway). If there are note discontinuities in the mapping, the discontinuities are
      not counted (e.g. if a sound is assigned notes [C3, C#3, E3] and the note being played is E3, this function
-     will return 2.
+     will return 2. If the note being passed is not one of the assigned notes, returns the closest one.
           */
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         if (sound->getNumberOfMappedMidiNotes() > 0){
             BigInteger mappedMidiNotes = sound->getMappedMidiNotes();
-            int currentNote = getCurrentlyPlayingNote();
             int noteIndex = 0;
+            int closestNoteIndex = 0;
+            int minDistanceWithNote = 1000;
             int i = 0;
             while (true) {
                 int nextMappedNote = mappedMidiNotes.findNextSetBit(i);
-                if (nextMappedNote == currentNote){
+                if (nextMappedNote == midiNote){
                     return noteIndex;
                 } else if (nextMappedNote == -1){
                     break;
                 }
                 noteIndex += 1;
+                int distanceWithNote = std::abs(noteIndex - midiNote);
+                if (distanceWithNote <= minDistanceWithNote){
+                    closestNoteIndex = noteIndex;
+                    minDistanceWithNote = distanceWithNote;
+                }
                 i = nextMappedNote + 1;
             }
+            return closestNoteIndex;
         }
     }
     return 0;
@@ -550,7 +557,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         gainMod = 0.0;
         
         // Compute index of the currently played note
-        currentlyPlayedNoteIndex = getCurrentlyPlayingNoteIndex();
+        currentlyPlayedNoteIndex = getNoteIndex(getCurrentlyPlayingNote());
         
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (pluginSampleRate);
@@ -604,11 +611,18 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if ((sound->noteMappingMode == NOTE_MAPPING_MODE_PITCH) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
             currenltlyPlayingNote = getCurrentlyPlayingNote();
         } else {
-            // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for
-            // that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
+            // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
             currenltlyPlayingNote = sound->midiRootNote;
         }
-        double currentNoteFrequency = std::pow (2.0, (sound->pitch + currenltlyPlayingNote - sound->midiRootNote) / 12.0);
+        
+        // When computing the distance to the root note, do it based on the note index and not the raw MIDI note value
+        // In this waw, discontinuities in assigned notes won't have effect in pitch. This will work well in interleaved mode
+        // There is an "edge" case in which a sound is assigned a contiguous region of notes to play harmonically, then
+        // a region is left empty, and then a new region of assigned notes is added. That second region will play notes
+        // unintuitively because the notes in the "blank" region in the middle won't be counted
+        // If this behaviour becomes a problem it could be turned into a sound parameter
+        int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->midiRootNote);
+        double currentNoteFrequency = std::pow (2.0, (sound->pitch + distanceToRootNote) / 12.0);
         pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
         
         // Set start/end and loop start/end settings

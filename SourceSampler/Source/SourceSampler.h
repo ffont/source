@@ -206,7 +206,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     
     float getPlayingPositionPercentage();
-    int getCurrentlyPlayingNoteIndex();
+    int getNoteIndex(int midiNote);
     
     SourceSamplerSound* getCurrentlyPlayingSourceSamplerSound() const noexcept;
     
