@@ -22,41 +22,49 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
+def snap_to_value(x, value=0.5, margin=0.07):
+    if abs(x - value) < margin:
+        return value
+    return x
+
+def lin_to_exp(x):
+    sign = 1 if x >= 0 else -1
+    return sign * pow(x, 2)
 
 #  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
 sound_parameters_info_dict = {
-    "gain": (lambda x: 12.0 * 2.0 * (x - 0.5) if x >= 0.5 else 36.0 * 2.0 * (x - 0.5), lambda x: float(x), "Gain", "{0:.2f}dB", "/set_sound_parameter"),
-    "pitch": (lambda x: 36.0 * 2 * (x - 0.5), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
+    "gain": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)) if x >= 0.5 else 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Gain", "{0:.2f}dB", "/set_sound_parameter"),
+    "pitch": (lambda x: 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
     "reverse": (lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
     "launchMode": (lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
     "startPosition": (lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
     "endPosition": (lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
     "loopStartPosition": (lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
     "loopEndPosition": (lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
-    "ampADSR.attack": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "A", "{0:.2f}s", "/set_sound_parameter"),
-    "ampADSR.decay": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "D", "{0:.2f}s", "/set_sound_parameter"),
+    "ampADSR.attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "A", "{0:.2f}s", "/set_sound_parameter"),
+    "ampADSR.decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "D", "{0:.2f}s", "/set_sound_parameter"),
     "ampADSR.sustain": (lambda x: x, lambda x: float(x), "S", "{0:.2f}", "/set_sound_parameter"),
-    "ampADSR.release": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "R", "{0:.2f}s", "/set_sound_parameter"),
-    "filterCutoff": (lambda x: 10 + 20000 * pow(x, 2), lambda x: float(x), "Cutoff", "{0:.2f}Hz", "/set_sound_parameter"),
+    "ampADSR.release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "R", "{0:.2f}s", "/set_sound_parameter"),
+    "filterCutoff": (lambda x: 10 + 20000 * lin_to_exp(x), lambda x: float(x), "Cutoff", "{0:.2f}Hz", "/set_sound_parameter"),
     "filterRessonance": (lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
     "filterKeyboardTracking": (lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
     "filterADSR2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Env amt", "{0:.0f}%", "/set_sound_parameter"),    
-    "filterADSR.attack": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter A", "{0:.2f}s", "/set_sound_parameter"),
-    "filterADSR.decay": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
+    "filterADSR.attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter A", "{0:.2f}s", "/set_sound_parameter"),
+    "filterADSR.decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter D", "{0:.2f}s", "/set_sound_parameter"),
     "filterADSR.sustain": (lambda x: x, lambda x: float(x), "Filter S", "{0:.2f}", "/set_sound_parameter"),
-    "filterADSR.release": (lambda x: 20.0 * pow(x, 2), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
+    "filterADSR.release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter R", "{0:.2f}s", "/set_sound_parameter"),
     "noteMappingMode": (lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
     "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
     "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
-    "freezePlayheadSpeed": (lambda x: 1 + 4999 * pow(x, 2), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
+    "freezePlayheadSpeed": (lambda x: 1 + 4999 * lin_to_exp(x), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
     "pitchBendRangeUp": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend down", "{0:.1f}st", "/set_sound_parameter"),
     "pitchBendRangeDown": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend up", "{0:.1f}st", "/set_sound_parameter"),
     "mod2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Mod2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
-    "mod2GainAmt": (lambda x: 12.0 * 2 * (x - 0.5), lambda x: float(x), "Mod2Gain", "{0:.1f}dB", "/set_sound_parameter"),
-    "mod2PitchAmt": (lambda x: 12.0 * 2 * (x - 0.5), lambda x: float(x), "Mod2Pitch", "{0:.2f}st", "/set_sound_parameter"),
+    "mod2GainAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Gain", "{0:.1f}dB", "/set_sound_parameter"),
+    "mod2PitchAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Pitch", "{0:.2f}st", "/set_sound_parameter"),
     "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
-    "pan": (lambda x: 2.0 * (x - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
+    "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
     "midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
 }
 
