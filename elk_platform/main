@@ -497,6 +497,8 @@ def simulator():
 def simulator_get_display():
     global current_frame
     global current_frame_directory
+    if not os.path.exists(current_frame_directory):
+        os.makedirs(current_frame_directory)
     files = glob.glob(os.path.join(current_frame_directory, '*'))
     for f in files:
         os.remove(f)

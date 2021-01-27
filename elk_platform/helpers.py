@@ -139,11 +139,11 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
     source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
 
-    if recent_queries_and_filters is None:
-        recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
-
-    if sound_usage_log_manager is None:
-        sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
+    if source_state[StateNames.SOURCE_DATA_LOCATION] is not None:
+        if recent_queries_and_filters is None:
+            recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
+        if sound_usage_log_manager is None:
+            sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
@@ -605,7 +605,7 @@ def add_voice_grid_to_frame(im, y_offset_lines=4, voice_activations=[], max_colu
                 if activation > -1:
                     draw.rectangle((x_offset, y_offset, x_offset + item_width, y_offset + item_height), outline="white", fill="white")
                     width, _ = draw.textsize(str(activation), font=font)
-                    draw.text((x_offset + (item_width - width) // 2, y_offset), str(activation), font=font, fill="black")
+                    draw.text((x_offset + (item_width - width) // 2, y_offset), str(activation + 1), font=font, fill="black")
 
     return im 
 
@@ -685,7 +685,7 @@ class SoundUsageLogManager(object):
     def __init__(self, data_dir):
         self.sound_usage_log_base_dir = os.path.join(data_dir, 'sound_usage_log')
         if not os.path.exists(self.sound_usage_log_base_dir):
-            os.makedirs(self.sound_usage_log_base_dir )
+            os.makedirs(self.sound_usage_log_base_dir)
         
         now = datetime.datetime.now()
         self.today_sound_usage_log_path = os.path.join(self.sound_usage_log_base_dir, '{}_{}_{}_sound_usage.json'.format(now.year, now.month, now.day))
