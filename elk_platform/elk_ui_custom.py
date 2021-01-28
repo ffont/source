@@ -105,6 +105,17 @@ class ElkUIController(object):
         self._display_dev = get_display_device(DISPLAY_CONFIG)
         self._display_dirty = False
 
+        self.set_rot_enc_initial_val()
+
+    def set_rot_enc_initial_val(self):
+        """
+        Needed so that the rotary encoder is properly initialized and it can be rutned counter-clockwise from a start
+        https://forum.elk.audio/t/blackboard-turning-rotary-encoder-has-no-effect-if-i-dont-turn-it-right-first/565/9
+        """
+        osc_msg = liblo.Message('/set_output')
+        osc_msg.add(('i', ROT_ENC_ID))
+        osc_msg.add(('f', 0.5))
+        liblo.send(sensei_address, osc_msg)
 
     def set_led(self, idx, val):
         """ Immediately set one of the LEDs on the board.

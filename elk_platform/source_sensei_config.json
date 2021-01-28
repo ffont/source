@@ -322,8 +322,8 @@
       "sensor_type": "analog_input",
       "mode": "on_value_changed",
       "range": [
-        -5000,
-        5000
+        0,
+        10000
       ],
       "hardware": {
         "hardware_type": "encoder",
