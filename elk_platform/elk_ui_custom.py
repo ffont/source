@@ -25,6 +25,7 @@ N_LEDS = 9
 LED_BASE_IDX = 1
 LED_FADER_IDXS = [10, 12, 11, None]
 ANALOG_SENSORS_MIN_ABS_DIFF = (1.0 / 128)
+ROT_ENC_ID = 23
 
 # OSC ports
 SENSEI_TO_BRIDGE_PORT = 23023
@@ -115,7 +116,7 @@ class ElkUIController(object):
         osc_msg = liblo.Message('/set_output')
         osc_msg.add(('i', ROT_ENC_ID))
         osc_msg.add(('f', 0.5))
-        liblo.send(sensei_address, osc_msg)
+        liblo.send(self._sensei_address, osc_msg)
 
     def set_led(self, idx, val):
         """ Immediately set one of the LEDs on the board.
