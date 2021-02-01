@@ -403,13 +403,13 @@ def add_sound_waveform_and_extras_to_frame(im,
         positive_samples = audio_chunk[audio_chunk >= 0]
         if len(positive_samples) > 0:
             avg_pos = positive_samples.mean()
-            avg_pos = numpy.clip(scale * (avg_pos / 32768), -1.0, 1.0)
+            avg_pos = numpy.clip(scale * avg_pos, -1.0, 1.0)
         else:
             avg_pos = None   
         negative_samples = audio_chunk[audio_chunk <= 0]
         if len(negative_samples) > 0:
             avg_neg = negative_samples.mean()
-            avg_neg = numpy.clip(scale * (avg_neg / 32768), -1.0, 1.0)
+            avg_neg = numpy.clip(scale *avg_neg, -1.0, 1.0)
         else:
             avg_neg = None     
         samples.append((avg_pos, avg_neg))

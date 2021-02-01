@@ -1,14 +1,13 @@
 import json
 import math
-import numpy
 import os
 import random
 import time
 import traceback
 
+import numpy
+from scipy.io import wavfile
 import pyogg
-
-import numpy as np
 
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
@@ -21,6 +20,8 @@ try:
     from elk_ui_custom import N_LEDS, N_FADERS
 except ModuleNotFoundError:
     N_LEDS = 9
+
+ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav']
 
 def snap_to_value(x, value=0.5, margin=0.07):
     if abs(x - value) < margin:
@@ -1112,8 +1113,14 @@ class MenuState(State):
     def on_encoder_rotated(self, direction, shift=False):
         if direction > 0:
             self.next_item()
+            if shift:
+                for i in range(0, 9):
+                    self.next_item()
         else:
             self.previous_item()
+            if shift:
+                for i in range(0, 9):
+                    self.previous_item()
 
     def on_encoder_pressed(self, shift=False):
         self.perform_action(self.selected_item_name)
@@ -1535,10 +1542,9 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         elif action_name == self.OPTION_FROM_DISK:
             base_path = sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, None)
             if base_path is not None:
-                valid_extensions = ['ogg', 'wav']
-                available_files = sorted([os.path.join(base_path, filename) for filename in os.listdir(base_path) if filename.split('.')[-1] in valid_extensions])
+                available_files = sorted([os.path.join(base_path, filename) for filename in os.listdir(base_path) if filename.split('.')[-1] in ALLOWED_AUDIO_FILE_EXTENSIONS])
                 sm.move_to(FileChooserState(
-                    items=available_files, 
+                    items=available_files,
                     title1="Select a file...",
                     go_back_n_times=3,
                     callback=lambda file_path: self.send_add_or_replace_sound_to_plugin(
@@ -2036,20 +2042,32 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 else:
                     filename = '{}.ogg'.format(sound_id)
                     path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
-                if os.path.exists(path):
-                    sm.show_global_message('Loading\nwaveform...', duration=10)                    
-                    vorbis_file = pyogg.VorbisFile(path)
-                    self.sound_sr = vorbis_file.frequency
+                try:
+                    extension = path.split('.')[-1]
+                except IndexError:
+                    extension = ''
+                if os.path.exists(path) and extension in ALLOWED_AUDIO_FILE_EXTENSIONS:
+                    sm.show_global_message('Loading\nwaveform...', duration=10)
+                    if extension == 'ogg':                
+                        vorbis_file = pyogg.VorbisFile(path)
+                        self.sound_sr = vorbis_file.frequency
+                        self.sound_data_array = self.to_array(vorbis_file)[:, 0]  # Take 1 channel only
+                    elif extension == 'wav':
+                        self.sound_sr, self.sound_data_array = wavfile.read(path)    
+                        if len(self.sound_data_array.shape) > 1:
+                            self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
+                    self.sound_data_array = self.sound_data_array / abs(max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
-                    self.sound_data_array = self.to_array(vorbis_file)[:, 0]
                     self.sound_length = self.sound_data_array.shape[0]
                     self.min_zoom = (self.sound_length // self.display_width) + 1
                     self.current_zoom = self.min_zoom
-                    audio_mean_value = np.absolute(self.sound_data_array).mean()
-                    if audio_mean_value < 32768 * 0.01:
+                    audio_mean_value = numpy.absolute(self.sound_data_array).mean()
+                    if audio_mean_value < 0.01:
                         # If the file contains very low energy, auto-scale it a bit
                         self.scale = 10
                     sm.show_global_message('', duration=0)
+                else:
+                    sm.show_global_message('File not found\nor not supported')
                         
     def draw_display_frame(self):
         self.frame_count += 1
