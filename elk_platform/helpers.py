@@ -7,7 +7,7 @@ import time
 import threading
 import fnmatch
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from enum import Enum, auto
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
@@ -284,6 +284,13 @@ ra_logo = Image.open(RA_LOGO_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('
 ra_logo_b = Image.open(RA_LOGO_B_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
 fs_logo = Image.open(FS_LOGO_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
 
+moving_text_position_cache = {}
+
+
+def clear_moving_text_cache():
+    global moving_text_position_cache
+    moving_text_position_cache = {}
+
 
 def justify_text(left_bit, right_bit, total_len=n_chars_in_line):
     len_right = min(len(right_bit), total_len)
@@ -303,13 +310,31 @@ def frame_from_lines(lines_info):
         elif type(line) == dict:
             invert_colors = line.get('invert', False)
             underline = line.get('underline', False)
+            move = line.get('move', False) and len(line['text']) >= DISPLAY_SIZE[0] // font_width_px  # If text is long, keep on moving it
             text_color = "white"
             if invert_colors:
                 draw.rectangle((0, y_offset, DISPLAY_SIZE[0], y_offset + font_heihgt_px), outline="white", fill="white")
                 text_color = "black"
             if underline:
                 draw.line((0, y_offset + font_heihgt_px, DISPLAY_SIZE[0], y_offset + font_heihgt_px), fill="white")
-            draw.text( (1, y_offset), line['text'], font=font, fill=text_color)
+            if move:
+                line['text'] += '   '
+                if line['text'] not in moving_text_position_cache:
+                    moving_text_position_cache[line['text']] = (0, time.time())
+                else:
+                    last_time_moved = moving_text_position_cache[line['text']][1]
+                    n_moved = moving_text_position_cache[line['text']][0]
+                    if time.time() - last_time_moved > (2.5 if n_moved % len(line['text']) == 0 else 0.15):
+                        moving_text_position_cache[line['text']] = (n_moved + 1, time.time())
+                    
+                n_to_move = moving_text_position_cache[line['text']][0] % len(line['text'])
+                dequeued_text = deque([c for c in line['text']])
+                dequeued_text.rotate(-1 * n_to_move)
+                text = ''.join(list(dequeued_text))
+            else:
+                text = line['text']
+
+            draw.text( (1, y_offset), text, font=font, fill=text_color)
 
         y_offset += font_heihgt_px + 1     
 

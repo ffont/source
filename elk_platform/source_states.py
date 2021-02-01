@@ -14,7 +14,7 @@ from helpers import justify_text, frame_from_lines, frame_from_start_animation, 
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
     add_to_sp_cache, get_sp_parameter_value_from_cache, add_recent_query, add_recent_query_filter, get_recent_queries, \
-    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir
+    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -270,6 +270,7 @@ class StateManager(object):
         self.global_message = (text, time.time(), duration)
 
     def move_to(self, new_state, replace_current=False):
+        clear_moving_text_cache()
         if self.state_stack:
             self.current_state.exit_help()
         if replace_current:
@@ -922,6 +923,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
+            "move": True,
             "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
 
@@ -1511,6 +1513,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
+            "move": True,
             "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }, {
             "underline": True, 
@@ -1545,7 +1548,6 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 base_path = os.path.join(base_path, 'local_files')
                 if not os.path.exists(base_path):
                     os.makedirs(base_path)
-
                 available_files_ogg, _, _ = get_filenames_in_dir(base_path, '*.ogg')
                 available_files_wav, _, _ = get_filenames_in_dir(base_path, '*.wav')
                 available_files = sorted(available_files_ogg + available_files_wav)
@@ -1617,6 +1619,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
+            "move": True,
             "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         lines += self.get_menu_item_lines()
@@ -2080,6 +2083,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         self.frame_count += 1
         lines = [{
             "underline": True, 
+            "move": True,
             "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
@@ -2249,6 +2253,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
     def draw_display_frame(self):
         lines = [{
             "underline": True, 
+            "move": True,
             "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
@@ -2369,9 +2374,14 @@ class FileChooserState(MenuCallbackState):
         for item in self.items[current_page * self.page_size:(current_page + 1) * self.page_size]:
             lines.append({
                 "invert": True if item == self.selected_item_name else False, 
+                "move": True if item == self.selected_item_name else False,
                 "text": item.replace(self.base_path, '')[1:]  # Only display filename
             })
         return lines
+
+    def on_encoder_rotated(self, direction, shift=False):
+        super().on_encoder_rotated(direction, shift=shift)
+        clear_moving_text_cache()
 
 
 state_manager = StateManager()
