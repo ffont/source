@@ -14,7 +14,7 @@ from helpers import justify_text, frame_from_lines, frame_from_start_animation, 
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
     add_to_sp_cache, get_sp_parameter_value_from_cache, add_recent_query, add_recent_query_filter, get_recent_queries, \
-    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame
+    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -738,7 +738,7 @@ class PaginatedState(State):
             self.current_page = self.num_pages - 1
 
     def draw_scroll_bar(self, frame):
-        return add_scroll_bar_to_frame(frame, self.current_page, self.num_pages)     
+        return add_scroll_bar_to_frame(frame, self.current_page, self.num_pages)
 
     def on_encoder_rotated(self, direction, shift=False):
         if direction > 0:
@@ -1540,10 +1540,17 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
         elif action_name == self.OPTION_FROM_DISK:
-            base_path = sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, None)
+            base_path = sm.source_state.get(StateNames.SOURCE_DATA_LOCATION, None)
             if base_path is not None:
-                available_files = sorted([os.path.join(base_path, filename) for filename in os.listdir(base_path) if filename.split('.')[-1] in ALLOWED_AUDIO_FILE_EXTENSIONS])
+                base_path = os.path.join(base_path, 'local_files')
+                if not os.path.exists(base_path):
+                    os.makedirs(base_path)
+
+                available_files_ogg, _, _ = get_filenames_in_dir(base_path, '*.ogg')
+                available_files_wav, _, _ = get_filenames_in_dir(base_path, '*.wav')
+                available_files = sorted(available_files_ogg + available_files_wav)
                 sm.move_to(FileChooserState(
+                    base_path=base_path,
                     items=available_files,
                     title1="Select a file...",
                     go_back_n_times=3,
@@ -2349,6 +2356,12 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
 
 
 class FileChooserState(MenuCallbackState):
+
+    base_path = ''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.base_path = kwargs.get('base_path', '')
     
     def get_menu_item_lines(self):
         lines = []
@@ -2356,7 +2369,7 @@ class FileChooserState(MenuCallbackState):
         for item in self.items[current_page * self.page_size:(current_page + 1) * self.page_size]:
             lines.append({
                 "invert": True if item == self.selected_item_name else False, 
-                "text": item.split('/')[-1]  # Only display filename
+                "text": item.replace(self.base_path, '')[1:]  # Only display filename
             })
         return lines
 

@@ -5,6 +5,7 @@ import numpy
 import os
 import time
 import threading
+import fnmatch
 
 from collections import defaultdict
 from enum import Enum, auto
@@ -409,7 +410,7 @@ def add_sound_waveform_and_extras_to_frame(im,
         negative_samples = audio_chunk[audio_chunk <= 0]
         if len(negative_samples) > 0:
             avg_neg = negative_samples.mean()
-            avg_neg = numpy.clip(scale *avg_neg, -1.0, 1.0)
+            avg_neg = numpy.clip(scale * avg_neg, -1.0, 1.0)
         else:
             avg_neg = None     
         samples.append((avg_pos, avg_neg))
@@ -737,6 +738,60 @@ def raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
     bits_raw = [bit == '1' for bit in "{0:b}".format(int(raw_assigned_notes, 16))]
     bits = [False] * (128 - len(bits_raw)) + bits_raw
     return [i for i, bit in enumerate(reversed(bits)) if bit]
+
+
+def get_filenames_in_dir(dir_name, keyword='*', skip_foldername='', match_case=True, verbose=False):
+    """TODO: better document this function
+    # FROM PYMTG
+    TODO: does a python 3 version of this function exist?
+
+    Args:
+        dir_name (str): The foldername.
+        keyword (str): The keyword to search (defaults to '*').
+        skip_foldername (str): An optional foldername to skip searching
+        match_case (bool): Flag for case matching
+        verbose (bool): Verbosity flag
+
+    Returns:
+        (tuple): Tuple containing:
+            - fullnames (list): List of the fullpaths of the files found
+            - folder (list): List of the folders of the files
+            - names (list): List of the filenames without the foldername
+
+    Examples:
+        >>> get_filenames_in_dir('/path/to/dir/', '*.mp3')  #doctest: +SKIP
+        (['/path/to/dir/file1.mp3', '/path/to/dir/folder1/file2.mp3'], ['/path/to/dir/', '/path/to/dir/folder1'], ['file1.mp3', 'file2.mp3'])
+    """
+    names = []
+    folders = []
+    fullnames = []
+
+    if verbose:
+        print(dir_name)
+
+    # check if the folder exists
+    if not os.path.isdir(dir_name):
+        if verbose:
+            print("Directory doesn't exist!")
+        return [], [], []
+
+    # if the dir_name finishes with the file separator,
+    # remove it so os.walk works properly
+    dir_name = dir_name[:-1] if dir_name[-1] == os.sep else dir_name
+
+    # walk all the subdirectories
+    for (path, dirs, files) in os.walk(dir_name):
+        for f in files:
+            hasKey = (fnmatch.fnmatch(f, keyword) if match_case else
+                      fnmatch.fnmatch(f.lower(), keyword.lower()))
+            if hasKey and skip_foldername not in path.split(os.sep)[1:]:
+                folders.append(path)
+                names.append(path)
+                fullnames.append(os.path.join(path, f))
+
+    if verbose:
+        print("> Found " + str(len(names)) + " files.")
+    return fullnames, folders, names
 
 
 # -- Cache for sound parameters
