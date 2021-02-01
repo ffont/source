@@ -370,8 +370,8 @@ def add_scroll_bar_to_frame(im, current, total, width=1):
     draw = ImageDraw.Draw(im)
     scroll_y_start = DISPLAY_SIZE[1]/6 * 2  # Scroll is shown in lines 2-6 only
     total_height = DISPLAY_SIZE[1] - scroll_y_start
-    current_y_start = scroll_y_start + current * total_height/total
-    draw.rectangle((DISPLAY_SIZE[0] - width, current_y_start, DISPLAY_SIZE[0],  current_y_start + total_height/total), outline="white", fill="white")
+    current_y_start = scroll_y_start + current * total_height/(total + 1)
+    draw.rectangle((DISPLAY_SIZE[0] - width, current_y_start, DISPLAY_SIZE[0],  current_y_start + total_height/(total + 1)), outline="white", fill="white")
     return im
 
 

@@ -2379,6 +2379,15 @@ class FileChooserState(MenuCallbackState):
             })
         return lines
 
+    def draw_display_frame(self):
+        frame = super().draw_display_frame()
+        if self.num_items > self.page_size:
+            current_page = self.selected_item // self.page_size
+            num_pages = int(math.ceil(len(self.items) // self.page_size))
+            return add_scroll_bar_to_frame(frame, current_page, num_pages)
+        else:
+            return frame
+
     def on_encoder_rotated(self, direction, shift=False):
         super().on_encoder_rotated(direction, shift=shift)
         clear_moving_text_cache()
