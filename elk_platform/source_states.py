@@ -438,7 +438,7 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download=""):
+    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download="", local_file_path=""):
         sound_onsets_list = []
         if 'analysis' in new_sound and new_sound['analysis'] is not None:
             if 'rhythm' in new_sound['analysis']:
@@ -457,7 +457,8 @@ class State(object):
             new_sound['name'], 
             new_sound['username'], 
             new_sound['license'], 
-            new_sound['previews']['preview-hq-ogg'], 
+            new_sound['previews']['preview-hq-ogg'],
+            local_file_path,
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
             assinged_notes,  # This should be string representation of hex number
             root_note, # The note to be used as root
@@ -900,7 +901,12 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
         super().__init__(*args, **kwargs)
 
     def sound_is_downloading(self):
-        return sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default='0') != '100'
+        if sm.gsp(self.sound_idx, StateNames.SOUND_OGG_URL, default=''):
+            return sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default='0') != '100'
+        else:
+            # If sound does not have property SOUND_OGG_URL, then it is not a Freesound sound that
+            # should be downloaded but a localfile, therefore it should be already in disk
+            return False
 
     def sound_is_loaded_in_sampler(self):
         return sm.gsp(self.sound_idx, StateNames.SOUND_LOADED_IN_SAMPLER, default=False)
@@ -929,10 +935,21 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                 lines += [justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION)))]
             else:
                 sound_download_progress = int(sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default=0))
-                if sound_download_progress < 95:
-                    lines += [justify_text('Downloading...', '{0}%'.format(sound_download_progress))]
+                if self.sound_is_downloading():
+                    if sound_download_progress < 95:
+                        lines += [justify_text('Downloading...', '{0}%'.format(sound_download_progress))]
+                    else:
+                        lines += ['Loading in sampler...']
                 else:
-                    lines += ['Loading in sampler...']
+                    # If sound is not loaded in sampler and is not downloading it can be that:
+                    # 1) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and is being loaded right now
+                    # 2) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and it can't be found on disk (or there were errors loading)
+                    if not os.path.exists(sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)):
+                        lines += ['File not found...']
+                    else:
+                        # If there are errors loading, this will always show 'Loading in sampler...'
+                        # This could be improved in the future
+                        lines += ['Loading in sampler...']
 
         else:
             # Show page parameter values
@@ -1515,6 +1532,29 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
             if selected_sound_id != '-':
                 self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
+        elif action_name == self.OPTION_FROM_DISK:
+            base_path = sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, None)
+            if base_path is not None:
+                valid_extensions = ['ogg']
+                avilaable_files = [os.path.join(base_path, filename) for filename in os.listdir(base_path) if filename.split('.')[-1] in valid_extensions]
+                sm.move_to(FileChooserState(
+                    items=avilaable_files, 
+                    title1="Select a file...",
+                    go_back_n_times=3,
+                    callback=lambda file_path: self.send_add_or_replace_sound_to_plugin(
+                        self.sound_idx, 
+                        {
+                            'id': -1, 
+                            'name': file_path.split('/')[-1], 
+                            'username': '-',
+                            'license': '-',
+                            'previews': {'preview-hq-ogg': ''},
+                        }, 
+                        local_file_path=file_path
+                    )
+                ))
+            else:
+                sm.show_global_message('Local files\nnot ready...')
         else:
             sm.show_global_message('Not implemented...')
 
@@ -2285,6 +2325,19 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
                 self.root_note = self.last_note_received_persistent
         else:
             super().on_button_pressed(button_idx=button_idx, shift=shift)
+
+
+class FileChooserState(MenuCallbackState):
+    
+    def get_menu_item_lines(self):
+        lines = []
+        current_page = self.selected_item // self.page_size
+        for item in self.items[current_page * self.page_size:(current_page + 1) * self.page_size]:
+            lines.append({
+                "invert": True if item == self.selected_item_name else False, 
+                "text": item.split('/')[-1]  # Only display filename
+            })
+        return lines
 
 
 state_manager = StateManager()

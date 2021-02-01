@@ -48,10 +48,11 @@ class StateNames(Enum):
     SOUND_DOWNLOAD_PROGRESS = auto()
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
+    SOUND_LOCAL_FILE_PATH = auto()
     SOUND_SLICES = auto()
     SOUND_ASSIGNED_NOTES = auto()
     SOUND_LOADED_IN_SAMPLER = auto()
-    
+
     SOUND_MIDI_CC_ASSIGNMENTS = auto()
     SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
     SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME = auto()
@@ -232,6 +233,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
             StateNames.SOUND_AUTHOR: sound_info.get('sounduser', '-'),
             StateNames.SOUND_DURATION: float(sound_info.get('sounddurationinseconds', 0)),
             StateNames.SOUND_OGG_URL: sound_info.get('soundoggurl', ''),
+            StateNames.SOUND_LOCAL_FILE_PATH: sound_info.get('soundlocalfilepath', ''),
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,

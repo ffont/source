@@ -128,6 +128,7 @@ public:
     };
     QueryMakerThread queryMakerThread;
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
+    File getSoundFileLocation(ValueTree sound);
     void downloadSounds(bool blocking, int soundIndexFilter);
     bool allSoundsFinishedDownloading();
     
@@ -157,6 +158,7 @@ public:
                                                    const String& soundUser,
                                                    const String& soundLicense,
                                                    const String& oggDownloadURL,
+                                                   const String& localFilePath,
                                                    StringArray slices,
                                                    BigInteger midiNotes,
                                                    int midiRootNote,
