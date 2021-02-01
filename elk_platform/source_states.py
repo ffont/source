@@ -1535,7 +1535,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         elif action_name == self.OPTION_FROM_DISK:
             base_path = sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, None)
             if base_path is not None:
-                valid_extensions = ['ogg']
+                valid_extensions = ['ogg', 'wav']
                 avilaable_files = [os.path.join(base_path, filename) for filename in os.listdir(base_path) if filename.split('.')[-1] in valid_extensions]
                 sm.move_to(FileChooserState(
                     items=avilaable_files, 
