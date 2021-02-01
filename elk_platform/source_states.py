@@ -2031,8 +2031,11 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         if self.sound_idx > -1:
             sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID, default=None)
             if sound_id is not None:
-                filename = '{}.ogg'.format(sound_id)
-                path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
+                if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default=''):
+                    path = sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)
+                else:
+                    filename = '{}.ogg'.format(sound_id)
+                    path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
                 if os.path.exists(path):
                     sm.show_global_message('Loading\nwaveform...', duration=10)                    
                     vorbis_file = pyogg.VorbisFile(path)
