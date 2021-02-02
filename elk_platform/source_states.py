@@ -23,6 +23,17 @@ except ModuleNotFoundError:
 
 ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav']
 
+def get_local_audio_files_path():
+    if sm is not None and sm.source_state:
+        base_path = sm.source_state.get(StateNames.SOURCE_DATA_LOCATION, None)
+        if base_path is not None:
+            base_path = os.path.join(base_path, 'local_files')
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+            return base_path
+    return None
+
+
 def snap_to_value(x, value=0.5, margin=0.07):
     if abs(x - value) < margin:
         return value
@@ -1543,11 +1554,8 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
         elif action_name == self.OPTION_FROM_DISK:
-            base_path = sm.source_state.get(StateNames.SOURCE_DATA_LOCATION, None)
+            base_path = get_local_audio_files_path()
             if base_path is not None:
-                base_path = os.path.join(base_path, 'local_files')
-                if not os.path.exists(base_path):
-                    os.makedirs(base_path)
                 available_files_ogg, _, _ = get_filenames_in_dir(base_path, '*.ogg')
                 available_files_wav, _, _ = get_filenames_in_dir(base_path, '*.wav')
                 available_files = sorted(available_files_ogg + available_files_wav)

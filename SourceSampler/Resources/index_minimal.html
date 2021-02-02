@@ -241,11 +241,23 @@
         </div>
 
         <div id="savePreset" class="controls_card show_as_default">
-            <h2>Save preset to</h2>
+            <h2>Save preset as</h2>
             Number:<input name="presetIdx" value="" type="number"><br>
             <input name="presetName" value="" type="text" placeholder="Preset name">
             <br>
             <button onclick="savePreset()">Save</button>
+        </div>
+
+        <div id="transferFiles" class="controls_card show_as_default">
+            <h2>Transfer files</h2>
+            {% if message %}
+                {{message}}
+            {% endif %}
+            <form method="post" action="." enctype="multipart/form-data">
+                <input type="file" name="file[]" multiple="true" required style="background-color:black;">
+                <br>
+                <input type="submit" value="Submit">                
+            </form>
         </div>
 
         <br>

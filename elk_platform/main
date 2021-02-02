@@ -31,7 +31,7 @@ except ModuleNotFoundError:
 
 from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, get_all_sound_usage_logs
 
-from source_states import state_manager, sound_parameters_info_dict
+from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path
 
 from freesound_interface import find_sounds_by_query
 
@@ -451,10 +451,22 @@ def download_all_sounds(urls, outfiles):
 
 # --- HTTP Server ------------------------------------------------------------------------
 
-@http_server.route('/', methods=['GET'])  # Serve main interface HTML file
+@http_server.route('/', methods=['GET', 'POST'])  # Serve main interface HTML file
 def index_minimal():
-    tvars = {}
-    return render_template("index_minimal.html", **tvars)
+    if request.method == 'GET':
+        tvars = {}
+        return render_template("index_minimal.html", **tvars)
+    else:
+        local_files_directory = get_local_audio_files_path()
+        if local_files_directory is not None:
+            n_saved = 0
+            uploaded_files = request.files.getlist("file[]")
+            for f in uploaded_files:
+                if f.filename.split('.')[-1] in ALLOWED_AUDIO_FILE_EXTENSIONS:  # Check that format is ok
+                    f.save(os.path.join(local_files_directory, f.filename))
+                    n_saved += 1
+            return render_template("index_minimal.html", message='{} files saved'.format(n_saved))
+        return render_template("index_minimal.html", message='Errors saving files')
 
 @http_server.route('/update_minimal_interface_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_minimal_interface_state():
@@ -480,13 +492,6 @@ def usage_log():
 def index():
     tvars = {}
     return render_template("index.html", **tvars)
-
-@http_server.route('/serve_sound/', methods=['GET'])  # This is used to serve downloaded files as static files for web UI to load them
-def serve_sound():
-    path = request.args['path']
-    filename = path.split('/')[-1]
-    base_path = path.split(filename)[0]
-    return send_from_directory(base_path, filename)
 
 @http_server.route('/simulator', methods=['GET'])  # Serve the interface which simulates blackboard
 def simulator():
