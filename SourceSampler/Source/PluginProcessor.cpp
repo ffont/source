@@ -281,14 +281,14 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     
     // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
     // it gets played here
-    midiMessages.addEvents(midiFromEditor, 0, INT_MAX, 0);
+    midiMessages.addEvents(midiFromEditor, 0, buffer.getNumSamples(), 0);
     midiFromEditor.clear();
-    
-    // Render sampler voices into buffer
-    sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
     // Render preview player into buffer
     transportSource.getNextAudioBlock(AudioSourceChannelInfo(buffer));
+    
+    // Render sampler voices into buffer
+    sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
     // Measure audio levels (will be store in lms object itself)
     lms.measureBlock (buffer);
@@ -1531,18 +1531,11 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff
             if (midiChannel == 0){
                 midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
             }
-            
             MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
             if (doNoteOff){
                 message = MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (uint8)127);
             }
-            
-            double timestamp = Time::getMillisecondCounterHiRes() * 0.001 - getStartTime();
-            message.setTimeStamp(timestamp);
-
-            auto sampleNumber = (int)(timestamp * getSampleRate());
-
-            midiFromEditor.addEvent(message,sampleNumber);
+            midiFromEditor.addEvent(message, 0);
         }
     }
 }

@@ -449,7 +449,6 @@ public:
                  const float velocity) override
     {
         const ScopedLock sl (lock);
-
         for (auto* sound : sounds)
         {
             if (sound->appliesToNote (midiNoteNumber) && sound->appliesToChannel (midiChannel))

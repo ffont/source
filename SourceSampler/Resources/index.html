@@ -425,7 +425,8 @@
         function updateCardForSound(idx, sound){ //sound = xml element
             var soundInfoElement = document.getElementById('soundCardInfo_' + idx);
             var downloadProgress = sound.getAttribute('downloadProgress');
-            if (downloadProgress != 100){
+            var soundID = sound.getAttribute('soundId');
+            if ((downloadProgress != 100) && (soundID != -1)){
                 // Sound not yet loaded, show download progress
                 html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><br>';
                 if (downloadProgress == null){
@@ -437,7 +438,7 @@
             } else {
                 // Sound already loaded, show all info (if it has not been already shown)
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
-                    html = '<b>' + idx + " - " + sound.getAttribute('soundId') + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><button onclick="removeSound(' + idx + ')">remove</button><br>';
+                    html = '<b>' + idx + " - " + soundID + '</b><button onclick="playSound(' + idx + ')">play</button><button onclick="stopSound(' + idx + ')">stop</button><button onclick="removeSound(' + idx + ')">remove</button><br>';
                     html += sound.getAttribute('soundName') + '<br>';
                     var licenseURL = sound.getAttribute('soundLicense');
                     var licenseName = "-";
