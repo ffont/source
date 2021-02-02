@@ -940,8 +940,9 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             # Show some sound information
+            sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             lines += [
-                justify_text('ID:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_ID))),
+                justify_text('ID:', '{0}'.format(sound_id) if sound_id != "-1" else "-"),
                 justify_text('User:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_AUTHOR))),
                 justify_text('CC License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE)))
             ]
@@ -1152,6 +1153,7 @@ class MenuCallbackState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin
     title2 = "NoTitle2"
     page_size = 4
     go_back_n_times = 0
+    go_back_n_times_shift_callback = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1164,6 +1166,7 @@ class MenuCallbackState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin
         self.shift_callback = kwargs.get('shift_callback', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.go_back_n_times = kwargs.get('go_back_n_times', 0)
+        self.go_back_n_times_shift_callback = kwargs.get('go_back_n_times_shift_callback', 0)
         self.help_pages = kwargs.get('help_pages', [])
         self.update_items_callback = kwargs.get('update_items_callback', None)
 
@@ -1188,15 +1191,17 @@ class MenuCallbackState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin
                     self.callback(self.selected_item_name)
                 else:
                     self.callback(self.selected_item_name, **self.extra_data_for_callback)
+                sm.go_back(n_times=self.go_back_n_times)
             else:
                 if shift:
                     self.shift_callback(self.selected_item_name)
+                    sm.go_back(n_times=self.go_back_n_times_shift_callback)
                 else:
                     if self.extra_data_for_callback is None:
                         self.callback(self.selected_item_name)
                     else:
                         self.callback(self.selected_item_name, **self.extra_data_for_callback)
-        sm.go_back(n_times=self.go_back_n_times)
+                    sm.go_back(n_times=self.go_back_n_times)
 
     def on_source_state_update(self):
         if self.update_items_callback is not None:
@@ -1564,7 +1569,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     items=available_files,
                     title1="Select a file...",
                     go_back_n_times=3,
-                    callback=lambda file_path: self.send_add_or_replace_sound_to_plugin(
+                    callback=lambda file_path: (self.send_add_or_replace_sound_to_plugin(
                         self.sound_idx, 
                         {
                             'id': -1, 
@@ -1574,7 +1579,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                             'previews': {'preview-hq-ogg': ''},
                         }, 
                         local_file_path=file_path
-                    )
+                    ), sm.show_global_message('Loading file\n{}...'.format(file_path.split('/')[-1]))),
                 ))
             else:
                 sm.show_global_message('Local files\nnot ready...')
@@ -2375,6 +2380,8 @@ class FileChooserState(MenuCallbackState):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base_path = kwargs.get('base_path', '')
+        self.shift_callback=lambda file_path: sm.send_osc_to_plugin('/play_sound_from_path', [file_path])  # Send preview sound OSC on shift+encoder
+        self.go_back_n_times_shift_callback = 0
     
     def get_menu_item_lines(self):
         lines = []
@@ -2399,6 +2406,11 @@ class FileChooserState(MenuCallbackState):
     def on_encoder_rotated(self, direction, shift=False):
         super().on_encoder_rotated(direction, shift=shift)
         clear_moving_text_cache()
+        sm.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+
+    def on_deactivating_state(self):
+        super().on_deactivating_state()
+        sm.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
 
 
 state_manager = StateManager()

@@ -330,6 +330,12 @@ public:
                 String actionMessage = String(ACTION_GET_STATE) + ":" + stateType;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_PLAY_SOUND_FROM_PATH){
+            if (message.size() == 1)  {
+                String soundPath = message[0].getString();
+                String actionMessage = String(ACTION_PLAY_SOUND_FROM_PATH) + ":" + soundPath;
+                sendActionMessage(actionMessage);
+            }
         }
     }
     
@@ -432,7 +438,7 @@ void HTTPServer::run()
 
 void OSCServer::oscMessageReceived (const OSCMessage& message)
 {
-    DBG("Received OSC message at address: " + message.getAddressPattern().toString());
+    //DBG("Received OSC message at address: " + message.getAddressPattern().toString());
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);
     }

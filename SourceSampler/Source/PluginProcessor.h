@@ -174,9 +174,18 @@ public:
     void timerCallback() override;
     int getServerInterfaceHttpPort();
     
+    void previewFile(const String& path);
+    void stopPreviewingFile();
+    String currentlyLoadedPath = "";
+    
 private:
-    SourceSamplerSynthesiser sampler;
     AudioFormatManager audioFormatManager;
+    
+    SourceSamplerSynthesiser sampler;  // Where the magic happens
+    
+    // The next two objects are to preview sounds independently of the sampler
+    std::unique_ptr<AudioFormatReaderSource> readerSource;
+    AudioTransportSource transportSource;
     
     MidiBuffer midiFromEditor;
     long midicounter;

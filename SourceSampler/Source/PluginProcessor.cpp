@@ -220,7 +220,12 @@ String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     logToState("Called prepareToPlay with sampleRate " + (String)sampleRate + " and block size " + (String)samplesPerBlock);
+    
+    // Prepare sampler
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
+    
+    // Prepare preview player
+    transportSource.prepareToPlay (samplesPerBlock, sampleRate);
     
     // Configure level measurer
     lms.resize(getTotalNumOutputChannels(), 200 * 0.001f * sampleRate / samplesPerBlock); // 200ms average window
@@ -230,6 +235,7 @@ void SourceSamplerAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
+    transportSource.releaseResources();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -280,6 +286,9 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    
+    // Render preview player into buffer
+    transportSource.getNextAudioBlock(AudioSourceChannelInfo(buffer));
     
     // Measure audio levels (will be store in lms object itself)
     lms.measureBlock (buffer);
@@ -623,7 +632,10 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    DBG("Action message: " << message);
+    if (!message.contains(ACTION_GET_STATE)){
+        // Don't log get state actions as it creates too much logs
+        DBG("Action message: " << message);
+    }
     
     if (message.startsWith(String(ACTION_FINISHED_DOWNLOADING_SOUND))){
         // A sound has finished downloading, trigger loading into sampler
@@ -950,7 +962,15 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         } else if (stateType == "full"){
             sendStateToExternalServer(collectFullStateInformation(true), "");
         }
+    } else if (message.startsWith(String(ACTION_PLAY_SOUND_FROM_PATH))){
+        String soundPath = message.substring(String(ACTION_PLAY_SOUND_FROM_PATH).length() + 1);
+        if (soundPath == ""){
+            stopPreviewingFile();  // Send empty string to stop currently previewing sound
+        } else {
+            previewFile(soundPath);
+        }
     }
+    
 }
 
 
@@ -1571,6 +1591,39 @@ void SourceSamplerAudioProcessor::logToState(const String& message)
     recentLogMessagesSerialized = "";
     for (int i=0; i<recentLogMessages.size();i++){
         recentLogMessagesSerialized += recentLogMessages[i] +  ";";
+    }
+}
+
+void SourceSamplerAudioProcessor::previewFile(const String& path)
+{
+    std::cout << "PREVIEWING FILE" << std::endl;
+    if (transportSource.isPlaying()){
+        transportSource.stop();
+    }
+    if (currentlyLoadedPath != path){
+        // Load new file
+        File file = File(path);
+        if (file.existsAsFile()){
+            
+            auto* reader = audioFormatManager.createReaderFor (file);
+            if (reader != nullptr)
+            {
+                std::cout << "LOADING FILE" << std::endl;
+                std::unique_ptr<AudioFormatReaderSource> newSource (new AudioFormatReaderSource (reader, true));
+                transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);
+                readerSource.reset (newSource.release());
+                std::cout << "LOADED" << std::endl;
+            }
+        }
+        
+    }
+    std::cout << "STARTING" << std::endl;
+    transportSource.start();
+}
+
+void SourceSamplerAudioProcessor::stopPreviewingFile(){
+    if (transportSource.isPlaying()){
+        transportSource.stop();
     }
 }
 
