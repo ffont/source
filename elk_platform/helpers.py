@@ -38,6 +38,7 @@ class StateNames(Enum):
     NOTE_LAYOUT_TYPE = auto()
     
     NUM_SOUNDS = auto()
+    NUM_SOUNDS_CHANGED = auto()
     NUM_SOUNDS_DOWNLOADING = auto()
     NUM_SOUNDS_LOADED_IN_SAMPLER = auto()
     SOUNDS_INFO = auto()
@@ -118,7 +119,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
     return source_state
 
 
-def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
+def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state={}):
     global recent_queries_and_filters
     global sound_usage_log_manager
 
@@ -170,6 +171,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict):
     # Loaded sounds properties
     sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
     source_state[StateNames.NUM_SOUNDS] = len(sounds_info)
+    source_state[StateNames.NUM_SOUNDS_CHANGED] = current_state.get(StateNames.NUM_SOUNDS, len(sounds_info)) != len(sounds_info)
     processed_sounds_info = []
     for sound_idx, sound_info in enumerate(sounds_info):
 

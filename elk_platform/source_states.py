@@ -205,6 +205,7 @@ class StateManager(object):
     open_url_in_browser = None
     should_show_start_animation = True
     block_ui_input = False
+    waiting_to_go_to_last_loaded_sound = False
 
     def set_osc_client(self, osc_client):
         self.osc_client = osc_client
@@ -215,6 +216,13 @@ class StateManager(object):
     def update_source_state(self, source_state):
         self.source_state = source_state
         self.current_state.on_source_state_update()
+
+        if self.waiting_to_go_to_last_loaded_sound and self.source_state.get(StateNames.NUM_SOUNDS_CHANGED, False):
+            self.move_to(SoundSelectedState(sound_idx=999))  # If num sounds have changed and we were waiting for this change, move to last sound
+            self.waiting_to_go_to_last_loaded_sound = False
+
+    def set_waiting_to_go_to_last_loaded_sound(self):
+        self.waiting_to_go_to_last_loaded_sound = True
 
     def set_led(self, led_idx, unset_others=False):
         if self.ui_client is not None:
@@ -451,7 +459,7 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
 
-    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download="", local_file_path=""):
+    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download="", local_file_path="", move_once_loaded=False):
         sound_onsets_list = []
         if 'analysis' in new_sound and new_sound['analysis'] is not None:
             if 'rhythm' in new_sound['analysis']:
@@ -477,6 +485,9 @@ class State(object):
             root_note, # The note to be used as root
             trigger_download  # "" -> yes, "none" -> no, "all" -> all sounds
             ])
+
+        if sound_idx == -1 and move_once_loaded:
+            sm.set_waiting_to_go_to_last_loaded_sound()
 
     def load_query_results(self, new_sounds, note_mapping_type=1, assigned_notes_per_sound_list=[]):
         sm.send_osc_to_plugin('/clear_all_sounds', [])
@@ -515,14 +526,14 @@ class State(object):
         return {key: value for key, value in kwargs_dict.items() if key in ac_descriptors_names and value != 'off'}
 
 
-    def add_or_replace_sound_by_query(self, sound_idx=-1, query='', min_length=0, max_length=300, page_size=50, **kwargs):
+    def add_or_replace_sound_by_query(self, sound_idx=-1, query='', min_length=0, max_length=300, page_size=50, move_once_loaded=False, **kwargs):
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
             selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if selected_sound is not None:
                 sm.show_global_message("Loading sound...")
-                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
+                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound, move_once_loaded=move_once_loaded)
             else:
                 sm.show_global_message("No results found!")
         except Exception as e:
@@ -541,6 +552,23 @@ class State(object):
                 self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
             else:
                 sm.show_global_message("No results found!")
+        except Exception as e:
+            print("ERROR while querying Freesound: {0}".format(e))
+            traceback.print_tb(e.__traceback__)
+            sm.show_global_message("Error :(")
+        sm.block_ui_input = False
+
+    def add_or_replace_sound_random(self, sound_idx=-1, num_sounds=1, min_length=0, max_length=10, layout=1, move_once_loaded=False, **kwargs):
+        sm.show_global_message("Finding\nrandom...", duration=3600)
+        sm.block_ui_input = True
+        try:
+            new_sound = find_random_sounds(n_sounds=1, min_length=min_length, max_length=max_length, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
+            if not new_sound:
+                sm.show_global_message("No sound found!")
+            else:
+                new_sound = new_sound[0]
+                sm.show_global_message("Loading sound...")
+                self.send_add_or_replace_sound_to_plugin(sound_idx, new_sound, move_once_loaded=move_once_loaded)
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             traceback.print_tb(e.__traceback__)
@@ -908,7 +936,13 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     selected_sound_is_playing = False
 
     def __init__(self, sound_idx, *args, **kwargs):
-        self.sound_idx = sound_idx
+        num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
+        if sound_idx < 0:
+            self.sound_idx = 0
+        elif sound_idx >= num_sounds - 1:
+            self.sound_idx = num_sounds - 1
+        else:
+            self.sound_idx = sound_idx
         if self.sound_is_loaded_in_sampler():
             self.pages += sound_parameter_pages
         super().__init__(*args, **kwargs)
@@ -1386,6 +1420,74 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
             sm.show_global_message('Not implemented...')
 
 
+class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+
+    OPTION_BY_QUERY = "From new query"
+    OPTION_RANDOM = "Random sound"
+    OPTION_LOCAL = "Load from disk"
+    
+    items = [OPTION_BY_QUERY, OPTION_RANDOM, OPTION_LOCAL]
+    page_size = 4
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": "Add new sound..."
+        }]
+        lines += self.get_menu_item_lines()
+        return frame_from_lines([self.get_default_header_line()] + lines)
+
+    def perform_action(self, action_name):
+        if action_name == self.OPTION_BY_QUERY:
+            sm.move_to(EnterQuerySettingsState(
+                callback=lambda query_settings: 
+                    sm.move_to(
+                        EnterTextViaHWOrWebInterfaceState(
+                            title="Enter query",
+                            web_form_id="enterQuery", 
+                            callback=self.add_or_replace_sound_by_query, 
+                            extra_data_for_callback=merge_dicts(query_settings, {'move_once_loaded': True}),
+                            go_back_n_times=4
+                    )),
+                    num_sounds=1,
+                    allow_change_num_sounds=False,
+                    allow_change_layout=False), 
+                )  # Use big number so we move to last sound loaded
+        elif action_name == self.OPTION_RANDOM:
+            sm.move_to(EnterQuerySettingsState(
+                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'move_once_loaded': True})), sm.go_back(n_times=3)),
+                num_sounds=1,
+                allow_change_num_sounds=False,
+                allow_change_layout=False
+            ))
+        elif action_name == self.OPTION_LOCAL:
+            base_path = get_local_audio_files_path()
+            if base_path is not None:
+                available_files_ogg, _, _ = get_filenames_in_dir(base_path, '*.ogg')
+                available_files_wav, _, _ = get_filenames_in_dir(base_path, '*.wav')
+                available_files = sorted(available_files_ogg + available_files_wav)
+                sm.move_to(FileChooserState(
+                    base_path=base_path,
+                    items=available_files,
+                    title1="Select a file...",
+                    go_back_n_times=3,
+                    callback=lambda file_path: (self.send_add_or_replace_sound_to_plugin(
+                        -1,  # -1 to add new sound 
+                        {
+                            'id': -1, 
+                            'name': file_path.split('/')[-1], 
+                            'username': '-',
+                            'license': '-',
+                            'previews': {'preview-hq-ogg': ''},
+                        }, 
+                        local_file_path=file_path,
+                        move_once_loaded=True
+                    ), sm.show_global_message('Loading file\n{}...'.format(file_path.split('/')[-1]))),
+                ))
+            else:
+                sm.show_global_message('Local files\nnot ready...')
+
+
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_SAVE = "Save preset"
@@ -1477,19 +1579,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_REVERB:
             sm.move_to(ReverbSettingsMenuState())
         elif action_name == self.OPTION_ADD_NEW_SOUND:
-            sm.move_to(EnterQuerySettingsState(
-                callback=lambda query_settings: sm.move_to(
-                    EnterTextViaHWOrWebInterfaceState(
-                        title="Enter query",
-                        web_form_id="enterQuery", 
-                        callback=self.add_or_replace_sound_by_query, 
-                        extra_data_for_callback=query_settings,
-                        go_back_n_times=3
-                    )),
-                num_sounds=1,
-                allow_change_num_sounds=False,
-                allow_change_layout=False
-            ))
+            sm.move_to(NewSoundOptionsMenuState())
         elif action_name == self.OPTION_NEW_SOUNDS:
             sm.move_to(NewPresetOptionsMenuState())
         elif action_name == self.OPTION_GO_TO_SOUND:
@@ -1509,10 +1599,11 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
 
     OPTION_BY_QUERY = "New query"
     OPTION_BY_SIMILARITY = "Find similar"
+    OPTION_BY_RANDOM = "Random sound"
     OPTION_FROM_DISK = "Load from disk"
 
     sound_idx = -1
-    items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_FROM_DISK]
+    items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_BY_RANDOM, OPTION_FROM_DISK]
     page_size = 3
 
     def __init__(self, sound_idx, *args, **kwargs):
@@ -1558,6 +1649,13 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
             if selected_sound_id != '-':
                 self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
+        elif action_name == self.OPTION_BY_RANDOM:
+            sm.move_to(EnterQuerySettingsState(
+                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'sound_idx': self.sound_idx})), sm.go_back(n_times=3)),
+                num_sounds=1,
+                allow_change_num_sounds=False,
+                allow_change_layout=False
+            ))
         elif action_name == self.OPTION_FROM_DISK:
             base_path = get_local_audio_files_path()
             if base_path is not None:

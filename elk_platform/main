@@ -576,7 +576,7 @@ def process_state_from_plugin(received_plugin_state):
             plugin_state_dict.update(volatile_state)
         else:
             # Plugin has sent full state update
-            full_state = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict)
+            full_state = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state=plugin_state_dict)
             plugin_state_dict.update(full_state)
     else:
         # State is sent as a serialized string only (this is the volatile state)
