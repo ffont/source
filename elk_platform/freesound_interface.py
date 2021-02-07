@@ -1,7 +1,9 @@
+import json
+import os
 import random
 import requests
 
-from freesound_api_key import FREESOUND_API_KEY
+from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
 
 # TODO: refactor this to use proper Freesound python API client (?)
 
@@ -105,3 +107,84 @@ def find_sound_by_similarity(sound_id):
         return random.choice(response['results'])
     else:
         return None
+
+
+# OAuth2 stuff
+
+access_token = None
+refresh_token = None
+stored_tokens_filename = 'tokens.json'
+freesound_username = ""
+
+def get_logged_in_user_information():
+    global freesound_username
+
+    url = 'https://freesound.org/apiv2/me/'
+    print(url)
+    r = requests.get(url, timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
+    response = r.json()
+    freesound_username = response['username']
+    print('Freesound username set')
+
+
+def is_logged_in():
+    return freesound_username != ""
+
+
+def get_crurrently_logged_in_user():
+    return freesound_username
+
+
+def refresh_access_token():
+    global refresh_token
+    global access_token
+
+    url = 'https://freesound.org/apiv2/oauth2/access_token/'
+    print(url)
+    data = {
+        'client_id': FREESOUND_CLIENT_ID,
+        'client_secret': FREESOUND_API_KEY,
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token
+    }
+    r = requests.post(url, data=data, timeout=30)
+    response = r.json()
+    access_token = response['access_token']
+    refresh_token = response['refresh_token']
+    json.dump(response, open(stored_tokens_filename, 'w'))
+    print('Freesound access token refreshed correctly')
+    get_logged_in_user_information()
+
+
+def get_access_token_from_code(code):
+    global refresh_token
+    global access_token
+
+    url = 'https://freesound.org/apiv2/oauth2/access_token/'
+    print(url)
+    data = {
+        'client_id': FREESOUND_CLIENT_ID,
+        'client_secret': FREESOUND_API_KEY,
+        'grant_type': 'authorization_code',
+        'code': code
+    }
+    r = requests.post(url, data=data, timeout=30)
+    response = r.json()
+    access_token = response['access_token']
+    refresh_token = response['refresh_token']
+    json.dump(response, open(stored_tokens_filename, 'w'))
+    print('New Freesound access token saved correctly')
+    get_logged_in_user_information()
+
+
+def logout_from_freesound():
+    global freesound_username
+    freesound_username = ""
+
+
+if os.path.exists(stored_tokens_filename):
+    stored_tokens = json.load(open(stored_tokens_filename))
+    access_token = stored_tokens['access_token']
+    refresh_token = stored_tokens['refresh_token']
+    refresh_access_token()  # Refresh access token at startup to make sure we have a valid one
+

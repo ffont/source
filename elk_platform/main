@@ -33,7 +33,7 @@ from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMA
 
 from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path
 
-from freesound_interface import find_sounds_by_query
+from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
@@ -453,8 +453,8 @@ def download_all_sounds(urls, outfiles):
 
 @http_server.route('/', methods=['GET', 'POST'])  # Serve main interface HTML file
 def index_minimal():
+    tvars = {'freesound_username': get_crurrently_logged_in_user()}
     if request.method == 'GET':
-        tvars = {}
         return render_template("index_minimal.html", **tvars)
     else:
         local_files_directory = get_local_audio_files_path()
@@ -465,7 +465,8 @@ def index_minimal():
                 if f.filename.split('.')[-1] in ALLOWED_AUDIO_FILE_EXTENSIONS:  # Check that format is ok
                     f.save(os.path.join(local_files_directory, f.filename))
                     n_saved += 1
-            return render_template("index_minimal.html", message='{} files saved'.format(n_saved))
+            tvars.update(message='{} files saved'.format(n_saved))
+            return render_template("index_minimal.html", **tvars)
         return render_template("index_minimal.html", message='Errors saving files')
 
 @http_server.route('/update_minimal_interface_state', methods=['GET'])  # Client requests to get an updated version of the state
@@ -487,6 +488,12 @@ def update_minimal_interface_state():
 def usage_log():
     tvars = {'log': get_all_sound_usage_logs()}
     return render_template("usage_log.html", **tvars)
+
+@http_server.route('/freesound_login_callback', methods=['GET'])  # Serve interface HTML file with all the available controls
+def freesound_login_callback():
+    code = request.args.get('code')
+    get_access_token_from_code(code)
+    return redirect(url_for('index_minimal'))
 
 @http_server.route('/index', methods=['GET'])  # Serve interface HTML file with all the available controls
 def index():

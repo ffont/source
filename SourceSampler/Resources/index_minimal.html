@@ -220,6 +220,11 @@
             <p>
                 This page will be automatically updated when selecting options in the SOURCE user interface.
             </p>
+            {% if freesound_username %}
+            <p>
+                Logged in as: {{ freesound_username }}
+            </p>
+            {% endif %}
         </div>
 
         <div id="workingIndicator">

@@ -9,7 +9,8 @@ import numpy
 from scipy.io import wavfile
 import pyogg
 
-from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds
+from freesound_api_key import FREESOUND_CLIENT_ID
+from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, is_logged_in, get_crurrently_logged_in_user
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
@@ -1503,12 +1504,27 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOAD_PRESET = "Load preset..."
     OPTION_GO_TO_SOUND = "Go to sound..."
     OPTION_SOUND_USAGE_LOG = "Sound usage log..."
+    OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
+    OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
 
-    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG]
+    items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
+             OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
+             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_LOGIN_TO_FREESOUND]
     page_size = 5
 
     def draw_display_frame(self):
+        if is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND not in self.items:
+            self.items.append(self.OPTION_LOGOUT_FROM_FREESOUND)
+        if not is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND in self.items:
+            self.items = [item for item in self.items if item != self.OPTION_LOGOUT_FROM_FREESOUND]
+
         lines = self.get_menu_item_lines()
+        
+        # Add FS username 
+        for line in lines:
+            if line['text'] == self.OPTION_LOGOUT_FROM_FREESOUND:
+                line['text'] = 'Logout ({})'.format(get_crurrently_logged_in_user())
+
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def get_exising_presets_list(self):
@@ -1592,6 +1608,14 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_SOUND_USAGE_LOG:
             sm.show_global_message('Sound usage log\n opened in browser')
             sm.open_url_in_browser = '/usage_log'
+            sm.go_back()
+        elif action_name == self.OPTION_LOGIN_TO_FREESOUND:
+            sm.show_global_message('Check login\nin browser')
+            sm.open_url_in_browser = 'https://freesound.org/apiv2/oauth2/logout_and_authorize/?client_id={}&response_type=code'.format(FREESOUND_CLIENT_ID)
+            sm.go_back()
+        elif action_name == self.OPTION_LOGOUT_FROM_FREESOUND:
+            logout_from_freesound()
+            sm.show_global_message('Logged out\nfrom Freesound')
             sm.go_back()
         else:
             sm.show_global_message('Not implemented...')
