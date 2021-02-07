@@ -151,6 +151,7 @@ reverb_parameters_info_dict = {
 }
 
 note_layout_types = ['Contiguous', 'Interleaved']
+license_types = ['All', 'CC0', 'Exclude NC']
 num_sounds_options = [1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 64]
 ac_descriptors_options = ['off', 'low', 'mid', 'high']
 ac_descriptors_names = ['brightness', 'hardness', 'depth', 'roughness','boominess', 'warmth', 'sharpness']
@@ -167,6 +168,7 @@ query_settings_info_dict = {
     'boominess': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Boominess', '{}', ac_descriptors_options[0]),
     'warmth': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Warmth', '{}', ac_descriptors_options[0]),
     'sharpness': (lambda x:ac_descriptors_options[int(round(x * (len(ac_descriptors_options) - 1)))], 'Sharpness', '{}', ac_descriptors_options[0]),
+    'license':  (lambda x:license_types[int(round(x * (len(license_types) - 1)))], 'License', '{}', license_types[0]),
 }
 
 query_settings_pages = [
@@ -184,7 +186,7 @@ query_settings_pages = [
         'boominess',
         'warmth',
         'sharpness',
-        None
+        'license'
     ]
 ]
 
@@ -530,7 +532,7 @@ class State(object):
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
-            selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
+            selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, license=kwargs.get('license', None), ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if selected_sound is not None:
                 sm.show_global_message("Loading sound...")
                 self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound, move_once_loaded=move_once_loaded)
@@ -562,7 +564,7 @@ class State(object):
         sm.show_global_message("Finding\nrandom...", duration=3600)
         sm.block_ui_input = True
         try:
-            new_sound = find_random_sounds(n_sounds=1, min_length=min_length, max_length=max_length, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
+            new_sound = find_random_sounds(n_sounds=1, min_length=min_length, max_length=max_length, license=kwargs.get('license', None), ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if not new_sound:
                 sm.show_global_message("No sound found!")
             else:
@@ -579,7 +581,7 @@ class State(object):
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
-            new_sounds = find_sounds_by_query(query=query, n_sounds=num_sounds, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
+            new_sounds = find_sounds_by_query(query=query, n_sounds=num_sounds, min_length=min_length, max_length=max_length, page_size=page_size, license=kwargs.get('license', None), ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if not new_sounds:
                 sm.show_global_message("No results found!")
             else:
@@ -604,7 +606,7 @@ class State(object):
         sm.show_global_message("Entering the\nunknown...", duration=3600)
         sm.block_ui_input = True
         try:
-            new_sounds = find_random_sounds(n_sounds=num_sounds, min_length=min_length, max_length=max_length, report_callback=show_progress_message, ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
+            new_sounds = find_random_sounds(n_sounds=num_sounds, min_length=min_length, max_length=max_length, report_callback=show_progress_message, license=kwargs.get('license', None), ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if not new_sounds:
                 sm.show_global_message("No results found!")
             else:

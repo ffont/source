@@ -19,6 +19,11 @@ ac_descriptors_filter_ranges = {
     # Here we can add custom ranges for the different descriptors, for now all us default
 }
 
+license_to_filter = {
+    'All': '',  # Apply no filter
+    'CC0': 'license:"Creative Commons 0"',
+    'Exclude NC': 'license:("Creative Commons 0" OR "Attribution")'  # Exlude non-commercial and sampling+ as well
+}
 
 def prepare_ac_descriptors_filter(ac_descriptors_filters_dict):
     filter_texts = []
@@ -29,7 +34,7 @@ def prepare_ac_descriptors_filter(ac_descriptors_filters_dict):
     return ' '.join(filter_texts)
 
 
-def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_size=50, ac_descriptors_filters={}):
+def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_size=50, license=None, ac_descriptors_filters={}):
     if n_sounds > 128:
         n_sounds = 128
 
@@ -37,6 +42,8 @@ def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_
     ac_descriptors_filter = prepare_ac_descriptors_filter(ac_descriptors_filters)
     if ac_descriptors_filter:
         query_filter += " {}".format(ac_descriptors_filter)
+    if license is not None:
+        query_filter += " {}".format(license_to_filter[license])
 
     url = 'https://freesound.org/apiv2/search/text/?query="{}"&filter={}&fields={}&page_size={}&descriptors={}&group_by_pack=1&token={}'.format(query, query_filter, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
     print(url)
@@ -47,21 +54,23 @@ def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_
         return random.sample(response['results'], min(n_sounds, n_results)) 
 
 
-def find_sound_by_query(query, min_length=0, max_length=300, page_size=50, ac_descriptors_filters={}):
-    sound = find_sounds_by_query(query=query, n_sounds=1, min_length=min_length, max_length=max_length, page_size=page_size, ac_descriptors_filters=ac_descriptors_filters)
+def find_sound_by_query(query, min_length=0, max_length=300, page_size=50, license=None, ac_descriptors_filters={}):
+    sound = find_sounds_by_query(query=query, n_sounds=1, min_length=min_length, max_length=max_length, page_size=page_size, license=license, ac_descriptors_filters=ac_descriptors_filters)
     if not sound:
         return None  # Make consistent interface with find_sound_by_similarity which only returns 1 element
     else:
         return sound[0]
 
 
-def find_random_sounds(n_sounds=15, min_length=0, max_length=300, report_callback=None, ac_descriptors_filters={}):
+def find_random_sounds(n_sounds=15, min_length=0, max_length=300, report_callback=None, license=None, ac_descriptors_filters={}):
     new_sounds = []
 
     query_filter = "duration:[{}+TO+{}]".format(min_length, max_length)
     ac_descriptors_filter = prepare_ac_descriptors_filter(ac_descriptors_filters)
     if ac_descriptors_filter:
         query_filter += " {}".format(ac_descriptors_filter)
+    if license is not None:
+        query_filter += " {}".format(license_to_filter[license])
 
     # First make query to know how many sounds there are in Freesound with min_length, max_length filter
     url = 'https://freesound.org/apiv2/search/text/?filter={}&fields=&page_size=1&group_by_pack=0&token={}'.format(query_filter, FREESOUND_API_KEY)

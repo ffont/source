@@ -689,7 +689,7 @@ LICENSE_CC_BY_NC = 'CC-BY-NC'
 LICENSE_CC_BY_ND = 'CC-BY-ND'
 LICENSE_CC_BY_NC_SA = 'CC-BY-NC-SA'
 LICENSE_CC_BY_NC_ND = 'CC-BY-NC-ND'
-LICENSE_CC_SAMPLING_PLUS = 'SamplingPlus'
+LICENSE_CC_SAMPLING_PLUS = 'Sampling+'
 
 def translate_cc_license_url(url):
     if '/by/' in url: return LICENSE_CC_BY
