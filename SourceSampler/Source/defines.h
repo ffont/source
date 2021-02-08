@@ -143,6 +143,7 @@
 #define STATE_SOURCE_DATA_LOCATION "sourceDataLocation"
 #define STATE_SOUNDS_DATA_LOCATION "soundsDataLocation"
 #define STATE_PRESETS_DATA_LOCATION "presetsDataLocation"
+#define STATE_TMP_DATA_LOCATION "tmpDataLocation"
 
 #define STATE_SOUNDS_INFO "soundsInfo"
 #define STATE_SOUND_INFO "soundInfo"

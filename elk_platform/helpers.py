@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 import math
@@ -6,6 +7,7 @@ import os
 import time
 import threading
 import fnmatch
+import urllib
 
 from collections import defaultdict, deque
 from enum import Enum, auto
@@ -22,6 +24,7 @@ class StateNames(Enum):
     SOURCE_DATA_LOCATION = auto()
     SOUNDS_DATA_LOCATION = auto()
     PRESETS_DATA_LOCATION = auto()
+    TMP_DATA_LOCATION = auto()
 
     STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
@@ -125,6 +128,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
 def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state={}):
     global recent_queries_and_filters
     global sound_usage_log_manager
+    global tmp_base_path
 
     source_state = {}
     
@@ -144,12 +148,15 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     source_state[StateNames.SOURCE_DATA_LOCATION] = global_state.get('sourceDataLocation'.lower(), None)
     source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
     source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
+    source_state[StateNames.TMP_DATA_LOCATION] = global_state.get('tmpDataLocation'.lower(), None)
 
     if source_state[StateNames.SOURCE_DATA_LOCATION] is not None:
         if recent_queries_and_filters is None:
             recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
         if sound_usage_log_manager is None:
             sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
+        if tmp_base_path is None:
+            tmp_base_path = source_state.get(StateNames.TMP_DATA_LOCATION, None)
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
@@ -923,3 +930,29 @@ def get_recent_query_filters():
         return recent_queries_and_filters.get_recent_query_filters()
     else:
         return []
+
+
+
+tmp_base_path = None
+# File downloader for general purpose threaded downloads
+class DownloadFileThread(threading.Thread):
+
+    url = None
+    outfile = None
+
+    def __init__(self, url, outfile):
+        super(DownloadFileThread, self).__init__()
+        self.url = url
+        self.outfile = outfile
+
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())        
+        if tmp_base_path is not None:
+            outfile = os.path.join(tmp_base_path, self.outfile)
+        
+            if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
+                # If sound does not exist, start downloading
+                import sys
+                print('- Downloading tmp file: ' + self.url + ' to ' + outfile)
+                sys.stdout.flush()
+                urllib.request.urlretrieve(self.url, outfile)

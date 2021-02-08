@@ -456,6 +456,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     settings.setProperty(STATE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
+    settings.setProperty(STATE_TMP_DATA_LOCATION, tmpFilesLocation.getFullPathName(), nullptr);
     settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
@@ -1622,10 +1623,15 @@ void SourceSamplerAudioProcessor::previewFile(const String& path)
             
             File location = tmpFilesLocation.getChildFile(filename);
             if (!location.exists()){  // Dont' re-download if file already exists
+                # if ELK_BUILD
+                // If on ELK build don't download here because it seems to hang forever
+                // On ELK, we should trigger the downloads from the Python script before calling this function
+                # else
                 std::unique_ptr<URL::DownloadTask> downloadTask = URL(path).downloadToFile(location, "");
                 while (!downloadTask->isFinished()){
                     // Wait until it finished downloading
                 }
+                # endif
             }
             pathToLoad = location.getFullPathName();  // Update path variable to the download location
         } else {

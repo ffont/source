@@ -1526,7 +1526,9 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             else:
                 sm.show_global_message('Local files\nnot ready...')
         elif action_name == self.OPTION_FROM_BOOKMARK:
+            sm.show_global_message('Getting\nbookmarks...')
             user_bookmarks = get_user_bookmarks()
+            sm.show_global_message('')
             sounds_data = {item['name']:item for item in user_bookmarks}
             sm.move_to(SoundChooserState(
                     items=[item['name'] for item in user_bookmarks],
@@ -1766,7 +1768,9 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
             else:
                 sm.show_global_message('Local files\nnot ready...')
         elif action_name == self.OPTION_FROM_BOOKMARK:
+            sm.show_global_message('Getting\nbookmarks...')
             user_bookmarks = get_user_bookmarks()
+            sm.show_global_message('')
             sounds_data = {item['name']:item for item in user_bookmarks}
             sm.move_to(SoundChooserState(
                     items=[item['name'] for item in user_bookmarks],
@@ -1822,7 +1826,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
         # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
         num_sounds = sm.source_state.get(StateNames.NUM_SOUNDS, 0)
         if self.sound_idx >= num_sounds:
-            sm.move_to(SoundSelectSoundSelectedContextualMenuStateedState(num_sounds -1), replace_current=True)
+            sm.move_to(SoundSelectedContextualMenuState(num_sounds -1), replace_current=True)
         elif self.sound_idx < 0 and num_sounds > 0:
             sm.move_to(SoundSelectedContextualMenuState(0), replace_current=True)
 

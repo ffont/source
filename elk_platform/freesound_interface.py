@@ -7,6 +7,8 @@ import asyncio
 
 from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
 
+from helpers import DownloadFileThread
+
 
 # OAuth2 stuff
 
@@ -152,6 +154,12 @@ def get_user_bookmarks():
         print(url_for_sounds)
         r = requests.get(url_for_sounds + '?fields={}&descriptors={}'.format(fields_param, descriptor_names), timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
         response = r.json()
+
+        # Trigger download of the lq ogg previews for previewing in menu
+        for sound in response['results']:
+            preview_url = sound['previews']['preview-lq-ogg']
+            DownloadFileThread(preview_url, preview_url.split('/')[-1]).start()
+
         return response['results']
     else:
         return []
