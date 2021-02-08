@@ -94,6 +94,7 @@ public:
     File sourceDataLocation;
     File soundsDownloadLocation;
     File presetFilesLocation;
+    File tmpFilesLocation;
     
     File getPresetFilePath(const String& presetFilename);
     String getPresetFilenameFromNameAndIndex(const String& presetName, int index);
@@ -159,6 +160,8 @@ public:
                                                    const String& soundLicense,
                                                    const String& oggDownloadURL,
                                                    const String& localFilePath,
+                                                   const String& type,
+                                                   int sizeBytes,
                                                    StringArray slices,
                                                    BigInteger midiNotes,
                                                    int midiRootNote,

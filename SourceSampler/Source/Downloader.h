@@ -28,7 +28,7 @@ public:
         }
     }
     
-    void setSoundsToDownload(std::vector<std::pair<File, String>> _soundTargetLocationsAndUrlsToDownload){
+    void setSoundsToDownload(std::vector<std::tuple<File, String, String>> _soundTargetLocationsAndUrlsToDownload){
         soundTargetLocationsAndUrlsToDownload = _soundTargetLocationsAndUrlsToDownload;
     }
     
@@ -38,32 +38,46 @@ public:
     
     void downloadAllSounds(){
         for (int i=0; i<soundTargetLocationsAndUrlsToDownload.size();i++){
-            File location = soundTargetLocationsAndUrlsToDownload[i].first;
-            String url = soundTargetLocationsAndUrlsToDownload[i].second;
+            File baseLocation = std::get<0>(soundTargetLocationsAndUrlsToDownload[i]);
+            String soundID = std::get<1>(soundTargetLocationsAndUrlsToDownload[i]);
+            String previewUrl = std::get<2>(soundTargetLocationsAndUrlsToDownload[i]);
+            File location = baseLocation.getChildFile(soundID).withFileExtension("ogg");
             if (!location.exists()){  // Dont' re-download if file already exists
-                std::unique_ptr<URL::DownloadTask> downloadTask = URL(url).downloadToFile(location, "", this);
+                std::unique_ptr<URL::DownloadTask> downloadTask = URL(previewUrl).downloadToFile(location, "", this);
                 downloadTasks.push_back(std::move(downloadTask));
             } else {
                 // If sound already downloaded, show trigger action
-                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + location.getFullPathName();
+                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundID;
                 sendActionMessage(actionMessage);
             }
         }
     }
     
     void finished(URL::DownloadTask *task, bool success){
-        String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + task->getTargetLocation().getFullPathName();
+        StringArray tokens;
+        tokens.addTokens (task->getTargetLocation().getFullPathName(), "/", "");
+        String filename = tokens[tokens.size() - 1];
+        tokens.clear();
+        tokens.addTokens (filename, ".ogg", "");
+        String soundID = tokens[0];
+        String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundID;
         sendActionMessage(actionMessage);
     }
     
     void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength){
-        String serializedParameters = task->getTargetLocation().getFullPathName() + SERIALIZATION_SEPARATOR + (String)(100*bytesDownloaded/totalLength) + SERIALIZATION_SEPARATOR;
+        StringArray tokens;
+        tokens.addTokens (task->getTargetLocation().getFullPathName(), "/", "");
+        String filename = tokens[tokens.size() - 1];
+        tokens.clear();
+        tokens.addTokens (filename, ".ogg", "");
+        String soundID = tokens[0];
+        String serializedParameters = soundID + SERIALIZATION_SEPARATOR + (String)(100*bytesDownloaded/totalLength) + SERIALIZATION_SEPARATOR;
         String actionMessage = String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
         sendActionMessage(actionMessage);
     }
     
 private:
-    std::vector<std::pair<File, String>> soundTargetLocationsAndUrlsToDownload = {};
+    std::vector<std::tuple<File, String, String>> soundTargetLocationsAndUrlsToDownload = {};
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allFinished = false;
     

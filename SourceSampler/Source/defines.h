@@ -39,6 +39,7 @@
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
+#define ELK_SOURCE_TMP_LOCATION "/udata/source/tmp/"
 
 #define OSC_LISTEN_PORT 9001
 #define HTTP_SERVER_LISTEN_PORT 8124
@@ -154,6 +155,8 @@
 #define STATE_SOUND_INFO_LICENSE "soundLicense"
 #define STATE_SOUND_INFO_OGG_DOWNLOAD_URL "soundOGGURL"
 #define STATE_SOUND_INFO_LOCAL_FILE_PATH "soundLocalFilePath"
+#define STATE_SOUND_INFO_TYPE "soundType"
+#define STATE_SOUND_INFO_SIZE "soundSize"
 #define STATE_SOUND_FS_SOUND_ANALYSIS "fsAnalysis"
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS "onsets"
 #define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET "onset"
@@ -176,6 +179,7 @@
 #define STATE_SAMPLER_SOUND_PARAMETER_NAME "parameter_name"
 #define STATE_SAMPLER_SOUND_PARAMETER_VALUE "parameter_value"
 #define STATE_SAMPLER_SOUND_MIDI_NOTES "midiNotes"
+#define STATE_SAMPLER_SOUND_LOADED_PREVIEW "loadedPreviewVersion"
 
 #define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING "SamplerSoundMidiCCMapping"
 #define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_RANDOM_ID "midiMappingRandomId"

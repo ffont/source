@@ -17,11 +17,13 @@
 SourceSamplerSound::SourceSamplerSound (int _idx,
                                         const String& soundName,
                                         AudioFormatReader& source,
+                                        bool _loadingPreviewVersion,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
     : idx (_idx),
       name (soundName),
+      loadedPreviewVersion (_loadingPreviewVersion),
       sourceSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
       pluginBlockSize (_pluginBlockSize)
@@ -41,6 +43,11 @@ SourceSamplerSound::SourceSamplerSound (int _idx,
 
 SourceSamplerSound::~SourceSamplerSound()
 {
+}
+
+bool SourceSamplerSound::getLoadedPreviewVersion()
+{
+    return loadedPreviewVersion;
 }
 
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
@@ -147,6 +154,7 @@ void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
 ValueTree SourceSamplerSound::getState(){
     ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
     state.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+    state.setProperty(STATE_SAMPLER_SOUND_LOADED_PREVIEW, loadedPreviewVersion, nullptr);
     state.setProperty(STATE_SOUND_INFO_IDX, idx, nullptr);  // idx is set to the state sot hat the UI gets it, but never loaded because it is generated dynamically
 
     // Add midi mappings (sorted by cc number so are displayed accordingly in the interface

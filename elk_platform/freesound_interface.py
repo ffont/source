@@ -2,12 +2,22 @@ import json
 import os
 import random
 import requests
+import threading
+import asyncio
 
 from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
 
+
+# OAuth2 stuff
+
+access_token = None
+refresh_token = None
+stored_tokens_filename = 'tokens.json'
+freesound_username = ""
+
 # TODO: refactor this to use proper Freesound python API client (?)
 
-fields_param = "id,previews,license,name,username,analysis"
+fields_param = "id,previews,license,name,username,analysis,type,filesize"
 descriptor_names = "rhythm.onset_times"
 
 ac_descriptors_default_filter_ranges = {
@@ -109,12 +119,43 @@ def find_sound_by_similarity(sound_id):
         return None
 
 
-# OAuth2 stuff
+bookmarks_category_name = "SourceSampler"
 
-access_token = None
-refresh_token = None
-stored_tokens_filename = 'tokens.json'
-freesound_username = ""
+def bookmark_sound(sound_id):
+    url = 'https://freesound.org/apiv2/sounds/{}/bookmark/'.format(sound_id)
+    print(url)
+    data = {
+        'category': bookmarks_category_name,
+    }
+    try:
+        r = requests.post(url, data=data, timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
+        response = r.json()
+        return 'Successfully' in response.get('detail', '')
+    except Exception as e:
+        print(e)
+        return False
+
+
+def get_user_bookmarks():
+    # 1) Find URL of bookmarks category for SourceSampler
+    url_for_sounds = None
+    url = 'https://freesound.org/apiv2/users/{}/bookmark_categories/'.format(freesound_username)
+    print(url)
+    r = requests.get(url, timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
+    response = r.json()
+    for category in response['results']:
+        if category['name'] == bookmarks_category_name:
+            url_for_sounds = category['sounds']
+
+    # 2) Get the actual list of bookmarks
+    if url_for_sounds is not None:
+        print(url_for_sounds)
+        r = requests.get(url_for_sounds + '?fields={}&descriptors={}'.format(fields_param, descriptor_names), timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
+        response = r.json()
+        return response['results']
+    else:
+        return []
+    
 
 def get_logged_in_user_information():
     global freesound_username
@@ -129,6 +170,10 @@ def get_logged_in_user_information():
 
 def is_logged_in():
     return freesound_username != ""
+
+
+def get_stored_access_token():
+    return access_token
 
 
 def get_crurrently_logged_in_user():
@@ -179,12 +224,22 @@ def get_access_token_from_code(code):
 
 def logout_from_freesound():
     global freesound_username
+    os.remove(stored_tokens_filename)  # Remove stored tokens
     freesound_username = ""
+
+
+class RefreshAccessTokenInThread(threading.Thread):
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        refresh_access_token()
 
 
 if os.path.exists(stored_tokens_filename):
     stored_tokens = json.load(open(stored_tokens_filename))
     access_token = stored_tokens['access_token']
     refresh_token = stored_tokens['refresh_token']
-    refresh_access_token()  # Refresh access token at startup to make sure we have a valid one
+    try:
+        RefreshAccessTokenInThread().start()  # Refesh access token at startup to make sure we have a valid one
+    except:
+        pass
 

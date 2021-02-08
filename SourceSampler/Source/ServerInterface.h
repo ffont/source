@@ -215,15 +215,15 @@ public:
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_FINISHED_DOWNLOADING_SOUND){
             if (message.size() == 1)  {
-                String soundTargetLocation = message[0].getString();
-                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundTargetLocation;
+                String soundID = message[0].getString();
+                String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundID;
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_DOWNLOADING_SOUND_PROGRESS){
             if (message.size() == 2)  {
-                String soundTargetLocation = message[0].getString();
+                String soundID = message[0].getString();
                 int percentageCompleted = message[1].getInt32();
-                String serializedParameters = soundTargetLocation + SERIALIZATION_SEPARATOR +
+                String serializedParameters = soundID + SERIALIZATION_SEPARATOR +
                                               (String)percentageCompleted + SERIALIZATION_SEPARATOR;
                 String actionMessage = String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
                 sendActionMessage(actionMessage);
@@ -267,7 +267,7 @@ public:
                 sendActionMessage(actionMessage);
             }
         } else if (message.getAddressPattern().toString() == OSC_ADDRESS_ADD_OR_REPLACE_SOUND){
-            if (message.size() == 11)  {
+            if (message.size() == 13)  {
                 int soundIdx = message[0].getInt32();
                 int soundID = message[1].getInt32();
                 String soundName = message[2].getString();
@@ -275,10 +275,12 @@ public:
                 String soundLicense = message[4].getString();
                 String oggDownloadURL = message[5].getString();
                 String localFilePath = message[6].getString();
-                String serializedSlices = message[7].getString();
-                String assignedNotes = message[8].getString();
-                int midiRootNote = message[9].getInt32();
-                String triggerDownloadSoundAction = message[10].getString();
+                String type = message[7].getString();
+                int sizeBytes = message[8].getInt32();
+                String serializedSlices = message[9].getString();
+                String assignedNotes = message[10].getString();
+                int midiRootNote = message[11].getInt32();
+                String triggerDownloadSoundAction = message[12].getString();
                 String serializedParameters = (String)soundIdx + SERIALIZATION_SEPARATOR +
                                               (String)soundID + SERIALIZATION_SEPARATOR +
                                               soundName + SERIALIZATION_SEPARATOR +
@@ -286,6 +288,8 @@ public:
                                               soundLicense + SERIALIZATION_SEPARATOR +
                                               oggDownloadURL + SERIALIZATION_SEPARATOR +
                                               localFilePath + SERIALIZATION_SEPARATOR +
+                                              type + SERIALIZATION_SEPARATOR +
+                                              (String)sizeBytes + SERIALIZATION_SEPARATOR +
                                               serializedSlices + SERIALIZATION_SEPARATOR +
                                               assignedNotes + SERIALIZATION_SEPARATOR +
                                               (String)midiRootNote + SERIALIZATION_SEPARATOR +

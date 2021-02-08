@@ -51,9 +51,12 @@ class StateNames(Enum):
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
     SOUND_LOCAL_FILE_PATH = auto()
+    SOUND_TYPE = auto()
+    SOUND_FILESIZE = auto()
     SOUND_SLICES = auto()
     SOUND_ASSIGNED_NOTES = auto()
     SOUND_LOADED_IN_SAMPLER = auto()
+    SOUND_LOADED_PREVIEW_VERSION = auto()
 
     SOUND_MIDI_CC_ASSIGNMENTS = auto()
     SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
@@ -237,12 +240,15 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             StateNames.SOUND_DURATION: float(sound_info.get('sounddurationinseconds', 0)),
             StateNames.SOUND_OGG_URL: sound_info.get('soundoggurl', ''),
             StateNames.SOUND_LOCAL_FILE_PATH: sound_info.get('soundlocalfilepath', ''),
+            StateNames.SOUND_TYPE: sound_info.get('soundtype', ''),
+            StateNames.SOUND_FILESIZE: int(sound_info.get('soundsize', 0)),
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,
             StateNames.SOUND_ASSIGNED_NOTES: sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
             StateNames.SOUND_LOADED_IN_SAMPLER: len(sound_parameters) > 0,
+            StateNames.SOUND_LOADED_PREVIEW_VERSION: sampler_sound.get('loadedPreviewVersion'.lower(), '1') == '1',
         }
         processed_sounds_info.append(processed_sound_info)
 
@@ -820,6 +826,16 @@ def get_filenames_in_dir(dir_name, keyword='*', skip_foldername='', match_case=T
         print("> Found " + str(len(names)) + " files.")
     return fullnames, folders, names
 
+
+def sizeof_fmt(num, suffix='B'):
+    '''Get human readable version of file size
+    From: https://stackoverflow.com/questions/1094841/get-human-readable-version-of-file-size
+    '''
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
 
 # -- Cache for sound parameters
 

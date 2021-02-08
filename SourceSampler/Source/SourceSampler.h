@@ -73,6 +73,7 @@ public:
     SourceSamplerSound (int _idx,
                         const String& name,
                         AudioFormatReader& source,
+                        bool _loadingPreviewVersion,
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
@@ -88,6 +89,8 @@ public:
         This could return nullptr if there was a problem loading the data.
     */
     AudioBuffer<float>* getAudioData() const noexcept       { return data.get(); }
+    
+    bool getLoadedPreviewVersion();
 
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;
@@ -131,6 +134,7 @@ private:
     int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
 
     String name;
+    bool loadedPreviewVersion = false;
     std::unique_ptr<AudioBuffer<float>> data;
     double sourceSampleRate;
     BigInteger midiNotes;

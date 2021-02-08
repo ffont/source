@@ -8,21 +8,24 @@ import traceback
 import numpy
 from scipy.io import wavfile
 import pyogg
+import aifc
 
 from freesound_api_key import FREESOUND_CLIENT_ID
-from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, is_logged_in, get_crurrently_logged_in_user
+from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, \
+    is_logged_in, get_crurrently_logged_in_user, get_user_bookmarks, bookmark_sound
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
     add_to_sp_cache, get_sp_parameter_value_from_cache, add_recent_query, add_recent_query_filter, get_recent_queries, \
-    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache
+    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
 except ModuleNotFoundError:
     N_LEDS = 9
 
-ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav']
+ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav', 'aiff', 'mp3', 'flac']
+ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR = ['ogg', 'wav', 'aiff']
 
 def get_local_audio_files_path():
     if sm is not None and sm.source_state:
@@ -82,7 +85,7 @@ sound_parameters_info_dict = {
 }
 
 EXTRA_PAGE_1_NAME = "extra1"
-EXTRA_PAGE_2_NAME = "volatile"
+EXTRA_PAGE_2_NAME = "extra2"
 sound_parameter_pages = [
     [
         "gain",
@@ -209,6 +212,23 @@ class StateManager(object):
     should_show_start_animation = True
     block_ui_input = False
     waiting_to_go_to_last_loaded_sound = False
+    download_original_files = False  # TODO: read this setting from some file in disk
+
+    sm_settings_filepath = 'sm_settings.json'
+
+    def __init__(self):
+        if os.path.exists(self.sm_settings_filepath):
+            stored_settings = json.load(open(self.sm_settings_filepath))
+            self.download_original_files = stored_settings.get('download_original_files', False)
+
+    def save_sm_settings(self):
+        json.dump({
+            'download_original_files': self.download_original_files,
+        }, open(self.sm_settings_filepath, 'w'))
+
+    def set_download_original_files(self, value):
+        self.download_original_files = value
+        self.save_sm_settings()
 
     def set_osc_client(self, osc_client):
         self.osc_client = osc_client
@@ -483,6 +503,8 @@ class State(object):
             new_sound['license'], 
             new_sound['previews']['preview-hq-ogg'],
             local_file_path,
+            new_sound['type'],
+            new_sound['filesize'],
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
             assinged_notes,  # This should be string representation of hex number
             root_note, # The note to be used as root
@@ -934,7 +956,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
 
 class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
-    pages = [EXTRA_PAGE_1_NAME]
+    pages = [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]
     sound_idx = -1
     selected_sound_is_playing = False
 
@@ -981,7 +1003,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             lines += [
                 justify_text('ID:', '{0}'.format(sound_id) if sound_id != "-1" else "-"),
                 justify_text('User:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_AUTHOR))),
-                justify_text('CC License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE)))
+                justify_text('License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE)))
             ]
             if self.sound_is_loaded_in_sampler():
                 lines += [justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION)))]
@@ -1003,6 +1025,13 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                         # This could be improved in the future
                         lines += ['Loading in sampler...']
 
+        elif self.current_page_data == EXTRA_PAGE_2_NAME:
+            # Show other sound information
+            using_preview_marker = '*' if sm.gsp(self.sound_idx, StateNames.SOUND_LOADED_PREVIEW_VERSION, default=True) and self.sound_is_loaded_in_sampler() else ''
+            lines += [
+                justify_text('Type:', '{}{}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_TYPE, default='-').upper(), using_preview_marker)),
+                justify_text('Size:', '{}{}'.format(sizeof_fmt(sm.gsp(self.sound_idx, StateNames.SOUND_FILESIZE, default=0)), using_preview_marker))
+            ]
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
@@ -1054,11 +1083,12 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             else:
                 if self.sound_is_loaded_in_sampler():
                     # If sound is already loaded, show all pages
-                    self.pages = [EXTRA_PAGE_1_NAME] + sound_parameter_pages
+                    self.pages = [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME] + sound_parameter_pages
                 else:
                     # Oterwise only show the first one
-                    self.pages = [EXTRA_PAGE_1_NAME]
-                    self.current_page = 0
+                    self.pages = [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]
+                    if self.current_page > len(self.pages) - 1:
+                        self.current_page = 0
     
     def on_button_pressed(self, button_idx, shift=False):
         # Stop current sound
@@ -1103,7 +1133,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             self.play_selected_sound()
 
     def on_fader_moved(self, fader_idx, value, shift=False):
-        if self.current_page_data == EXTRA_PAGE_1_NAME:
+        if self.current_page_data in [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]:
             pass
         else:
             # Set sound parameters for selected sound
@@ -1427,12 +1457,18 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     OPTION_BY_QUERY = "From new query"
     OPTION_RANDOM = "Random sound"
+    OPTION_FROM_BOOKMARK = "From bookmarks"
     OPTION_LOCAL = "Load from disk"
     
     items = [OPTION_BY_QUERY, OPTION_RANDOM, OPTION_LOCAL]
     page_size = 4
 
     def draw_display_frame(self):
+        if is_logged_in() and self.OPTION_FROM_BOOKMARK not in self.items:
+            self.items.append(self.OPTION_FROM_BOOKMARK)
+        if not is_logged_in() and self.OPTION_FROM_BOOKMARK in self.items:
+            self.items = [item for item in self.items if item != self.OPTION_FROM_BOOKMARK]
+
         lines = [{
             "underline": True, 
             "text": "Add new sound..."
@@ -1489,7 +1525,20 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                 ))
             else:
                 sm.show_global_message('Local files\nnot ready...')
-
+        elif action_name == self.OPTION_FROM_BOOKMARK:
+            user_bookmarks = get_user_bookmarks()
+            sounds_data = {item['name']:item for item in user_bookmarks}
+            sm.move_to(SoundChooserState(
+                    items=[item['name'] for item in user_bookmarks],
+                    sounds_data=sounds_data,
+                    title1="Select a sound...",
+                    go_back_n_times=3,
+                    callback=lambda sound_name: (self.send_add_or_replace_sound_to_plugin(
+                        -1,  # -1 to add new sound 
+                        sounds_data[sound_name],
+                        move_once_loaded=True
+                    ), sm.show_global_message('Loading file\n{}...'.format(sound_name))),
+                ))
 
 class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
@@ -1506,10 +1555,11 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_SOUND_USAGE_LOG = "Sound usage log..."
     OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
     OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
+    OPTION_DOWNLOAD_ORIGINAL = "Use originals..."
 
     items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
              OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
-             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_LOGIN_TO_FREESOUND]
+             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL, OPTION_LOGIN_TO_FREESOUND]
     page_size = 5
 
     def draw_display_frame(self):
@@ -1617,6 +1667,8 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             logout_from_freesound()
             sm.show_global_message('Logged out\nfrom Freesound')
             sm.go_back()
+        elif action_name == self.OPTION_DOWNLOAD_ORIGINAL:
+            sm.move_to(MenuCallbackState(items=['No', 'Yes'], selected_item=1 if sm.download_original_files else 0, title1="Download originals...", callback=lambda x: sm.set_download_original_files(True if x == 'Yes' else False), go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -1627,6 +1679,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     OPTION_BY_SIMILARITY = "Find similar"
     OPTION_BY_RANDOM = "Random sound"
     OPTION_FROM_DISK = "Load from disk"
+    OPTION_FROM_BOOKMARK = "From bookmark"
 
     sound_idx = -1
     items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_BY_RANDOM, OPTION_FROM_DISK]
@@ -1644,6 +1697,11 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         return properties
 
     def draw_display_frame(self):
+        if is_logged_in() and self.OPTION_FROM_BOOKMARK not in self.items:
+            self.items.append(self.OPTION_FROM_BOOKMARK)
+        if not is_logged_in() and self.OPTION_FROM_BOOKMARK in self.items:
+            self.items = [item for item in self.items if item != self.OPTION_FROM_BOOKMARK]
+            
         lines = [{
             "underline": True, 
             "move": True,
@@ -1707,6 +1765,20 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 ))
             else:
                 sm.show_global_message('Local files\nnot ready...')
+        elif action_name == self.OPTION_FROM_BOOKMARK:
+            user_bookmarks = get_user_bookmarks()
+            sounds_data = {item['name']:item for item in user_bookmarks}
+            sm.move_to(SoundChooserState(
+                    items=[item['name'] for item in user_bookmarks],
+                    sounds_data=sounds_data,
+                    title1="Select a sound...",
+                    go_back_n_times=3,
+                    callback=lambda sound_name: (self.send_add_or_replace_sound_to_plugin(
+                        self.sound_idx,
+                        sounds_data[sound_name]
+                    ), sm.show_global_message('Loading file\n{}...'.format(sound_name))),
+                ))
+        
         else:
             sm.show_global_message('Not implemented...')
 
@@ -1720,6 +1792,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     OPTION_OPEN_IN_FREESOUND = "Open in Freesound"
     OPTION_DELETE = "Delete"
     OPTION_GO_TO_SOUND = "Go to sound..."
+    OPTION_BOOKMARK = "Bookmark in Freesound"
 
     MIDI_CC_ADD_NEW_TEXT = "Add new..."
 
@@ -1754,6 +1827,11 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.move_to(SoundSelectedContextualMenuState(0), replace_current=True)
 
     def draw_display_frame(self):
+        if is_logged_in() and self.OPTION_BOOKMARK not in self.items:
+            self.items.append(self.OPTION_BOOKMARK)
+        if not is_logged_in() and self.OPTION_BOOKMARK in self.items:
+            self.items = [item for item in self.items if item != self.OPTION_BOOKMARK]
+
         lines = [{
             "underline": True, 
             "move": True,
@@ -1795,6 +1873,17 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 title1="Go to sound...",
                 callback=lambda note: (sm.go_back(n_times=3), sm.move_to(SoundSelectedState(self.get_sound_idx_from_note(note)))),
             ))
+        elif action_name == self.OPTION_BOOKMARK:
+            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            if selected_sound_id != '-':
+                result = bookmark_sound(selected_sound_id)
+                if result:
+                    sm.show_global_message('Freesound\nbookmark added!')
+                else:
+                    sm.show_global_message('Error bookmarking\n sound')
+            else:
+                sm.show_global_message('Can\'t bookmark non\nFreesound sound')
+            sm.go_back()
         else:
             sm.show_global_message('Not implemented...')
 
@@ -2187,13 +2276,24 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default=''):
                     path = sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)
                 else:
-                    filename = '{}.ogg'.format(sound_id)
-                    path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
+                    ty = sm.gsp(self.sound_idx, StateNames.SOUND_TYPE, default='')
+                    if ty != '' and ty.lower() in ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR:
+                        # If sound has type property, try with original file path first
+                        original_filename = '{}.original.{}'.format(sound_id, ty)
+                        path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), original_filename)
+                        if not os.path.exists(path):
+                            # If original file does not exist, assign path to preview path
+                            filename = '{}.ogg'.format(sound_id)
+                            path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
+                    else:
+                        # If sound has no "type" property, try directly with preview path
+                        filename = '{}.ogg'.format(sound_id)
+                        path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
                 try:
                     extension = path.split('.')[-1]
                 except IndexError:
                     extension = ''
-                if os.path.exists(path) and extension in ALLOWED_AUDIO_FILE_EXTENSIONS:
+                if os.path.exists(path) and extension in ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR:
                     sm.show_global_message('Loading\nwaveform...', duration=10)
                     if extension == 'ogg':                
                         vorbis_file = pyogg.VorbisFile(path)
@@ -2203,6 +2303,14 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                         self.sound_sr, self.sound_data_array = wavfile.read(path)    
                         if len(self.sound_data_array.shape) > 1:
                             self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
+                    elif extension == 'aiff':
+                        aiff_file = aifc.open(path)
+                        self.sound_sr = aiff_file.getframerate()
+                        self.sound_data_array = numpy.fromstring(aiff_file.readframes(aiff_file.getnframes()), numpy.short).byteswap()
+                        aiff_file.close()
+                        if len(self.sound_data_array.shape) > 1:
+                            self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
+
                     self.sound_data_array = self.sound_data_array / abs(max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
                     self.sound_length = self.sound_data_array.shape[0]
@@ -2514,7 +2622,7 @@ class FileChooserState(MenuCallbackState):
             lines.append({
                 "invert": True if item == self.selected_item_name else False, 
                 "move": True if item == self.selected_item_name else False,
-                "text": item.replace(self.base_path, '')[1:]  # Only display filename
+                "text": item.replace(self.base_path, '').replace('/', '')
             })
         return lines
 
@@ -2535,6 +2643,18 @@ class FileChooserState(MenuCallbackState):
     def on_deactivating_state(self):
         super().on_deactivating_state()
         sm.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+
+
+class SoundChooserState(FileChooserState):
+
+    base_path = ''
+    sounds_data = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sounds_data = kwargs.get('sounds_data', '')
+        self.shift_callback=lambda sound_name: sm.send_osc_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
+
 
 
 state_manager = StateManager()
