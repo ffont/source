@@ -212,23 +212,6 @@ class StateManager(object):
     should_show_start_animation = True
     block_ui_input = False
     waiting_to_go_to_last_loaded_sound = False
-    download_original_files = False  # TODO: read this setting from some file in disk
-
-    sm_settings_filepath = 'sm_settings.json'
-
-    def __init__(self):
-        if os.path.exists(self.sm_settings_filepath):
-            stored_settings = json.load(open(self.sm_settings_filepath))
-            self.download_original_files = stored_settings.get('download_original_files', False)
-
-    def save_sm_settings(self):
-        json.dump({
-            'download_original_files': self.download_original_files,
-        }, open(self.sm_settings_filepath, 'w'))
-
-    def set_download_original_files(self, value):
-        self.download_original_files = value
-        self.save_sm_settings()
 
     def set_osc_client(self, osc_client):
         self.osc_client = osc_client
@@ -480,7 +463,14 @@ class State(object):
         sm.show_global_message("Updated layout")
 
     def set_num_voices(self, num_voices):
-        sm.send_osc_to_plugin("/set_polyphony", [num_voices]) 
+        sm.send_osc_to_plugin("/set_polyphony", [num_voices])
+
+    def set_download_original_files(self, preference):
+        sm.send_osc_to_plugin("/set_use_original_files", [{
+            'Never': 'never',
+            'Only small': 'onlyShort',
+            'Always': 'always',
+        }[preference]])
 
     def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download="", local_file_path="", move_once_loaded=False):
         sound_onsets_list = []
@@ -1557,7 +1547,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_SOUND_USAGE_LOG = "Sound usage log..."
     OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
     OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
-    OPTION_DOWNLOAD_ORIGINAL = "Use originals..."
+    OPTION_DOWNLOAD_ORIGINAL = "Use original files..."
 
     items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
              OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
@@ -1670,7 +1660,8 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.show_global_message('Logged out\nfrom Freesound')
             sm.go_back()
         elif action_name == self.OPTION_DOWNLOAD_ORIGINAL:
-            sm.move_to(MenuCallbackState(items=['No', 'Yes'], selected_item=1 if sm.download_original_files else 0, title1="Download originals...", callback=lambda x: sm.set_download_original_files(True if x == 'Yes' else False), go_back_n_times=2))
+            selected_item = ['never', 'onlyShort', 'always'].index(sm.source_state.get(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never'))
+            sm.move_to(MenuCallbackState(items=['Never', 'Only small', 'Always'], selected_item=selected_item, title1="Use original files...", callback=lambda x: self.set_download_original_files(x), go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 

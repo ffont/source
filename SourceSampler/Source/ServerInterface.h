@@ -340,6 +340,12 @@ public:
                 String actionMessage = String(ACTION_PLAY_SOUND_FROM_PATH) + ":" + soundPath;
                 sendActionMessage(actionMessage);
             }
+        } else if (message.getAddressPattern().toString() == OSC_ADDRESS_SET_USE_ORIGINAL_FILES_PREFERENCE){
+            if (message.size() == 1)  {
+                String preference = message[0].getString();
+                String actionMessage = String(ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE) + ":" + preference;
+                sendActionMessage(actionMessage);
+            }
         }
     }
     

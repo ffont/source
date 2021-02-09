@@ -642,12 +642,14 @@ def download_sounds():
     preview_urls = [url for url in request.args['oggUrls'].split(',') if url]
     ids =  [sid for sid in request.args['ids'].split(',') if sid]
     types =  [ty.lower() for ty in request.args['types'].split(',') if ty]
-    urls_to_download_extra = []  # This is to download extra previews of sounds which do not need to be notified to plugin
-    outfiles_extra = []  # This is to download extra previews of sounds which do not need to be notified to plugin
+    sizes =  [int(s) for s in request.args['sizes'].split(',') if s]
+    extra_preview_files_to_download_urls = []  # This is to download extra previews of sounds which do not need to be notified to plugin
+    extra_preview_files_to_download_outfiles = []  # This is to download extra previews of sounds which do not need to be notified to plugin
+    MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES = 1024 * 1024 * 15  # 15 MB This should be in sync with MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD in defines.h
+    use_original_preference = state_manager.source_state.get(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never')
 
-
-    for (sound_id, ty, preview_url) in zip(ids, types, preview_urls):
-        if state_manager.download_original_files and ty != 'not_available' and is_logged_in() and ty in ALLOWED_AUDIO_FILE_EXTENSIONS:
+    for (sound_id, ty, preview_url, size) in zip(ids, types, preview_urls, sizes):
+        if  (use_original_preference == 'always' or (use_original_preference == 'onlyShort' and size <= MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES)) and ty != 'not_available' and is_logged_in() and ty in ALLOWED_AUDIO_FILE_EXTENSIONS:
             # If downloading original files, construct sound download URL and use proper sound type to store
             # To download original files, users needs to be logged in
             # Also only download original quality files for supported formats, for others use previews
@@ -656,16 +658,23 @@ def download_sounds():
             
             # Add urls to download and outfiles to extra lists. This will also be downloaded but the plugin won't be notified
             # This is mainly used to have sound files compatible with the slice editor
-            urls_to_download_extra.append(preview_url)
-            outfiles_extra.append(os.path.join(request.args['location'], sound_id + '.ogg'))
+            extra_preview_files_to_download_urls.append(preview_url)
+            extra_preview_files_to_download_outfiles.append(os.path.join(request.args['location'], sound_id + '.ogg'))
         else:
             # If not downloading original files, trigger download of preview with the URL passed
             urls_to_download.append(preview_url)
             outfiles.append(os.path.join(request.args['location'], sound_id + '.ogg'))
 
         sound_ids.append(sound_id)
+
+    # Trigger the download of "main" files
     download_all_sounds(urls_to_download, outfiles, sound_ids)
-    download_all_sounds(urls_to_download_extra, outfiles_extra, sound_ids, no_report=True)
+
+    # Trigger the download of preview files for those files that are also being downloaded in original quality
+    # These versions of the files will be used in the slice editor and possibly in other places if the main original quality download does not succeed
+    # These download tasks do not report status to the plugin as the plugin is not waiting for them to finish to load any sound
+    download_all_sounds(extra_preview_files_to_download_urls, extra_preview_files_to_download_outfiles, sound_ids, no_report=True)
+
     return 'Downloading async...'
 
 

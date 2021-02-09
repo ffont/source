@@ -96,6 +96,8 @@ public:
     File presetFilesLocation;
     File tmpFilesLocation;
     
+    String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
+    
     File getPresetFilePath(const String& presetFilename);
     String getPresetFilenameFromNameAndIndex(const String& presetName, int index);
     File getGlobalSettingsFilePathFromName();
@@ -129,7 +131,10 @@ public:
     };
     QueryMakerThread queryMakerThread;
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
-    File getSoundFileLocation(ValueTree sound);
+    File getSoundPreviewLocation(ValueTree sound);
+    File getSoundOriginalFileLocation(ValueTree sound);
+    File getSoundLocalPathLocation(ValueTree sound);
+    File getSoundFileLocationToLoad(ValueTree sound);
     void downloadSounds(bool blocking, int soundIndexFilter);
     bool allSoundsFinishedDownloading();
     
@@ -179,7 +184,7 @@ public:
     
     void previewFile(const String& path);
     void stopPreviewingFile();
-    String currentlyLoadedPath = "";
+    String currentlyLoadedPreviewFilePath = "";
     
 private:
     AudioFormatManager audioFormatManager;

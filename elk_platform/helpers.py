@@ -26,6 +26,8 @@ class StateNames(Enum):
     PRESETS_DATA_LOCATION = auto()
     TMP_DATA_LOCATION = auto()
 
+    USE_ORIGINAL_FILES_PREFERENCE = auto()
+
     STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
     NETWORK_IS_CONNECTED = auto()
@@ -144,7 +146,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     sampler_state = preset_state.find_all("Sampler".lower())[0]
     global_state = plugin_state_xml.find_all("GlobalSettings".lower())[0]
 
-    # File paths
+    # File paths and other global settings
     source_state[StateNames.SOURCE_DATA_LOCATION] = global_state.get('sourceDataLocation'.lower(), None)
     source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
     source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
@@ -157,6 +159,8 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
         if tmp_base_path is None:
             tmp_base_path = source_state.get(StateNames.TMP_DATA_LOCATION, None)
+
+    source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = global_state.get('useOriginalFiles'.lower(), 'never')
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))

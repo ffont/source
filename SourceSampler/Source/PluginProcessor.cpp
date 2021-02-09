@@ -453,6 +453,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex, nullptr);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES, useOriginalFilesPreference, nullptr);
     settings.setProperty(STATE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
@@ -494,6 +495,10 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET)){
                 latestLoadedPreset = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET);
+            }
+            
+            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES)){
+                useOriginalFilesPreference = settings.getProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES).toString();
             }
             
             ValueTree _presetNumberMapping = settings.getChildWithName(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
@@ -975,6 +980,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         } else {
             previewFile(soundPath);
         }
+    } else if (message.startsWith(String(ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE))){
+        String preference = message.substring(String(ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE).length() + 1);
+        useOriginalFilesPreference = preference;
+        saveGlobalPersistentStateToFile();
     }
     
 }
@@ -1099,24 +1108,61 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     }
 }
 
-File SourceSamplerAudioProcessor::getSoundFileLocation(ValueTree soundInfo)
+File SourceSamplerAudioProcessor::getSoundPreviewLocation(ValueTree soundInfo)
+{
+    if (soundInfo.hasProperty(STATE_SOUND_INFO_ID)){
+        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg");
+    }
+    return File();  // Return empty path
+}
+
+File SourceSamplerAudioProcessor::getSoundOriginalFileLocation(ValueTree soundInfo)
+{
+    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
+        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ".original." + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString());
+    }
+    return File();  // Return empty path
+}
+
+File SourceSamplerAudioProcessor::getSoundLocalPathLocation(ValueTree soundInfo)
 {
     if (soundInfo.hasProperty(STATE_SOUND_INFO_LOCAL_FILE_PATH)){
         // This is for sounds loaded directly from SD card
         return File(soundInfo.getProperty(STATE_SOUND_INFO_LOCAL_FILE_PATH).toString());
     }
+    return File();  // Return empty path
+}
+
+
+File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo)
+{
+    File localPath = getSoundLocalPathLocation(soundInfo);
+    if (localPath.getFullPathName() != ""){
+        return localPath;
+    }
     
-    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-        // Freesound sound, check if original file exists in disk, if it does exist, return this path,
-        // otherwise return OG
-        File originalFileLocation = soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ".original." + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString());
-        if (originalFileLocation.existsAsFile() && originalFileLocation.getSize() > 0){
-            return originalFileLocation;
+    if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+        File originalFilePath = getSoundOriginalFileLocation(soundInfo);
+        if (originalFilePath.getFullPathName() != ""){
+            if (originalFilePath.exists() && originalFilePath.getSize() > 0){
+                return originalFilePath;
+            }
+        }
+    } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+        
+        if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
+            if ((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                File originalFilePath = getSoundOriginalFileLocation(soundInfo);
+                if (originalFilePath.getFullPathName() != ""){
+                    if (originalFilePath.exists() && originalFilePath.getSize() > 0){
+                        return originalFilePath;
+                    }
+                }
+            }
         }
     }
     
-    // If other conditions are not met, return the path to the OGG preview
-    return soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg");
+    return getSoundPreviewLocation(soundInfo);
 }
 
 void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexFilter)
@@ -1161,20 +1207,69 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
     String oggUrlsParam = "";
     String typesParam = "";
     String idsParam = "";
+    String sizesParam = "";
     int nSentToDownload = 0;
+    int nAlreadyDownloaded = 0;
     int nLocalSounds = 0;
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
         if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
             if (soundInfo.hasProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL)){
-                if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-                    typesParam = typesParam + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString() + ",";
-                } else {
-                    typesParam = typesParam + "not_available,";
+                // If sound has property STATE_SOUND_INFO_OGG_DOWNLOAD_URL it means it is a Freesound sound
+                // First check if the sound has already been downloaded in the original or preview locations
+                // (which one to check for will depend on usage of original files preference).
+                // If sounds have already been downloaded, trigger ACTION_FINISHED_DOWNLOADING_SOUND directly, otherwise
+                // send request to server to download sounds
+                
+                bool soundAlreadyDownloaded = false;
+                File previewFilePath = getSoundPreviewLocation(soundInfo);
+                File originalFilePath = getSoundOriginalFileLocation(soundInfo);
+                
+                if (useOriginalFilesPreference == USE_ORIGINAL_FILES_NEVER){
+                    if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
+                        soundAlreadyDownloaded = true;
+                    }
+                } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+                    if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
+                        soundAlreadyDownloaded = true;
+                    }
+                } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+                    
+                    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
+                        if ((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                            if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
+                                soundAlreadyDownloaded = true;
+                            }
+                        } else {
+                            if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
+                                soundAlreadyDownloaded = true;
+                            }
+                        }
+                    }
                 }
-                oggUrlsParam = oggUrlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
-                idsParam = idsParam + soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ",";
-                nSentToDownload += 1;
+                
+                if (soundAlreadyDownloaded) {
+                    String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
+                    actionListenerCallback(actionMessage);
+                    nAlreadyDownloaded += 1;
+                    
+                } else {
+                    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
+                        typesParam = typesParam + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString() + ",";
+                    } else {
+                        typesParam = typesParam + "not_available,";
+                    }
+                    if (soundInfo.hasProperty(STATE_SOUND_INFO_SIZE)){
+                        sizesParam = sizesParam + soundInfo.getProperty(STATE_SOUND_INFO_SIZE).toString() + ",";
+                    } else {
+                        sizesParam = sizesParam + "0,";
+                    }
+                    oggUrlsParam = oggUrlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
+                    idsParam = idsParam + soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ",";
+                    nSentToDownload += 1;
+                }
+                
+                
             } else {
                 
                 // If sound does not have property STATE_SOUND_INFO_OGG_DOWNLOAD_URL, it means the
@@ -1189,10 +1284,12 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
     url = url.withParameter("oggUrls", oggUrlsParam);
     url = url.withParameter("ids", idsParam);
     url = url.withParameter("types", typesParam);
+    url = url.withParameter("sizes", sizesParam);
     url = url.withParameter("location", soundsDownloadLocation.getFullPathName());
     
     logToState("Downloading sounds...");
     logToState("- " + (String)nSentToDownload + " sounds sent to python server for downloading");
+    logToState("- " + (String)nAlreadyDownloaded + " already downloaded and should not be downloaded");
     logToState("- " + (String)nLocalSounds + " sounds are local and should not be downloaded");
     
     if (nSentToDownload > 0){
@@ -1238,7 +1335,7 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
     int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
     
     ValueTree soundInfo = loadedSoundsInfo.getChild(soundIdx);
-    File audioSample = getSoundFileLocation(soundInfo);  // Get location of file to download. If original freesound is preset, take preference
+    File audioSample = getSoundFileLocationToLoad(soundInfo);  // Get location of file to download. If original freesound is preset, take preference
     if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
         logToState("- Adding sound " + audioSample.getFullPathName());
         
@@ -1612,7 +1709,7 @@ void SourceSamplerAudioProcessor::previewFile(const String& path)
     if (transportSource.isPlaying()){
         transportSource.stop();
     }
-    if (currentlyLoadedPath != path){
+    if (currentlyLoadedPreviewFilePath != path){
         // Load new file
         String pathToLoad;
         if (path.startsWith("http")){
