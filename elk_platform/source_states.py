@@ -1008,8 +1008,8 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                     # If sound is not loaded in sampler and is not downloading it can be that:
                     # 1) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and is being loaded right now
                     # 2) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and it can't be found on disk (or there were errors loading)
-                    if not os.path.exists(sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)):
-                        lines += ['File not found...']
+                    if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default='') and not os.path.exists(sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)):
+                        lines += ['Local file not found...']
                     else:
                         # If there are errors loading, this will always show 'Loading in sampler...'
                         # This could be improved in the future

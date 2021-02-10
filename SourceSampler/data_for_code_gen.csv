@@ -13,10 +13,10 @@ freezePlayheadSpeed;float;1;5000;100;1;speed modifier for the max speed at which
 filterCutoff;float;10;20000;20000;1;
 filterRessonance;float;0;1;0;1;
 filterKeyboardTracking;float;0;1;0;;
-filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;;
+filterADSR;adsr;;;0.01f, 0.0f, 1.0f, 0.01f;;
 filterADSR2CutoffAmt;float;0;100;1;;
 gain;float;-80;12;-10;1;db
-ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 1.0f;;
+ampADSR;adsr;;;0.01f, 0.0f, 1.0f, 0.01f;;
 pan;float;-1;1;0;1;
 midiRootNote;int;0;127;64;;midi note that will play the sound at original speed
 pitch;float;-36;36;0;1;semitones (with respect to midi root note)

@@ -131,6 +131,8 @@ public:
     };
     QueryMakerThread queryMakerThread;
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
+    bool isSupportedAudioFileFormat(const String& extension);
+    bool fileLocationIsSupportedAudioFileFormat(File location);
     File getSoundPreviewLocation(ValueTree sound);
     File getSoundOriginalFileLocation(ValueTree sound);
     File getSoundLocalPathLocation(ValueTree sound);

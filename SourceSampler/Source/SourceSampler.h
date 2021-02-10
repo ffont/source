@@ -162,10 +162,10 @@ private:
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
     float filterKeyboardTracking = 0.0f;
-    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 1.0f};
+    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 0.01f};
     float filterADSR2CutoffAmt = 1.0f;
     float gain = -10.0f;
-    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 1.0f};
+    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 0.01f};
     float pan = 0.0f;
     int midiRootNote = 64;
     float pitch = 0.0f;

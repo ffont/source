@@ -404,6 +404,7 @@ def run_elk_bridge_loop():
 
 class SoundDownloader:
     def __init__(self, url, outfile, sound_id, no_report):
+        self.time_started = time.time()
         self.old_percent = 0
         self.url = url
         self.outfile = outfile
@@ -432,7 +433,11 @@ def download_sound(url, outfile, sound_id, no_report):
             opener = urllib.request.build_opener()
             opener.addheaders = [('Authorization', 'Bearer {}'.format(get_stored_access_token()))]
             urllib.request.install_opener(opener)
-        urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)
+        try:
+            urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)
+        except urllib.error.ContentTooShortError as e:
+            print('ERROR DOWNLOADING AFTER {:.2f} seconds: {}'.format(time.time()-progress.time_started, progress.url))
+            print(e)
     else:
         if not no_report:
             # If sound already exists, notify plugin about that

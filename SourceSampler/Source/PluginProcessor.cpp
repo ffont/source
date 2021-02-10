@@ -156,6 +156,9 @@ int SourceSamplerAudioProcessor::getCurrentProgram()
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
+    // First of all clear sounds of current program
+    sampler.clearSounds();
+    
     bool loaded = loadPresetFromFile(getPresetFilenameByIndex(index));
     if (loaded){
         currentPresetIndex = index;
@@ -1108,6 +1111,17 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     }
 }
 
+bool SourceSamplerAudioProcessor::isSupportedAudioFileFormat(const String& extension)
+{
+    return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
+}
+
+
+bool SourceSamplerAudioProcessor::fileLocationIsSupportedAudioFileFormat(File location)
+{
+    return isSupportedAudioFileFormat(location.getFileExtension());
+}
+
 File SourceSamplerAudioProcessor::getSoundPreviewLocation(ValueTree soundInfo)
 {
     if (soundInfo.hasProperty(STATE_SOUND_INFO_ID)){
@@ -1133,15 +1147,18 @@ File SourceSamplerAudioProcessor::getSoundLocalPathLocation(ValueTree soundInfo)
     return File();  // Return empty path
 }
 
-
 File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo)
 {
     File localPath = getSoundLocalPathLocation(soundInfo);
     if (localPath.getFullPathName() != ""){
+        // If local file path exists, then the sound is not from Freesound and we should load directly
+        // the file referenced in local file property
         return localPath;
     }
     
     if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+        // Return path to original sound if sound has "type" property and the file at sonund_id.original.type exists
+        // Otherwise the function will default to the preview file path
         File originalFilePath = getSoundOriginalFileLocation(soundInfo);
         if (originalFilePath.getFullPathName() != ""){
             if (originalFilePath.exists() && originalFilePath.getSize() > 0){
@@ -1150,8 +1167,11 @@ File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo
         }
     } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
         
-        if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-            if ((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+        if (soundInfo.hasProperty(STATE_SOUND_INFO_SIZE)){
+            // If sound has property "size", check if it is below the maximum allowed for original files and then
+            // check if original file exists at sonund_id.original.type (like in the previous case)
+            // Otherwise the function will default to the preview file path
+            if ((int)soundInfo.getProperty(STATE_SOUND_INFO_SIZE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
                 File originalFilePath = getSoundOriginalFileLocation(soundInfo);
                 if (originalFilePath.getFullPathName() != ""){
                     if (originalFilePath.exists() && originalFilePath.getSize() > 0){
@@ -1172,6 +1192,8 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
     #if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
     
     // Download the sounds within the plugin
+    // NOTE that when downloading in the plugin, only using previews is supported so
+    // we make no check about useOriginalFilesPreference
     
     std::vector<std::tuple<File, String, String>> soundTargetLocationsAndUrlsToDownload = {};
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
@@ -1224,23 +1246,33 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
                 bool soundAlreadyDownloaded = false;
                 File previewFilePath = getSoundPreviewLocation(soundInfo);
                 File originalFilePath = getSoundOriginalFileLocation(soundInfo);
-                
+
                 if (useOriginalFilesPreference == USE_ORIGINAL_FILES_NEVER){
                     if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
                         soundAlreadyDownloaded = true;
                     }
+                    
                 } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
-                    if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
-                        soundAlreadyDownloaded = true;
+                    if (fileLocationIsSupportedAudioFileFormat(originalFilePath)){
+                        if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
+                            soundAlreadyDownloaded = true;
+                        }
+                    } else {
+                        // If we want original file but original file format is not supported, check for preview
+                        if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
+                            soundAlreadyDownloaded = true;
+                        }
                     }
+                    
                 } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
                     
                     if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-                        if ((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                        if (((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD) && (fileLocationIsSupportedAudioFileFormat(originalFilePath))){
                             if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
                                 soundAlreadyDownloaded = true;
                             }
                         } else {
+                            // If original file is too big or file format is not supported, check for preview
                             if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
                                 soundAlreadyDownloaded = true;
                             }
