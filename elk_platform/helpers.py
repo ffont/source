@@ -27,6 +27,7 @@ class StateNames(Enum):
     TMP_DATA_LOCATION = auto()
 
     USE_ORIGINAL_FILES_PREFERENCE = auto()
+    MIDI_IN_CHANNEL = auto()
 
     STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
@@ -161,6 +162,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             tmp_base_path = source_state.get(StateNames.TMP_DATA_LOCATION, None)
 
     source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = global_state.get('useOriginalFiles'.lower(), 'never')
+    source_state[StateNames.MIDI_IN_CHANNEL] = int(global_state.get('midiInChannel'.lower(), -1))
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))

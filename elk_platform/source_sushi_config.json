@@ -22,15 +22,5 @@
                 }
             ]
         }
-    ],
-    "midi": {
-        "track_connections": [
-            {
-                "port": 0,
-                "channel": 4,
-                "track": "main",
-                "raw_midi": true
-            }
-        ]
-    }
+    ]
 }

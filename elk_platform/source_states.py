@@ -465,6 +465,9 @@ class State(object):
     def set_num_voices(self, num_voices):
         sm.send_osc_to_plugin("/set_polyphony", [num_voices])
 
+    def set_midi_in_chhannel(self, midi_channel):
+        sm.send_osc_to_plugin("/set_midi_in_channel", [midi_channel])
+
     def set_download_original_files(self, preference):
         sm.send_osc_to_plugin("/set_use_original_files", [{
             'Never': 'never',
@@ -1545,13 +1548,14 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOAD_PRESET = "Load preset..."
     OPTION_GO_TO_SOUND = "Go to sound..."
     OPTION_SOUND_USAGE_LOG = "Sound usage log..."
+    OPTION_MIDI_IN_CHANNEL = "Set MIDI in ch..."
     OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
     OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
     OPTION_DOWNLOAD_ORIGINAL = "Use original files..."
 
     items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
              OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
-             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL, OPTION_LOGIN_TO_FREESOUND]
+             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL, OPTION_MIDI_IN_CHANNEL, OPTION_LOGIN_TO_FREESOUND]
     page_size = 5
 
     def draw_display_frame(self):
@@ -1662,6 +1666,9 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_DOWNLOAD_ORIGINAL:
             selected_item = ['never', 'onlyShort', 'always'].index(sm.source_state.get(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never'))
             sm.move_to(MenuCallbackState(items=['Never', 'Only small', 'Always'], selected_item=selected_item, title1="Use original files...", callback=lambda x: self.set_download_original_files(x), go_back_n_times=2))
+        elif action_name == self.OPTION_MIDI_IN_CHANNEL:
+            current_midi_in = sm.source_state.get(StateNames.MIDI_IN_CHANNEL, 0)
+            sm.move_to(EnterNumberState(initial=current_midi_in, minimum=0, maximum=16, title1="Midi in channel", callback=self.set_midi_in_chhannel, go_back_n_times=2))
         else:
             sm.show_global_message('Not implemented...')
 
