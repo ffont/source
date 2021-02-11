@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
-from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, get_all_sound_usage_logs
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, get_all_sound_usage_logs, sizeof_fmt
 
 from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path
 
@@ -402,7 +402,7 @@ def run_elk_bridge_loop():
 
 # --- Sound downloader ------------------------------------------------------------------------
 
-class SoundDownloader:
+class SoundDownloaderProgress:
     def __init__(self, url, outfile, sound_id, no_report):
         self.time_started = time.time()
         self.old_percent = 0
@@ -422,12 +422,16 @@ class SoundDownloader:
             if not self.no_report:
                 osc_client.send_message('/finished_downloading_sound', [str(self.sound_id)])
 
+            n_seconds = time.time() - self.time_started
+            kbytes_per_second = count * blockSize / n_seconds / 1000
+            print('- Finished downloading {} ({} at {:.0f}kbps)'.format(self.url, sizeof_fmt(totalSize), kbytes_per_second))
+
 
 def download_sound(url, outfile, sound_id, no_report):
     if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
         # If sound does not exist, start downloading
         print('- Downloading ' + url)
-        progress = SoundDownloader(url, outfile, sound_id, no_report)
+        progress = SoundDownloaderProgress(url, outfile, sound_id, no_report)
         if '/download' in url:
             # Downloading original quality file, add required authorization header
             opener = urllib.request.build_opener()
