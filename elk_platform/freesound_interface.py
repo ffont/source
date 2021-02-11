@@ -59,7 +59,14 @@ def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_
     if license is not None:
         query_filter += " {}".format(license_to_filter[license])
 
-    url = 'https://freesound.org/apiv2/search/text/?query="{}"&filter={}&fields={}&page_size={}&descriptors={}&group_by_pack=1&token={}'.format(query, query_filter, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
+    if query.isdigit():
+        # If the query contains only a single number, we assume user is looking for a sound in particular and therefore
+        # we remove the filters to make sure the sound is not filtered out in the query
+        query_filter_param = ''
+    else:
+        query_filter_param = '&filter={}'.format(query_filter)
+
+    url = 'https://freesound.org/apiv2/search/text/?query="{}"{}&fields={}&page_size={}&descriptors={}&group_by_pack=1&token={}'.format(query, query_filter_param, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
     print(url)
     r = requests.get(url, timeout=30)
     response = r.json()

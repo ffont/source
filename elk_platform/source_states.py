@@ -2188,6 +2188,11 @@ class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInter
             add_recent_query(entered_text)
         self.on_data_received({'query': entered_text})
 
+    def on_data_received(self, data):
+        if self.store_recent and 'query' in data:
+            add_recent_query(data['query'])
+        super().on_data_received(data)
+        
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
             # Delete char in current cursor
