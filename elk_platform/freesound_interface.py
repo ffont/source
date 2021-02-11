@@ -209,11 +209,14 @@ def refresh_access_token():
     }
     r = requests.post(url, data=data, timeout=30)
     response = r.json()
-    access_token = response['access_token']
-    refresh_token = response['refresh_token']
-    json.dump(response, open(stored_tokens_filename, 'w'))
-    print('Freesound access token refreshed correctly')
-    get_logged_in_user_information()
+    if 'access_token' in response:
+        access_token = response['access_token']
+        refresh_token = response['refresh_token']
+        json.dump(response, open(stored_tokens_filename, 'w'))
+        print('Freesound access token refreshed correctly')
+        get_logged_in_user_information()
+    else:
+        print('ERROR refreshing access token')
 
 
 def get_access_token_from_code(code):
@@ -230,11 +233,14 @@ def get_access_token_from_code(code):
     }
     r = requests.post(url, data=data, timeout=30)
     response = r.json()
-    access_token = response['access_token']
-    refresh_token = response['refresh_token']
-    json.dump(response, open(stored_tokens_filename, 'w'))
-    print('New Freesound access token saved correctly')
-    get_logged_in_user_information()
+    if 'access_token' in response:
+        access_token = response['access_token']
+        refresh_token = response['refresh_token']
+        json.dump(response, open(stored_tokens_filename, 'w'))
+        print('New Freesound access token saved correctly')
+        get_logged_in_user_information()
+    else:
+        print('ERROR getting new access token')
 
 
 def logout_from_freesound():
@@ -253,8 +259,4 @@ if os.path.exists(stored_tokens_filename):
     stored_tokens = json.load(open(stored_tokens_filename))
     access_token = stored_tokens['access_token']
     refresh_token = stored_tokens['refresh_token']
-    try:
-        RefreshAccessTokenInThread().start()  # Refesh access token at startup to make sure we have a valid one
-    except:
-        pass
 

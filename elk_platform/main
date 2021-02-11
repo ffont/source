@@ -33,7 +33,7 @@ from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMA
 
 from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path
 
-from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user, is_logged_in, get_stored_access_token
+from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user, is_logged_in, get_stored_access_token, RefreshAccessTokenInThread
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
@@ -89,11 +89,13 @@ def get_status_output(command):
 
 
 last_time_restarting_connman = 0
+network_currently_connected = False
 
 
 def collect_system_stats():
     global system_stats
     global last_time_restarting_connman
+    global network_currently_connected
 
     if platform == "ELK":
 
@@ -113,6 +115,12 @@ def collect_system_stats():
             connmanctl_services_output = get_status_output("sudo connmanctl services")
             network_is_connected = '*AO' in connmanctl_services_output
             if network_is_connected:
+                if not network_currently_connected:
+                    # Network has changed state from not connected to connected
+                    # Do some "initialization" stuff that requires a connection
+                    RefreshAccessTokenInThread().start()  # Refesh access token at startup to make sure we have a valid one
+                    network_currently_connected = True  # Set this to true so we don't do the initialization again
+
                 system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
                 last_time_restarting_connman = 0
             else:
@@ -234,11 +242,11 @@ class ElkBridge(object):
             # First disconnect all existing connections (if any)
             # channel 0 = omni, channels 1-16 are normal midi channels
             for channel in range(0, 17):
-                self.midic.disconnect_kbd_input(midic._sushi_proto.TrackIdentifier(id=track_identifier), midic._sushi_proto.MidiChannel(channel=channel), port, raw_midi)
+                self.midic.disconnect_kbd_input(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=channel), port, raw_midi)
 
             # Now make new connection
             # channel 0 = omni, channels 1-16 are normal midi channels
-            self.midic.midic.connect_kbd_input_to_track(midic._sushi_proto.TrackIdentifier(id=track_identifier), midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
+            self.midic.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
             self.current_midi_in_channel = midi_channel
 
     def is_shift_pressed(self):
