@@ -44,13 +44,13 @@
  #define JucePlugin_Desc                   "SourceSampler"
 #endif
 #ifndef  JucePlugin_Manufacturer
- #define JucePlugin_Manufacturer           "Rita & Aurora"
+ #define JucePlugin_Manufacturer           "Music Technology Group"
 #endif
 #ifndef  JucePlugin_ManufacturerWebsite
- #define JucePlugin_ManufacturerWebsite    "https://ritaandaurora.github.io"
+ #define JucePlugin_ManufacturerWebsite    "http://mtg.upf.edu"
 #endif
 #ifndef  JucePlugin_ManufacturerEmail
- #define JucePlugin_ManufacturerEmail      "frederic.font@gmail.com"
+ #define JucePlugin_ManufacturerEmail      "frederic.font@upf.edu"
 #endif
 #ifndef  JucePlugin_ManufacturerCode
  #define JucePlugin_ManufacturerCode       0x52614175
@@ -74,13 +74,13 @@
  #define JucePlugin_EditorRequiresKeyboardFocus  0
 #endif
 #ifndef  JucePlugin_Version
- #define JucePlugin_Version                0.2
+ #define JucePlugin_Version                0.4
 #endif
 #ifndef  JucePlugin_VersionCode
- #define JucePlugin_VersionCode            0x200
+ #define JucePlugin_VersionCode            0x400
 #endif
 #ifndef  JucePlugin_VersionString
- #define JucePlugin_VersionString          "0.2"
+ #define JucePlugin_VersionString          "0.4"
 #endif
 #ifndef  JucePlugin_VSTUniqueID
  #define JucePlugin_VSTUniqueID            JucePlugin_PluginCode
@@ -125,7 +125,7 @@
  #define JucePlugin_RTASDisableMultiMono   0
 #endif
 #ifndef  JucePlugin_AAXIdentifier
- #define JucePlugin_AAXIdentifier          com.RitaAurora.SourceSampler
+ #define JucePlugin_AAXIdentifier          com.MusicTechnologyGroup.SourceSampler
 #endif
 #ifndef  JucePlugin_AAXManufacturerCode
  #define JucePlugin_AAXManufacturerCode    JucePlugin_ManufacturerCode
@@ -149,7 +149,7 @@
  #define JucePlugin_IAASubType             JucePlugin_PluginCode
 #endif
 #ifndef  JucePlugin_IAAName
- #define JucePlugin_IAAName                "Rita & Aurora: SourceSampler"
+ #define JucePlugin_IAAName                "Music Technology Group: SourceSampler"
 #endif
 #ifndef  JucePlugin_VSTNumMidiInputs
  #define JucePlugin_VSTNumMidiInputs       16

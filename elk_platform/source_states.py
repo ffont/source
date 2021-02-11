@@ -1167,12 +1167,12 @@ class MenuState(State):
     def next_item(self):
         self.selected_item += 1
         if self.selected_item >= self.num_items:
-            self.selected_item = self.num_items -1
+            self.selected_item = 0
 
     def previous_item(self):
         self.selected_item -= 1
         if self.selected_item < 0:
-            self.selected_item = 0
+            self.selected_item = self.num_items -1
 
     def get_menu_item_lines(self):
         lines = []
@@ -1552,15 +1552,16 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
     OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
     OPTION_DOWNLOAD_ORIGINAL = "Use original files..."
+    OPTION_ABOUT = "About"
 
     items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
              OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
-             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL, OPTION_MIDI_IN_CHANNEL, OPTION_LOGIN_TO_FREESOUND]
+             OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL, OPTION_MIDI_IN_CHANNEL, OPTION_LOGIN_TO_FREESOUND, OPTION_ABOUT]
     page_size = 5
 
     def draw_display_frame(self):
         if is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND not in self.items:
-            self.items.append(self.OPTION_LOGOUT_FROM_FREESOUND)
+            self.items = self.items[:-2] + [self.OPTION_LOGOUT_FROM_FREESOUND] + self.items[-1]  # Keep OPTION_ABOUT the last option
         if not is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND in self.items:
             self.items = [item for item in self.items if item != self.OPTION_LOGOUT_FROM_FREESOUND]
 
@@ -1669,6 +1670,20 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         elif action_name == self.OPTION_MIDI_IN_CHANNEL:
             current_midi_in = sm.source_state.get(StateNames.MIDI_IN_CHANNEL, 0)
             sm.move_to(EnterNumberState(initial=current_midi_in, minimum=0, maximum=16, title1="Midi in channel", callback=self.set_midi_in_chhannel, go_back_n_times=2))
+        elif action_name == self.OPTION_ABOUT:
+            try:
+                last_commit_info = open('last_commit_info', 'r').readlines()[0]
+                commit_hash = last_commit_info.split(' ')[0]
+                commit_date = '{} {}'.format(last_commit_info.split(' ')[1], last_commit_info.split(' ')[2][0:5])
+            except:
+                commit_hash = '-'
+                commit_date = '-'
+            plugin_version = sm.source_state.get(StateNames.PLUGIN_VERSION, '0.0')
+            sm.move_to(InfoPanelState(title='About', lines=[
+                justify_text('Plugin version:', '{}'.format(plugin_version)),
+                justify_text('Commit:', '{}'.format(commit_hash)),
+                justify_text('Date:', '{}'.format(commit_date)),
+            ]))
         else:
             sm.show_global_message('Not implemented...')
 
@@ -2662,6 +2677,20 @@ class SoundChooserState(FileChooserState):
         self.sounds_data = kwargs.get('sounds_data', '')
         self.shift_callback=lambda sound_name: sm.send_osc_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
 
+
+class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
+    
+    def __init__(self, title='title', lines=[]):
+        self.lines = lines
+        self.title = title
+
+    def draw_display_frame(self):
+        lines = [{
+            "underline": True, 
+            "text": self.title
+        }]
+        lines += self.lines
+        return frame_from_lines([self.get_default_header_line()] + lines)
 
 
 state_manager = StateManager()

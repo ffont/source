@@ -133,6 +133,7 @@
 #define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
 
 #define STATE_FULL_STATE "SourceFullState"
+#define STATE_PLUGIN_VERSION "PluginVersion"
 
 #define STATE_PRESET_IDENTIFIER "SourcePresetState"
 #define STATE_SAMPLER "Sampler"

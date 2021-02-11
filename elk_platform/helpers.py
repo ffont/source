@@ -26,6 +26,8 @@ class StateNames(Enum):
     PRESETS_DATA_LOCATION = auto()
     TMP_DATA_LOCATION = auto()
 
+    PLUGIN_VERSION = auto()
+
     USE_ORIGINAL_FILES_PREFERENCE = auto()
     MIDI_IN_CHANNEL = auto()
 
@@ -163,6 +165,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
 
     source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = global_state.get('useOriginalFiles'.lower(), 'never')
     source_state[StateNames.MIDI_IN_CHANNEL] = int(global_state.get('midiInChannel'.lower(), -1))
+    source_state[StateNames.PLUGIN_VERSION] = global_state.get('pluginVersion'.lower(), '0.0')
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
@@ -284,10 +287,12 @@ FONT_SIZE = 10
 FONT_SIZE_BIG = 25
 FONT_PATH_TITLE = 'FuturaHeavyfont.ttf'
 FONT_SIZE_TITLE = 64 - 10
-RA_LOGO_PATH = 'logo_oled.png'
-RA_LOGO_B_PATH = 'logo_oled_b.png'
+RA_LOGO_PATH = 'logo_oled_ra.png'
+RA_LOGO_B_PATH = 'logo_oled_ra_b.png'
 FS_LOGO_PATH = 'logo_oled_fs.png'
-TITLE_TEXT = '                             SOURCE, by Rita & Aurora                                    '
+UPF_LOGO_PATH = 'logo_oled_upf.png'
+#TITLE_TEXT = '                             SOURCE, by Rita & Aurora
+TITLE_TEXT = '                                                 SOURCE                            ' 
 START_ANIMATION_DURATION = 8
 
 font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
@@ -304,6 +309,7 @@ title_font = ImageFont.truetype(FONT_PATH_TITLE, FONT_SIZE_TITLE)
 ra_logo = Image.open(RA_LOGO_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
 ra_logo_b = Image.open(RA_LOGO_B_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
 fs_logo = Image.open(FS_LOGO_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
+upf_logo = Image.open(UPF_LOGO_PATH).resize(DISPLAY_SIZE, Image.NEAREST).convert('1')
 
 moving_text_position_cache = {}
 
@@ -367,18 +373,22 @@ def frame_from_start_animation(progress, counter):
 
     im = Image.new(mode='1', size=DISPLAY_SIZE)
     draw = ImageDraw.Draw(im)
-    if progress < 0.3:
-        # Show logo
+    if progress < 0.15:
+        # Show UPF logo
+        draw.bitmap((0, 0), upf_logo, fill="white")
+    elif 0.15 <= progress <= 0.45:
+        # Show R&A logo
         if counter % 2 == 0:
             draw.bitmap((0, 0), ra_logo, fill="white")
         else:
             draw.bitmap((0, 0), ra_logo_b, fill="white")
-    elif 0.3 <= progress <= 0.7:
-        # Show text
+    elif 0.45 <= progress <= 0.75:
+        # Show title text
         if title_text_width is None:
             title_text_width = draw.textsize(TITLE_TEXT, font=title_font)[0]
         draw.text((int(progress * -1 * title_text_width), int((DISPLAY_SIZE[1] - FONT_SIZE_TITLE)/2) - 5), TITLE_TEXT, font=title_font, fill="white")
     else:
+        # Show Freesound logo
         text =  "  powered by:"
         text_width = draw.textsize(text, font=font)[0]
         draw.text(((DISPLAY_SIZE[0] - text_width) / 2, font_heihgt_px), text, font=font, fill="white")

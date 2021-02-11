@@ -29,9 +29,9 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2</string>
+    <string>0.4</string>
     <key>CFBundleVersion</key>
-    <string>0.2</string>
+    <string>0.4</string>
     <key>NSHumanReadableCopyright</key>
     <string></string>
     <key>NSHighResolutionCapable</key>
@@ -40,7 +40,7 @@
     <array>
       <dict>
         <key>name</key>
-        <string>Rita &amp; Aurora: SourceSampler</string>
+        <string>Music Technology Group: SourceSampler</string>
         <key>description</key>
         <string>SourceSampler</string>
         <key>factoryFunction</key>
@@ -52,7 +52,7 @@
         <key>subtype</key>
         <string>SoSa</string>
         <key>version</key>
-        <integer>512</integer>
+        <integer>1024</integer>
         <key>resourceUsage</key>
         <dict>
           <key>network.client</key>

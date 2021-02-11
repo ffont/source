@@ -461,6 +461,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_TMP_DATA_LOCATION, tmpFilesLocation.getFullPathName(), nullptr);
+    settings.setProperty(STATE_PLUGIN_VERSION, String(JucePlugin_VersionString), nullptr);
     settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
