@@ -36,6 +36,7 @@ FADER_PATH_PREFIX = "/sensors/analog/fader_"
 BUTTON_PATH_PREFIX = "/sensors/digital/button_"
 ROT_ENC_BUTTON_PATH = "/sensors/digital/rot_enc_button"
 ROT_ENC_PATH = "/sensors/analog/rot_enc"
+POTENTIOMETER_PATH = "/sensors/analog/pot_A"
 
 # OLED display
 DISPLAY_CONFIG = ["--display", "ssd1306",  "--i2c-port", "0", "--i2c-address", "0x3C", "--width", "128", "--height", "64"]
@@ -62,6 +63,7 @@ class ElkUIController(object):
                  buttons_callback,
                  encoder_button_callback,
                  encoder_callback,
+                 pot_callback,
                  sensei_ctrl_port=SENSEI_TO_BRIDGE_PORT,
                  sensei_led_port=BRIDGE_TO_SENSEI_PORT):
         """ Initialization.
@@ -100,6 +102,7 @@ class ElkUIController(object):
         self._enc_btn_cback = encoder_button_callback
         self._enc_cback = encoder_callback
         self._faders_cback = faders_callback
+        self._pot_cback= pot_callback
         self._register_osc_callbacks()
        
         self.reset_display()
@@ -161,6 +164,7 @@ class ElkUIController(object):
             self.set_fader_led(n, 0)
 
         self._fader_values = [0.0] * N_FADERS
+        self._pot_value = 0.7  # TODO: Get current pot value here
         self._enc_value = None
         self._osc_server.start()
 
@@ -181,7 +185,6 @@ class ElkUIController(object):
 
     def _register_osc_callbacks(self):
         for n in range(N_FADERS):
-            print("fader: %d" % n)
             self._osc_server.add_method(FADER_PATH_PREFIX + str(n), 'f', self._handle_faders)
             
         for n in range(N_BUTTONS):
@@ -189,6 +192,8 @@ class ElkUIController(object):
 
         self._osc_server.add_method(ROT_ENC_PATH, 'f', self._handle_encoder)
         self._osc_server.add_method(ROT_ENC_BUTTON_PATH, 'f', self._handle_encoder_button)
+
+        self._osc_server.add_method(POTENTIOMETER_PATH, 'f', self._handle_potentiometer)
 
         self._osc_server.add_method(None, None, self._unhandled_msg_callback)
 
@@ -234,6 +239,16 @@ class ElkUIController(object):
                 self._enc_cback(direction)
                 self._enc_value = val
 
+    def _handle_potentiometer(self, path, args):
+        if self._pot_cback is None:
+            return
+
+        val = args[0]
+        # Extra filtering for noise in faders
+        if (abs(self._pot_value - val) > ANALOG_SENSORS_MIN_ABS_DIFF):
+            self._pot_cback(val)
+            self._pot_value = val
+        
     def reset_display(self):
         osc_msg = liblo.Message('/set_output')
         osc_msg.add(('i', RESET_PIN_INDEX))

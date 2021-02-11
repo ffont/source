@@ -193,6 +193,10 @@ class ElkBridge(object):
         while self.sushic is None:
             try:
                 self.sushic = sc.SushiController()
+                # Set init gain to high number
+                controller_id = 0  # Sushi mixer
+                param_id = 0  # Gain
+                self.sushic.parameters.set_parameter_value(controller_id, param_id, 0.92)
                 print("Initialized SushiController")
             except Exception as e:
                 print('ERROR initializing SushiController: {0}'.format(e))
@@ -218,7 +222,8 @@ class ElkBridge(object):
                 self.uic = ElkUIController(self.handle_faders,
                                           self.handle_buttons,
                                           self.handle_encoder_button,
-                                          self.handle_encoder)
+                                          self.handle_encoder,
+                                          self.handle_potentiometer)
                 state_manager.set_ui_client(self.uic)
                 print("Initialized ElkUIController")
             except Exception as e:
@@ -233,24 +238,30 @@ class ElkBridge(object):
 
     def set_midi_input_filter_channel(self, midi_channel):
         if self.midic is not None and midi_channel != self.current_midi_in_channel:
-            print('Setting MIDI in channel to {}'.format(midi_channel))
-
             raw_midi = True
             track_identifier = 0
             port = 0
 
             # First disconnect all existing connections (if any)
-            # channel 0 = omni, channels 1-16 are normal midi channels
-            for channel in range(0, 17):
-                self.midic.disconnect_kbd_input(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=channel), port, raw_midi)
+            for c in self.midic.get_all_kbd_input_connections():
+                self.midic.disconnect_kbd_input(c.track, c.channel, c.port, c.raw_midi)
 
             # Now make new connection
             # channel 0 = omni, channels 1-16 are normal midi channels
-            self.midic.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
+            self.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
             self.current_midi_in_channel = midi_channel
 
     def is_shift_pressed(self):
         return self.buttons_state.get(0, 0) == 1
+
+    def handle_potentiometer(self, val):
+        if self.sushic is not None:
+            controller_id = 0  # Sushi mixer
+            param_id = 0  # Gain
+            # For some reason the gain only seems to be doing something when value is set between
+            # 0.5 and 1.0, so we adapt the range
+            val = val/2  + 0.5
+            self.sushic.parameters.set_parameter_value(controller_id, param_id, val)
 
     def handle_faders(self, fader_idx, val):
         if not state_manager.block_ui_input:
