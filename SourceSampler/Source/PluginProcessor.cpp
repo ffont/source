@@ -1696,7 +1696,7 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
-    // Collect the state and update the serverInterface object with that state information so it can be used by the http server
+    // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server
     ValueTree fullState = collectFullStateInformation(false);
     
     #if ENABLE_EMBEDDED_HTTP_SERVER
@@ -1704,9 +1704,8 @@ void SourceSamplerAudioProcessor::timerCallback()
     serverInterface.serializedAppState = fullState.toXmlString();
     #endif
     
-    #if USE_EXTERNAL_HTTP_SERVER
-    sendStateToExternalServer(fullState, "");
-    #endif
+    // NOTE: if using externall HTTP server (i.e. in ELK), we don't send state updates from a timer but only send
+    // them in response to requests from the external server app
 }
 
 

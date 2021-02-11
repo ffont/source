@@ -174,6 +174,7 @@ private:
     float mod2CutoffAmt = 10.0f;
     float mod2GainAmt = 6.0f;
     float mod2PitchAmt = 0.0f;
+    float mod2PlayheadPos = 0.0f;
     float vel2CutoffAmt = 0.0f;
     float vel2GainAmt = 0.5f;
     // --> End auto-generated code A
@@ -231,6 +232,7 @@ private:
     double pitchModSemitones = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;
     double playheadSamplePosition = 0;
+    double playheadSamplePositionMod = 0;
     float pan = 0;
     float lgain = 0, rgain = 0;
     ADSR adsr;

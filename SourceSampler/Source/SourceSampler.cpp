@@ -88,6 +88,7 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
     else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(-12.0f, 12.0f, value); }
     else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(-12.0f, 12.0f, value); }
+    else if (name == "mod2PlayheadPos") { mod2PlayheadPos = jlimit(0.0f, 1.0f, value); }
     else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 100.0f, value); }
     else if (name == "vel2GainAmt") { vel2GainAmt = jlimit(0.0f, 1.0f, value); }
     // --> End auto-generated code A
@@ -135,6 +136,7 @@ void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float v
     else if (name == "mod2CutoffAmt") { setParameterByNameFloat("mod2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
     else if (name == "mod2GainAmt") { setParameterByNameFloat("mod2GainAmt", jmap(value0to1, -12.0f, 12.0f)); }
     else if (name == "mod2PitchAmt") { setParameterByNameFloat("mod2PitchAmt", jmap(value0to1, -12.0f, 12.0f)); }
+    else if (name == "mod2PlayheadPos") { setParameterByNameFloat("mod2PlayheadPos", jmap(value0to1, 0.0f, 1.0f)); }
     else if (name == "vel2CutoffAmt") { setParameterByNameFloat("vel2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
     else if (name == "vel2GainAmt") { setParameterByNameFloat("vel2GainAmt", jmap(value0to1, 0.0f, 1.0f)); }
     // --> End auto-generated code D
@@ -323,6 +325,11 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2PitchAmt", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2PitchAmt, nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2PlayheadPos", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2PlayheadPos, nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
@@ -611,7 +618,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     
     if (sound->launchMode == LAUNCH_MODE_FREEZE){
         // If in freeze mode, we "only" care about the playhead position parameter, the rest of parameters to define pitch, start/end times, etc., are not relevant
-        targetPlayheadSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
+        targetPlayheadSamplePosition = (sound->playheadPosition + playheadSamplePositionMod + currentModWheelValue/127.0) * sound->getLengthInSamples();
         
     } else {
         // Pitch
@@ -793,6 +800,7 @@ void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
         pitchModSemitones = sound->mod2PitchAmt * (double)newAftertouchValue/127.0;
         filterCutoffMod = (newAftertouchValue/127.0) * filterCutoff * sound->mod2CutoffAmt;
         gainMod = sound->mod2GainAmt * (float)newAftertouchValue/127.0;
+        playheadSamplePositionMod = (double)newAftertouchValue/127.0;
     }
 }
 
@@ -804,6 +812,7 @@ void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
         pitchModSemitones = sound->mod2PitchAmt * (double)newChannelPressureValue/127.0;
         filterCutoffMod = (newChannelPressureValue/127.0) * filterCutoff * sound->mod2CutoffAmt;
         gainMod = sound->mod2GainAmt * (float)newChannelPressureValue/127.0;
+        playheadSamplePositionMod = (double)newChannelPressureValue/127.0;
     }
 }
 

@@ -8,7 +8,7 @@ namespace BinaryData
     const int           localhost_crtSize = 1066;
 
     extern const char*  index_html;
-    const int           index_htmlSize = 44151;
+    const int           index_htmlSize = 44290;
 
     extern const char*  usage_log_html;
     const int           usage_log_htmlSize = 2952;

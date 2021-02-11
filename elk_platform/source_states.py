@@ -78,10 +78,12 @@ sound_parameters_info_dict = {
     "mod2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Mod2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "mod2GainAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Gain", "{0:.1f}dB", "/set_sound_parameter"),
     "mod2PitchAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Pitch", "{0:.2f}st", "/set_sound_parameter"),
+    "mod2PlayheadPos": (lambda x: x, lambda x: float(x), "Mod2PlayheadPos", "{0:.2f}", "/set_sound_parameter"),
     "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
     "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
     "midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
+    "loopXFadeNSamples": (lambda x: 10 + int(round(lin_to_exp(x) * (100000 - 10))), lambda x: int(x), "Loop X fade len", "{0}", "/set_sound_parameter_int"),  
 }
 
 EXTRA_PAGE_1_NAME = "extra1"
@@ -92,6 +94,11 @@ sound_parameter_pages = [
         "pitch",
         "reverse",
         "launchMode",
+    ], [
+        "noteMappingMode",
+        "numSlices",
+        "playheadPosition",
+        "freezePlayheadSpeed",
     ], [
         "startPosition",
         "endPosition",
@@ -113,20 +120,20 @@ sound_parameter_pages = [
         "filterADSR.sustain",
         "filterADSR.release",
     ], [
-        "noteMappingMode",
-        "numSlices",
-        "playheadPosition",
-        "freezePlayheadSpeed"
-    ], [
         "pitchBendRangeUp",
         "pitchBendRangeDown",
         "vel2CutoffAmt",
-        "vel2GainAmt"
+        "vel2GainAmt",
     ], [
         "mod2CutoffAmt",
         "mod2GainAmt",
         "mod2PitchAmt",
-        "pan"
+        "mod2PlayheadPos",
+    ], [
+        "pan",
+        "loopXFadeNSamples",
+        "midiRootNote",
+        None
     ]
 ]
 

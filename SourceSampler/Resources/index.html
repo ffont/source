@@ -395,6 +395,7 @@
             html += '<input type="range" id="' + soundIdx + '_mod2CutoffAmt" name="mod2CutoffAmt" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2CutoffAmt: <span id="' + soundIdx + '_mod2CutoffAmtLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_mod2GainAmt" name="mod2GainAmt" min="-12.0" max="12.0" value="6.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2GainAmt: <span id="' + soundIdx + '_mod2GainAmtLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_mod2PitchAmt" name="mod2PitchAmt" min="-12.0" max="12.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2PitchAmt: <span id="' + soundIdx + '_mod2PitchAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundIdx + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2PlayheadPos: <span id="' + soundIdx + '_mod2PlayheadPosLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > vel2CutoffAmt: <span id="' + soundIdx + '_vel2CutoffAmtLabel"></span><br>'
             html += '<input type="range" id="' + soundIdx + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > vel2GainAmt: <span id="' + soundIdx + '_vel2GainAmtLabel"></span><br>'
             // --> End auto-generated code A
@@ -489,7 +490,6 @@
             }
             
             // Update main preset settings and global settings (only update if state has changed)
-            updateElementValueFromXmlStates(document.getElementsByName('query')[0], 'query', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('presetIdx')[0], 'presetNumber', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'presetName', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiThru', GlobalSettings, OldStateGlobalSettings);
