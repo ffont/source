@@ -11,30 +11,29 @@
 #pragma once
 
 #if ELK_BUILD
-    #define STATE_UPDATE_HZ 0  // Don't send state with a timer, the plugin will request it
-    #define ENABLE_OSC_SERVER 1
-    #define SEND_VOLATILE_STATE_OVER_OSC 1
-    #define ENABLE_EMBEDDED_HTTP_SERVER 0  // We will use the external Flask server to avoid adding more load to the plugin and messing with more threads
-    #define USE_EXTERNAL_HTTP_SERVER 1
-    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
+    #define USE_EXTERNAL_HTTP_SERVER 1  // In ELK we don't use the embedded HTTP server but use the external one which runs in a separate process
+    #define ENABLE_EMBEDDED_HTTP_SERVER 0
+    #define STATE_UPDATE_HZ 0  // In ELK we don't send state updates with a timer, but only send state updates in response to requests from external HTTP server app
+    #define ENABLE_OSC_SERVER 1  // In ELK we enable OSC interface as this is the way the external UI controls the plugin
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
 #else
+    #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
+    #define STATE_UPDATE_HZ 15  // Send state updates to the embedded http server
     #if JUCE_DEBUG
-        #define STATE_UPDATE_HZ 0
-        #define ENABLE_OSC_SERVER 1 // Enable OSC server for testing purposes
-        #define SEND_VOLATILE_STATE_OVER_OSC 1
-        #define ENABLE_EMBEDDED_HTTP_SERVER 1  // In debug, use internal HTTP server...
-        #define USE_EXTERNAL_HTTP_SERVER 1  // And also enable external HTTP server so we can test it
-        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1
+        #define ENABLE_OSC_SERVER 1 // In debug enable OSC server for testing purposes
+        #define USE_EXTERNAL_HTTP_SERVER 1  // ...and also enable external HTTP server so we can test with the ELK blackboard simulator
+        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // Use the external HTTP server for downloads, as if we were in ELK platform
     #else
-        #define STATE_UPDATE_HZ 15
         #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
-        #define SEND_VOLATILE_STATE_OVER_OSC 0
-        #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
-        #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server
-        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0
+        #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server, we only use the embedded one
+        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Also don't use external server for downloads, we use built-in download functionality
     #endif
 #endif
+
+
 #define ENABLE_DEBUG_BUFFER 0
+
+#define SEND_VOLATILE_STATE_OVER_OSC 1  // This is an optimization for faster volatile state updates when using external HTTP server
 
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
