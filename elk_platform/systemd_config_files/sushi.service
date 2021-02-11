@@ -1,0 +1,18 @@
+[Unit]
+Description=sushi starting service
+After=source.service
+# We start sushi after source so that the glue app is running and can receive download requests from the plugin when it starts and loads first preset
+# source.service is triggered after audio driver is ready, therefore sushi.service will also be called when audio driver is ready
+
+[Service]
+Type=simple
+RemainAfterExit=no
+WorkingDirectory=/udata/
+Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
+ExecStart=/usr/bin/sushi -r --multicore-processing=3 -c /udata/source/app/source_sushi_config.json
+User=mind
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

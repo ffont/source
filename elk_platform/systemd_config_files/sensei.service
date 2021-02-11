@@ -1,0 +1,15 @@
+[Unit]
+Description=sensei starting service
+After=load-drivers.service
+ConditionPathExists=/dev/rtdm/shiftreg_rtdm
+
+[Service]
+Type=simple
+RemainAfterExit=yes
+WorkingDirectory=/udata/
+Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
+ExecStart=/usr/bin/sensei -f /udata/source/app/source_sensei_config.json
+User=mind
+
+[Install]
+WantedBy=multi-user.target

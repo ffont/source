@@ -1,4 +1,5 @@
 import os
+import time
 
 from fabric import task, Connection
 
@@ -7,6 +8,28 @@ remote_dir = '/udata/source/app/'
 remote_vst3_so_dir = '/udata/source/app/SourceSampler.vst3/Contents/aarch64-linux/'
 
 PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION = '${PWD}/../VST_SDK/VST2_SDK' 
+
+
+def sudo_install(connection, source, dest, *, owner='root', group='root', mode='0600'):
+    """
+    Helper which installs a file with arbitrary permissions and ownership
+
+    This is a replacement for Fabric 1's `put(…, use_sudo=True)` and adds the
+    ability to set the expected ownership and permissions in one operation.
+
+    Source: https://github.com/fabric/fabric/issues/1750
+    """
+
+    mktemp_result = connection.run('mktemp', hide='out')
+    assert mktemp_result.ok
+
+    temp_file = mktemp_result.stdout.strip()
+
+    try:
+        connection.put(source, temp_file)
+        connection.sudo(f'install -o {owner} -g {group} -m {mode} {temp_file} {dest}')
+    finally:
+        connection.run(f'rm {temp_file}')
 
 
 @task
@@ -20,7 +43,7 @@ def clean(ctx):
 
 
 @task
-def send_elk(ctx, include_config_files=False, include_plugin_files=True):
+def send_elk(ctx, include_config_files=False, include_plugin_files=True, include_systemd_files=False):
 
     # Copy compiled file and sushi configuration to board
     # NOTE: note that the architecture folder name of the generated VST3 build (arm64-linux) is in fact wrong,
@@ -30,6 +53,8 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
     print('\nSending SourceSamler to board...')
     print('********************************\n')
     with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+
+        # Copy config and/or plugin files
 
         c.run('mkdir -p {}'.format(remote_dir))
         c.run('mkdir -p {}'.format(remote_vst3_so_dir))
@@ -70,9 +95,21 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
             print('- Copying {0} to {1}'.format(local_file, destination_dir))
             c.put(local_file, destination_dir)
 
-        print('Now restarting "sushi" and "source" services in board...')
-        c.run('sudo systemctl restart sushi')
+        # Copy systemd files
+        if include_systemd_files:
+            print('- Sending systemd config files and reloading systemd daemon')
+            sudo_install(c, "elk_platform/systemd_config_files/sensei.service", "/lib/systemd/system/sensei.service", mode='0644')
+            sudo_install(c, "elk_platform/systemd_config_files/sushi.service", "/lib/systemd/system/sushi.service", mode='0644')
+            sudo_install(c, "elk_platform/systemd_config_files/source.service", "/lib/systemd/system/source.service", mode='0644')
+            c.run('sudo systemctl daemon-reload')    
+
+        print('Now restarting "sensei", "sushi" and "source" services in board...')
+        c.run('sudo systemctl restart sensei')
+        time.sleep(1)
         c.run('sudo systemctl restart source')
+        time.sleep(1)
+        c.run('sudo systemctl restart sushi')
+        
 
     print('DONE!')
     print('\n')
@@ -80,15 +117,40 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True):
 
 @task
 def send_elk_all(ctx):
-    send_elk(ctx, include_config_files=True)
+    send_elk(ctx, include_config_files=True, include_plugin_files=True, include_systemd_files=True)
+
 
 @task
 def send_elk_config(ctx):
-    send_elk(ctx, include_config_files=True, include_plugin_files=False)
+    send_elk(ctx, include_config_files=True, include_plugin_files=False, include_systemd_files=False)
+
 
 @task
 def send_elk_plugin(ctx):
-    send_elk(ctx, include_config_files=False, include_plugin_files=True)
+    send_elk(ctx, include_config_files=False, include_plugin_files=True, include_systemd_files=False)
+
+
+@task
+def send_elk_systemd(ctx):
+    send_elk(ctx, include_config_files=False, include_plugin_files=False, include_systemd_files=True)
+
+
+@task
+def logs_sushi(ctx):
+    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+        c.run('sudo journalctl -fu sushi')
+
+
+@task
+def logs_sensei(ctx):
+    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+        c.run('sudo journalctl -fu sensei')
+
+
+@task
+def logs_source(ctx):
+    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+        c.run('sudo journalctl -fu source')
 
 
 @task
@@ -147,7 +209,6 @@ def compile_elk_debug(ctx):
 
 @task
 def compile_macos(ctx, configuration='Release'):
-
     # Compile release Source for macOS platform
     print('Compiling Source for macOS platform...')
     print('*********************************************\n')
@@ -163,7 +224,6 @@ def compile_macos_debug(ctx, configuration='Release'):
 
 @task
 def compile_projucer_macos(ctx):
-
     # Compile the projucer version compatible with source
     print('Compiling Projucer for macOS platform...')
     print('*********************************************\n')
@@ -171,9 +231,9 @@ def compile_projucer_macos(ctx):
 
     print('\nAll done!')
 
+
 @task
 def compile_binary_builder_macos(ctx):
-
     # Compile the BinaryBuilder version compatible with source
     print('Compiling BinaryBuilder for macOS platform...')
     print('*********************************************\n')
@@ -186,9 +246,3 @@ def compile_binary_builder_macos(ctx):
 def compile(ctx):
     compile_macos(ctx)
     compile_elk(ctx)
-    
-    
-@task
-def deploy_elk(ctx):
-    compile_elk(ctx)
-    send_elk(ctx)
