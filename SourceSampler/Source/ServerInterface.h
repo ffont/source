@@ -270,7 +270,7 @@ public:
             if (message.size() == 13)  {
                 int soundIdx = message[0].getInt32();
                 int soundID = message[1].getInt32();
-                String soundName = message[2].getString();
+                String soundName = message[2].getString().replace(SERIALIZATION_SEPARATOR, "");  // Make sure name does not include character SERIALIZATION_SEPARATOR which could break serialization
                 String soundUser = message[3].getString();
                 String soundLicense = message[4].getString();
                 String oggDownloadURL = message[5].getString();
