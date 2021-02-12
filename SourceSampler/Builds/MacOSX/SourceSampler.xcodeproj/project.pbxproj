@@ -543,18 +543,18 @@
 			path = "../../3rdParty/ff_meters/LevelMeter/LevelMeterSource.h";
 			sourceTree = "SOURCE_ROOT";
 		};
+		8A9786F9B4B67D81403D0B29 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_audio_formats";
+			path = "../../3rdParty/JUCE/modules/juce_audio_formats";
+			sourceTree = "SOURCE_ROOT";
+		};
 		8D12357A0A13731509D377E5 = {
 			isa = PBXFileReference;
 			lastKnownFileType = text.plist.xml;
 			name = "Info-Standalone_Plugin.plist";
 			path = "Info-Standalone_Plugin.plist";
-			sourceTree = "SOURCE_ROOT";
-		};
-		8DE2AF40D194C4508C5151C7 = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.c.h;
-			name = twine.h;
-			path = ../../3rdParty/twine/include/twine/twine.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		94EC2E86D4D9B5415450FD7C = {
@@ -613,18 +613,18 @@
 			path = libSourceSampler.a;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
-		8A9786F9B4B67D81403D0B29 = {
-			isa = PBXFileReference;
-			lastKnownFileType = file;
-			name = "juce_audio_formats";
-			path = "../../3rdParty/JUCE/modules/juce_audio_formats";
-			sourceTree = "SOURCE_ROOT";
-		};
 		8A9B9D84270C0D541733DDAC = {
 			isa = PBXFileReference;
 			lastKnownFileType = file;
 			name = "juce_data_structures";
 			path = "../../3rdParty/JUCE/modules/juce_data_structures";
+			sourceTree = "SOURCE_ROOT";
+		};
+		8DE2AF40D194C4508C5151C7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = twine.h;
+			path = ../../3rdParty/twine/include/twine/twine.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		8E697AC7EC717E5F9AFBDC48 = {
@@ -653,13 +653,6 @@
 			lastKnownFileType = file;
 			name = "juce_audio_basics";
 			path = "../../3rdParty/JUCE/modules/juce_audio_basics";
-			sourceTree = "SOURCE_ROOT";
-		};
-		A125B375591A26801D15546B = {
-			isa = PBXFileReference;
-			lastKnownFileType = text.html;
-			name = index.html;
-			path = ../../Resources/index.html;
 			sourceTree = "SOURCE_ROOT";
 		};
 		A2685F1639A6FDB636BE458D = {
@@ -825,14 +818,6 @@
 			name = Source;
 			sourceTree = "<group>";
 		};
-		8CD54EDA8114AD8B4C8A6FFE = {
-			isa = PBXGroup;
-			children = (
-				A125B375591A26801D15546B,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-		};
 		AFE81A57462AAD9BF0A3C867 = {
 			isa = PBXGroup;
 			children = (
@@ -883,7 +868,6 @@
 			isa = PBXGroup;
 			children = (
 				D6F4544776E0B949F646A967,
-				8CD54EDA8114AD8B4C8A6FFE,
 				8C9715A3E0AF5980A2D12F0A,
 			);
 			name = SourceSampler;

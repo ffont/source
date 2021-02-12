@@ -1,8 +1,0 @@
-#!/bin/bash
-
-pkill -f '/usr/bin/python3 main'
-pkill -f './main'
-
-pkill -2 sensei
-pkill -2 sushi
-

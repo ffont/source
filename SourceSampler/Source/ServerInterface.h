@@ -379,7 +379,7 @@ void HTTPServer::run()
     #endif
     
     server.Get("/", [](const httplib::Request &, httplib::Response &res) {
-        String contents = String::fromUTF8 (BinaryData::index_html, BinaryData::index_htmlSize);
+        String contents = String::fromUTF8 (BinaryData::ui_plugin_html, BinaryData::ui_plugin_htmlSize);
         res.set_content(contents.toStdString(), "text/html");
     });
     

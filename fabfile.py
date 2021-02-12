@@ -62,26 +62,24 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
         os.system('git log -1 --pretty=format:"%h %ci" > elk_platform/last_commit_info')
 
         config_files = [
-            ("elk_platform/start", remote_dir),
-            ("elk_platform/stop", remote_dir),
             ("elk_platform/source_sushi_config.json", remote_dir),
-            ("elk_platform/main", remote_dir),
+            ("elk_platform/source_sensei_config.json", remote_dir),
+            ("elk_platform/html/index.html", remote_dir),
+            ("elk_platform/html/sound_usage_log.html", remote_dir),
             ("elk_platform/requirements.txt", remote_dir),
+            ("elk_platform/main", remote_dir),
+            ("elk_platform/elk_ui_custom.py", remote_dir),
+            ("elk_platform/source_states.py", remote_dir),
+            ("elk_platform/helpers.py", remote_dir),
+            ("elk_platform/freesound_interface.py", remote_dir),
+            ("elk_platform/freesound_api_key.py", remote_dir),
             ("elk_platform/LiberationMono-Regular.ttf", remote_dir),
             ("elk_platform/FuturaHeavyfont.ttf", remote_dir),
             ("elk_platform/logo_oled_upf.png", remote_dir),
             ("elk_platform/logo_oled_ra.png", remote_dir),
             ("elk_platform/logo_oled_ra_b.png", remote_dir),
             ("elk_platform/logo_oled_fs.png", remote_dir),
-            ("elk_platform/elk_ui_custom.py", remote_dir),
-            ("elk_platform/source_states.py", remote_dir),
-            ("elk_platform/helpers.py", remote_dir),
-            ("elk_platform/freesound_interface.py", remote_dir),
-            ("elk_platform/freesound_api_key.py", remote_dir),
-            ("elk_platform/source_sensei_config.json", remote_dir),
             ("last_commmit_info", remote_dir),
-            ("SourceSampler/Resources/index.html", remote_dir),
-            ("SourceSampler/Resources/index_minimal.html", remote_dir),
         ]
 
         plugin_files = [            

@@ -34,9 +34,6 @@
             file="Source/SourceSampler.cpp"/>
       <FILE id="tcetRZ" name="SourceSampler.h" compile="0" resource="0" file="Source/SourceSampler.h"/>
     </GROUP>
-    <GROUP id="{25557E26-6D9E-17DA-4894-2F58087073FD}" name="Resources">
-      <FILE id="xFci8w" name="index.html" compile="0" resource="0" file="Resources/index.html"/>
-    </GROUP>
     <GROUP id="{6744226D-A4B5-8D8E-F2D5-42D61939B792}" name="3rdParty">
       <GROUP id="{D188060C-1804-CFBA-6A3B-867B909CAF2A}" name="twine">
         <GROUP id="{162EDE7C-16C4-40D6-22EC-ACC0C87940B9}" name="include">
