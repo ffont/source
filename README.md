@@ -1,4 +1,8 @@
-# SOURCE, a Freesound-powered hardware sampler
+<p align="center">
+<img src="docs/source_logo.png" width="500" />
+</p>
+
+# SOURCE, a Freesound-powered sampler
 
 
 ## Building Source

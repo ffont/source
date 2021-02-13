@@ -81,6 +81,10 @@
 			isa = PBXBuildFile;
 			fileRef = 7B7047A307A218418CB0612C;
 		};
+		5222B4F51D12D82A8C299DB6 = {
+			isa = PBXBuildFile;
+			fileRef = 5484510AED0F6B29577E7953;
+		};
 		0B78AB794346591B2CEE1603 = {
 			isa = PBXBuildFile;
 			fileRef = 04D80F3A5A1CF7CE4C4B25AF;
@@ -431,6 +435,13 @@
 			path = "../../JuceLibraryCode/include_juce_audio_plugin_client_AU_2.mm";
 			sourceTree = "SOURCE_ROOT";
 		};
+		5484510AED0F6B29577E7953 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.icns;
+			name = Icon.icns;
+			path = Icon.icns;
+			sourceTree = "SOURCE_ROOT";
+		};
 		5B679FDC2FB9A717B0B91CDC = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.cpp.cpp;
@@ -464,6 +475,13 @@
 			lastKnownFileType = sourcecode.cpp.cpp;
 			name = "include_juce_audio_plugin_client_VST2.cpp";
 			path = "../../JuceLibraryCode/include_juce_audio_plugin_client_VST2.cpp";
+			sourceTree = "SOURCE_ROOT";
+		};
+		680555E5E194E7C02FA99468 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.html;
+			name = "ui_plugin.html";
+			path = "../../Resources/ui_plugin.html";
 			sourceTree = "SOURCE_ROOT";
 		};
 		6A463BCE492C7AF8B1EE0AF4 = {
@@ -550,11 +568,32 @@
 			path = "../../3rdParty/JUCE/modules/juce_audio_formats";
 			sourceTree = "SOURCE_ROOT";
 		};
+		8A9B9D84270C0D541733DDAC = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_data_structures";
+			path = "../../3rdParty/JUCE/modules/juce_data_structures";
+			sourceTree = "SOURCE_ROOT";
+		};
 		8D12357A0A13731509D377E5 = {
 			isa = PBXFileReference;
 			lastKnownFileType = text.plist.xml;
 			name = "Info-Standalone_Plugin.plist";
 			path = "Info-Standalone_Plugin.plist";
+			sourceTree = "SOURCE_ROOT";
+		};
+		8DE2AF40D194C4508C5151C7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = twine.h;
+			path = ../../3rdParty/twine/include/twine/twine.h;
+			sourceTree = "SOURCE_ROOT";
+		};
+		8E697AC7EC717E5F9AFBDC48 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.objcpp;
+			name = "include_juce_cryptography.mm";
+			path = "../../JuceLibraryCode/include_juce_cryptography.mm";
 			sourceTree = "SOURCE_ROOT";
 		};
 		94EC2E86D4D9B5415450FD7C = {
@@ -563,6 +602,13 @@
 			name = CoreAudio.framework;
 			path = System/Library/Frameworks/CoreAudio.framework;
 			sourceTree = SDKROOT;
+		};
+		99817F73B57DA17C68D98557 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_dsp";
+			path = "../../3rdParty/JUCE/modules/juce_dsp";
+			sourceTree = "SOURCE_ROOT";
 		};
 		B0238AED8FE0635FBFEB6E0D = {
 			isa = PBXFileReference;
@@ -585,20 +631,6 @@
 			path = SourceSampler.component;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
-		9A72388A5D6940CDD807D379 = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.c.h;
-			name = "api_key.example.h";
-			path = "../../Source/api_key.example.h";
-			sourceTree = "SOURCE_ROOT";
-		};
-		A0D94CD81D7A0528B6351D81 = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.c.h;
-			name = FreesoundAPI.h;
-			path = ../../Source/FreesoundAPI.h;
-			sourceTree = "SOURCE_ROOT";
-		};
 		AD1ABE63B91D0D70A1CE782B = {
 			isa = PBXFileReference;
 			explicitFileType = wrapper.application;
@@ -613,32 +645,11 @@
 			path = libSourceSampler.a;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
-		8A9B9D84270C0D541733DDAC = {
-			isa = PBXFileReference;
-			lastKnownFileType = file;
-			name = "juce_data_structures";
-			path = "../../3rdParty/JUCE/modules/juce_data_structures";
-			sourceTree = "SOURCE_ROOT";
-		};
-		8DE2AF40D194C4508C5151C7 = {
+		9A72388A5D6940CDD807D379 = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.h;
-			name = twine.h;
-			path = ../../3rdParty/twine/include/twine/twine.h;
-			sourceTree = "SOURCE_ROOT";
-		};
-		8E697AC7EC717E5F9AFBDC48 = {
-			isa = PBXFileReference;
-			lastKnownFileType = sourcecode.cpp.objcpp;
-			name = "include_juce_cryptography.mm";
-			path = "../../JuceLibraryCode/include_juce_cryptography.mm";
-			sourceTree = "SOURCE_ROOT";
-		};
-		99817F73B57DA17C68D98557 = {
-			isa = PBXFileReference;
-			lastKnownFileType = file;
-			name = "juce_dsp";
-			path = "../../3rdParty/JUCE/modules/juce_dsp";
+			name = "api_key.example.h";
+			path = "../../Source/api_key.example.h";
 			sourceTree = "SOURCE_ROOT";
 		};
 		9A918E5E1E5BD424D0A03CBD = {
@@ -653,6 +664,13 @@
 			lastKnownFileType = file;
 			name = "juce_audio_basics";
 			path = "../../3rdParty/JUCE/modules/juce_audio_basics";
+			sourceTree = "SOURCE_ROOT";
+		};
+		A0D94CD81D7A0528B6351D81 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			name = FreesoundAPI.h;
+			path = ../../Source/FreesoundAPI.h;
 			sourceTree = "SOURCE_ROOT";
 		};
 		A2685F1639A6FDB636BE458D = {
@@ -716,6 +734,13 @@
 			lastKnownFileType = sourcecode.cpp.cpp;
 			name = FreesoundAPI.cpp;
 			path = ../../Source/FreesoundAPI.cpp;
+			sourceTree = "SOURCE_ROOT";
+		};
+		CAA46233BEAE6C5D01EBA25B = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			name = icon.png;
+			path = ../../../docs/icon.png;
 			sourceTree = "SOURCE_ROOT";
 		};
 		D0658F1793EAF839A61A4BAC = {
@@ -864,11 +889,21 @@
 			name = 3rdParty;
 			sourceTree = "<group>";
 		};
+		CC7523ACA440D9FDC6A9E7C7 = {
+			isa = PBXGroup;
+			children = (
+				680555E5E194E7C02FA99468,
+				CAA46233BEAE6C5D01EBA25B,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 		B581CF0AC49AC7944C3677B3 = {
 			isa = PBXGroup;
 			children = (
 				D6F4544776E0B949F646A967,
 				8C9715A3E0AF5980A2D12F0A,
+				CC7523ACA440D9FDC6A9E7C7,
 			);
 			name = SourceSampler;
 			sourceTree = "<group>";
@@ -935,6 +970,7 @@
 				160F33129C21F39682D768BC,
 				8D12357A0A13731509D377E5,
 				7B7047A307A218418CB0612C,
+				5484510AED0F6B29577E7953,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -1864,6 +1900,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				86FA18539B1EBA0FBD77984F,
+				5222B4F51D12D82A8C299DB6,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1935,6 +1972,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				86FA18539B1EBA0FBD77984F,
+				5222B4F51D12D82A8C299DB6,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2006,6 +2044,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				86FA18539B1EBA0FBD77984F,
+				5222B4F51D12D82A8C299DB6,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2088,6 +2127,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				86FA18539B1EBA0FBD77984F,
+				5222B4F51D12D82A8C299DB6,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 import urllib
+import pprint
 
 from collections import defaultdict
 
@@ -618,6 +619,17 @@ def simulator_user_action():
     return 'Action received'
 
 
+@http_server.route('/get_source_state', methods=['GET'])  # Gets the internal XML state of the plugin and the processed JSON version
+def get_source_state():
+    
+    data = {
+        'pluginState': BeautifulSoup(plugin_state, "lxml").prettify(),
+        'sourceState': pprint.pformat(state_manager.source_state),
+        'lastStateTimeReceiced': str(time_post_state_received),
+    }
+    return jsonify(data)
+
+
 @http_server.route('/receive_data_from_web', methods=['GET'])  # Endpoint used to recieve data form the web interface (for UI options that require web interface for example)
 def receive_data_from_web():
     # "data" is a list of key/value pairs serialized as: key1:value1,key2:value2,key3:value3...
@@ -642,13 +654,12 @@ def process_state_from_plugin(received_plugin_state):
     global connection_with_plugin_ok
     global elk_bridge
     global last_is_querying_and_downloading_sounds_state
-    plugin_state = received_plugin_state
     time_post_state_received = time.time()
 
-    if str(plugin_state).startswith("b'<?xml version"):
+    if str(received_plugin_state).startswith("b'<?xml version"):
         # State is in XML format, parse it
         used_parser = "lxml"
-        plugin_state_xml = BeautifulSoup(plugin_state, "lxml")
+        plugin_state_xml = BeautifulSoup(received_plugin_state, "lxml")
 
         if len(plugin_state_xml.find_all("SourcePresetState".lower())) == 0:
             # Plugin has sent volatile state information only
@@ -656,11 +667,12 @@ def process_state_from_plugin(received_plugin_state):
             plugin_state_dict.update(volatile_state)
         else:
             # Plugin has sent full state update
+            plugin_state = received_plugin_state  # Only in this case assign global plugin_state variable
             full_state = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state=plugin_state_dict)
             plugin_state_dict.update(full_state)
     else:
         # State is sent as a serialized string only (this is the volatile state)
-        volatile_state = process_xml_volatile_state_from_plugin(None, str(plugin_state)[2:-1])
+        volatile_state = process_xml_volatile_state_from_plugin(None, str(received_plugin_state)[2:-1])
         plugin_state_dict.update(volatile_state)
 
     if not last_is_querying_and_downloading_sounds_state and plugin_state_dict.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False):

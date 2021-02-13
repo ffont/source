@@ -144,6 +144,31 @@
         function releaseEncoderButton() {
             postAction('encoder_release', 0);
         }
+
+        function getSourceState(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    var data = JSON.parse(this.responseText);
+                    document.getElementById('stateTimestamp').innerHtml = data.lastStateTimeReceiced;
+                    document.getElementById('pluginState').value = data.pluginState;
+                    document.getElementById('sourceState').value = data.sourceState;
+                }
+            };
+            xhr.open('GET', '/get_source_state', true);
+            xhr.send();
+        }
+
+        function startAutoUpdate(){
+            updateStateTimer = setInterval(function () {
+                getSourceState();
+            }, 500);
+        }
+
+        function stopAutoUpdate() {
+            window.clearInterval(updateStateTimer);
+        }
         
     </script>
 </head>
@@ -174,6 +199,14 @@
         <button id="encoderPress" onmousedown="pressEncoderButton()" onmouseup="releaseEncoderButton()">E</button>
         <button id="encoderR" onclick="encoder(1)">></button>
     </div>
+
+    <br>
+
+    <h3>State monitor</h3>
+    <button onclick="getSourceState();">Get state now</button><button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button><span id="stateTimestamp"></span>
+    <textarea id="pluginState" style="width:90%;height:250px;"></textarea>
+    <textarea id="sourceState" style="width:90%;height:250px;"></textarea>
+
 
 </body>
 </html>
