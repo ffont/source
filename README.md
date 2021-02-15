@@ -1,8 +1,33 @@
 <p align="center">
-<img src="docs/source_logo.png" width="500" />
+<img src="docs/source_logo_headline.png" width="500" />
 </p>
 
-# SOURCE, a Freesound-powered sampler
+
+# About
+
+SOURCE is an open-source music sampler powered by [Freesound](https://freesound.org)'s collection of 500k Creative Commons sounds contributed by a community of thousands of people around the world. SOURCE is a sampler that *does not sample*. Instead, it provides different ways to load sounds from Freesound and instantly generate new sound palettes to enrich your creative process and bring in an endless SOURCE of inspiration.
+
+SOURCE is designed to run as a stand-alone system on a hardware solution based on a [Raspberry Pi 4](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) (with the [Elk Pi](https://elk.audio/elk-pi-basic-dev-kit/) audio I/O hat and [Elk Audio OS](https://elk.audio/audio-os/)), and using the display and buttons/faders/encoder of Elk's [BLACKBOARD](https://elk.audio/blackboard/) breakout/controller board as user interface. However, the core of SOURCE is implemented as a standard [JUCE](https://juce.com) audio plugin. That allows SOURCE to be loaded in DAWs that support VST/AU plugins, or even run as a stand-alone and cross-platform application in desktop computers. Furthermore, SOURCE, as an audio plugin, is fully controllable via Open Sound Control, which allows to easily design alternative hardware and software user interfaces.
+
+TODO: demonstration video(s)
+
+Why making SOURCE? As a researcher at the [Music Technology Group](https://www.upf.edu/web/mtg/) of [Universitat Pompeu Fabra](https://www.upf.edu), I have been leading the development of the Freesound website and coordinating research projects around it for a number of years. I've been always interested in how to take advantage of the creative potential of Freesound's huge sound collection, and in ways to better integrate Freesound in the creative process. Even though 
+SOURCE started as a personal side project (that's why the [Rita & Aurora](https://ritaandaurora.github.io) logo is shown below, a fancy name I sometimes use for audio dev side-projects), I soon realized about the potential of the prototype and saw that SOURCE can bring together many of the research ideas that we have been experimenting with at the MTG in the last years. I believe that SOURCE can be a great music-making tool for creators, but I also think it can be a great playground for experimentation and research about the interaction between creators and huge sound collections like Freesound.
+
+
+
+
+
+## How it works
+
+TODO: Block diagram of the architecture of the system, with some technical notes but pointing to "developers" section for more details.
+
+## How can I run SOURCE
+
+TODO:  Explain different ways to do it: 1) Using RPI+Elk sutuff (then link to specific deployment instructions), 2) As an audio plugin (add screenshot and explain the idea of a simplified interface)
+
+
+# Developers
 
 
 ## Building Source
