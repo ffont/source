@@ -777,7 +777,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reverbParameters.freezeMode = parameters[5].getFloatValue();
         sampler.setReverbParameters(reverbParameters);
         
-    } else if (actionName == ACTION_SAVE_CURRENT_PRESET){
+    } else if (actionName == ACTION_SAVE_PRESET){
         String presetName = parameters[0];
         int index = parameters[1].getIntValue();
         saveCurrentPresetToFile(presetName, index);  // Save to file...
@@ -838,7 +838,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         removeSound(soundIndex);
         
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
-        int soundIdx = parameters[0].getIntValue();
+        int soundIndex = parameters[0].getIntValue();
         int soundID = parameters[1].getIntValue();
         String soundName = parameters[2];
         String soundUser = parameters[3];
@@ -860,7 +860,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int midiRootNote = parameters[11].getIntValue();
         String triggerDownloadSoundAction = parameters[12];
         
-        addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
+        addOrReplaceSoundFromBasicSoundProperties(soundIndex, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
         
     } else if (actionName == ACTION_REAPPLY_LAYOUT){
         int newNoteLayout = parameters[0].getIntValue();

@@ -439,12 +439,12 @@ class State(object):
         current_preset_name = sm.source_state.get(StateNames.LOADED_PRESET_NAME, 'NoName')
         current_preset_index = sm.source_state.get(StateNames.LOADED_PRESET_INDEX, -1)
         if current_preset_index > -1:
-            sm.send_osc_to_plugin("/save_current_preset", [current_preset_name, int(current_preset_index)])
+            sm.send_osc_to_plugin("/save_preset", [current_preset_name, int(current_preset_index)])
             sm.show_global_message("Saving {}\n{}...".format(current_preset_index, current_preset_name))
 
     def save_current_preset_to(self, query="", preset_idx=-1):
         preset_name = query  # NOTE: the parameter is called "query" because it reuses some classes used for entering queries. We might want to change that to "name"
-        sm.send_osc_to_plugin("/save_current_preset", [preset_name, int(preset_idx)])
+        sm.send_osc_to_plugin("/save_preset", [preset_name, int(preset_idx)])
         sm.show_global_message("Saving {}\n{}...".format(preset_idx, preset_name))
 
     def load_preset(self, preset_idx):

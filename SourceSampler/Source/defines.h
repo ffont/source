@@ -60,32 +60,40 @@
 #define MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD 1024 * 1024 * 15  // 15 MB
 
 
-#define ACTION_SOUND_READY_TO_LOAD "ACTION_SOUND_READY_TO_LOAD"
-#define ACTION_NEW_QUERY "/new_query"
-#define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
-#define ACTION_SET_SOUND_PARAMETER_INT "/set_sound_parameter_int"
+// Setters for preset/global parameters
 #define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
-#define ACTION_SAVE_CURRENT_PRESET "/save_current_preset"
-#define ACTION_LOAD_PRESET "/load_preset"
 #define ACTION_SET_MIDI_IN_CHANNEL "/set_midi_in_channel"
 #define ACTION_SET_MIDI_THRU "/set_midi_thru"
-#define ACTION_PLAY_SOUND "/play_sound"
-#define ACTION_STOP_SOUND "/stop_sound"
 #define ACTION_SET_POLYPHONY "/set_polyphony"
-#define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
-#define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define ACTION_SET_STATE_TIMER_HZ "/set_state_timer_hz"
-#define ACTION_REMOVE_SOUND "/remove_sound"
-#define ACTION_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
+#define ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE "/set_use_original_files"
+
+// Actions to trigger in plugin
+#define ACTION_SAVE_PRESET "/save_preset"
+#define ACTION_LOAD_PRESET "/load_preset"
+#define ACTION_NEW_QUERY "/new_query"
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
-#define ACTION_SET_SOUND_SLICES "/set_slices"
-#define ACTION_SET_SOUND_ASSIGNED_NOTES "/set_assigned_notes"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
 #define ACTION_GET_STATE "/get_state"
 #define ACTION_PLAY_SOUND_FROM_PATH "/play_sound_from_path"
+
+// Setters for sound properties (first parameter is soundIndex)
+#define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
+#define ACTION_SET_SOUND_PARAMETER_INT "/set_sound_parameter_int"
+#define ACTION_SET_SOUND_SLICES "/set_slices"
+#define ACTION_SET_SOUND_ASSIGNED_NOTES "/set_assigned_notes"
 #define ACTION_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define ACTION_REMOVE_CC_MAPPING "/remove_cc_mapping"
-#define ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE "/set_use_original_files"
+
+// Actions to trigger in plugin for a specific sound (first parameter is soundIndex or soundID)
+#define ACTION_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
+#define ACTION_REMOVE_SOUND "/remove_sound"
+#define ACTION_PLAY_SOUND "/play_sound"
+#define ACTION_STOP_SOUND "/stop_sound"
+#define ACTION_SOUND_READY_TO_LOAD "/sound_ready_to_load"
+#define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
+#define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
+
 
 #define LAUNCH_MODE_GATE 0
 #define LAUNCH_MODE_LOOP 1
