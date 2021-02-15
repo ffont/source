@@ -647,14 +647,19 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
 
 void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 {
-    if (!message.contains(ACTION_GET_STATE)){
+    String actionName = message.substring(0, message.indexOf(":"));
+    String serializedParameters = message.substring(message.indexOf(":") + 1);
+    StringArray parameters;
+    parameters.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+    
+    if (actionName != ACTION_GET_STATE){
         // Don't log get state actions as it creates too much logs
         DBG("Action message: " << message);
     }
     
-    if (message.startsWith(String(ACTION_FINISHED_DOWNLOADING_SOUND))){
+    if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
         // A sound has finished downloading, trigger loading into sampler
-        String soundID = message.substring(String(ACTION_FINISHED_DOWNLOADING_SOUND).length() + 1);
+        String soundID = parameters[0];
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
             if (soundID == soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()){
@@ -675,13 +680,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
         }
         
-    } else if (message.startsWith(String(ACTION_SOUND_READY_TO_LOAD))){
+    } else if (actionName == ACTION_SOUND_READY_TO_LOAD){
         // A sound can be loaded because the local file already exists
         // NOTE: for sounds that come from Freesound, we call ACTION_FINISHED_DOWNLOADING_SOUND even if
         // the sound is already downloaded from previous uses. ACTION_FINISHED_DOWNLOADING_SOUND will also
         // load the sound in the sampler just like ACTION_SOUND_READY_TO_LOAD
         
-        int soundIndex = message.substring(String(ACTION_SOUND_READY_TO_LOAD).length() + 1).getIntValue();
+        int soundIndex = parameters[0].getIntValue();
         #if LOAD_SAMPLES_IN_THREAD
             // Trigger loading of audio sample into the sampler in thread
             sampleLoaderThread.setSoundToLoad(soundIndex);
@@ -695,13 +700,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
         }
         
-    } else if (message.startsWith(String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS))){
+    } else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
         // A sound has finished downloading, trigger loading into sampler
-        String serializedParameters = message.substring(String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        String soundID = tokens[0];
-        int percentageDone = tokens[1].getIntValue();
+        String soundID = parameters[0];
+        int percentageDone = parameters[1].getIntValue();
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
             if (soundID == soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()){
@@ -709,15 +711,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
         }
         
-    } else if (message.startsWith(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER))){
-        String serializedParameters = message.substring(String(ACTION_NEW_QUERY_TRIGGERED_FROM_SERVER).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        String query = tokens[0];
-        int numSounds = tokens[1].getIntValue();
-        float minSoundLength = tokens[2].getFloatValue();
-        float maxSoundLength = tokens[3].getFloatValue();
-        int noteMappingType = tokens[4].getFloatValue();
+    } else if (actionName == ACTION_NEW_QUERY){
+        String query = parameters[0];
+        int numSounds = parameters[1].getIntValue();
+        float minSoundLength = parameters[2].getFloatValue();
+        float maxSoundLength = parameters[3].getFloatValue();
+        int noteMappingType = parameters[4].getFloatValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         #if MAKE_QUERY_IN_THREAD
             queryMakerThread.setQueryParameters(query, numSounds, minSoundLength, maxSoundLength);
@@ -726,13 +725,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
         #endif
         
-    } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_FLOAT))){
-        String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_FLOAT).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
-        String parameterName = tokens[1];
-        float parameterValue = tokens[2].getFloatValue();
+    } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
+        int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
+        String parameterName = parameters[1];
+        float parameterValue = parameters[2].getFloatValue();
         DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
             if (soundIndex < sampler.getNumSounds()){
@@ -750,13 +746,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
         }
         
-    } else if (message.startsWith(String(ACTION_SET_SOUND_PARAMETER_INT))){
-        String serializedParameters = message.substring(String(ACTION_SET_SOUND_PARAMETER_INT).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();  // -1 means all sounds
-        String parameterName = tokens[1];
-        int parameterValue = tokens[2].getIntValue();
+    } else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
+        int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
+        String parameterName = parameters[1];
+        int parameterValue = parameters[2].getIntValue();
         DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
         if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
             if (soundIndex < sampler.getNumSounds()){
@@ -774,126 +767,108 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
         }
         
-    } else if (message.startsWith(String(ACTION_SET_REVERB_PARAMETERS))){
-        String serializedParameters = message.substring(String(ACTION_SET_REVERB_PARAMETERS).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+    } else if (actionName == ACTION_SET_REVERB_PARAMETERS){
         Reverb::Parameters reverbParameters;
-        reverbParameters.roomSize = tokens[0].getFloatValue();
-        reverbParameters.damping = tokens[1].getFloatValue();
-        reverbParameters.wetLevel = tokens[2].getFloatValue();
-        reverbParameters.dryLevel = tokens[3].getFloatValue();
-        reverbParameters.width = tokens[4].getFloatValue();
-        reverbParameters.freezeMode = tokens[5].getFloatValue();
+        reverbParameters.roomSize = parameters[0].getFloatValue();
+        reverbParameters.damping = parameters[1].getFloatValue();
+        reverbParameters.wetLevel = parameters[2].getFloatValue();
+        reverbParameters.dryLevel = parameters[3].getFloatValue();
+        reverbParameters.width = parameters[4].getFloatValue();
+        reverbParameters.freezeMode = parameters[5].getFloatValue();
         sampler.setReverbParameters(reverbParameters);
         
-    } else if (message.startsWith(String(ACTION_SAVE_CURRENT_PRESET))){
-        String serializedParameters = message.substring(String(ACTION_SAVE_CURRENT_PRESET).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        String presetName = tokens[0];
-        int index = tokens[1].getIntValue();
+    } else if (actionName == ACTION_SAVE_CURRENT_PRESET){
+        String presetName = parameters[0];
+        int index = parameters[1].getIntValue();
         saveCurrentPresetToFile(presetName, index);  // Save to file...
         currentPresetIndex = index; // ...and update current preset index and name in case it was changed
         saveGlobalPersistentStateToFile();  // Save global state to reflect last loaded preset has the right index
         
-    } else if (message.startsWith(String(ACTION_LOAD_PRESET))){
-        int index = message.substring(String(ACTION_LOAD_PRESET).length() + 1).getIntValue();
+    } else if (actionName == ACTION_LOAD_PRESET){
+        int index = parameters[0].getIntValue();
         setCurrentProgram(index);
         
-    } else if (message.startsWith(String(ACTION_SET_MIDI_IN_CHANNEL))){
-        int channel = message.substring(String(ACTION_SET_MIDI_IN_CHANNEL).length() + 1).getIntValue();
+    } else if (actionName == ACTION_SET_MIDI_IN_CHANNEL){
+        int channel = parameters[0].getIntValue();
         setMidiInChannelFilter(channel);
         
-    } else if (message.startsWith(String(ACTION_SET_MIDI_THRU))){
-        bool midiThru = message.substring(String(ACTION_SET_MIDI_THRU).length() + 1).getIntValue() == 1;
+    } else if (actionName == ACTION_SET_MIDI_THRU){
+        bool midiThru = parameters[0].getIntValue() == 1;
         setMidiThru(midiThru);
         
-    } else if (message.startsWith(String(ACTION_PLAY_SOUND))){
-        int soundIndex = message.substring(String(ACTION_PLAY_SOUND).length() + 1).getIntValue();
+    } else if (actionName == ACTION_PLAY_SOUND){
+        int soundIndex = parameters[0].getIntValue();
         addToMidiBuffer(soundIndex, false);
         
-    } else if (message.startsWith(String(ACTION_STOP_SOUND))){
-        int soundIndex = message.substring(String(ACTION_STOP_SOUND).length() + 1).getIntValue();
+    } else if (actionName == ACTION_STOP_SOUND){
+        int soundIndex = parameters[0].getIntValue();
         addToMidiBuffer(soundIndex, true);
         
-    } else if (message.startsWith(String(ACTION_SET_POLYPHONY))){
-        int numVoices = message.substring(String(ACTION_SET_POLYPHONY).length() + 1).getIntValue();
+    } else if (actionName == ACTION_SET_POLYPHONY){
+        int numVoices = parameters[0].getIntValue();
         sampler.setSamplerVoices(numVoices);
 
-    } else if (message.startsWith(String(ACTION_ADD_OR_UPDATE_CC_MAPPING))){
-        String serializedParameters = message.substring(String(ACTION_ADD_OR_UPDATE_CC_MAPPING).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();
-        int randomID = tokens[1].getIntValue();
-        int ccNumber = tokens[2].getIntValue();
-        String parameterName = tokens[3];
-        float minRange = tokens[4].getFloatValue();
-        float maxRange = tokens[5].getFloatValue();
+    } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
+        int soundIndex = parameters[0].getIntValue();
+        int randomID = parameters[1].getIntValue();
+        int ccNumber = parameters[2].getIntValue();
+        String parameterName = parameters[3];
+        float minRange = parameters[4].getFloatValue();
+        float maxRange = parameters[5].getFloatValue();
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->addOrEditMidiMapping(randomID, ccNumber, parameterName, minRange, maxRange);
         }
 
-    } else if (message.startsWith(String(ACTION_REMOVE_CC_MAPPING))){
-        String serializedParameters = message.substring(String(ACTION_REMOVE_CC_MAPPING).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();
-        int randomID = tokens[1].getIntValue();
+    } else if (actionName == ACTION_REMOVE_CC_MAPPING){
+        int soundIndex = parameters[0].getIntValue();
+        int randomID = parameters[1].getIntValue();
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->removeMidiMapping(randomID);
         }
 
-    } else if (message.startsWith(String(ACTION_SET_STATE_TIMER_HZ))){
-        int newHz = message.substring(String(ACTION_SET_STATE_TIMER_HZ).length() + 1).getIntValue();
+    } else if (actionName == ACTION_SET_STATE_TIMER_HZ){
+        int newHz = parameters[0].getIntValue();
         stopTimer();
         startTimerHz(newHz);
         
-    } else if (message.startsWith(String(ACTION_REMOVE_SOUND))){
-        int soundIndex = message.substring(String(ACTION_REMOVE_SOUND).length() + 1).getIntValue();
+    } else if (actionName == ACTION_REMOVE_SOUND){
+        int soundIndex = parameters[0].getIntValue();
         removeSound(soundIndex);
         
-    } else if (message.startsWith(String(ACTION_ADD_OR_REPLACE_SOUND))){
-        String serializedParameters = message.substring(String(ACTION_ADD_OR_REPLACE_SOUND).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIdx = tokens[0].getIntValue();
-        int soundID = tokens[1].getIntValue();
-        String soundName = tokens[2];
-        String soundUser = tokens[3];
-        String soundLicense = tokens[4];
-        String oggDownloadURL = tokens[5];
-        String localFilePath = tokens[6];
-        String type = tokens[7];
-        int sizeBytes = tokens[8].getIntValue();
-        String serializedSlices = tokens[9];
+    } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
+        int soundIdx = parameters[0].getIntValue();
+        int soundID = parameters[1].getIntValue();
+        String soundName = parameters[2];
+        String soundUser = parameters[3];
+        String soundLicense = parameters[4];
+        String oggDownloadURL = parameters[5];
+        String localFilePath = parameters[6];
+        String type = parameters[7];
+        int sizeBytes = parameters[8].getIntValue();
+        String serializedSlices = parameters[9];
         StringArray slices;
         if (serializedSlices != ""){
             slices.addTokens(serializedSlices, ",", "");
         }
-        String assignedNotesBigInteger = tokens[10];
+        String assignedNotesBigInteger = parameters[10];
         BigInteger midiNotes;
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
-        int midiRootNote = tokens[11].getIntValue();
-        String triggerDownloadSoundAction = tokens[12];
+        int midiRootNote = parameters[11].getIntValue();
+        String triggerDownloadSoundAction = parameters[12];
         
         addOrReplaceSoundFromBasicSoundProperties(soundIdx, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
         
-    } else if (message.startsWith(String(ACTION_REAPPLY_LAYOUT))){
-        int newNoteLayout = message.substring(String(ACTION_REAPPLY_LAYOUT).length() + 1).getIntValue();
+    } else if (actionName == ACTION_REAPPLY_LAYOUT){
+        int newNoteLayout = parameters[0].getIntValue();
         reapplyNoteLayout(newNoteLayout);
         
-    } else if (message.startsWith(String(ACTION_SET_SOUND_SLICES))){
-        String serializedParameters = message.substring(String(ACTION_SET_SOUND_SLICES).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();
-        String serializedSlices = tokens[1];
+    } else if (actionName == ACTION_SET_SOUND_SLICES){
+        int soundIndex = parameters[0].getIntValue();
+        String serializedSlices = parameters[1];
         StringArray slices;
         slices.addTokens(serializedSlices, ",", "");
         
@@ -933,13 +908,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
             sound->setOnsetTimesSamples(onsets);
         }
-    } else if (message.startsWith(String(ACTION_SET_SOUND_ASSIGNED_NOTES))){
-        String serializedParameters = message.substring(String(ACTION_SET_SOUND_ASSIGNED_NOTES).length() + 1);
-        StringArray tokens;
-        tokens.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
-        int soundIndex = tokens[0].getIntValue();
-        String assignedNotesBigInteger = tokens[1];
-        int rootNote = tokens[2].getIntValue();
+    } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
+        int soundIndex = parameters[0].getIntValue();
+        String assignedNotesBigInteger = parameters[1];
+        int rootNote = parameters[2].getIntValue();
         
         BigInteger midiNotes;
         if (assignedNotesBigInteger != ""){
@@ -952,12 +924,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sound->setParameterByNameInt("midiRootNote", rootNote);
         }
         
-    } else if (message.startsWith(String(ACTION_CLEAR_ALL_SOUNDS))){
+    } else if (actionName == ACTION_CLEAR_ALL_SOUNDS){
         loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
         sampler.clearSounds();
         
-    } else if (message.startsWith(String(ACTION_GET_STATE))){
-        String stateType = message.substring(String(ACTION_GET_STATE).length() + 1);
+    } else if (actionName == ACTION_GET_STATE){
+        String stateType = parameters[0];
         if (stateType == "volatile"){
             sendStateToExternalServer(collectVolatileStateInformation(), "");
         } else if (stateType == "volatileString"){
@@ -977,15 +949,15 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         } else if (stateType == "full"){
             sendStateToExternalServer(collectFullStateInformation(true), "");
         }
-    } else if (message.startsWith(String(ACTION_PLAY_SOUND_FROM_PATH))){
-        String soundPath = message.substring(String(ACTION_PLAY_SOUND_FROM_PATH).length() + 1);
+    } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
+        String soundPath = parameters[0];
         if (soundPath == ""){
             stopPreviewingFile();  // Send empty string to stop currently previewing sound
         } else {
             previewFile(soundPath);
         }
-    } else if (message.startsWith(String(ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE))){
-        String preference = message.substring(String(ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE).length() + 1);
+    } else if (actionName == ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE){
+        String preference = parameters[0];
         useOriginalFilesPreference = preference;
         saveGlobalPersistentStateToFile();
     }

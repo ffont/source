@@ -72,7 +72,7 @@ public:
         tokens.addTokens (filename, ".ogg", "");
         String soundID = tokens[0];
         String serializedParameters = soundID + SERIALIZATION_SEPARATOR + (String)(100*bytesDownloaded/totalLength) + SERIALIZATION_SEPARATOR;
-        String actionMessage = String(ACTION_UPDATE_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
+        String actionMessage = String(ACTION_DOWNLOADING_SOUND_PROGRESS) + ":" + serializedParameters;
         sendActionMessage(actionMessage);
     }
     
