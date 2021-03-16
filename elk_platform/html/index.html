@@ -255,11 +255,24 @@
         </div>
 
         <div id="transferFiles" class="controls_card show_as_default">
-            <h2>Transfer files</h2>
-            {% if message %}
-                {{message}}
+            <h2>Transfer sounds</h2>
+            {% if message_sounds %}
+                {{message_sounds}}
             {% endif %}
             <form method="post" action="." enctype="multipart/form-data">
+                <input type="file" name="file[]" multiple="true" required style="background-color:black;">
+                <br>
+                <input type="submit" value="Submit">                
+            </form>
+        </div>
+
+        <div id="transferPreset" class="controls_card show_as_default">
+            <h2>Transfer presets</h2>
+            {% if message_presets %}
+                {{message_presets}}
+            {% endif %}
+            <form method="post" action="." enctype="multipart/form-data">
+                Number:<input name="presetIdx" value="" type="number"><br>
                 <input type="file" name="file[]" multiple="true" required style="background-color:black;">
                 <br>
                 <input type="submit" value="Submit">                

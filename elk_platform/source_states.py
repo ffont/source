@@ -37,6 +37,14 @@ def get_local_audio_files_path():
             return base_path
     return None
 
+def get_preset_files_path():
+    if sm is not None and sm.source_state:
+        base_path = sm.source_state.get(StateNames.PRESETS_DATA_LOCATION, None)
+        if base_path is not None:
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+            return base_path
+    return None
 
 def snap_to_value(x, value=0.5, margin=0.07):
     if abs(x - value) < margin:

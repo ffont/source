@@ -66,6 +66,7 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
             ("elk_platform/source_sensei_config.json", remote_dir),
             ("elk_platform/html/index.html", remote_dir),
             ("elk_platform/html/sound_usage_log.html", remote_dir),
+            ("elk_platform/html/simulator.html", remote_dir),
             ("elk_platform/requirements.txt", remote_dir),
             ("elk_platform/main", remote_dir),
             ("elk_platform/elk_ui_custom.py", remote_dir),
