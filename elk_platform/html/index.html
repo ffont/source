@@ -261,7 +261,7 @@
             {% endif %}
             <form method="post" action="." enctype="multipart/form-data">
                 <input type="file" name="file[]" multiple="true" required style="background-color:black;">
-                <br>
+                <input name="toLocal" type="checkbox" checked="checked">To local folder<br>
                 <input type="submit" value="Submit">                
             </form>
         </div>
