@@ -533,7 +533,7 @@ def index():
         if request.form.get('presetIdx', False) != False:
             # Sending preset files
             try:
-                presetIdx = int(request.form.get('presetIdx'))
+                start_preset_idx = int(request.form.get('presetIdx'))
             except ValueError:
                 return render_template("index.html", message_presets='Wrong preset number')
             preset_files_directory = get_preset_files_path()
@@ -542,7 +542,7 @@ def index():
                 uploaded_files = request.files.getlist("file[]")
                 for f in uploaded_files:
                     if f.filename.split('.')[-1] in ['xml']:  # Check that format is ok
-                        f.save(os.path.join(preset_files_directory, '{}.xml'.format(presetIdx)))
+                        f.save(os.path.join(preset_files_directory, '{}.xml'.format(start_preset_idx + n_saved)))
                         n_saved += 1
                 tvars.update(message_presets='{} presets transferred'.format(n_saved))
                 return render_template("index.html", **tvars)
