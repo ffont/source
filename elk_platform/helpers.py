@@ -747,7 +747,7 @@ class SoundUsageLogManager(object):
             os.makedirs(self.sound_usage_log_base_dir)
         
         now = datetime.datetime.now()
-        self.today_sound_usage_log_path = os.path.join(self.sound_usage_log_base_dir, '{}_{}_{}_sound_usage.json'.format(now.year, now.month, now.day))
+        self.today_sound_usage_log_path = os.path.join(self.sound_usage_log_base_dir, '{}_{:02d}_{:02d}_sound_usage.json'.format(now.year, now.month, now.day))
         if os.path.exists(self.today_sound_usage_log_path):
             self.sound_usage_log = json.load(open(self.today_sound_usage_log_path, 'r'))
 
@@ -776,8 +776,9 @@ def get_all_sound_usage_logs():
             if '_sound_usage' in filename:
                 log.append((
                     filename.split('_sound_usage')[0].replace('_', '-'),
-                    sorted(json.load(open(os.path.join(sound_usage_log_manager.sound_usage_log_base_dir, filename), 'r')).values(), key=lambda x: x['time_loaded'])
+                    sorted(json.load(open(os.path.join(sound_usage_log_manager.sound_usage_log_base_dir, filename), 'r')).values(), key=lambda x: x['time_loaded'], reverse=True)
                 ))
+    log = sorted(log, key=lambda x:x[0], reverse=True)
     return log
 
 # -- Other

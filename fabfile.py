@@ -79,7 +79,7 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
             ("elk_platform/logo_oled_ra.png", remote_dir),
             ("elk_platform/logo_oled_ra_b.png", remote_dir),
             ("elk_platform/logo_oled_fs.png", remote_dir),
-            ("last_commmit_info", remote_dir),
+            ("elk_platform/last_commit_info", remote_dir),
         ]
 
         plugin_files = [            

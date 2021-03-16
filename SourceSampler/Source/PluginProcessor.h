@@ -78,7 +78,6 @@ public:
     ValueTree collectGlobalSettingsStateInformation ();
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
-    void updatePresetNumberMapping(const String& presetName, int index);
     
     ValueTree collectVolatileStateInformation ();
     String collectVolatileStateInformationAsString ();
@@ -210,8 +209,6 @@ private:
     String presetName = "empty";
     int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
     ValueTree loadedSoundsInfo;
-    
-    ValueTree presetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
     
     ServerInterface serverInterface;
     

@@ -142,11 +142,7 @@ double SourceSamplerAudioProcessor::getTailLengthSeconds() const
 
 int SourceSamplerAudioProcessor::getNumPrograms()
 {
-    int numPresets = presetNumberMapping.getNumChildren(); //TODO: should this be the biggest integer?
-    if (numPresets > 0)
-        return numPresets;
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+   return 128;
 }
 
 int SourceSamplerAudioProcessor::getCurrentProgram()
@@ -206,22 +202,13 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
                 location.deleteFile();
             }
             updatedXmlState->writeTo(location);
-            updatePresetNumberMapping(filename, index);
         }
     }
 }
 
 String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 {
-    for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
-        ValueTree presetMapping = presetNumberMapping.getChild(i);
-        int mappingNumber = (int)presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER);
-        if (mappingNumber == index){
-            String filename = presetMapping.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME).toString();
-            return filename;
-        }
-    }
-    return "";
+    return (String)index + ".xml";
 }
 
 //==============================================================================
@@ -387,9 +374,6 @@ void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _preset
     }
     logToState("Saving preset to: " + location.getFullPathName());
     xml->writeTo(location);
-    if (index > -1){
-        updatePresetNumberMapping(filename, index);
-    }
 }
 
 bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
@@ -462,7 +446,6 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_TMP_DATA_LOCATION, tmpFilesLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_PLUGIN_VERSION, String(JucePlugin_VersionString), nullptr);
-    settings.appendChild(presetNumberMapping.createCopy(), nullptr);
     return settings;
 }
 
@@ -505,40 +488,16 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
                 useOriginalFilesPreference = settings.getProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES).toString();
             }
             
-            ValueTree _presetNumberMapping = settings.getChildWithName(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
-            if (_presetNumberMapping.isValid()){
-                presetNumberMapping = _presetNumberMapping;
-            }
         }
     }
 }
 
-void SourceSamplerAudioProcessor::updatePresetNumberMapping(const String& presetName, int index)
-{
-    // If preset already exists at this index location, remove it from the value tree so later we re-add it (updated)
-    if (getPresetFilenameByIndex(index) != ""){
-        ValueTree newPresetNumberMapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESETS_MAPPING);
-        for (int i=0; i<presetNumberMapping.getNumChildren(); i++){
-            ValueTree preset = presetNumberMapping.getChild(i);
-            if (index != (int)preset.getProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER)){
-                newPresetNumberMapping.appendChild(preset.createCopy(), nullptr);
-            }
-        }
-        presetNumberMapping = newPresetNumberMapping;
-    }
-    
-    // Add entry to the preset mapping list
-    ValueTree mapping = ValueTree(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING);
-    mapping.setProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER, index, nullptr);
-    mapping.setProperty(GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME, presetName, nullptr);
-    presetNumberMapping.appendChild(mapping, nullptr);
-    saveGlobalPersistentStateToFile();
-}
 
 File SourceSamplerAudioProcessor::getPresetFilePath(const String& presetFilename)
 {
     return presetFilesLocation.getChildFile(presetFilename).withFileExtension("xml");
 }
+
 
 String SourceSamplerAudioProcessor::getPresetFilenameFromNameAndIndex(const String& presetName, int index)
 {
