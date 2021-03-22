@@ -1585,7 +1585,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     def draw_display_frame(self):
         if is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND not in self.items:
-            self.items = self.items[:-2] + [self.OPTION_LOGOUT_FROM_FREESOUND] + self.items[-1]  # Keep OPTION_ABOUT the last option
+            self.items = self.items[:-2] + [self.OPTION_LOGOUT_FROM_FREESOUND] + [self.items[-1]]  # Keep OPTION_ABOUT the last option
         if not is_logged_in() and self.OPTION_LOGOUT_FROM_FREESOUND in self.items:
             self.items = [item for item in self.items if item != self.OPTION_LOGOUT_FROM_FREESOUND]
 

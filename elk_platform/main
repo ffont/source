@@ -58,7 +58,7 @@ full_state_refresh_fps = 1
 volatile_state_refresh_fps = 15
 
 current_frame = None
-current_frame_directory = 'static/frame/' 
+current_frame_directory = 'static/frame/'
 
 plugin_state = "No sate"
 plugin_state_dict = {}
@@ -80,6 +80,10 @@ osc_server = None
 
 BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
+
+SOURCE_TRACK_ID = 0
+METRONOME_TRACK_ID = 2
+METRONOME_MIDI_CHANNEL = 16
 
 
 # --- Utils ------------------------------------------------------------------------
@@ -111,7 +115,7 @@ def collect_system_stats():
                 total_cpu += float(line.split('sushi_b64')[0].strip().split(' ')[-1])
             system_stats['xenomai_cpu'] = total_cpu
             system_stats['n_sushi_proc'] = get_status_output("/bin/ps -e | /bin/grep sushi | wc -l")
-            
+
             # Check network status and reconnect if disconnected
             connmanctl_services_output = get_status_output("sudo connmanctl services")
             network_is_connected = '*AO' in connmanctl_services_output
@@ -132,7 +136,7 @@ def collect_system_stats():
                     get_status_output("sudo connmanctl enable wifi")
                     get_status_output("sudo systemctl restart connman")
 
-            # Check aconnect status and reconnect if disconnected                    
+            # Check aconnect status and reconnect if disconnected
             aconnect_l_output = get_status_output("aconnect -l")
             aconnect_is_connected = 'Connected' in aconnect_l_output
             if not aconnect_is_connected:
@@ -167,7 +171,6 @@ def run_collect_full_state_loop():
             osc_client.send_message('/get_state', ["full"])
 
 
-
 # --- ELK Bridge ------------------------------------------------------------------------
 
 class ElkBridge(object):
@@ -175,7 +178,7 @@ class ElkBridge(object):
     buttons_state = {}
     button_pressing_log = defaultdict(list)
     button_timers = [None, None, None, None, None, None, None, None, None]
-    
+
     encoder_pressing_log = []
     encoder_timer = None
 
@@ -183,7 +186,7 @@ class ElkBridge(object):
     selected_sound_idx = None
     current_parameter_page = 0
     starttime = 0
-    
+
     uic = None
     sushic = None
     midic = None
@@ -194,8 +197,14 @@ class ElkBridge(object):
         while self.sushic is None:
             try:
                 self.sushic = sc.SushiController()
+                # Print available parameters
+                for track_info in self.sushic.audio_graph.get_all_tracks():
+                    print('Track ID {}'.format(track_info.id))
+                    print(self.sushic.parameters.get_track_parameters(track_info.id))
+                sys.stdout.flush()
+
                 # Set init gain to high number
-                controller_id = 0  # Sushi mixer
+                controller_id = SOURCE_TRACK_ID
                 param_id = 0  # Gain
                 self.sushic.parameters.set_parameter_value(controller_id, param_id, 0.92)
                 print("Initialized SushiController")
@@ -205,7 +214,7 @@ class ElkBridge(object):
                     time.sleep(1)  # Wait for 1 second and try again
                 else:
                     break  # Break while because outside ELK platform this will never succeed
-        
+
         while self.midic is None:
             try:
                 self.midic = mc.MidiController()
@@ -217,14 +226,14 @@ class ElkBridge(object):
                     time.sleep(1)  # Wait for 1 second and try again
                 else:
                     break  # Break while because outside ELK platform this will never succeed
-                
+
         while self.uic is None:
             try:
                 self.uic = ElkUIController(self.handle_faders,
-                                          self.handle_buttons,
-                                          self.handle_encoder_button,
-                                          self.handle_encoder,
-                                          self.handle_potentiometer)
+                                           self.handle_buttons,
+                                           self.handle_encoder_button,
+                                           self.handle_encoder,
+                                           self.handle_potentiometer)
                 state_manager.set_ui_client(self.uic)
                 print("Initialized ElkUIController")
             except Exception as e:
@@ -233,14 +242,14 @@ class ElkBridge(object):
                     time.sleep(1)  # Wait for 1 second and try again
                 else:
                     break  # Break while because outside ELK platform this will never succeed
-        
+
         # Compute first display frame
         self.compute_display_frame(0)
 
     def set_midi_input_filter_channel(self, midi_channel):
         if self.midic is not None and midi_channel != self.current_midi_in_channel:
             raw_midi = True
-            track_identifier = 0
+            track_identifier = 0  # Source track ID
             port = 0
 
             # First disconnect all existing connections (if any)
@@ -249,19 +258,27 @@ class ElkBridge(object):
 
             # Now make new connection
             # channel 0 = omni, channels 1-16 are normal midi channels
-            self.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=track_identifier), self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
+            self.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=track_identifier),
+                                                  self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
             self.current_midi_in_channel = midi_channel
+
+            # Also connect metronome
+            self.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=METRONOME_TRACK_ID),
+                                                  self.midic._sushi_proto.MidiChannel(channel=METRONOME_MIDI_CHANNEL), 0, False)
 
     def is_shift_pressed(self):
         return self.buttons_state.get(0, 0) == 1
 
     def handle_potentiometer(self, val):
         if self.sushic is not None:
-            controller_id = 0  # Sushi mixer
+            if self.is_shift_pressed():
+                controller_id = METRONOME_TRACK_ID
+            else:
+                controller_id = SOURCE_TRACK_ID
             param_id = 0  # Gain
             # For some reason the gain only seems to be doing something when value is set between
             # 0.5 and 1.0, so we adapt the range
-            val = val/2  + 0.5
+            val = val/2 + 0.5
             self.sushic.parameters.set_parameter_value(controller_id, param_id, val)
 
     def handle_faders(self, fader_idx, val):
@@ -269,14 +286,14 @@ class ElkBridge(object):
             state_manager.current_state.on_fader_moved(fader_idx, val, shift=self.is_shift_pressed())
 
     def handle_buttons(self, button_idx, val):
-                
+
         def delayed_double_press_button_check(button_idx):
             last_time_pressed = self.button_pressing_log[button_idx][-1]
             try:
                 previous_time_pressed = self.button_pressing_log[button_idx][-2]
             except IndexError:
                 previous_time_pressed = 0
-            if last_time_pressed - previous_time_pressed  < BUTTON_DOUBLE_PRESS_TIME:
+            if last_time_pressed - previous_time_pressed < BUTTON_DOUBLE_PRESS_TIME:
                 # If time between last 2 pressings is shorter than BUTTON_DOUBLE_PRESS_TIME, trigger double press action
                 if not state_manager.block_ui_input:
                     state_manager.current_state.on_button_double_pressed(button_idx, shift=self.is_shift_pressed())
@@ -284,7 +301,7 @@ class ElkBridge(object):
                 if not state_manager.block_ui_input:
                     state_manager.current_state.on_button_pressed(button_idx, shift=self.is_shift_pressed())
 
-        is_being_pressed = int(val) == 1 
+        is_being_pressed = int(val) == 1
         if is_being_pressed:
             # Trigger the raw press action
             if not state_manager.block_ui_input:
@@ -323,13 +340,13 @@ class ElkBridge(object):
                 previous_time_pressed = self.encoder_pressing_log[-2]
             except IndexError:
                 previous_time_pressed = 0
-            if last_time_pressed - previous_time_pressed  < BUTTON_DOUBLE_PRESS_TIME:
+            if last_time_pressed - previous_time_pressed < BUTTON_DOUBLE_PRESS_TIME:
                 # If time between last 2 pressings is shorter than BUTTON_DOUBLE_PRESS_TIME, trigger double press action
                 state_manager.current_state.on_encoder_double_pressed(shift=self.is_shift_pressed())
             else:
                 state_manager.current_state.on_encoder_pressed(shift=self.is_shift_pressed())
 
-        is_being_pressed = int(val) == 1 
+        is_being_pressed = int(val) == 1
         if is_being_pressed:
             # Trigger the raw press action
             state_manager.current_state.on_encoder_down(shift=self.is_shift_pressed())
@@ -355,12 +372,11 @@ class ElkBridge(object):
             else:
                 self.encoder_timer = Timer()
                 self.encoder_timer.setTimeout(delayed_double_press_encoder_check, [], BUTTON_DOUBLE_PRESS_TIME)
-    
 
     def handle_encoder(self, direction):
         if not state_manager.block_ui_input:
             state_manager.current_state.on_encoder_rotated(direction, shift=self.is_shift_pressed())
-        
+
     def run(self):
 
         if self.uic is not None:
@@ -434,7 +450,7 @@ class ElkBridge(object):
 
         # Add plugin-specifc state variables
         source_state.update(plugin_state_dict)
-      
+
         # Send processed state to state manager
         state_manager.update_source_state(source_state)
 
@@ -566,7 +582,7 @@ def index():
                 return render_template("index.html", **tvars)
             else:
                 return render_template("index.html", message_sounds='Errors transferring sounds')
-        
+
 
 @http_server.route('/update_html_ui_state', methods=['GET'])  # Client requests to get an updated version of the state
 def update_html_ui_state():
@@ -646,7 +662,7 @@ def simulator_user_action():
 
 @http_server.route('/get_source_state', methods=['GET'])  # Gets the internal XML state of the plugin and the processed JSON version
 def get_source_state():
-    
+
     data = {
         'pluginState': BeautifulSoup(plugin_state, "lxml").prettify(),
         'sourceState': pprint.pformat(state_manager.source_state),
@@ -668,7 +684,7 @@ def receive_data_from_web():
 def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    osc_client.send_message(address, values)    
+    osc_client.send_message(address, values)
     return 'OSC sent'
 
 
@@ -705,7 +721,7 @@ def process_state_from_plugin(received_plugin_state):
         state_manager.show_global_message("", duration=0)
         last_is_querying_and_downloading_sounds_state = True
     elif last_is_querying_and_downloading_sounds_state and not plugin_state_dict.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False):
-        # Finished doing the work 
+        # Finished doing the work
         last_is_querying_and_downloading_sounds_state = False
 
     connection_with_plugin_ok = True
@@ -729,22 +745,22 @@ def download_sounds():
     outfiles = []
     sound_ids = []
     preview_urls = [url for url in request.args['oggUrls'].split(',') if url]
-    ids =  [sid for sid in request.args['ids'].split(',') if sid]
-    types =  [ty.lower() for ty in request.args['types'].split(',') if ty]
-    sizes =  [int(s) for s in request.args['sizes'].split(',') if s]
+    ids = [sid for sid in request.args['ids'].split(',') if sid]
+    types = [ty.lower() for ty in request.args['types'].split(',') if ty]
+    sizes = [int(s) for s in request.args['sizes'].split(',') if s]
     extra_preview_files_to_download_urls = []  # This is to download extra previews of sounds which do not need to be notified to plugin
     extra_preview_files_to_download_outfiles = []  # This is to download extra previews of sounds which do not need to be notified to plugin
     MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES = 1024 * 1024 * 15  # 15 MB This should be in sync with MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD in defines.h
     use_original_preference = state_manager.source_state.get(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never')
 
     for (sound_id, ty, preview_url, size) in zip(ids, types, preview_urls, sizes):
-        if  (use_original_preference == 'always' or (use_original_preference == 'onlyShort' and size <= MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES)) and ty != 'not_available' and is_logged_in() and ty in ALLOWED_AUDIO_FILE_EXTENSIONS:
+        if (use_original_preference == 'always' or (use_original_preference == 'onlyShort' and size <= MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES)) and ty != 'not_available' and is_logged_in() and ty in ALLOWED_AUDIO_FILE_EXTENSIONS:
             # If downloading original files, construct sound download URL and use proper sound type to store
             # To download original files, users needs to be logged in
             # Also only download original quality files for supported formats, for others use previews
             urls_to_download.append('https://freesound.org/apiv2/sounds/{}/download/'.format(sound_id))
             outfiles.append(os.path.join(request.args['location'], sound_id + '.original.{}'.format(ty)))
-            
+
             # Add urls to download and outfiles to extra lists. This will also be downloaded but the plugin won't be notified
             # This is mainly used to have sound files compatible with the slice editor
             extra_preview_files_to_download_urls.append(preview_url)
@@ -796,6 +812,7 @@ class RequestFullStateThread(threading.Thread):
 def volatile_state_osc_handler(values):
     process_state_from_plugin(values)
 
+
 class OSCReceiverThread(threading.Thread):
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -810,7 +827,7 @@ if __name__ == "__main__":
     parser.add_argument("--osc_port", type=int, default=9001, help="The port to send OSC messages to")
     parser.add_argument("--http_port", type=int, default=8123, help="The port the web server should listen at")
     args = parser.parse_args()
-  
+
     # If on ELK platform, start the thread that will do the communication with the hardware, draw on display, etc.
     if elk_bridge_refresh_fps:
         ElkBridgeThread().start()
