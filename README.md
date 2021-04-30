@@ -95,7 +95,11 @@ TODO...
 
 ### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS
 
-In order to run SOURCE as an audio plugin in a desktop or laptop computer with Linux or macOS, you can simply download the binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to copy `SourceSampler.component` and/or `SourceSampler.vst3` files for macOS,  and `SourceSampler.so` and/or `SourceSampler.vst3` for Linux). On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle. Note that **the audio plugin version of SOURCE has limited functionality**, as the *glue app* is not running and only very basic interaction with Freesound and control of the sampler engine is provided.
+In order to run SOURCE as an audio plugin in a desktop or laptop computer with Linux or macOS, you can simply download the binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to copy `SourceSampler.component` and/or `SourceSampler.vst3` files for macOS,  and `SourceSampler.so` and/or `SourceSampler.vst3` for Linux). On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle. Note that **the audio plugin version of SOURCE has limited functionality**, as the *glue app* is not running and only very basic interaction with Freesound and control of the sampler engine is provided. Below is a screenshot of the SOURCE user interface when running as an audio plugin.
+
+<p align="center">
+<img src="docs/SOURCE-complementary-UI.png" width="500" />
+</p>
 
 
 # Instructions for developers
