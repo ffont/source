@@ -6,7 +6,9 @@
 Table of Contents
 =================
 
+   * [Table of Contents](#table-of-contents)
    * [About](#about)
+      * [Features](#features)
       * [How it works](#how-it-works)
       * [How can I run SOURCE](#how-can-i-run-source)
    * [Instructions for developers](#instructions-for-developers)
@@ -21,7 +23,9 @@ Table of Contents
       * [Running SOURCE in the ELK platform (with BLACKBOARD hat)](#running-source-in-the-elk-platform-with-blackboard-hat)
          * [Configure systemd services](#configure-systemd-services)
          * [Give more sudo permissions to "mind" user](#give-more-sudo-permissions-to-mind-user)
+      * [Using the BLACKBOARD simulator in development](#using-the-blackboard-simulator-in-development)
    * [License](#license)
+
 
 
 # About
@@ -41,6 +45,32 @@ The following video demonstrates some of the functionalities of SOURCE in action
 Why making SOURCE? As a researcher at the [Music Technology Group](https://www.upf.edu/web/mtg/) of [Universitat Pompeu Fabra](https://www.upf.edu), I have been leading the development of the Freesound website and coordinating research projects around it for a number of years. I've been always interested in how to take advantage of the creative potential of Freesound's huge sound collection, and in ways to better integrate Freesound in the creative process. Even though 
 SOURCE started as a personal side project (that's why the [Rita & Aurora](https://ritaandaurora.github.io) logo is shown below, a fancy name I sometimes use for audio dev side-projects), I soon realized about the potential of the prototype and saw that SOURCE can bring together many of the research ideas that we have been experimenting with at the MTG in the last years. I believe that SOURCE can be a great music-making tool for creators, but I also think it can be a great playground for experimentation and research about the interaction between hardware devices and huge sound collections like Freesound.
 
+
+## Features
+
+SOURCE implements audio playback functionality which is common in many existing music samplers. Perhaps more interesting and unique are the capabilities of SOURCE for interacting with Freesound, searching and retrieving sounds. The SOURCE demonstration video linked above showcases some of the its possibilities. Here is a (potentially incomplete) list of features:
+
+* Search sounds in Freesound in real-time and download them to the sampler
+* Filter sounds by:
+ * Textual query terms
+ * Duration
+ * Creartive Commons license
+ * Perceptual qualities like: *brightness*, *hardness* and *depth*
+* Replace loaded sounds by other sounds that are acoustically similar (using Freesound's similarity search feature)
+* Random search mode that will retrieve unexpected sounds from Freesound
+* Load any number of sounds (only limited by RAM memory)
+* Map loaded sounds to MIDI notes automatically using *contiguous* or *interleaved* modes, or map them arbitrarily using a mapping editor
+* For each sound loaded, configure sound paramters such as:
+ * Start and end position
+ * Play modes including looping and slicing
+ * Loop start and end positions
+ * ADSR amplitude envelope
+ * Low-pass filter with ADSR envelope
+ * MIDI root note and global pitch shift (based on playback speed)
+ * Freeze mode in which the playhead position can be controlled as a sound parameter
+ * Modulation of some of the above parameters with velocity and aftertouch (including support for polyhonic aftertouch)
+ * Control some of the above parameters with MIDI Control Change
+* Get a *sound usage log* which lists the historic of sounds that have been used and can help in the Creative Commons attribution process
 
 
 ## How it works
@@ -217,6 +247,11 @@ running `sensei` might also fail. To add sudo capabilities:
 
  * switch to user `root` (`sudo su`)
  * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.
+
+ 
+## Using the BLACKBOARD simulator in development
+
+TODO...
     
     
 # License
