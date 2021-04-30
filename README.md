@@ -11,6 +11,8 @@ Table of Contents
       * [Features](#features)
       * [How it works](#how-it-works)
       * [How can I run SOURCE](#how-can-i-run-source)
+         * [Running SOURCE in the ELK hardware stack](#running-source-in-the-elk-hardware-stack)
+         * [Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS](#running-source-as-an-audio-plugin-or-standalone-app-in-desktoplaptop-computers-with-linuxmacos)
    * [Instructions for developers](#instructions-for-developers)
       * [Building SOURCE sampler engine](#building-source-sampler-engine)
          * [Build standalone/plugin for desktop (macOS)](#build-standaloneplugin-for-desktop-macos)
@@ -93,8 +95,7 @@ TODO...
 
 ### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS
 
-In order to run SOURCE as an audio plugin in a desktop or laptop computer with Linux or macOS, you can simply download the binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to copy `SourceSampler.component` and/or `SourceSampler.vst3` files for macOS,  and `SourceSampler.so` and/or `SourceSampler.vst3` for Linux). On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle.
-
+In order to run SOURCE as an audio plugin in a desktop or laptop computer with Linux or macOS, you can simply download the binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to copy `SourceSampler.component` and/or `SourceSampler.vst3` files for macOS,  and `SourceSampler.so` and/or `SourceSampler.vst3` for Linux). On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle. Note that **the audio plugin version of SOURCE has limited functionality**, as the *glue app* is not running and only very basic interaction with Freesound and control of the sampler engine is provided.
 
 
 # Instructions for developers
