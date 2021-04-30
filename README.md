@@ -3,6 +3,27 @@
 </p>
 
 
+Table of Contents
+=================
+
+   * [About](#about)
+      * [How it works](#how-it-works)
+      * [How can I run SOURCE](#how-can-i-run-source)
+   * [Instructions for developers](#instructions-for-developers)
+      * [Building SOURCE sampler engine](#building-source-sampler-engine)
+         * [Build standalone/plugin for desktop (macOS)](#build-standaloneplugin-for-desktop-macos)
+         * [Build plugin for ELK platform](#build-plugin-for-elk-platform)
+            * [Prepare ELK development SDK](#prepare-elk-development-sdk)
+            * [Prepare VST2 SDK](#prepare-vst2-sdk)
+            * [Do the cross-compilation](#do-the-cross-compilation)
+            * [Loading the built plugin in the ELK board](#loading-the-built-plugin-in-the-elk-board)
+         * [Note about JUCE version used for SOURCE](#note-about-juce-version-used-for-source)
+      * [Running SOURCE in the ELK platform (with BLACKBOARD hat)](#running-source-in-the-elk-platform-with-blackboard-hat)
+         * [Configure systemd services](#configure-systemd-services)
+         * [Give more sudo permissions to "mind" user](#give-more-sudo-permissions-to-mind-user)
+   * [License](#license)
+
+
 # About
 
 SOURCE is an open-source music sampler powered by [Freesound](https://freesound.org)'s collection of 500k Creative Commons sounds contributed by a community of thousands of people around the world. SOURCE is a sampler that *does not sample*. Instead, it provides different ways to load sounds from Freesound and instantly generate new sound palettes to enrich your creative process and bring in an endless SOURCE of inspiration.
