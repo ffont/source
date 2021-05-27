@@ -41,7 +41,7 @@ SOURCE is designed to run as a stand-alone device on a hardware solution based o
 </p>
 
 
-The following video demonstrates some of the functionalities of SOURCE in action: *link comming soon*.
+This video demonstrates some of the functionalities of SOURCE in action: https://youtu.be/7EXMY0AvBxo
 
 
 Why making SOURCE? As a researcher at the [Music Technology Group](https://www.upf.edu/web/mtg/) of [Universitat Pompeu Fabra](https://www.upf.edu), I have been leading the development of the Freesound website and coordinating research projects around it for a number of years. I've been always interested in how to take advantage of the creative potential of Freesound's huge sound collection, and in ways to better integrate Freesound in the creative process. Even though 
