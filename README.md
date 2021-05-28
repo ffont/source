@@ -50,13 +50,13 @@ SOURCE started as a personal side project (that's why the [Rita & Aurora](https:
 
 ## Features
 
-SOURCE implements audio playback functionality which is common in many existing music samplers. Perhaps more interesting and unique are the capabilities of SOURCE for interacting with Freesound, searching and retrieving sounds. The SOURCE demonstration video linked above showcases some of the its possibilities. Here is a (potentially incomplete) list of features:
+SOURCE implements audio playback functionality which is common in many existing music samplers. Perhaps more interesting and unique are the capabilities of SOURCE for interacting with Freesound, searching and retrieving sounds. The SOURCE demonstration video linked above showcases some of these possibilities. Here is a (potentially incomplete) list of features:
 
 * Search sounds in Freesound in real-time and download them to the sampler
 * Filter sounds by:
  * Textual query terms
  * Duration
- * Creartive Commons license
+ * Creative Commons license
  * Perceptual qualities like: *brightness*, *hardness* and *depth*
 * Replace loaded sounds by other sounds that are acoustically similar (using Freesound's similarity search feature)
 * Random search mode that will retrieve unexpected sounds from Freesound
