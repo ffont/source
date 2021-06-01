@@ -89,8 +89,56 @@ SOURCE is composed of a number of software processes that run on a hardware solu
 
 ### Running SOURCE in the ELK hardware stack
 
-TODO...
+The run SOURCE in the ELK platform you'll need to configure services to run the `sushi` process with the built sampler engine, the `sensei` process with the BLACKBOARD sensors configuration settings, and finally the `source` process which runs the glue app which connects all systems together, manages the user interface and connects to Freesound (indluding downloading sounds). To do that follow the instructions below. Note that this assumes `ssh` connection to the RPi as described in Elk documentation, and Elk Audio OS 0.7.2 installed. Note that most of the steps are to be run from your local/devleopment computer. This whole process could be simplified with more work on the *deploy scripts*.
 
+
+ 1. Clone the source code repository in your local computer
+
+```
+git clone https://github.com/ffont/source.git && cd source && git submodule update --init
+```
+
+ 2. Get a Freesound API key (https://freesound.org/apiv2/apply) and create a file named `freesound_api_key.py` inside the `elk_platform` folder of the cloned repository with the contents:
+
+```
+FREESOUND_API_KEY = "YOUR FREESOUND API KEY"
+FREESOUND_CLIENT_ID = "YOUR FREESOUND CLIENT ID"
+```
+
+ 3. Download the *pre-compiled binaries* of the latest release of SOURCE sampler engine for the ELK platform (or [build them locally following the instructions in sections below](#build-plugin-for-elk-platform)). Copy `SourceSampler.so` to `SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so` (you might need to create intermediate folders). Note that this path is relative to the root of the cloned repository. 
+ 4. In your local machine, install `fabric` Python dependency with `pip install fabric>=2.6.0`. This is needed in the following steps to run the scripts that partially automate the deployment of SOURCE in the RPi board.
+ 5. In the RPi, create the folder `/udata/source/app/` (and intermediate folders if needed).
+ 6. Modify the `host` variable in `fabfile.py` to match the host name of your RPi board. If you did not modify the host name of the RPi, you should use `mind@elk-pi.local`, but note that `fabfile.py` has a customized host name.
+ 7. From your local machine and located in the root of the source code repository, run `fab send-elk-all` to copy necessary files to the RPi board for SOURCE to run. This will also try to run some things and you might see some errors on screen, but it is fine at this point.
+ 8. From the RPi board, install Python dependencies with `cd /udata/source/app/; pip3 install -r requirements.txt` (need to use the Python 3 installation present in Elk Audio OS).
+ 9. From the RPi board, give more permissons to `mind` user as [described below](#give-more-sudo-permissions-to-mind-user).
+ 10. From the RPi board, enable the installed `systemd` services for SOURCE:
+
+```
+sudo systemctl enable sushi
+sudo systemctl enable sensei
+sudo systemctl enable source
+```
+
+ 11. From the local computer, run again `fab send-elk-all`. This should restart all the SOURCE related services and you should get SOURCE up and running after that.
+
+Once these steps are finished, SOURCE should automatically be run at startup. You can check the logs of the individual processes like you'd do with other processes managed by `systemd`:
+
+```
+sudo journalctl -fu sushi
+sudo journalctl -fu sensei
+sudo journalctl -fu source
+```
+
+Note that to get **MIDI input** you'll need to use a USB MIDI controller or interface, and might need to [edit this line of code](https://github.com/ffont/source/blob/7fd268d3dfa7daf2e65182c67faadf598d4d196f/elk_platform/main#L144) and set the id of the USB MIDI controller/interface.
+
+#### Give more sudo permissions to "mind" user
+
+To run SOURCE, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities,
+running `sensei` might also fail. To add sudo capabilities:
+
+ * switch to user `root` (`sudo su`)
+ * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.
 
 
 ### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS
@@ -184,82 +232,6 @@ This will send both the generated plugin files and other SOURCE configuration fi
 
 The current version of SOURCE uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of SOURCE, we don't need any patched version of JUCE and we can simply use the official release :) However, there still seem to be problems with VST3 and Linux, so we use VST2 
 builds.
-
-## Running SOURCE in the ELK platform (with BLACKBOARD hat)
-
-The run SOURCE in the ELK platform you'll need to configure services to run the `sushi` process with the built sampler engine, the `sensei` process with the BLACKBOARD sensors configuration settings, and finally the `source` process which runs the glue app which connects all systems together, manages the user interface and connects to Freesound (indluding downloading sounds).
-
-
-### Configure systemd services
-
-These instructions are based on the official ELK instructions for automatic startup of services: https://elk-audio.github.io/elk-docs/html/documents/working_with_elk_board.html#configuring-automatic-startup
-
-1) Modify `sushi` service (`/lib/systemd/system/sushi.service`) to point to `/udata/source/app/source_sushi_config.json` and add restart policy. Change lines:
-
-```
-[Service]
-Type=simple
-RemainAfterExit=no
-WorkingDirectory=/udata/
-Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/usr/bin/sushi -r --multicore-processing=3 -c /udata/source/app/source_sushi_config.json
-User=mind
-Restart=always
-RestartSec=3
-```
-
-2) Modify `sensei` service (`/lib/systemd/system/sensei.service`) to point to `/udata/source/app/source_sensei_config.json`. Change line:
-
-```
-Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/usr/bin/sensei -f /udata/source/app/source_sensei_config.json
-```
-
-3) Create new service for the Python glue app at `/lib/systemd/system/source.service` (use `sudo`). 
-
-```
-[Unit]
-Description=source glue app
-After=sensei.service
-
-[Service]
-Type=simple
-RemainAfterExit=no
-WorkingDirectory=/udata/source/app/
-ExecStart=python3 main
-User=mind
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-4) Enable `sushi`, `sensei`, and `source` services
-
-```
-sudo systemctl enable sushi
-sudo systemctl enable sensei
-sudo systemctl enable source
-```
-
-Now all these services will start automatically on start up. The `send-elk` command of the `fabfile.py` triggers service restarts after deploying new versions of the files. However, you can manually restart the services using `sudo systemctl enable xxx`.
-
-You can check stdout logs for the services with:
-
-```
-sudo journalctl -fu sushi
-sudo journalctl -fu sensei
-sudo journalctl -fu source
-```
-
-### Give more sudo permissions to "mind" user
-
-To run SOURCE, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities,
-running `sensei` might also fail. To add sudo capabilities:
-
- * switch to user `root` (`sudo su`)
- * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.
 
  
 ## Using the BLACKBOARD simulator in development
