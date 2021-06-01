@@ -22,9 +22,6 @@ Table of Contents
             * [Do the cross-compilation](#do-the-cross-compilation)
             * [Loading the built plugin in the ELK board](#loading-the-built-plugin-in-the-elk-board)
          * [Note about JUCE version used for SOURCE](#note-about-juce-version-used-for-source)
-      * [Running SOURCE in the ELK platform (with BLACKBOARD hat)](#running-source-in-the-elk-platform-with-blackboard-hat)
-         * [Configure systemd services](#configure-systemd-services)
-         * [Give more sudo permissions to "mind" user](#give-more-sudo-permissions-to-mind-user)
       * [Using the BLACKBOARD simulator in development](#using-the-blackboard-simulator-in-development)
    * [License](#license)
 
