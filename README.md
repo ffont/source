@@ -8,6 +8,7 @@ Table of Contents
 
    * [Table of Contents](#table-of-contents)
    * [About](#about)
+      * [Why making SOURCE?](#why-making-source)
       * [Features](#features)
       * [How it works](#how-it-works)
       * [How can I run SOURCE](#how-can-i-run-source)
@@ -37,11 +38,18 @@ SOURCE is designed to run as a stand-alone device on a hardware solution based o
 <img src="docs/SOURCE-photo.png" width="500" />
 </p>
 
+To see SOURCE in action you can check out this **demo video**: https://youtu.be/7EXMY0AvBxo
+Also, I published a paper about source in the **2nd International Workshop on the Internet of Sounds**, part of the **Audio Mostly 2021** conference. I'm happy to say that SOURCE got the the **Best Demo Award** and the **Industry Award** (awared by ELK) in Audio Mostly 2021. Here is the citation information for the paper:
 
-This video demonstrates some of the functionalities of SOURCE in action: https://youtu.be/7EXMY0AvBxo
+```
+Font, Frederic. "SOURCE: a Freesound Community Music Sampler". Proceedings of the Audio Mostly conference, Trento, Italy, 2021.
+```
 
 
-Why making SOURCE? As a researcher at the [Music Technology Group](https://www.upf.edu/web/mtg/) of [Universitat Pompeu Fabra](https://www.upf.edu), I have been leading the development of the Freesound website and coordinating research projects around it for a number of years. I've been always interested in how to take advantage of the creative potential of Freesound's huge sound collection, and in ways to better integrate Freesound in the creative process. Even though 
+
+## Why making SOURCE? 
+
+As a researcher at the [Music Technology Group](https://www.upf.edu/web/mtg/) of [Universitat Pompeu Fabra](https://www.upf.edu), I have been leading the development of the Freesound website and coordinating research projects around it for a number of years. I've been always interested in how to take advantage of the creative potential of Freesound's huge sound collection, and in ways to better integrate Freesound in the creative process. Even though 
 SOURCE started as a personal side project (that's why the [Rita & Aurora](https://ritaandaurora.github.io) logo is shown below, a fancy name I sometimes use for audio dev side-projects), I soon realized about the potential of the prototype and saw that SOURCE can bring together many of the research ideas that we have been experimenting with at the MTG in the last years. I believe that SOURCE can be a great music-making tool for creators, but I also think it can be a great playground for experimentation and research about the interaction between hardware devices and huge sound collections like Freesound.
 
 
