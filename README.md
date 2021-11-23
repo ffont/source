@@ -39,12 +39,11 @@ SOURCE is designed to run as a stand-alone device on a hardware solution based o
 </p>
 
 To see SOURCE in action you can check out this **demo video**: https://youtu.be/7EXMY0AvBxo
-Also, I published a paper about source in the **2nd International Workshop on the Internet of Sounds**, part of the **Audio Mostly 2021** conference. I'm happy to say that SOURCE got the the **Best Demo Award** and the **Industry Award** (awared by ELK) in Audio Mostly 2021. Here is the citation information for the paper:
+Also, I published a paper about source in the **2nd International Workshop on the Internet of Sounds**, part of the **Audio Mostly 2021** conference. I'm happy to say that SOURCE got the the **Best Demo Award** and the **Industry Award** (awared by ELK) in Audio Mostly 2021. Here is the citation information for the paper (and the [PDF](https://repositori.upf.edu/bitstream/handle/10230/48719/font_am21_source.pdf?sequence=1&isAllowed=y)):
 
 ```
-Font, Frederic. "SOURCE: a Freesound Community Music Sampler". Proceedings of the Audio Mostly conference, Trento, Italy, 2021.
+Font F. "SOURCE: a Freesound community music sampler." In: Audio mostly, A conference on interaction with sound. Proceedings of the 16th International Audio Mostly Conference AM’ 21; 2021 Sep 1-3; Trento, Italy. New York: Association for Computing Machinery; 2021. p. 182-7. DOI: 10.1145/3478384.3478388 
 ```
-
 
 
 ## Why making SOURCE? 
