@@ -1,6 +1,6 @@
 #include "FreesoundAPI.h"
 
-String URIS::HOST = String("www.freesound.org");
+String URIS::HOST = String("freesound.org");
 String URIS::BASE = String("https://" + HOST + "/apiv2");
 String URIS::TEXT_SEARCH = String("/search/text/");
 String URIS::CONTENT_SEARCH = String("/search/content/");
