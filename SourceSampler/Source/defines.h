@@ -198,3 +198,54 @@
 #define STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT "midiInLastStateReportBlock"
 
 #define SERIALIZATION_SEPARATOR ";"
+
+namespace Defaults
+{
+//inline juce::String presetName = "empty";
+}
+
+
+namespace IDs
+{
+#define DECLARE_ID(name) const juce::Identifier name (#name);
+
+DECLARE_ID (SOURCE_STATE)
+DECLARE_ID (PRESET)
+DECLARE_ID (SOUND)
+/*DECLARE_ID (DEVICE)
+DECLARE_ID (TRACK)
+DECLARE_ID (CLIP)
+DECLARE_ID (SEQUENCE_EVENT)*/
+
+DECLARE_ID (name)
+DECLARE_ID (uuid)
+
+/*DECLARE_ID (type)
+DECLARE_ID (length)
+DECLARE_ID (playheadPositionInBeats)
+DECLARE_ID (isPlaying)
+DECLARE_ID (shouldToggleIsPlaying)
+DECLARE_ID (doingCountIn)
+DECLARE_ID (countInPlayheadPositionInBeats)
+DECLARE_ID (fixedLengthRecordingBars)
+DECLARE_ID (recordAutomationEnabled)
+DECLARE_ID (fixedVelocity)
+DECLARE_ID (bpm)
+DECLARE_ID (meter)
+DECLARE_ID (barCount)
+DECLARE_ID (metronomeOn)
+DECLARE_ID (inputMonitoring)
+DECLARE_ID (hardwareDeviceName)
+DECLARE_ID (clipLengthInBeats)
+DECLARE_ID (currentQuantizationStep)
+DECLARE_ID (playing)
+DECLARE_ID (willPlayAt)
+DECLARE_ID (willStopAt)
+DECLARE_ID (recording)
+DECLARE_ID (willStartRecordingAt)
+DECLARE_ID (willStopRecordingAt)
+DECLARE_ID (timestamp)
+DECLARE_ID (eventMidiBytes)*/
+
+#undef DECLARE_ID
+}

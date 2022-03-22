@@ -75,6 +75,16 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if ELK_BUILD
     setCurrentProgram(latestLoadedPreset);
     #endif
+    
+    // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
+    
+    // Load empty session to state
+    int maxSounds = 8;
+    state = Helpers::createDefaultPreset(maxSounds);
+    
+    // Add state change listener and bind cached properties to state properties
+    bindState();
+    std::cout << state.toXmlString() << std::endl;
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -86,6 +96,16 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
     serverInterface.removeActionListener(this);
     sampler.removeActionListener(this);
     downloader.removeActionListener(this);
+}
+
+void SourceSamplerAudioProcessor::bindState()
+{
+    state.addListener(this);
+    
+    ValueTree preset = state.getChildWithName(IDs::PRESET);
+    presetName.referTo(preset, IDs::name, nullptr);
+    
+    
 }
 
 //==============================================================================
@@ -322,7 +342,7 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
     
     // Add general stuff
-    state.setProperty(STATE_PRESET_NAME, presetName, nullptr);
+    state.setProperty(STATE_PRESET_NAME, presetName.get(), nullptr);
     state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
     state.setProperty(STATE_PRESET_NOTE_LAYOUT_TYPE, noteLayoutType, nullptr);
     
@@ -1717,6 +1737,41 @@ void SourceSamplerAudioProcessor::stopPreviewingFile(){
     if (transportSource.isPlaying()){
         transportSource.stop();
     }
+}
+
+
+//==============================================================================
+
+void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
+{
+    // We should never call this function from the realtime thread because editing VT might not be RT safe...
+    // TODO: do proper real-time safe implementation, uncomment jassert below to check we're not calling this from RT thread
+    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    std::cout << "Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString() << std::endl;
+}
+
+void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
+{
+    // We should never call this function from the realtime thread because editing VT might not be RT safe...
+    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+}
+
+void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
+{
+    // We should never call this function from the realtime thread because editing VT might not be RT safe...
+    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+}
+
+void SourceSamplerAudioProcessor::valueTreeChildOrderChanged (juce::ValueTree& parentTree, int oldIndex, int newIndex)
+{
+    // We should never call this function from the realtime thread because editing VT might not be RT safe...
+    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+}
+
+void SourceSamplerAudioProcessor::valueTreeParentChanged (juce::ValueTree& treeWhoseParentHasChanged)
+{
+    // We should never call this function from the realtime thread because editing VT might not be RT safe...
+    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
 }
 
 

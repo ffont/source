@@ -11,6 +11,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "helpers.h"
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
 #include "SourceSampler.h"
@@ -25,7 +26,8 @@
 class SourceSamplerAudioProcessor  : public AudioProcessor,
                                      public ActionBroadcaster,
                                      public ActionListener,
-                                     public Timer
+                                     public Timer,
+                                     protected juce::ValueTree::Listener
 {
 public:
     //==============================================================================
@@ -186,6 +188,18 @@ public:
     void previewFile(const String& path);
     void stopPreviewingFile();
     String currentlyLoadedPreviewFilePath = "";
+
+    
+protected:
+    juce::ValueTree state;
+    void bindState();
+    
+    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
+    void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree&) override;
+    void valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree&, int) override;
+    void valueTreeChildOrderChanged (juce::ValueTree& parentTree, int, int) override;
+    void valueTreeParentChanged (juce::ValueTree&) override;
+
     
 private:
     AudioFormatManager audioFormatManager;
@@ -206,7 +220,7 @@ private:
     double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
     bool aconnectWasRun = false;
-    String presetName = "empty";
+    juce::CachedValue<juce::String> presetName;
     int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
     ValueTree loadedSoundsInfo;
     
