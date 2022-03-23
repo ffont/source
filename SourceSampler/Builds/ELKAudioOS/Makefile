@@ -121,11 +121,13 @@ OBJECTS_STANDALONE_PLUGIN := \
   $(JUCE_OBJDIR)/include_juce_audio_plugin_client_Standalone_1a871192.o \
 
 OBJECTS_SHARED_CODE := \
-  $(JUCE_OBJDIR)/BinaryData_5ba7f54.o \
-  $(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o \
   $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o \
   $(JUCE_OBJDIR)/PluginProcessor_a059e380.o \
-  $(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o \
+  $(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o \
+  $(JUCE_OBJDIR)/SourceSamplerSound_cc95aa2b.o \
+  $(JUCE_OBJDIR)/SourceSamplerVoice_fbe0f8ce.o \
+  $(JUCE_OBJDIR)/BinaryData_5ba7f54.o \
+  $(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o \
   $(JUCE_OBJDIR)/twine_f8dfbf07.o \
   $(JUCE_OBJDIR)/include_juce_audio_basics_8a4e984a.o \
   $(JUCE_OBJDIR)/include_juce_audio_devices_63111d02.o \
@@ -208,16 +210,6 @@ $(JUCE_OBJDIR)/include_juce_audio_plugin_client_Standalone_1a871192.o: ../../Juc
 	@echo "Compiling include_juce_audio_plugin_client_Standalone.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_STANDALONE_PLUGIN) $(JUCE_CFLAGS_STANDALONE_PLUGIN) -o "$@" -c "$<"
 
-$(JUCE_OBJDIR)/BinaryData_5ba7f54.o: ../../Source/BinaryData.cpp
-	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling BinaryData.cpp"
-	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
-
-$(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o: ../../Source/FreesoundAPI.cpp
-	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling FreesoundAPI.cpp"
-	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
-
 $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o: ../../Source/PluginEditor.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling PluginEditor.cpp"
@@ -228,9 +220,29 @@ $(JUCE_OBJDIR)/PluginProcessor_a059e380.o: ../../Source/PluginProcessor.cpp
 	@echo "Compiling PluginProcessor.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
 
-$(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o: ../../Source/SourceSampler.cpp
+$(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o: ../../Source/SourceSamplerSynthesiser.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling SourceSampler.cpp"
+	@echo "Compiling SourceSamplerSynthesiser.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/SourceSamplerSound_cc95aa2b.o: ../../Source/SourceSamplerSound.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling SourceSamplerSound.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/SourceSamplerVoice_fbe0f8ce.o: ../../Source/SourceSamplerVoice.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling SourceSamplerVoice.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/BinaryData_5ba7f54.o: ../../Source/BinaryData.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling BinaryData.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o: ../../Source/FreesoundAPI.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling FreesoundAPI.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/twine_f8dfbf07.o: ../../3rdParty/twine/src/twine.cpp

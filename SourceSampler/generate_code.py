@@ -44,8 +44,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.cpp'] = {}
-    code_dict['SourceSampler.cpp']['A'] = current_code
+    code_dict['SourceSamplerSound.cpp'] = {}
+    code_dict['SourceSamplerSound.cpp']['A'] = current_code
 
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
@@ -64,7 +64,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.cpp']['D'] = current_code
+    code_dict['SourceSamplerSound.cpp']['D'] = current_code
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
     current_code = ''
@@ -80,7 +80,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.cpp']['C'] = current_code
+    code_dict['SourceSamplerSound.cpp']['C'] = current_code
 
     # Generate SourceSamplerSound code to save state
     current_code = ''
@@ -112,7 +112,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.cpp']['B'] = current_code
+    code_dict['SourceSamplerSound.cpp']['B'] = current_code
 
     # Generate SourceSamplerSound code to define parameters
     current_code = ''
@@ -131,8 +131,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.h'] = {}
-    code_dict['SourceSampler.h']['A'] = current_code
+    code_dict['SourceSamplerSound.h'] = {}
+    code_dict['SourceSamplerSound.h']['A'] = current_code
 
     # Generate HTML interface sound edit elements code
     current_code = ''

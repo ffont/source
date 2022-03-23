@@ -14,7 +14,7 @@
 #include "helpers.h"
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
-#include "SourceSampler.h"
+#include "SourceSamplerSynthesiser.h"
 #include "Downloader.h"
 #include "LevelMeterSource.h"
 #include "defines.h"
