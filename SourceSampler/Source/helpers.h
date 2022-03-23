@@ -43,6 +43,7 @@ namespace Helpers
             const juce::String trackName ("Sound " + juce::String (sn + 1));
             Helpers::createUuidProperty (s);
             s.setProperty (IDs::name, trackName, nullptr);
+            s.setProperty (IDs::enabled, false, nullptr);
             preset.addChild (s, -1, nullptr);
         }
         

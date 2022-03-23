@@ -12,18 +12,18 @@
 
 
 SourceSamplerSound::SourceSamplerSound (int _idx,
-                                        const String& soundName,
+                                        const String& _soundName,
                                         AudioFormatReader& source,
                                         bool _loadingPreviewVersion,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
     : idx (_idx),
-      name (soundName),
       loadedPreviewVersion (_loadingPreviewVersion),
       sourceSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
-      pluginBlockSize (_pluginBlockSize)
+      pluginBlockSize (_pluginBlockSize),
+      name(_soundName)
       
 {
     if (sourceSampleRate > 0 && source.lengthInSamples > 0)
@@ -41,6 +41,8 @@ SourceSamplerSound::SourceSamplerSound (int _idx,
 SourceSamplerSound::~SourceSamplerSound()
 {
 }
+
+//==============================================================================
 
 bool SourceSamplerSound::getLoadedPreviewVersion()
 {

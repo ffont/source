@@ -15,6 +15,7 @@
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
+#include "SourceSamplerSound.h"
 #include "Downloader.h"
 #include "LevelMeterSource.h"
 #include "defines.h"
@@ -204,7 +205,8 @@ protected:
 private:
     AudioFormatManager audioFormatManager;
     
-    SourceSamplerSynthesiser sampler;  // Where the magic happens
+    SourceSamplerSynthesiser sampler;
+    std::unique_ptr<SourceSoundList> sounds;
     
     // The next two objects are to preview sounds independently of the sampler
     std::unique_ptr<AudioFormatReaderSource> readerSource;

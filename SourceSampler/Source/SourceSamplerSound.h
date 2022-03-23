@@ -38,10 +38,12 @@ public:
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
+    
+    SourceSamplerSound (const juce::ValueTree& state);
 
     /** Destructor. */
     ~SourceSamplerSound() override;
-
+   
     //==============================================================================
     /** Returns the sample's name */
     const String& getName() const noexcept                  { return name; }
@@ -94,7 +96,7 @@ private:
     
     int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
 
-    String name;
+    juce::String name;
     bool loadedPreviewVersion = false;
     std::unique_ptr<AudioBuffer<float>> data;
     double sourceSampleRate;
@@ -141,4 +143,78 @@ private:
     // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
+};
+
+
+//==============================================================================
+// The classes below deal with Sound objects as represented in the state value
+// instead of sound objects that will indeed load sounds. When needed, these objects
+// can generate the actual SourceSamplerSound objects that will be loaded in the
+// sampler. Note that a single SourceSound object can result in the creation of
+// several SourceSamplerSound objects, eg in the case of multi-layered sounds
+// or sounds sampled at different pitches.
+
+
+class SourceSound
+{
+public:
+    SourceSound (const juce::ValueTree& _state): state(_state)
+    {
+        bindState();
+    }
+    
+    ~SourceSound(){}
+    
+    juce::ValueTree state;
+    
+    void bindState()
+    {
+        name.referTo(state, IDs::name, nullptr);
+        enabled.referTo(state, IDs::enabled, nullptr);
+    }
+    
+    void setName(const juce::String& newName) {
+        name = newName;
+    }
+    
+private:
+    juce::CachedValue<juce::String> name;
+    juce::CachedValue<bool> enabled;
+    
+    JUCE_LEAK_DETECTOR (SourceSound)
+};
+
+
+struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
+{
+    SourceSoundList (const juce::ValueTree& v)
+    : drow::ValueTreeObjectList<SourceSound> (v)
+    {
+        rebuildObjects();
+    }
+
+    ~SourceSoundList()
+    {
+        freeObjects();
+    }
+
+    bool isSuitableType (const juce::ValueTree& v) const override
+    {
+        return v.hasType (IDs::SOUND);
+    }
+
+    SourceSound* createNewObject (const juce::ValueTree& v) override
+    {
+        return new SourceSound (v);
+    }
+
+    void deleteObject (SourceSound* c) override
+    {
+        delete c;
+    }
+
+    void newObjectAdded (SourceSound*) override    {}
+    void objectRemoved (SourceSound*) override     {}
+    void objectOrderChanged() override       {}
+
 };

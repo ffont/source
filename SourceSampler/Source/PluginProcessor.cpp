@@ -79,12 +79,19 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
     
     // Load empty session to state
-    int maxSounds = 8;
+    int maxSounds = 16;
     state = Helpers::createDefaultPreset(maxSounds);
     
     // Add state change listener and bind cached properties to state properties
     bindState();
+    
+    // Initialize sounds
+    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET));
+    
+
     std::cout << state.toXmlString() << std::endl;
+    
+    sounds->objects[2]->setName("a new name");
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()

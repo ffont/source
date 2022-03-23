@@ -220,6 +220,7 @@ DECLARE_ID (SEQUENCE_EVENT)*/
 
 DECLARE_ID (uuid)
 DECLARE_ID (name)
+DECLARE_ID (enabled)
 DECLARE_ID (currentPresetIndex)
 DECLARE_ID (noteLayoutType)
 
