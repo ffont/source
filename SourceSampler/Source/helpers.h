@@ -30,10 +30,12 @@ namespace Helpers
     {
         juce::ValueTree state (IDs::SOURCE_STATE);
         Helpers::createUuidProperty (state);
+        state.setProperty (IDs::currentPresetIndex, Defaults::currentPresetIndex, nullptr);
         
         juce::ValueTree preset (IDs::PRESET);
         Helpers::createUuidProperty (preset);
         preset.setProperty (IDs::name, juce::Time::getCurrentTime().formatted("%Y%m%d") + " unnamed", nullptr);
+        preset.setProperty (IDs::noteLayoutType, Defaults::noteLayoutType, nullptr);
         
         for (int sn = 0; sn < numSounds; ++sn)
         {

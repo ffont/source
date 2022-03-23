@@ -66,7 +66,7 @@ public:
     const String getProgramName (int index) override;
     void changeProgramName (int index, const String& newName) override;
     String getPresetFilenameByIndex(int index);
-    int currentPresetIndex = -1;
+    juce::CachedValue<int> currentPresetIndex;
     int latestLoadedPreset = 0; // Only used in ELK builds to re-load the last preset that was loaded (in previous runs included)
 
     //==============================================================================
@@ -221,7 +221,7 @@ private:
     double startTime;
     bool aconnectWasRun = false;
     juce::CachedValue<juce::String> presetName;
-    int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
+    juce::CachedValue<int> noteLayoutType;
     ValueTree loadedSoundsInfo;
     
     ServerInterface serverInterface;

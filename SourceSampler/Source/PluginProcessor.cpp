@@ -102,9 +102,11 @@ void SourceSamplerAudioProcessor::bindState()
 {
     state.addListener(this);
     
+    currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr);
+    
     ValueTree preset = state.getChildWithName(IDs::PRESET);
     presetName.referTo(preset, IDs::name, nullptr);
-    
+    noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr);
     
 }
 
@@ -343,8 +345,8 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     
     // Add general stuff
     state.setProperty(STATE_PRESET_NAME, presetName.get(), nullptr);
-    state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex, nullptr);
-    state.setProperty(STATE_PRESET_NOTE_LAYOUT_TYPE, noteLayoutType, nullptr);
+    state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex.get(), nullptr);
+    state.setProperty(STATE_PRESET_NOTE_LAYOUT_TYPE, noteLayoutType.get(), nullptr);
     
     // Add sampler main settings (not including individual sound settings because it will be in soundsData value tree)
     state.appendChild(sampler.getState(), nullptr);
@@ -459,7 +461,7 @@ ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex, nullptr);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex.get(), nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES, useOriginalFilesPreference, nullptr);
     settings.setProperty(STATE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
     settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);

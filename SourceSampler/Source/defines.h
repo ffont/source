@@ -201,7 +201,8 @@
 
 namespace Defaults
 {
-//inline juce::String presetName = "empty";
+inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
+inline int currentPresetIndex = -1;
 }
 
 
@@ -217,8 +218,10 @@ DECLARE_ID (TRACK)
 DECLARE_ID (CLIP)
 DECLARE_ID (SEQUENCE_EVENT)*/
 
-DECLARE_ID (name)
 DECLARE_ID (uuid)
+DECLARE_ID (name)
+DECLARE_ID (currentPresetIndex)
+DECLARE_ID (noteLayoutType)
 
 /*DECLARE_ID (type)
 DECLARE_ID (length)
