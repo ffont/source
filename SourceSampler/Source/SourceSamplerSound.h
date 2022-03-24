@@ -99,7 +99,7 @@ private:
     juce::String name;
     bool loadedPreviewVersion = false;
     std::unique_ptr<AudioBuffer<float>> data;
-    double sourceSampleRate;
+    double soundSampleRate;
     BigInteger midiNotes;
     int length = 0;
     std::vector<int> onsetTimesSamples = {};

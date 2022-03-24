@@ -20,16 +20,16 @@ SourceSamplerSound::SourceSamplerSound (int _idx,
                                         int _pluginBlockSize)
     : idx (_idx),
       loadedPreviewVersion (_loadingPreviewVersion),
-      sourceSampleRate (source.sampleRate),
+      soundSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
       pluginBlockSize (_pluginBlockSize),
       name(_soundName)
       
 {
-    if (sourceSampleRate > 0 && source.lengthInSamples > 0)
+    if (soundSampleRate > 0 && source.lengthInSamples > 0)
     {
         length = jmin ((int) source.lengthInSamples,
-                       (int) (maxSampleLengthSeconds * sourceSampleRate));
+                       (int) (maxSampleLengthSeconds * soundSampleRate));
 
         data.reset (new AudioBuffer<float> (jmin (2, (int) source.numChannels), length + 4));
 
@@ -383,7 +383,7 @@ int SourceSamplerSound::getLengthInSamples(){
 }
 
 float SourceSamplerSound::getLengthInSeconds(){
-    return (float)getLengthInSamples()/sourceSampleRate;
+    return (float)getLengthInSamples()/soundSampleRate;
 }
 
 void SourceSamplerSound::setIdx(int newIdx)
@@ -418,7 +418,7 @@ int SourceSamplerSound::getMidiRootNote()
 void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
     onsetTimesSamples.clear();
     for (int i=0; i<onsetTimes.size(); i++){
-        onsetTimesSamples.push_back((int)(onsetTimes[i] * sourceSampleRate));
+        onsetTimesSamples.push_back((int)(onsetTimes[i] * soundSampleRate));
     }
 }
 

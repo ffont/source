@@ -116,7 +116,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         // Load and configure parameters from SourceSamplerSound
         adsr.setSampleRate (pluginSampleRate);
         // TODO: what should really be the sample rate below?
-        adsrFilter.setSampleRate (sound->sourceSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
+        adsrFilter.setSampleRate (sound->soundSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
         
         // Compute velocity modulations (only relevant at start of note)
         filterCutoffVelMod = velocity * sound->filterCutoff * sound->vel2CutoffAmt;
@@ -177,7 +177,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         // If this behaviour becomes a problem it could be turned into a sound parameter
         int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->midiRootNote);
         double currentNoteFrequency = std::pow (2.0, (sound->pitch + distanceToRootNote) / 12.0);
-        pitchRatio = currentNoteFrequency * sound->sourceSampleRate / getSampleRate();
+        pitchRatio = currentNoteFrequency * sound->soundSampleRate / getSampleRate();
         
         // Set start/end and loop start/end settings
         int soundLoopStartPosition, soundLoopEndPosition;  // To be set later
