@@ -61,8 +61,20 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
     // --> Start auto-generated code A
-    if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
+    if (name == "startPosition") {
+        if (sourceSoundPointer != nullptr) {
+            sourceSoundPointer->setParameterByNameFloat(name, value);
+        } else {
+            startPosition = jlimit(0.0f, 1.0f, value);
+        }
+    }
+    else if (name == "endPosition") {
+        if (sourceSoundPointer != nullptr) {
+            sourceSoundPointer->setParameterByNameFloat(name, value);
+        } else {
+            endPosition = jlimit(0.0f, 1.0f, value);
+        }
+    }
     else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
     else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
@@ -81,7 +93,13 @@ void SourceSamplerSound::setParameterByNameFloat(const String& name, float value
     else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
     else if (name == "ampADSR.release") { ampADSR.release = value; }
     else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
-    else if (name == "pitch") { pitch = jlimit(-36.0f, 36.0f, value); }
+    else if (name == "pitch") {
+        if (sourceSoundPointer != nullptr) {
+            sourceSoundPointer->setParameterByNameFloat(name, value);
+        } else {
+            pitch = jlimit(-36.0f, 36.0f, value);
+        }
+    }
     else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
     else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
     else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
@@ -143,7 +161,13 @@ void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float v
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
     // --> Start auto-generated code C
-    if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
+    if (name == "launchMode") {
+        if (sourceSoundPointer != nullptr) {
+            sourceSoundPointer->setParameterByNameInt(name, value);
+        } else {
+            launchMode = jlimit(0, 4, value);
+        }
+    }
     else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
     else if (name == "reverse") { reverse = jlimit(0, 1, value); }
     else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
@@ -465,4 +489,72 @@ void SourceSamplerSound::removeMidiMapping(int randomID){
         }
     }
     midiMappings = newMidiMappings;
+}
+
+
+float SourceSamplerSound::getParameterFloat(const String& name){
+    if (name == "startPosition") {
+        if (sourceSoundPointer != nullptr) {
+            return sourceSoundPointer->getParameterFloat(name);
+        } else {
+            return startPosition;
+        }
+    }
+    else if (name == "endPosition") {
+        if (sourceSoundPointer != nullptr) {
+            return sourceSoundPointer->getParameterFloat(name);
+        } else {
+            return endPosition;
+        }
+    }
+    else if (name == "loopStartPosition") { return loopStartPosition; }
+    else if (name == "loopEndPosition") { return loopEndPosition; }
+    else if (name == "playheadPosition") { return playheadPosition; }
+    else if (name == "freezePlayheadSpeed") { return freezePlayheadSpeed; }
+    else if (name == "filterCutoff") { return filterCutoff; }
+    else if (name == "filterRessonance") { return filterRessonance; }
+    else if (name == "filterKeyboardTracking") { return filterKeyboardTracking; }
+    else if (name == "filterADSR.attack") { return filterADSR.attack; }
+    else if (name == "filterADSR.decay") { return filterADSR.decay; }
+    else if (name == "filterADSR.sustain") { return filterADSR.sustain; }
+    else if (name == "filterADSR.release") { return filterADSR.release; }
+    else if (name == "filterADSR2CutoffAmt") { return filterADSR2CutoffAmt; }
+    else if (name == "gain") { return gain; }
+    else if (name == "ampADSR.attack") { return ampADSR.attack; }
+    else if (name == "ampADSR.decay") { return ampADSR.decay; }
+    else if (name == "ampADSR.sustain") { return ampADSR.sustain; }
+    else if (name == "ampADSR.release") { return ampADSR.release; }
+    else if (name == "pan") { return pan; }
+    else if (name == "pitch") {
+        if (sourceSoundPointer != nullptr) {
+            return sourceSoundPointer->getParameterFloat(name);
+        } else {
+            return pitch;
+        }
+    }
+    else if (name == "pitchBendRangeUp") { return pitchBendRangeUp; }
+    else if (name == "pitchBendRangeDown") { return pitchBendRangeDown; }
+    else if (name == "mod2CutoffAmt") { return mod2CutoffAmt; }
+    else if (name == "mod2GainAmt") { return mod2GainAmt; }
+    else if (name == "mod2PitchAmt") { return mod2PitchAmt; }
+    else if (name == "mod2PlayheadPos") { return mod2PlayheadPos; }
+    else if (name == "vel2CutoffAmt") { return vel2CutoffAmt; }
+    else if (name == "vel2GainAmt") { return vel2GainAmt; }
+    return -1.0;
+}
+
+int SourceSamplerSound::getParameterInt(const String& name){
+    if (name == "launchMode") {
+        if (sourceSoundPointer != nullptr) {
+            return sourceSoundPointer->getParameterInt(name);
+        } else {
+            return launchMode;
+        }
+    }
+    else if (name == "loopXFadeNSamples") { return loopXFadeNSamples; }
+    else if (name == "reverse") { return reverse; }
+    else if (name == "noteMappingMode") { return noteMappingMode; }
+    else if (name == "numSlices") { return numSlices; }
+    else if (name == "midiRootNote") { return midiRootNote; }
+    return -1;
 }

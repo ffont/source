@@ -127,7 +127,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
         // Update the rest of parameters (that will be udpated at each block)
         updateParametersFromSourceSamplerSound(sound);
         
-        if (sound->launchMode == LAUNCH_MODE_FREEZE){
+        if (sound->getParameterInt("launchMode") == LAUNCH_MODE_FREEZE){
             // In freeze mode, playheadSamplePosition depends on the playheadPosition parameter
             playheadSamplePosition = sound->playheadPosition * sound->getLengthInSamples();
         } else {
@@ -155,7 +155,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
 {
     // This is called at each processing block of 64 samples
     
-    if (sound->launchMode == LAUNCH_MODE_FREEZE){
+    if (sound->getParameterInt("launchMode") == LAUNCH_MODE_FREEZE){
         // If in freeze mode, we "only" care about the playhead position parameter, the rest of parameters to define pitch, start/end times, etc., are not relevant
         targetPlayheadSamplePosition = (sound->playheadPosition + playheadSamplePositionMod + currentModWheelValue/127.0) * sound->getLengthInSamples();
         
@@ -176,7 +176,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         // unintuitively because the notes in the "blank" region in the middle won't be counted
         // If this behaviour becomes a problem it could be turned into a sound parameter
         int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->midiRootNote);
-        double currentNoteFrequency = std::pow (2.0, (sound->pitch + distanceToRootNote) / 12.0);
+        double currentNoteFrequency = std::pow (2.0, (sound->getParameterFloat("pitch") + distanceToRootNote) / 12.0);
         pitchRatio = currentNoteFrequency * sound->soundSampleRate / getSampleRate();
         
         // Set start/end and loop start/end settings
@@ -185,8 +185,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
             // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
             // Also, loop start/end positions are ignored and set to the same slice start/end positions
-            int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-            int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            int globalStartPositionSample = (int)(sound->getParameterFloat("startPosition") * soundLengthInSamples);
+            int globalEndPositionSample = (int)(sound->getParameterFloat("endPosition") * soundLengthInSamples);
             int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
             if (sound->numSlices != SLICE_MODE_AUTO_ONSETS){
                 // if not in slice by onsets mode, divide the sound in N equal slices
@@ -205,8 +205,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
                 
             } else {
                 // If in onsets mode, get the slices from the onsets analysis. Only consider those onsets inside the global start/end selection
-                int globalStartPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-                int globalEndPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+                int globalStartPositionSample = (int)(sound->getParameterFloat("startPosition") * soundLengthInSamples);
+                int globalEndPositionSample = (int)(sound->getParameterFloat("endPosition") * soundLengthInSamples);
                 std::vector<int> onsetTimesSamples = sound->getOnsetTimesSamples();
                 if (onsetTimesSamples.size() > 0){
                     // If onset data is available, use the onsets :)
@@ -236,8 +236,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         } else {
             // If note mapping by slice is not enabled, then all mappend notes start at the same start/end position as defined by the start/end position slider(s)
             // Also, the loop positions are defined following the sliders
-            startPositionSample = (int)(sound->startPosition * soundLengthInSamples);
-            endPositionSample = (int)(sound->endPosition * soundLengthInSamples);
+            startPositionSample = (int)(sound->getParameterFloat("startPosition") * soundLengthInSamples);
+            endPositionSample = (int)(sound->getParameterFloat("endPosition") * soundLengthInSamples);
             soundLoopStartPosition = (int)(sound->loopStartPosition * soundLengthInSamples);
             soundLoopEndPosition = (int)(sound->loopEndPosition * soundLengthInSamples);
         }
@@ -306,7 +306,7 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
     if (allowTailOff) {
         // This is the case when receiving a note off event
         if (auto* sound = getCurrentlyPlayingSourceSamplerSound()){
-            if (sound->launchMode == LAUNCH_MODE_TRIGGER){
+            if (sound->getParameterInt("launchMode") == LAUNCH_MODE_TRIGGER){
                 // We only trigger ADSRs release phase if we're in gate or loop launch modes, otherwise continue playing normally
             } else {
                 adsr.noteOff();
@@ -401,11 +401,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             float l = interpolateSample(playheadSamplePosition, inL);
             float r = (inR != nullptr) ? interpolateSample(playheadSamplePosition, inR) : l;
             
-            if (sound->launchMode != LAUNCH_MODE_FREEZE){
+            if (sound->getParameterInt("launchMode") != LAUNCH_MODE_FREEZE){
                 // Outside freeze mode, add samples from the source sound to the buffer and check for looping and other sorts of modulations
                 
                 // Check, in case we're looping, if we are in a crossfade zone and should do crossfade
-                if ((sound->launchMode == LAUNCH_MODE_LOOP) && sound->loopXFadeNSamples > 0){
+                if ((sound->getParameterInt("launchMode") == LAUNCH_MODE_LOOP) && sound->loopXFadeNSamples > 0){
                     // NOTE: don't crossfade in LAUNCH_MODE_LOOP_FW_BW mode because it loops from the the same sample (no need to crossfade)
                     if (playheadDirectionIsForward){
                         // PLayhead going forward  (normal playing mode): do loop when reahing fixedLoopEndPositionSample
@@ -481,7 +481,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 *outL++ += (l + r) * 0.5f;
             }
 
-            if (sound->launchMode == LAUNCH_MODE_FREEZE){
+            if (sound->getParameterInt("launchMode") == LAUNCH_MODE_FREEZE){
                 // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
                 double distanceTotargetPlayheadSamplePosition = targetPlayheadSamplePosition - playheadSamplePosition;
                 double distanceTotargetPlayheadSamplePositionNormalized = std::abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
@@ -506,11 +506,11 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 }
                 
                 // ... also check if we're reaching the end of the sound or looping region to do looping
-                if ((sound->launchMode == LAUNCH_MODE_LOOP) || (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW)){
+                if ((sound->getParameterInt("launchMode") == LAUNCH_MODE_LOOP) || (sound->getParameterInt("launchMode") == LAUNCH_MODE_LOOP_FW_BW)){
                     // If looping is enabled, check whether we should loop
                     if (playheadDirectionIsForward){
                         if (playheadSamplePosition > fixedLoopEndPositionSample){
-                            if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                            if (sound->getParameterInt("launchMode") == LAUNCH_MODE_LOOP_FW_BW) {
                                 // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
                                 playheadDirectionIsForward = !playheadDirectionIsForward;
                             } else {
@@ -520,7 +520,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                         }
                     } else {
                         if (playheadSamplePosition < fixedLoopStartPositionSample){
-                            if (sound->launchMode == LAUNCH_MODE_LOOP_FW_BW) {
+                            if (sound->getParameterInt("launchMode") == LAUNCH_MODE_LOOP_FW_BW) {
                                 // Forward<>Backward loop mode (ping pong): stay on loop end but change direction
                                 playheadDirectionIsForward = !playheadDirectionIsForward;
                             } else {

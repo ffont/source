@@ -79,19 +79,15 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
     
     // Load empty session to state
-    int maxSounds = 16;
+    int maxSounds = 1;
     state = Helpers::createDefaultPreset(maxSounds);
     
     // Add state change listener and bind cached properties to state properties
     bindState();
     
     // Initialize sounds
-    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET));
-    
-
-    std::cout << state.toXmlString() << std::endl;
-    
-    sounds->objects[2]->setName("a new name");
+    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET),
+                                               [this]{return getGlobalContext();});
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -115,6 +111,19 @@ void SourceSamplerAudioProcessor::bindState()
     presetName.referTo(preset, IDs::name, nullptr);
     noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr);
     
+}
+
+GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
+{
+    GlobalContextStruct context;
+    context.sampleRate = getSampleRate();
+    context.samplesPerBlock = getBlockSize();
+    context.sampler = &sampler;
+    context.soundsDownloadLocation = soundsDownloadLocation;
+    context.sourceDataLocation = sourceDataLocation;
+    context.presetFilesLocation = presetFilesLocation;
+    context.tmpFilesLocation = tmpFilesLocation;
+    return context;
 }
 
 //==============================================================================
@@ -455,12 +464,15 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree stat
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    /*
+    
     // Load state information form memory block, convert to XML and call function to
     // load preset from state xml
     std::unique_ptr<XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
         loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
     }
+     */
 }
 
 ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
@@ -659,7 +671,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
                     sampleLoaderThread.run();
                 #else
                     // Trigger loading of audio sample into the sampler
-                    setSingleSourceSamplerSoundObject(i);
+                    // NOTE: commented for testing purposes
+                    //setSingleSourceSamplerSoundObject(i);
                 #endif
             }
         }
@@ -681,7 +694,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sampleLoaderThread.run();
         #else
             // Trigger loading of audio sample into the sampler
-            setSingleSourceSamplerSoundObject(soundIndex);
+            // NOTE: commented for testing purposes
+            // setSingleSourceSamplerSoundObject(soundIndex);
         #endif
         
         if (allSoundsFinishedDownloading()){

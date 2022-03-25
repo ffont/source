@@ -40,13 +40,23 @@ namespace Helpers
         for (int sn = 0; sn < numSounds; ++sn)
         {
             juce::ValueTree s (IDs::SOUND);
-            const juce::String trackName ("Sound " + juce::String (sn + 1));
+            const juce::String soundName ("Sound " + juce::String (sn + 1));
             Helpers::createUuidProperty (s);
-            s.setProperty (IDs::name, trackName, nullptr);
+            s.setProperty (IDs::name, soundName, nullptr);
             s.setProperty (IDs::enabled, false, nullptr);
+            s.setProperty (IDs::launchMode, Defaults::launchMode, nullptr);
+            s.setProperty (IDs::startPosition, Defaults::startPosition, nullptr);
+            s.setProperty (IDs::endPosition, Defaults::endPosition, nullptr);
+            s.setProperty (IDs::pitch, Defaults::pitch, nullptr);
+            
+            juce::ValueTree ss (IDs::SOUND_SAMPLE);
+            Helpers::createUuidProperty (ss);
+            ss.setProperty (IDs::soundId, 433328, nullptr);
+            ss.setProperty (IDs::previewURL, "https://freesound.org/data/previews/433/433328_735175-hq.ogg", nullptr);
+            s.addChild(ss, -1, nullptr);
+            
             preset.addChild (s, -1, nullptr);
         }
-        
         state.addChild (preset, -1, nullptr);
 
         return state;
@@ -91,3 +101,13 @@ public:
     float maxRange;
 };
 
+
+struct GlobalContextStruct {
+    double sampleRate = 0.0;
+    int samplesPerBlock = 0;
+    Synthesiser* sampler = nullptr;
+    File sourceDataLocation;
+    File soundsDownloadLocation;
+    File presetFilesLocation;
+    File tmpFilesLocation;
+};

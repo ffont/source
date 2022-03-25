@@ -14,6 +14,9 @@
 #include "helpers.h"
 
 
+class SourceSound;
+
+
 class SourceSamplerSound: public SynthesiserSound
 {
 public:
@@ -43,6 +46,13 @@ public:
 
     /** Destructor. */
     ~SourceSamplerSound() override;
+    
+    
+    SourceSound* sourceSoundPointer = nullptr;
+    void setSourceSoundPointer(SourceSound* _sourceSoundPointer)
+    {
+        sourceSoundPointer = _sourceSoundPointer;
+    }
    
     //==============================================================================
     /** Returns the sample's name */
@@ -90,6 +100,11 @@ public:
     std::vector<MidiCCMapping> getMidiMappingsSorted();
     void removeMidiMapping(int randomID);
 
+    
+    float getParameterFloat(const String& name);
+    int getParameterInt(const String& name);
+    
+    
 private:
     //==============================================================================
     friend class SourceSamplerVoice;
@@ -155,31 +170,252 @@ private:
 // or sounds sampled at different pitches.
 
 
-class SourceSound
+class SourceSound: public juce::URL::DownloadTask::Listener,
+                   public juce::Thread
 {
 public:
-    SourceSound (const juce::ValueTree& _state): state(_state)
+    SourceSound (const juce::ValueTree& _state,
+                 std::function<GlobalContextStruct()> globalContextGetter): state(_state), Thread ("LoaderThread")
     {
+        getGlobalContext = globalContextGetter;
         bindState();
+        
+        triggerSoundDownloads();
     }
     
-    ~SourceSound(){}
+    ~SourceSound ()
+    {
+        for (int i = 0; i < downloadTasks.size(); i++) {
+            downloadTasks.at(i).reset();
+        }
+    }
     
     juce::ValueTree state;
     
-    void bindState()
+    void bindState ()
     {
         name.referTo(state, IDs::name, nullptr);
         enabled.referTo(state, IDs::enabled, nullptr);
+        launchMode.referTo(state, IDs::launchMode, nullptr);
+        startPosition.referTo(state, IDs::startPosition, nullptr);
+        endPosition.referTo(state, IDs::endPosition, nullptr);
+        pitch.referTo(state, IDs::pitch, nullptr);
     }
     
-    void setName(const juce::String& newName) {
-        name = newName;
+    std::vector<SourceSamplerSound*> createSourceSamplerSounds ()
+    {
+        // Generate all the SourceSamplerSound objects corresponding to this sound
+        // In most of the cases this will be a single sound, but it could be that
+        // some sounds have more than one SourceSamplerSound (multi-layered sounds
+        // for example)
+        
+        AudioFormatManager audioFormatManager;
+        audioFormatManager.registerBasicFormats();
+        std::vector<SourceSamplerSound*> sounds = {};
+        
+        for (int i=0; i<state.getNumChildren(); i++){
+            auto child = state.getChild(i);
+            if (child.hasType(IDs::SOUND_SAMPLE)){
+                int soundId = (int)child.getProperty(IDs::soundId, -1);
+                if (soundId > -1){
+                    juce::String soundName = name + "-" + (juce::String)soundId;
+                    File audioSample = File::getSpecialLocation(File::userDocumentsDirectory)
+                        .getChildFile("SourceSampler/")
+                        .getChildFile("sounds")
+                        .getChildFile((juce::String)soundId).withFileExtension("ogg");
+                    std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
+                    SourceSamplerSound* createdSound = new SourceSamplerSound(soundId,
+                                                                              soundName,
+                                                                              *reader,
+                                                                              true,
+                                                                              MAX_SAMPLE_LENGTH,
+                                                                              getGlobalContext().sampleRate,
+                                                                              getGlobalContext().samplesPerBlock);
+                    createdSound->setSourceSoundPointer(this);
+                    sounds.push_back(createdSound);
+                }
+            }
+        }
+        return sounds;
+    }
+    
+    void addSourceSamplerSoundsToSampler()
+    {
+        // TODO: add lock here?
+        
+        std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
+        for (auto sourceSamplerSound: sourceSamplerSounds) {
+            SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->addSound(sourceSamplerSound));
+            
+            ValueTree samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND);
+            samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
+                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, 64, nullptr),
+                nullptr);
+            
+            BigInteger midiNotes;
+            midiNotes.setRange(0, 127, true);
+            samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+            
+            justAddedSound->loadState(samplerSoundParameters);
+        }
+        std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
+    
+    }
+    
+    void removeSourceSampleSoundsFromSampler()
+    {
+        // TODO: add lock here?
+        
+        std::vector<int> soundIndexesToDelete;
+        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
+            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+            if (sourceSamplerSound->sourceSoundPointer == this){
+                // If the pointer to sourceSound of the sourceSamplerSound is the current sourceSound, then the sound should be deleted
+                soundIndexesToDelete.push_back(i);
+            }
+        }
+        
+        int numDeleted = 0;
+        for (auto idx: soundIndexesToDelete)
+        {
+            getGlobalContext().sampler->removeSound(idx - numDeleted);  // Compensate index updates as sounds get removed
+            numDeleted += 1;
+        }
+        std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
+    }
+    
+    int getParameterInt(const String& name){
+        if (name == "launchMode") {
+            return launchMode;
+        }
+        return -1;
+    }
+    
+    float getParameterFloat(const String& name){
+        if (name == "startPosition") { return startPosition; }
+        else if (name == "endPosition") { return endPosition; }
+        else if (name == "pitch") { return pitch; }
+        return -1.0;
+    }
+    
+    void setParameterByNameFloat(const String& name, float value){
+        if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
+        else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
+        else if (name == "pitch") { pitch = jlimit(-36.0f, 36.0f, value); }
+        
+        // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
+        if (endPosition < startPosition) {
+            endPosition = startPosition.get();
+        }
+        /*
+        if (loopStartPosition < startPosition){
+            loopStartPosition = startPosition;
+        }
+        if (loopEndPosition > endPosition){
+            loopEndPosition = endPosition;
+        }
+        if (loopStartPosition > loopEndPosition){
+            loopStartPosition = loopEndPosition;
+        }*/
+    }
+    
+    void setParameterByNameInt(const String& name, int value){
+        if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
+    }
+    
+    void run(){
+    }
+    
+    void triggerSoundDownloads()
+    {
+        bool allAlreadyDownloaded = true;
+        for (int i=0; i<state.getNumChildren(); i++){
+            auto child = state.getChild(i);
+            if (child.hasType(IDs::SOUND_SAMPLE)){
+                int soundId = (int)child.getProperty(IDs::soundId, -1);
+                juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
+                if ((previewURL != "") && (soundId > -1)){
+                    juce::File locationInDisk = getGlobalContext().soundsDownloadLocation
+                        .getChildFile((juce::String)soundId).withFileExtension("ogg");
+                    child.setProperty(IDs::filePath, locationInDisk.getFullPathName(), nullptr);
+                    if (!locationInDisk.exists()){
+                        // Trigger download if sound not in disk
+                        allAlreadyDownloaded = false;
+                        child.setProperty(IDs::downloadProgress, 0.0, nullptr);
+                        child.setProperty(IDs::downloadCompleted, false, nullptr);
+                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, "", this);
+                        downloadTasks.push_back(std::move(downloadTask));
+                        std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
+                    } else {
+                        // If sound already downloaded, save info in VT
+                        child.setProperty(IDs::downloadProgress, 100.0, nullptr);
+                        child.setProperty(IDs::downloadCompleted, true, nullptr);
+                    }
+                }
+            }
+        }
+        
+        if (allAlreadyDownloaded){
+            // If no sound needs downloading
+            addSourceSamplerSoundsToSampler();
+        }
+    }
+    
+    void finished(URL::DownloadTask *task, bool success){
+        // TODO: load sound into buffer so it is already loaded before calling addSourceSamplerSoundsToSampler (and can be done in a background thread?)
+        bool allAlreadyDownloaded = true;
+        for (int i=0; i<state.getNumChildren(); i++){
+            auto child = state.getChild(i);
+            if (child.hasType(IDs::SOUND_SAMPLE)){
+                File locationInDisk = File(child.getProperty(IDs::filePath, "").toString());
+                if (task->getTargetLocation() == locationInDisk){
+                    // Find the sample that corresponds to this download task and update state
+                    child.setProperty(IDs::downloadCompleted, true, nullptr);
+                    child.setProperty(IDs::downloadProgress, 100.0, nullptr);
+                } else {
+                    if (!child.getProperty(IDs::downloadCompleted, false)){
+                        allAlreadyDownloaded = false;
+                    }
+                }
+            }
+        }
+        
+        if (allAlreadyDownloaded){
+            // If all sounds finished downloading
+            addSourceSamplerSoundsToSampler();
+        }
+    }
+    
+    void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength){
+        for (int i=0; i<state.getNumChildren(); i++){
+            auto child = state.getChild(i);
+            if (child.hasType(IDs::SOUND_SAMPLE)){
+                File locationInDisk = File(child.getProperty(IDs::filePath, "").toString());
+                if (task->getTargetLocation() == locationInDisk){
+                    // Find the sample that corresponds to this download task and update state
+                    child.setProperty(IDs::downloadProgress, 100.0*(float)bytesDownloaded/(float)totalLength, nullptr);
+                }
+            }
+        }
     }
     
 private:
+    // Sound properties
     juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> enabled;
+    juce::CachedValue<int> launchMode;
+    juce::CachedValue<float> startPosition;
+    juce::CachedValue<float> endPosition;
+    juce::CachedValue<float> pitch;
+    
+    // Sound downloading
+    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
+    bool allDownloaded = false;
+    
+    // Other
+    std::function<GlobalContextStruct()> getGlobalContext;
     
     JUCE_LEAK_DETECTOR (SourceSound)
 };
@@ -187,9 +423,11 @@ private:
 
 struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
 {
-    SourceSoundList (const juce::ValueTree& v)
+    SourceSoundList (const juce::ValueTree& v,
+                     std::function<GlobalContextStruct()> globalContextGetter)
     : drow::ValueTreeObjectList<SourceSound> (v)
     {
+        getGlobalContext = globalContextGetter;
         rebuildObjects();
     }
 
@@ -205,16 +443,20 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
 
     SourceSound* createNewObject (const juce::ValueTree& v) override
     {
-        return new SourceSound (v);
+        return new SourceSound (v, getGlobalContext);
     }
 
-    void deleteObject (SourceSound* c) override
+    void deleteObject (SourceSound* s) override
     {
-        delete c;
+        // Before deleting the object, the SourceSamplerSounds need to be deleted as well as these
+        // point to the object itself. Here we might need to apply some tricks to make this RT safe.
+        s->removeSourceSampleSoundsFromSampler();
+        delete s;
     }
 
-    void newObjectAdded (SourceSound*) override    {}
+    void newObjectAdded (SourceSound* s) override    {}
     void objectRemoved (SourceSound*) override     {}
     void objectOrderChanged() override       {}
-
+    
+    std::function<GlobalContextStruct()> getGlobalContext;
 };

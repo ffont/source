@@ -35,6 +35,10 @@ public:
     SourceSamplerAudioProcessor();
     ~SourceSamplerAudioProcessor();
     
+    juce::ValueTree state;
+    void bindState();
+    GlobalContextStruct getGlobalContext();
+    
     //==============================================================================
     std::string exec(const char* cmd); // Util function to run in command line
 
@@ -153,7 +157,8 @@ public:
         
         void run() override
         {
-            processor.setSingleSourceSamplerSoundObject(soundIdx);
+            // NOTE: commented for testing purposes
+            //processor.setSingleSourceSamplerSoundObject(soundIdx);
         }
         SourceSamplerAudioProcessor& processor;
         int soundIdx;
@@ -192,9 +197,6 @@ public:
 
     
 protected:
-    juce::ValueTree state;
-    void bindState();
-    
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
     void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree&) override;
     void valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree&, int) override;

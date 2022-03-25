@@ -203,6 +203,10 @@ namespace Defaults
 {
 inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
 inline int currentPresetIndex = -1;
+inline int launchMode = LAUNCH_MODE_GATE;
+inline int startPosition = 0.0f;
+inline int endPosition = 1.0f;
+inline int pitch = 0.0f;
 }
 
 
@@ -213,43 +217,24 @@ namespace IDs
 DECLARE_ID (SOURCE_STATE)
 DECLARE_ID (PRESET)
 DECLARE_ID (SOUND)
-/*DECLARE_ID (DEVICE)
-DECLARE_ID (TRACK)
-DECLARE_ID (CLIP)
-DECLARE_ID (SEQUENCE_EVENT)*/
+DECLARE_ID (SOUND_SAMPLE)
 
 DECLARE_ID (uuid)
 DECLARE_ID (name)
+DECLARE_ID (soundId)
+DECLARE_ID (previewURL)
+DECLARE_ID (pathInDisk)
 DECLARE_ID (enabled)
 DECLARE_ID (currentPresetIndex)
 DECLARE_ID (noteLayoutType)
+DECLARE_ID (launchMode)
+DECLARE_ID (startPosition)
+DECLARE_ID (endPosition)
+DECLARE_ID (pitch)
 
-/*DECLARE_ID (type)
-DECLARE_ID (length)
-DECLARE_ID (playheadPositionInBeats)
-DECLARE_ID (isPlaying)
-DECLARE_ID (shouldToggleIsPlaying)
-DECLARE_ID (doingCountIn)
-DECLARE_ID (countInPlayheadPositionInBeats)
-DECLARE_ID (fixedLengthRecordingBars)
-DECLARE_ID (recordAutomationEnabled)
-DECLARE_ID (fixedVelocity)
-DECLARE_ID (bpm)
-DECLARE_ID (meter)
-DECLARE_ID (barCount)
-DECLARE_ID (metronomeOn)
-DECLARE_ID (inputMonitoring)
-DECLARE_ID (hardwareDeviceName)
-DECLARE_ID (clipLengthInBeats)
-DECLARE_ID (currentQuantizationStep)
-DECLARE_ID (playing)
-DECLARE_ID (willPlayAt)
-DECLARE_ID (willStopAt)
-DECLARE_ID (recording)
-DECLARE_ID (willStartRecordingAt)
-DECLARE_ID (willStopRecordingAt)
-DECLARE_ID (timestamp)
-DECLARE_ID (eventMidiBytes)*/
+DECLARE_ID (filePath)
+DECLARE_ID (downloadProgress)
+DECLARE_ID (downloadCompleted)
 
 #undef DECLARE_ID
 }
