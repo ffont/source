@@ -345,7 +345,8 @@ public:
                         allAlreadyDownloaded = false;
                         child.setProperty(IDs::downloadProgress, 0.0, nullptr);
                         child.setProperty(IDs::downloadCompleted, false, nullptr);
-                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, "", this);
+                        URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
+                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
                         std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
                     } else {
