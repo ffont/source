@@ -215,7 +215,6 @@ private:
     AudioTransportSource transportSource;
     
     MidiBuffer midiFromEditor;
-    long midicounter;
     bool midiOutForwardsMidiIn = true;
     int lastReceivedMIDIControllerNumber = -1;
     int lastReceivedMIDINoteNumber = -1;

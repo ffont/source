@@ -26,17 +26,28 @@ namespace Helpers
         return v;
     }
 
-    inline juce::ValueTree createDefaultPreset(int numSounds)
+    inline juce::ValueTree createEmptyState()
     {
         juce::ValueTree state (IDs::SOURCE_STATE);
         Helpers::createUuidProperty (state);
         state.setProperty (IDs::currentPresetIndex, Defaults::currentPresetIndex, nullptr);
-        
+        return state;
+    }
+
+    inline juce::ValueTree createEmptyPresetState()
+    {
         juce::ValueTree preset (IDs::PRESET);
         Helpers::createUuidProperty (preset);
         preset.setProperty (IDs::name, juce::Time::getCurrentTime().formatted("%Y%m%d") + " unnamed", nullptr);
         preset.setProperty (IDs::noteLayoutType, Defaults::noteLayoutType, nullptr);
-        
+        return preset;
+    }
+
+    inline juce::ValueTree createDefaultState(int numSounds)
+    {
+        juce::ValueTree state = createEmptyState();
+        juce::ValueTree preset = createEmptyPresetState();
+    
         for (int sn = 0; sn < numSounds; ++sn)
         {
             juce::ValueTree s (IDs::SOUND);

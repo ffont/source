@@ -57,7 +57,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
     
-    midicounter = 1;
     startTime = Time::getMillisecondCounterHiRes() * 0.001;
     
     // Action listeners
@@ -79,15 +78,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
     
     // Load empty session to state
-    int maxSounds = 1;
-    state = Helpers::createDefaultPreset(maxSounds);
+    int numSounds = 0;
+    state = Helpers::createDefaultState(numSounds);
     
-    // Add state change listener and bind cached properties to state properties
+    // Add state change listener and bind cached properties to state properties (including loaded sounds)
     bindState();
-    
-    // Initialize sounds
-    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET),
-                                               [this]{return getGlobalContext();});
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -111,6 +106,8 @@ void SourceSamplerAudioProcessor::bindState()
     presetName.referTo(preset, IDs::name, nullptr);
     noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr);
     
+    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET),
+                                               [this]{return getGlobalContext();});
 }
 
 GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
@@ -199,10 +196,14 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
     } else {
         // No preset exists at that number, create a new empty one
         currentPresetIndex = index;
-        presetName = "empty";
-        loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
-        sampler.clearSounds();
-        sampler.setSamplerVoices(16);
+        juce::ValueTree newState = state.createCopy();
+        juce::ValueTree presetState = newState.getChildWithName(IDs::PRESET);
+        if (presetState.isValid()){
+            newState.removeChild(presetState, nullptr);
+        }
+        juce::ValueTree newPresetState = Helpers::createEmptyPresetState();
+        newState.addChild(newPresetState, -1, nullptr);
+        loadPresetFromStateInformation(newState);
     }
     saveGlobalPersistentStateToFile(); // Save global settings to file (which inlucdes the latest loaded preset index)
 }
@@ -215,8 +216,8 @@ const String SourceSamplerAudioProcessor::getProgramName (int index)
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             ValueTree state = ValueTree::fromXml(*xmlState.get());
-            if (state.hasProperty(STATE_PRESET_NAME)){
-                return state.getProperty(STATE_PRESET_NAME).toString();
+            if (state.hasProperty(IDs::name)){
+                return state.getProperty(IDs::name).toString();
             }
         }
     }
@@ -231,7 +232,7 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             ValueTree state = ValueTree::fromXml(*xmlState.get());
-            state.setProperty(STATE_PRESET_NAME, newName, nullptr);
+            state.setProperty(IDs::name, newName, nullptr);
             std::unique_ptr<XmlElement> updatedXmlState (state.createXml());
             String filename = getPresetFilenameFromNameAndIndex(newName, index);
             File location = getPresetFilePath(filename);
@@ -381,98 +382,85 @@ ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
     return state;
 }
 
-void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
-{
-    // Save current state information to memory block
-    ValueTree state = collectPresetStateInformation();
-    std::unique_ptr<XmlElement> xml (state.createXml());
-    //std::cout << xml->createDocument("") <<std::endl; // Print state for debugging purposes
-    copyXmlToBinary (*xml, destData);
-}
-
 void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName, int index)
 {
-    if (_presetName == ""){
-        // No name provided, generate unique name
-        presetName = "unnamed";
-        for (int i=0; i<8; i++){
-            presetName = presetName + (String)juce::Random::getSystemRandom().nextInt (9);
+    juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+    if (presetState.isValid()){
+        
+        if (_presetName == ""){
+            // No name provided, generate unique name
+            presetName = "unnamed";
+            for (int i=0; i<8; i++){
+                presetName = presetName + (String)juce::Random::getSystemRandom().nextInt (9);
+            }
+        } else {
+            presetName = _presetName;
         }
-    } else {
-        presetName = _presetName;
+        
+        std::unique_ptr<XmlElement> xml (presetState.createXml());
+        String filename = getPresetFilenameFromNameAndIndex(presetName, index);
+        File location = getPresetFilePath(filename);
+        if (location.existsAsFile()){
+            // If already exists, delete it
+            location.deleteFile();
+        }
+        logToState("Saving preset to: " + location.getFullPathName());
+        xml->writeTo(location);
     }
-
-    ValueTree state = collectPresetStateInformation();
-    std::unique_ptr<XmlElement> xml (state.createXml());
-    String filename = getPresetFilenameFromNameAndIndex(presetName, index);
-    File location = getPresetFilePath(filename);
-    if (location.existsAsFile()){
-        // If already exists, delete it
-        location.deleteFile();
-    }
-    logToState("Saving preset to: " + location.getFullPathName());
-    xml->writeTo(location);
 }
 
-bool SourceSamplerAudioProcessor::loadPresetFromFile (const String& fileName)
+bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileName)
 {
-    File location = getPresetFilePath(fileName);
+    juce::File location = getPresetFilePath(fileName);
     if (location.existsAsFile()){
-        XmlDocument xmlDocument (location);
-        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        juce::XmlDocument xmlDocument (location);
+        std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            ValueTree presetState = ValueTree::fromXml(*xmlState.get());
-            loadPresetFromStateInformation(presetState);
+            juce::ValueTree newState = Helpers::createEmptyState();
+            juce::ValueTree presetState = juce::ValueTree::fromXml(*xmlState.get());
+            newState.addChild (presetState, -1, nullptr);
+            loadPresetFromStateInformation(newState);
             return true;
         }
     }
     return false; // No file found
 }
 
-void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree state)
+void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _state)
 {
-    // Load state informaiton form XML state
+    // If sounds are currently loaded in the state, remove them all
+    // This will trigger the deletion of SampleSound and SourceSamplerSound objects
+    juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+    if (presetState.isValid()){
+        presetState.removeAllChildren(nullptr);
+    }
+    
+    // Load new state informaiton to the state
     logToState("Loading state...");
+    state.copyPropertiesAndChildrenFrom(_state, nullptr);
+    DBG(state.toXmlString());
     
-    // Set main stuff
-    if (state.hasProperty(STATE_PRESET_NAME)){
-        presetName = state.getProperty(STATE_PRESET_NAME).toString();
-    }
-    if (state.hasProperty(STATE_PRESET_NUMBER)){
-        currentPresetIndex = (int)state.getProperty(STATE_PRESET_NUMBER);
-    }
-    
-    // Load layout type
-    if (state.hasProperty(STATE_PRESET_NOTE_LAYOUT_TYPE)){
-        noteLayoutType = (int)state.getProperty(STATE_PRESET_NOTE_LAYOUT_TYPE);
-    }
-    
-    // Now load sampler state (does not include sound properties)
-    ValueTree samplerState = state.getChildWithName(STATE_SAMPLER);
-    if (samplerState.isValid()){
-        sampler.loadState(samplerState);
-    }
+    // Trigger bind state again to re-create sounds and the rest
+    bindState();
+}
 
-    // Now load sounds into the sampler: download if needed, create SamplerSound objects and adjust parameters following state info
-    ValueTree soundsInfo = state.getChildWithName(STATE_SOUNDS_INFO);
-    if (soundsInfo.isValid()){
-        loadedSoundsInfo = soundsInfo;
-        downloadSounds(false, -1);
-        // the loading of the sounds will be triggered automaticaly when download finishes
-    }
+void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
+{
+    // Save current state information to memory block
+    std::unique_ptr<XmlElement> xml (state.createXml());
+    DBG("> Running getStateInformation");
+    DBG(xml->toString()); // Print state for debugging purposes
+    copyXmlToBinary (*xml, destData);
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    /*
-    
-    // Load state information form memory block, convert to XML and call function to
-    // load preset from state xml
+    DBG("> Running setStateInformation");
     std::unique_ptr<XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
         loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
     }
-     */
+    
 }
 
 ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
@@ -640,6 +628,41 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     stateAsStringParts.add(audioLevels);
     
     return stateAsStringParts.joinIntoString(";");
+}
+
+ValueTree SourceSamplerAudioProcessor::collectFullStateInformation(bool skipVolatile)
+{
+    ValueTree fullState = ValueTree(STATE_FULL_STATE);
+    fullState.appendChild(collectPresetStateInformation(), nullptr);
+    fullState.appendChild(collectGlobalSettingsStateInformation(), nullptr);
+    if (!skipVolatile){
+        fullState.appendChild(collectVolatileStateInformation(), nullptr);
+    }
+    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
+    
+    return fullState;
+}
+
+void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, String stringData)
+{
+    // This is only used in ELK builds in which the HTTP server is running outside the plugin
+    URL url = URL("http://localhost:8123/state_from_plugin");
+    String header = "Content-Type: text/xml";
+    int statusCode = -1;
+    StringPairArray responseHeaders;
+    String data = stringData;
+    if (state.isValid()){
+        data = state.toXmlString();
+    }
+    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
+    bool postLikeRequest = true;
+    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+        &responseHeaders, &statusCode)))
+    {
+        // No need to read response really
+        //String resp = stream->readEntireStreamAsString();
+    }
 }
 
 
@@ -965,43 +988,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     }
     
 }
-
-
-ValueTree SourceSamplerAudioProcessor::collectFullStateInformation(bool skipVolatile)
-{
-    ValueTree fullState = ValueTree(STATE_FULL_STATE);
-    fullState.appendChild(collectPresetStateInformation(), nullptr);
-    fullState.appendChild(collectGlobalSettingsStateInformation(), nullptr);
-    if (!skipVolatile){
-        fullState.appendChild(collectVolatileStateInformation(), nullptr);
-    }
-    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
-    
-    return fullState;
-}
-
-void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, String stringData)
-{
-    // This is only used in ELK builds in which the HTTP server is running outside the plugin
-    URL url = URL("http://localhost:8123/state_from_plugin");
-    String header = "Content-Type: text/xml";
-    int statusCode = -1;
-    StringPairArray responseHeaders;
-    String data = stringData;
-    if (state.isValid()){
-        data = state.toXmlString();
-    }
-    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-    bool postLikeRequest = true;
-    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-        &responseHeaders, &statusCode)))
-    {
-        // No need to read response really
-        //String resp = stream->readEntireStreamAsString();
-    }
-}
-
 
 //==============================================================================
 
