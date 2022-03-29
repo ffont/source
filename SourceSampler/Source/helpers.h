@@ -43,6 +43,14 @@ namespace Helpers
         return preset;
     }
 
+    inline juce::ValueTree createEmptySourceSoundState()
+    {
+        juce::ValueTree sound (IDs::SOUND);
+        Helpers::createUuidProperty (sound);
+        sound.setProperty (IDs::enabled, true, nullptr);
+        return sound;
+    }
+
     inline juce::ValueTree createDefaultState(int numSounds)
     {
         juce::ValueTree state = createEmptyState();
@@ -50,11 +58,9 @@ namespace Helpers
     
         for (int sn = 0; sn < numSounds; ++sn)
         {
-            juce::ValueTree s (IDs::SOUND);
+            juce::ValueTree s = createEmptySourceSoundState();
             const juce::String soundName ("Sound " + juce::String (sn + 1));
-            Helpers::createUuidProperty (s);
             s.setProperty (IDs::name, soundName, nullptr);
-            s.setProperty (IDs::enabled, false, nullptr);
             s.setProperty (IDs::launchMode, Defaults::launchMode, nullptr);
             s.setProperty (IDs::startPosition, Defaults::startPosition, nullptr);
             s.setProperty (IDs::endPosition, Defaults::endPosition, nullptr);

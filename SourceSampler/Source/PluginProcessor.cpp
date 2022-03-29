@@ -187,9 +187,7 @@ int SourceSamplerAudioProcessor::getCurrentProgram()
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
-    // First of all clear sounds of current program
-    sampler.clearSounds();
-    
+    // Load the preset from the file, this will also clear any existing sounds
     bool loaded = loadPresetFromFile(getPresetFilenameByIndex(index));
     if (loaded){
         currentPresetIndex = index;
@@ -681,6 +679,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     }
     
     if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
+        // TODO: VT refactor
         // A sound has finished downloading, trigger loading into sampler
         String soundID = parameters[0];
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
@@ -705,6 +704,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_SOUND_READY_TO_LOAD){
+        // TODO: VT refactor
         // A sound can be loaded because the local file already exists
         // NOTE: for sounds that come from Freesound, we call ACTION_FINISHED_DOWNLOADING_SOUND even if
         // the sound is already downloaded from previous uses. ACTION_FINISHED_DOWNLOADING_SOUND will also
@@ -727,6 +727,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         
     } else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
         // A sound has finished downloading, trigger loading into sampler
+        // TODO: VT refactor
         String soundID = parameters[0];
         int percentageDone = parameters[1].getIntValue();
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
@@ -737,6 +738,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_NEW_QUERY){
+        // TODO: VT refactor
         String query = parameters[0];
         int numSounds = parameters[1].getIntValue();
         float minSoundLength = parameters[2].getFloatValue();
@@ -751,6 +753,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         #endif
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
         String parameterName = parameters[1];
         float parameterValue = parameters[2].getFloatValue();
@@ -772,6 +775,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
         String parameterName = parameters[1];
         int parameterValue = parameters[2].getIntValue();
@@ -793,6 +797,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_SET_REVERB_PARAMETERS){
+        // TODO: VT refactor
         Reverb::Parameters reverbParameters;
         reverbParameters.roomSize = parameters[0].getFloatValue();
         reverbParameters.damping = parameters[1].getFloatValue();
@@ -830,10 +835,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         addToMidiBuffer(soundIndex, true);
         
     } else if (actionName == ACTION_SET_POLYPHONY){
+        // TODO: VT refactor
         int numVoices = parameters[0].getIntValue();
         sampler.setSamplerVoices(numVoices);
 
     } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         int randomID = parameters[1].getIntValue();
         int ccNumber = parameters[2].getIntValue();
@@ -846,6 +853,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
 
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         int randomID = parameters[1].getIntValue();
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
@@ -859,10 +867,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         startTimerHz(newHz);
         
     } else if (actionName == ACTION_REMOVE_SOUND){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         removeSound(soundIndex);
         
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         int soundID = parameters[1].getIntValue();
         String soundName = parameters[2];
@@ -888,10 +898,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         addOrReplaceSoundFromBasicSoundProperties(soundIndex, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
         
     } else if (actionName == ACTION_REAPPLY_LAYOUT){
+        // TODO: VT refactor
         int newNoteLayout = parameters[0].getIntValue();
         reapplyNoteLayout(newNoteLayout);
         
     } else if (actionName == ACTION_SET_SOUND_SLICES){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         String serializedSlices = parameters[1];
         StringArray slices;
@@ -934,6 +946,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sound->setOnsetTimesSamples(onsets);
         }
     } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
+        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         String assignedNotesBigInteger = parameters[1];
         int rootNote = parameters[2].getIntValue();
@@ -950,8 +963,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_CLEAR_ALL_SOUNDS){
-        loadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
-        sampler.clearSounds();
+        juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+        if (presetState.isValid()){
+            presetState.removeAllChildren(nullptr);
+        }
         
     } else if (actionName == ACTION_GET_STATE){
         String stateType = parameters[0];
@@ -1028,16 +1043,19 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         logToState("Query got " + (String)list.getCount() + " results");
         
         // Generate ValueTree for loadedSoundsInfo
-        Array<FSSound> sounds = list.toArrayOfSounds();
-        std::random_shuffle(sounds.begin(), sounds.end());
-        sounds.resize(jmin(numSounds, list.getCount()));
+        Array<FSSound> soundsFound = list.toArrayOfSounds();
+        std::random_shuffle(soundsFound.begin(), soundsFound.end());
+        soundsFound.resize(jmin(numSounds, list.getCount()));
         
         ValueTree soundsInfo = ValueTree(STATE_SOUNDS_INFO);
-        for (int i=0; i<sounds.size(); i++){
-            ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
-            FSSound sound = sounds[i];
+        for (int i=0; i<soundsFound.size(); i++){
+            FSSound sound = soundsFound[i];
+            ValueTree sourceSound = Helpers::createEmptySourceSoundState();
+            sourceSound.setProperty (IDs::name, sound.name, nullptr);
+            
+            // WIP VT refactor, add all properties below
+            
             soundInfo.setProperty(STATE_SOUND_INFO_ID, sound.id, nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_NAME, sound.name, nullptr);
             soundInfo.setProperty(STATE_SOUND_INFO_USER, sound.user, nullptr);
             soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, sound.license, nullptr);
             soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL,sound.getOGGPreviewURL().toString(false), nullptr);
