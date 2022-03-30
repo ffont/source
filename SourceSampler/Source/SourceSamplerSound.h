@@ -47,21 +47,10 @@ public:
     /** Destructor. */
     ~SourceSamplerSound() override;
     
-    
     SourceSound* sourceSoundPointer = nullptr;
-    void setSourceSoundPointer(SourceSound* _sourceSoundPointer)
-    {
-        sourceSoundPointer = _sourceSoundPointer;
-    }
+    void setSourceSoundPointer(SourceSound* _sourceSoundPointer) { sourceSoundPointer = _sourceSoundPointer; }
    
-    //==============================================================================
-    /** Returns the sample's name */
-    const String& getName() const noexcept                  { return name; }
-
-    /** Returns the audio sample data.
-        This could return nullptr if there was a problem loading the data.
-    */
-    AudioBuffer<float>* getAudioData() const noexcept       { return data.get(); }
+    AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     
     bool getLoadedPreviewVersion();
 
@@ -73,6 +62,10 @@ public:
     void setParameterByNameFloat(const String& name, float value);
     void setParameterByNameFloatNorm(const String& name, float value0to1);
     void setParameterByNameInt(const String& name, int value);
+    float getParameterFloat(const String& name);
+    float gpf(const String& name) { return getParameterFloat(name);};
+    int getParameterInt(const String& name);
+    float gpi(const String& name) { return getParameterInt(name);};
     
     //==============================================================================
     ValueTree getState();
@@ -99,10 +92,6 @@ public:
     std::vector<MidiCCMapping> getMidiMappingsForCcNumber(int ccNumber);
     std::vector<MidiCCMapping> getMidiMappingsSorted();
     void removeMidiMapping(int randomID);
-
-    
-    float getParameterFloat(const String& name);
-    int getParameterInt(const String& name);
     
     
 private:
@@ -110,7 +99,6 @@ private:
     friend class SourceSamplerVoice;
     
     int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
-
     juce::String name;
     bool loadedPreviewVersion = false;
     std::unique_ptr<AudioBuffer<float>> data;
@@ -122,40 +110,6 @@ private:
     
     double pluginSampleRate;
     int pluginBlockSize;
-
-    // Define sound "controllable" parameters here
-    
-    // --> Start auto-generated code A
-    int launchMode = 0;
-    float startPosition = 0.0f;
-    float endPosition = 1.0f;
-    float loopStartPosition = 0.0f;
-    float loopEndPosition = 1.0f;
-    int loopXFadeNSamples = 500;
-    int reverse = 0;
-    int noteMappingMode = 0;
-    int numSlices = 0;
-    float playheadPosition = 0.0f;
-    float freezePlayheadSpeed = 100.0f;
-    float filterCutoff = 20000.0f;
-    float filterRessonance = 0.0f;
-    float filterKeyboardTracking = 0.0f;
-    ADSR::Parameters filterADSR = {0.01f, 0.0f, 1.0f, 0.01f};
-    float filterADSR2CutoffAmt = 1.0f;
-    float gain = -10.0f;
-    ADSR::Parameters ampADSR = {0.01f, 0.0f, 1.0f, 0.01f};
-    float pan = 0.0f;
-    int midiRootNote = 64;
-    float pitch = 0.0f;
-    float pitchBendRangeUp = 12.0f;
-    float pitchBendRangeDown = 12.0f;
-    float mod2CutoffAmt = 10.0f;
-    float mod2GainAmt = 6.0f;
-    float mod2PitchAmt = 0.0f;
-    float mod2PlayheadPos = 0.0f;
-    float vel2CutoffAmt = 0.0f;
-    float vel2GainAmt = 0.5f;
-    // --> End auto-generated code A
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };
@@ -175,11 +129,10 @@ class SourceSound: public juce::URL::DownloadTask::Listener,
 {
 public:
     SourceSound (const juce::ValueTree& _state,
-                 std::function<GlobalContextStruct()> globalContextGetter): state(_state), Thread ("LoaderThread")
+                 std::function<GlobalContextStruct()> globalContextGetter): Thread ("LoaderThread"), state(_state)
     {
         getGlobalContext = globalContextGetter;
         bindState();
-        
         triggerSoundDownloads();
     }
     
@@ -196,11 +149,163 @@ public:
     {
         name.referTo(state, IDs::name, nullptr);
         enabled.referTo(state, IDs::enabled, nullptr);
-        launchMode.referTo(state, IDs::launchMode, nullptr);
-        startPosition.referTo(state, IDs::startPosition, nullptr);
-        endPosition.referTo(state, IDs::endPosition, nullptr);
-        pitch.referTo(state, IDs::pitch, nullptr);
+        
+        // --> Start auto-generated code C
+        launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
+        startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
+        endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
+        loopStartPosition.referTo(state, IDs::loopStartPosition, nullptr, Defaults::loopStartPosition);
+        loopEndPosition.referTo(state, IDs::loopEndPosition, nullptr, Defaults::loopEndPosition);
+        loopXFadeNSamples.referTo(state, IDs::loopXFadeNSamples, nullptr, Defaults::loopXFadeNSamples);
+        reverse.referTo(state, IDs::reverse, nullptr, Defaults::reverse);
+        noteMappingMode.referTo(state, IDs::noteMappingMode, nullptr, Defaults::noteMappingMode);
+        numSlices.referTo(state, IDs::numSlices, nullptr, Defaults::numSlices);
+        playheadPosition.referTo(state, IDs::playheadPosition, nullptr, Defaults::playheadPosition);
+        freezePlayheadSpeed.referTo(state, IDs::freezePlayheadSpeed, nullptr, Defaults::freezePlayheadSpeed);
+        filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
+        filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
+        filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
+        filterA.referTo(state, IDs::filterA, nullptr, Defaults::filterA);
+        filterD.referTo(state, IDs::filterD, nullptr, Defaults::filterD);
+        filterS.referTo(state, IDs::filterS, nullptr, Defaults::filterS);
+        filterR.referTo(state, IDs::filterR, nullptr, Defaults::filterR);
+        filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
+        gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
+        ampA.referTo(state, IDs::ampA, nullptr, Defaults::ampA);
+        ampD.referTo(state, IDs::ampD, nullptr, Defaults::ampD);
+        ampS.referTo(state, IDs::ampS, nullptr, Defaults::ampS);
+        ampR.referTo(state, IDs::ampR, nullptr, Defaults::ampR);
+        pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
+        midiRootNote.referTo(state, IDs::midiRootNote, nullptr, Defaults::midiRootNote);
+        pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
+        pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
+        pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
+        mod2CutoffAmt.referTo(state, IDs::mod2CutoffAmt, nullptr, Defaults::mod2CutoffAmt);
+        mod2GainAmt.referTo(state, IDs::mod2GainAmt, nullptr, Defaults::mod2GainAmt);
+        mod2PitchAmt.referTo(state, IDs::mod2PitchAmt, nullptr, Defaults::mod2PitchAmt);
+        mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
+        vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
+        vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
+        // --> End auto-generated code C
     }
+    
+    const juce::String& getName() {
+        return name.get();
+    }
+    
+    bool isEnabled() {
+        return enabled.get();
+    }
+    
+    int getParameterInt(const juce::String& name){
+        // --> Start auto-generated code E
+        if (name == "launchMode") { return launchMode.get(); }
+        else if (name == "loopXFadeNSamples") { return loopXFadeNSamples.get(); }
+        else if (name == "reverse") { return reverse.get(); }
+        else if (name == "noteMappingMode") { return noteMappingMode.get(); }
+        else if (name == "numSlices") { return numSlices.get(); }
+        else if (name == "midiRootNote") { return midiRootNote.get(); }
+        // --> End auto-generated code E
+        throw std::runtime_error("No int parameter with this name");
+    }
+    
+    float getParameterFloat(const juce::String& name, bool normed){
+        // --> Start auto-generated code F
+        if (name == "startPosition") { return !normed ? startPosition.get() : jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "endPosition") { return !normed ? endPosition.get() : jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "loopStartPosition") { return !normed ? loopStartPosition.get() : jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "loopEndPosition") { return !normed ? loopEndPosition.get() : jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "playheadPosition") { return !normed ? playheadPosition.get() : jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "freezePlayheadSpeed") { return !normed ? freezePlayheadSpeed.get() : jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
+        else if (name == "filterCutoff") { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
+        else if (name == "filterRessonance") { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterKeyboardTracking") { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterA") { return !normed ? filterA.get() : jmap(filterA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterD") { return !normed ? filterD.get() : jmap(filterD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterS") { return !normed ? filterS.get() : jmap(filterS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterR") { return !normed ? filterR.get() : jmap(filterR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "filterADSR2CutoffAmt") { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (name == "gain") { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
+        else if (name == "ampA") { return !normed ? ampA.get() : jmap(ampA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "ampD") { return !normed ? ampD.get() : jmap(ampD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "ampS") { return !normed ? ampS.get() : jmap(ampS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "ampR") { return !normed ? ampR.get() : jmap(ampR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "pan") { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "pitch") { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
+        else if (name == "pitchBendRangeUp") { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (name == "pitchBendRangeDown") { return !normed ? pitchBendRangeDown.get() : jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (name == "mod2CutoffAmt") { return !normed ? mod2CutoffAmt.get() : jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (name == "mod2GainAmt") { return !normed ? mod2GainAmt.get() : jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (name == "mod2PitchAmt") { return !normed ? mod2PitchAmt.get() : jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (name == "mod2PlayheadPos") { return !normed ? mod2PlayheadPos.get() : jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (name == "vel2CutoffAmt") { return !normed ? vel2CutoffAmt.get() : jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (name == "vel2GainAmt") { return !normed ? vel2GainAmt.get() : jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        // --> End auto-generated code F
+        throw std::runtime_error("No float parameter with this name");
+    }
+    
+    void setParameterByNameFloat(const String& name, float value, bool normed){
+        // --> Start auto-generated code B
+        if (name == "startPosition") { startPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "endPosition") { endPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "loopStartPosition") { loopStartPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "loopEndPosition") { loopEndPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "playheadPosition") { playheadPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "freezePlayheadSpeed") { freezePlayheadSpeed = !normed ? jlimit(1.0f, 5000.0f, value) : jmap(value, 1.0f, 5000.0f); }
+        else if (name == "filterCutoff") { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
+        else if (name == "filterRessonance") { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterKeyboardTracking") { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterA") { filterA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterD") { filterD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterS") { filterS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterR") { filterR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (name == "gain") { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
+        else if (name == "ampA") { ampA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "ampD") { ampD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "ampS") { ampS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "ampR") { ampR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "pan") { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
+        else if (name == "pitch") { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
+        else if (name == "pitchBendRangeUp") { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
+        else if (name == "pitchBendRangeDown") { pitchBendRangeDown = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
+        else if (name == "mod2CutoffAmt") { mod2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (name == "mod2GainAmt") { mod2GainAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
+        else if (name == "mod2PitchAmt") { mod2PitchAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
+        else if (name == "mod2PlayheadPos") { mod2PlayheadPos = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (name == "vel2CutoffAmt") { vel2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (name == "vel2GainAmt") { vel2GainAmt = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        // --> End auto-generated code B
+        else { throw std::runtime_error("No float parameter with this name"); }
+        
+        // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
+        if (endPosition < startPosition) {
+            endPosition = startPosition.get();
+        }
+        if (loopStartPosition < startPosition){
+            loopStartPosition = startPosition.get();
+        }
+        if (loopEndPosition > endPosition){
+            loopEndPosition = endPosition.get();
+        }
+        if (loopStartPosition > loopEndPosition){
+            loopStartPosition = loopEndPosition.get();
+        }
+    }
+    
+    void setParameterByNameInt(const String& name, int value){
+        // --> Start auto-generated code D
+        if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
+        else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
+        else if (name == "reverse") { reverse = jlimit(0, 1, value); }
+        else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
+        else if (name == "numSlices") { numSlices = jlimit(0, 100, value); }
+        else if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
+        // --> End auto-generated code D
+        else { throw std::runtime_error("No int parameter with this name"); }
+    }
+    
+    // ------------------------------------------------------------------------------------------------
     
     std::vector<SourceSamplerSound*> createSourceSamplerSounds ()
     {
@@ -274,46 +379,10 @@ public:
         std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
     }
     
-    int getParameterInt(const String& name){
-        if (name == "launchMode") {
-            return launchMode;
-        }
-        return -1;
-    }
     
-    float getParameterFloat(const String& name){
-        if (name == "startPosition") { return startPosition; }
-        else if (name == "endPosition") { return endPosition; }
-        else if (name == "pitch") { return pitch; }
-        return -1.0;
-    }
-    
-    void setParameterByNameFloat(const String& name, float value){
-        if (name == "startPosition") { startPosition = jlimit(0.0f, 1.0f, value); }
-        else if (name == "endPosition") { endPosition = jlimit(0.0f, 1.0f, value); }
-        else if (name == "pitch") { pitch = jlimit(-36.0f, 36.0f, value); }
-        
-        // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
-        if (endPosition < startPosition) {
-            endPosition = startPosition.get();
-        }
-        /*
-        if (loopStartPosition < startPosition){
-            loopStartPosition = startPosition;
-        }
-        if (loopEndPosition > endPosition){
-            loopEndPosition = endPosition;
-        }
-        if (loopStartPosition > loopEndPosition){
-            loopStartPosition = loopEndPosition;
-        }*/
-    }
-    
-    void setParameterByNameInt(const String& name, int value){
-        if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
-    }
     
     void run(){
+        // TODO: use thread to download and load sounds (?)
     }
     
     void triggerSoundDownloads()
@@ -391,13 +460,48 @@ public:
     }
     
 private:
+
     // Sound properties
     juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> enabled;
+
+    // --> Start auto-generated code A
     juce::CachedValue<int> launchMode;
     juce::CachedValue<float> startPosition;
     juce::CachedValue<float> endPosition;
+    juce::CachedValue<float> loopStartPosition;
+    juce::CachedValue<float> loopEndPosition;
+    juce::CachedValue<int> loopXFadeNSamples;
+    juce::CachedValue<int> reverse;
+    juce::CachedValue<int> noteMappingMode;
+    juce::CachedValue<int> numSlices;
+    juce::CachedValue<float> playheadPosition;
+    juce::CachedValue<float> freezePlayheadSpeed;
+    juce::CachedValue<float> filterCutoff;
+    juce::CachedValue<float> filterRessonance;
+    juce::CachedValue<float> filterKeyboardTracking;
+    juce::CachedValue<float> filterA;
+    juce::CachedValue<float> filterD;
+    juce::CachedValue<float> filterS;
+    juce::CachedValue<float> filterR;
+    juce::CachedValue<float> filterADSR2CutoffAmt;
+    juce::CachedValue<float> gain;
+    juce::CachedValue<float> ampA;
+    juce::CachedValue<float> ampD;
+    juce::CachedValue<float> ampS;
+    juce::CachedValue<float> ampR;
+    juce::CachedValue<float> pan;
+    juce::CachedValue<int> midiRootNote;
     juce::CachedValue<float> pitch;
+    juce::CachedValue<float> pitchBendRangeUp;
+    juce::CachedValue<float> pitchBendRangeDown;
+    juce::CachedValue<float> mod2CutoffAmt;
+    juce::CachedValue<float> mod2GainAmt;
+    juce::CachedValue<float> mod2PitchAmt;
+    juce::CachedValue<float> mod2PlayheadPos;
+    juce::CachedValue<float> vel2CutoffAmt;
+    juce::CachedValue<float> vel2GainAmt;
+    // --> End auto-generated code A
     
     // Sound downloading
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;

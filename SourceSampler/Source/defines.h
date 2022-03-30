@@ -203,10 +203,44 @@ namespace Defaults
 {
 inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
 inline int currentPresetIndex = -1;
-inline int launchMode = LAUNCH_MODE_GATE;
-inline int startPosition = 0.0f;
-inline int endPosition = 1.0f;
-inline int pitch = 0.0f;
+
+// --> Start auto-generated code A
+inline int launchMode = 0;
+inline float  startPosition = 0.0f;
+inline float  endPosition = 1.0f;
+inline float  loopStartPosition = 0.0f;
+inline float  loopEndPosition = 1.0f;
+inline int loopXFadeNSamples = 500;
+inline int reverse = 0;
+inline int noteMappingMode = 0;
+inline int numSlices = 0;
+inline float  playheadPosition = 0.0f;
+inline float  freezePlayheadSpeed = 100.0f;
+inline float  filterCutoff = 20000.0f;
+inline float  filterRessonance = 0.0f;
+inline float  filterKeyboardTracking = 0.0f;
+inline float  filterA = 0.01f;
+inline float  filterD = 0.0f;
+inline float  filterS = 1.0f;
+inline float  filterR = 0.01f;
+inline float  filterADSR2CutoffAmt = 1.0f;
+inline float  gain = -10.0f;
+inline float  ampA = 0.01f;
+inline float  ampD = 0.0f;
+inline float  ampS = 1.0f;
+inline float  ampR = 0.01f;
+inline float  pan = 0.0f;
+inline int midiRootNote = 64;
+inline float  pitch = 0.0f;
+inline float  pitchBendRangeUp = 12.0f;
+inline float  pitchBendRangeDown = 12.0f;
+inline float  mod2CutoffAmt = 10.0f;
+inline float  mod2GainAmt = 6.0f;
+inline float  mod2PitchAmt = 0.0f;
+inline float  mod2PlayheadPos = 0.0f;
+inline float  vel2CutoffAmt = 0.0f;
+inline float  vel2GainAmt = 0.5f;
+// --> End auto-generated code A
 }
 
 
@@ -220,6 +254,10 @@ DECLARE_ID (SOUND)
 DECLARE_ID (SOUND_SAMPLE)
 DECLARE_ID (ANALYSIS)
 
+DECLARE_ID (filePath)
+DECLARE_ID (downloadProgress)
+DECLARE_ID (downloadCompleted)
+
 DECLARE_ID (uuid)
 DECLARE_ID (name)
 DECLARE_ID (soundId)
@@ -228,10 +266,6 @@ DECLARE_ID (pathInDisk)
 DECLARE_ID (enabled)
 DECLARE_ID (currentPresetIndex)
 DECLARE_ID (noteLayoutType)
-DECLARE_ID (launchMode)
-DECLARE_ID (startPosition)
-DECLARE_ID (endPosition)
-DECLARE_ID (pitch)
 DECLARE_ID (username)
 DECLARE_ID (license)
 DECLARE_ID (format)
@@ -239,12 +273,45 @@ DECLARE_ID (filesize)
 DECLARE_ID (onsets)
 DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
-DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
 
-DECLARE_ID (filePath)
-DECLARE_ID (downloadProgress)
-DECLARE_ID (downloadCompleted)
+// --> Start auto-generated code B
+DECLARE_ID (launchMode)
+DECLARE_ID (startPosition)
+DECLARE_ID (endPosition)
+DECLARE_ID (loopStartPosition)
+DECLARE_ID (loopEndPosition)
+DECLARE_ID (loopXFadeNSamples)
+DECLARE_ID (reverse)
+DECLARE_ID (noteMappingMode)
+DECLARE_ID (numSlices)
+DECLARE_ID (playheadPosition)
+DECLARE_ID (freezePlayheadSpeed)
+DECLARE_ID (filterCutoff)
+DECLARE_ID (filterRessonance)
+DECLARE_ID (filterKeyboardTracking)
+DECLARE_ID (filterA)
+DECLARE_ID (filterD)
+DECLARE_ID (filterS)
+DECLARE_ID (filterR)
+DECLARE_ID (filterADSR2CutoffAmt)
+DECLARE_ID (gain)
+DECLARE_ID (ampA)
+DECLARE_ID (ampD)
+DECLARE_ID (ampS)
+DECLARE_ID (ampR)
+DECLARE_ID (pan)
+DECLARE_ID (midiRootNote)
+DECLARE_ID (pitch)
+DECLARE_ID (pitchBendRangeUp)
+DECLARE_ID (pitchBendRangeDown)
+DECLARE_ID (mod2CutoffAmt)
+DECLARE_ID (mod2GainAmt)
+DECLARE_ID (mod2PitchAmt)
+DECLARE_ID (mod2PlayheadPos)
+DECLARE_ID (vel2CutoffAmt)
+DECLARE_ID (vel2GainAmt)
+// --> End auto-generated code B
 
 #undef DECLARE_ID
 }

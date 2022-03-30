@@ -49,10 +49,6 @@ namespace Helpers
         Helpers::createUuidProperty (sound);
         sound.setProperty (IDs::name, soundName, nullptr);
         sound.setProperty (IDs::enabled, true, nullptr);
-        sound.setProperty (IDs::launchMode, Defaults::launchMode, nullptr);
-        sound.setProperty (IDs::startPosition, Defaults::startPosition, nullptr);
-        sound.setProperty (IDs::endPosition, Defaults::endPosition, nullptr);
-        sound.setProperty (IDs::pitch, Defaults::pitch, nullptr);
         return sound;
     }
 

@@ -19,12 +19,11 @@ SourceSamplerSound::SourceSamplerSound (int _idx,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
     : idx (_idx),
+      name(_soundName),
       loadedPreviewVersion (_loadingPreviewVersion),
       soundSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
-      pluginBlockSize (_pluginBlockSize),
-      name(_soundName)
-      
+      pluginBlockSize (_pluginBlockSize)
 {
     if (soundSampleRate > 0 && source.lengthInSamples > 0)
     {
@@ -60,120 +59,26 @@ bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
 }
 
 void SourceSamplerSound::setParameterByNameFloat(const String& name, float value){
-    // --> Start auto-generated code A
-    if (name == "startPosition") {
-        if (sourceSoundPointer != nullptr) {
-            sourceSoundPointer->setParameterByNameFloat(name, value);
-        } else {
-            startPosition = jlimit(0.0f, 1.0f, value);
-        }
-    }
-    else if (name == "endPosition") {
-        if (sourceSoundPointer != nullptr) {
-            sourceSoundPointer->setParameterByNameFloat(name, value);
-        } else {
-            endPosition = jlimit(0.0f, 1.0f, value);
-        }
-    }
-    else if (name == "loopStartPosition") { loopStartPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "loopEndPosition") { loopEndPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "playheadPosition") { playheadPosition = jlimit(0.0f, 1.0f, value); }
-    else if (name == "freezePlayheadSpeed") { freezePlayheadSpeed = jlimit(1.0f, 5000.0f, value); }
-    else if (name == "filterCutoff") { filterCutoff = jlimit(10.0f, 20000.0f, value); }
-    else if (name == "filterRessonance") { filterRessonance = jlimit(0.0f, 1.0f, value); }
-    else if (name == "filterKeyboardTracking") { filterKeyboardTracking = jlimit(0.0f, 1.0f, value); }
-    else if (name == "filterADSR.attack") { filterADSR.attack = value; }
-    else if (name == "filterADSR.decay") { filterADSR.decay = value; }
-    else if (name == "filterADSR.sustain") { filterADSR.sustain = value; }
-    else if (name == "filterADSR.release") { filterADSR.release = value; }
-    else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = jlimit(0.0f, 100.0f, value); }
-    else if (name == "gain") { gain = jlimit(-80.0f, 12.0f, value); }
-    else if (name == "ampADSR.attack") { ampADSR.attack = value; }
-    else if (name == "ampADSR.decay") { ampADSR.decay = value; }
-    else if (name == "ampADSR.sustain") { ampADSR.sustain = value; }
-    else if (name == "ampADSR.release") { ampADSR.release = value; }
-    else if (name == "pan") { pan = jlimit(-1.0f, 1.0f, value); }
-    else if (name == "pitch") {
-        if (sourceSoundPointer != nullptr) {
-            sourceSoundPointer->setParameterByNameFloat(name, value);
-        } else {
-            pitch = jlimit(-36.0f, 36.0f, value);
-        }
-    }
-    else if (name == "pitchBendRangeUp") { pitchBendRangeUp = jlimit(0.0f, 36.0f, value); }
-    else if (name == "pitchBendRangeDown") { pitchBendRangeDown = jlimit(0.0f, 36.0f, value); }
-    else if (name == "mod2CutoffAmt") { mod2CutoffAmt = jlimit(0.0f, 100.0f, value); }
-    else if (name == "mod2GainAmt") { mod2GainAmt = jlimit(-12.0f, 12.0f, value); }
-    else if (name == "mod2PitchAmt") { mod2PitchAmt = jlimit(-12.0f, 12.0f, value); }
-    else if (name == "mod2PlayheadPos") { mod2PlayheadPos = jlimit(0.0f, 1.0f, value); }
-    else if (name == "vel2CutoffAmt") { vel2CutoffAmt = jlimit(0.0f, 100.0f, value); }
-    else if (name == "vel2GainAmt") { vel2GainAmt = jlimit(0.0f, 1.0f, value); }
-    // --> End auto-generated code A
-    
-    // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
-    if (endPosition < startPosition){
-        endPosition = startPosition;
-    }
-    if (loopStartPosition < startPosition){
-        loopStartPosition = startPosition;
-    }
-    if (loopEndPosition > endPosition){
-        loopEndPosition = endPosition;
-    }
-    if (loopStartPosition > loopEndPosition){
-        loopStartPosition = loopEndPosition;
-    }
+    // TODO: we should replace calls to this function for the one in SourceSound
+    sourceSoundPointer->setParameterByNameFloat(name, value, false);
 }
 
 void SourceSamplerSound::setParameterByNameFloatNorm(const String& name, float value0to1){
-    // --> Start auto-generated code D
-    if (name == "startPosition") { setParameterByNameFloat("startPosition", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "endPosition") { setParameterByNameFloat("endPosition", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "loopStartPosition") { setParameterByNameFloat("loopStartPosition", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "loopEndPosition") { setParameterByNameFloat("loopEndPosition", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "playheadPosition") { setParameterByNameFloat("playheadPosition", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "freezePlayheadSpeed") { setParameterByNameFloat("freezePlayheadSpeed", jmap(value0to1, 1.0f, 5000.0f)); }
-    else if (name == "filterCutoff") { setParameterByNameFloat("filterCutoff", jmap(value0to1, 10.0f, 20000.0f)); }
-    else if (name == "filterRessonance") { setParameterByNameFloat("filterRessonance", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "filterKeyboardTracking") { setParameterByNameFloat("filterKeyboardTracking", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "filterADSR.attack") { setParameterByNameFloat("filterADSR.attack", value0to1); }
-    else if (name == "filterADSR.decay") { setParameterByNameFloat("filterADSR.decay", value0to1); }
-    else if (name == "filterADSR.sustain") { setParameterByNameFloat("filterADSR.sustain", value0to1); }
-    else if (name == "filterADSR.release") { setParameterByNameFloat("filterADSR.release", value0to1); }
-    else if (name == "filterADSR2CutoffAmt") { setParameterByNameFloat("filterADSR2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
-    else if (name == "gain") { setParameterByNameFloat("gain", jmap(value0to1, -80.0f, 12.0f)); }
-    else if (name == "ampADSR.attack") { setParameterByNameFloat("ampADSR.attack", value0to1); }
-    else if (name == "ampADSR.decay") { setParameterByNameFloat("ampADSR.decay", value0to1); }
-    else if (name == "ampADSR.sustain") { setParameterByNameFloat("ampADSR.sustain", value0to1); }
-    else if (name == "ampADSR.release") { setParameterByNameFloat("ampADSR.release", value0to1); }
-    else if (name == "pan") { setParameterByNameFloat("pan", jmap(value0to1, -1.0f, 1.0f)); }
-    else if (name == "pitch") { setParameterByNameFloat("pitch", jmap(value0to1, -36.0f, 36.0f)); }
-    else if (name == "pitchBendRangeUp") { setParameterByNameFloat("pitchBendRangeUp", jmap(value0to1, 0.0f, 36.0f)); }
-    else if (name == "pitchBendRangeDown") { setParameterByNameFloat("pitchBendRangeDown", jmap(value0to1, 0.0f, 36.0f)); }
-    else if (name == "mod2CutoffAmt") { setParameterByNameFloat("mod2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
-    else if (name == "mod2GainAmt") { setParameterByNameFloat("mod2GainAmt", jmap(value0to1, -12.0f, 12.0f)); }
-    else if (name == "mod2PitchAmt") { setParameterByNameFloat("mod2PitchAmt", jmap(value0to1, -12.0f, 12.0f)); }
-    else if (name == "mod2PlayheadPos") { setParameterByNameFloat("mod2PlayheadPos", jmap(value0to1, 0.0f, 1.0f)); }
-    else if (name == "vel2CutoffAmt") { setParameterByNameFloat("vel2CutoffAmt", jmap(value0to1, 0.0f, 100.0f)); }
-    else if (name == "vel2GainAmt") { setParameterByNameFloat("vel2GainAmt", jmap(value0to1, 0.0f, 1.0f)); }
-    // --> End auto-generated code D
+    // TODO: we should replace calls to this function for the one in SourceSound
+    sourceSoundPointer->setParameterByNameFloat(name, value0to1, true);
 }
 
 void SourceSamplerSound::setParameterByNameInt(const String& name, int value){
-    // --> Start auto-generated code C
-    if (name == "launchMode") {
-        if (sourceSoundPointer != nullptr) {
-            sourceSoundPointer->setParameterByNameInt(name, value);
-        } else {
-            launchMode = jlimit(0, 4, value);
-        }
-    }
-    else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
-    else if (name == "reverse") { reverse = jlimit(0, 1, value); }
-    else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
-    else if (name == "numSlices") { numSlices = jlimit(0, 100, value); }
-    else if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
-    // --> End auto-generated code C
+    // TODO: we should replace calls to this function for the one in SourceSound
+    sourceSoundPointer->setParameterByNameInt(name, value);
+}
+
+float SourceSamplerSound::getParameterFloat(const String& name){
+    return sourceSoundPointer->getParameterFloat(name, false);
+}
+
+int SourceSamplerSound::getParameterInt(const String& name){
+    return sourceSoundPointer->getParameterInt(name);
 }
 
 ValueTree SourceSamplerSound::getState(){
@@ -192,177 +97,177 @@ ValueTree SourceSamplerSound::getState(){
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "launchMode", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, launchMode, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("launchMode"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "startPosition", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, startPosition, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("startPosition"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "endPosition", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, endPosition, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("endPosition"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopStartPosition", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopStartPosition, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("loopStartPosition"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopEndPosition", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopEndPosition, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("loopEndPosition"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "loopXFadeNSamples", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, loopXFadeNSamples, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("loopXFadeNSamples"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "reverse", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, reverse, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("reverse"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "noteMappingMode", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, noteMappingMode, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("noteMappingMode"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "numSlices", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, numSlices, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("numSlices"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "playheadPosition", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, playheadPosition, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("playheadPosition"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "freezePlayheadSpeed", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, freezePlayheadSpeed, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("freezePlayheadSpeed"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterCutoff", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterCutoff, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterCutoff"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterRessonance", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterRessonance, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterRessonance"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterKeyboardTracking", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterKeyboardTracking, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterKeyboardTracking"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.attack", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.attack, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterA", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterA"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.decay", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.decay, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterD", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterD"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.sustain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.sustain, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterS", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterS"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR.release", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR.release, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterR", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterR"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "filterADSR2CutoffAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, filterADSR2CutoffAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("filterADSR2CutoffAmt"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "gain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gain, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("gain"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.attack", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.attack, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampA", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("ampA"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.decay", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.decay, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampD", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("ampD"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.sustain", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.sustain, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampS", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("ampS"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampADSR.release", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, ampADSR.release, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "ampR", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("ampR"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pan", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pan, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("pan"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi("midiRootNote"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitch", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitch, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("pitch"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeUp", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeUp, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("pitchBendRangeUp"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitchBendRangeDown", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, pitchBendRangeDown, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("pitchBendRangeDown"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2CutoffAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2CutoffAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("mod2CutoffAmt"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2GainAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2GainAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("mod2GainAmt"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2PitchAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2PitchAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("mod2PitchAmt"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "mod2PlayheadPos", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, mod2PlayheadPos, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("mod2PlayheadPos"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2CutoffAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2CutoffAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("vel2CutoffAmt"), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "vel2GainAmt", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, vel2GainAmt, nullptr),
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf("vel2GainAmt"), nullptr),
                       nullptr);
     // --> End auto-generated code B
     
@@ -436,7 +341,7 @@ void SourceSamplerSound::setMappedMidiNotes(BigInteger newMappedMidiNotes)
 
 int SourceSamplerSound::getMidiRootNote()
 {
-    return midiRootNote;
+    return gpi("midiRootNote");
 }
 
 void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
@@ -489,72 +394,4 @@ void SourceSamplerSound::removeMidiMapping(int randomID){
         }
     }
     midiMappings = newMidiMappings;
-}
-
-
-float SourceSamplerSound::getParameterFloat(const String& name){
-    if (name == "startPosition") {
-        if (sourceSoundPointer != nullptr) {
-            return sourceSoundPointer->getParameterFloat(name);
-        } else {
-            return startPosition;
-        }
-    }
-    else if (name == "endPosition") {
-        if (sourceSoundPointer != nullptr) {
-            return sourceSoundPointer->getParameterFloat(name);
-        } else {
-            return endPosition;
-        }
-    }
-    else if (name == "loopStartPosition") { return loopStartPosition; }
-    else if (name == "loopEndPosition") { return loopEndPosition; }
-    else if (name == "playheadPosition") { return playheadPosition; }
-    else if (name == "freezePlayheadSpeed") { return freezePlayheadSpeed; }
-    else if (name == "filterCutoff") { return filterCutoff; }
-    else if (name == "filterRessonance") { return filterRessonance; }
-    else if (name == "filterKeyboardTracking") { return filterKeyboardTracking; }
-    else if (name == "filterADSR.attack") { return filterADSR.attack; }
-    else if (name == "filterADSR.decay") { return filterADSR.decay; }
-    else if (name == "filterADSR.sustain") { return filterADSR.sustain; }
-    else if (name == "filterADSR.release") { return filterADSR.release; }
-    else if (name == "filterADSR2CutoffAmt") { return filterADSR2CutoffAmt; }
-    else if (name == "gain") { return gain; }
-    else if (name == "ampADSR.attack") { return ampADSR.attack; }
-    else if (name == "ampADSR.decay") { return ampADSR.decay; }
-    else if (name == "ampADSR.sustain") { return ampADSR.sustain; }
-    else if (name == "ampADSR.release") { return ampADSR.release; }
-    else if (name == "pan") { return pan; }
-    else if (name == "pitch") {
-        if (sourceSoundPointer != nullptr) {
-            return sourceSoundPointer->getParameterFloat(name);
-        } else {
-            return pitch;
-        }
-    }
-    else if (name == "pitchBendRangeUp") { return pitchBendRangeUp; }
-    else if (name == "pitchBendRangeDown") { return pitchBendRangeDown; }
-    else if (name == "mod2CutoffAmt") { return mod2CutoffAmt; }
-    else if (name == "mod2GainAmt") { return mod2GainAmt; }
-    else if (name == "mod2PitchAmt") { return mod2PitchAmt; }
-    else if (name == "mod2PlayheadPos") { return mod2PlayheadPos; }
-    else if (name == "vel2CutoffAmt") { return vel2CutoffAmt; }
-    else if (name == "vel2GainAmt") { return vel2GainAmt; }
-    return -1.0;
-}
-
-int SourceSamplerSound::getParameterInt(const String& name){
-    if (name == "launchMode") {
-        if (sourceSoundPointer != nullptr) {
-            return sourceSoundPointer->getParameterInt(name);
-        } else {
-            return launchMode;
-        }
-    }
-    else if (name == "loopXFadeNSamples") { return loopXFadeNSamples; }
-    else if (name == "reverse") { return reverse; }
-    else if (name == "noteMappingMode") { return noteMappingMode; }
-    else if (name == "numSlices") { return numSlices; }
-    else if (name == "midiRootNote") { return midiRootNote; }
-    return -1;
 }

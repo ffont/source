@@ -27,7 +27,7 @@ public:
     
     void updateParametersFromSourceSamplerSound(SourceSamplerSound* sound);
 
-    void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel);
+    void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel) override;
     void stopNote (float velocity, bool allowTailOff) override;
 
     void pitchWheelMoved (int newValue) override;
