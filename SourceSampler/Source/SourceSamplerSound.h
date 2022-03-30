@@ -232,6 +232,9 @@ public:
                                                                               getGlobalContext().sampleRate,
                                                                               getGlobalContext().samplesPerBlock);
                     createdSound->setSourceSoundPointer(this);
+                    BigInteger midiNotes;
+                    midiNotes.parseString(child.getProperty(IDs::midiNotes).toString(), 16);
+                    createdSound->setMappedMidiNotes(midiNotes);
                     sounds.push_back(createdSound);
                 }
             }
@@ -242,26 +245,11 @@ public:
     void addSourceSamplerSoundsToSampler()
     {
         // TODO: add lock here?
-        
         std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
         for (auto sourceSamplerSound: sourceSamplerSounds) {
             SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->addSound(sourceSamplerSound));
-            
-            ValueTree samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND);
-            samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, 64, nullptr),
-                nullptr);
-            
-            BigInteger midiNotes;
-            midiNotes.setRange(0, 127, true);
-            samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
-            
-            justAddedSound->loadState(samplerSoundParameters);
         }
         std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
-    
     }
     
     void removeSourceSampleSoundsFromSampler()

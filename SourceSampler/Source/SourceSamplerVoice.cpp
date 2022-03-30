@@ -260,7 +260,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         }
         loopStartPositionSample = soundLoopStartPosition;
         loopEndPositionSample = soundLoopEndPosition;
-        
+
         if ((sound->noteMappingMode == NOTE_MAPPING_MODE_SLICE) || (sound->noteMappingMode == NOTE_MAPPING_MODE_BOTH)){
             // If in some slicing mode, because start/end position and loop start/end positions are the same, now that we have "fixed" the
             // loop start/end position to the nearest zero crossing, do the same for the slice start/end so we avoid clicks at start and
@@ -393,7 +393,6 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
         tmpVoiceBuffer.clear();
         float* outL = tmpVoiceBuffer.getWritePointer (0, 0);
         float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? tmpVoiceBuffer.getWritePointer (1, 0) : nullptr;
-        
         
         while (--numSamples >= 0)
         {

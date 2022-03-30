@@ -43,12 +43,47 @@ namespace Helpers
         return preset;
     }
 
-    inline juce::ValueTree createEmptySourceSoundState()
+    inline juce::ValueTree createEmptySourceSoundState(const juce::String soundName)
     {
         juce::ValueTree sound (IDs::SOUND);
         Helpers::createUuidProperty (sound);
+        sound.setProperty (IDs::name, soundName, nullptr);
         sound.setProperty (IDs::enabled, true, nullptr);
+        sound.setProperty (IDs::launchMode, Defaults::launchMode, nullptr);
+        sound.setProperty (IDs::startPosition, Defaults::startPosition, nullptr);
+        sound.setProperty (IDs::endPosition, Defaults::endPosition, nullptr);
+        sound.setProperty (IDs::pitch, Defaults::pitch, nullptr);
         return sound;
+    }
+
+    inline juce::ValueTree createSourceSampleSoundState(int soundId, const juce::String previewURL)
+    {
+        juce::ValueTree ss (IDs::SOUND_SAMPLE);
+        Helpers::createUuidProperty (ss);
+        ss.setProperty (IDs::soundId, soundId, nullptr);
+        ss.setProperty (IDs::previewURL, previewURL, nullptr);
+        ss.setProperty(IDs::midiRootNote, 64, nullptr);
+        BigInteger midiNotes;
+        midiNotes.setRange(0, 127, true);
+        ss.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+        return ss;
+    }
+
+    inline juce::ValueTree createAnalysisFromFreesoundAnalysis(juce::var fsAnalysisValueTree)
+    {
+        juce::ValueTree soundAnalysis = juce::ValueTree(IDs::ANALYSIS);
+        if (fsAnalysisValueTree.hasProperty("rhythm")){
+            if (fsAnalysisValueTree["rhythm"].hasProperty("onset_times")){
+                juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
+                for (int j=0; j<fsAnalysisValueTree["rhythm"]["onset_times"].size(); j++){
+                    ValueTree onset = ValueTree(IDs::onset);
+                    onset.setProperty(IDs::onsetTime, fsAnalysisValueTree["rhythm"]["onset_times"][j], nullptr);
+                    soundAnalysisOnsetTimes.appendChild(onset, nullptr);
+                }
+                soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
+            }
+        }
+        return soundAnalysis;
     }
 
     inline juce::ValueTree createDefaultState(int numSounds)
@@ -58,20 +93,9 @@ namespace Helpers
     
         for (int sn = 0; sn < numSounds; ++sn)
         {
-            juce::ValueTree s = createEmptySourceSoundState();
-            const juce::String soundName ("Sound " + juce::String (sn + 1));
-            s.setProperty (IDs::name, soundName, nullptr);
-            s.setProperty (IDs::launchMode, Defaults::launchMode, nullptr);
-            s.setProperty (IDs::startPosition, Defaults::startPosition, nullptr);
-            s.setProperty (IDs::endPosition, Defaults::endPosition, nullptr);
-            s.setProperty (IDs::pitch, Defaults::pitch, nullptr);
-            
-            juce::ValueTree ss (IDs::SOUND_SAMPLE);
-            Helpers::createUuidProperty (ss);
-            ss.setProperty (IDs::soundId, 433328, nullptr);
-            ss.setProperty (IDs::previewURL, "https://freesound.org/data/previews/433/433328_735175-hq.ogg", nullptr);
+            juce::ValueTree s = createEmptySourceSoundState("Sound " + juce::String (sn + 1));
+            juce::ValueTree ss = createSourceSampleSoundState(433328, "https://freesound.org/data/previews/433/433328_735175-hq.ogg");
             s.addChild(ss, -1, nullptr);
-            
             preset.addChild (s, -1, nullptr);
         }
         state.addChild (preset, -1, nullptr);

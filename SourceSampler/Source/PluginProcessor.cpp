@@ -1042,49 +1042,61 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     if (list.getCount() > 0){
         logToState("Query got " + (String)list.getCount() + " results");
         
-        // Generate ValueTree for loadedSoundsInfo
+        // Randmomize results and prepare for iteration
         Array<FSSound> soundsFound = list.toArrayOfSounds();
         std::random_shuffle(soundsFound.begin(), soundsFound.end());
         soundsFound.resize(jmin(numSounds, list.getCount()));
+        int nSounds = soundsFound.size();
         
-        ValueTree soundsInfo = ValueTree(STATE_SOUNDS_INFO);
-        for (int i=0; i<soundsFound.size(); i++){
+        // Move this elsewhere in a helper function (?)
+        juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+        
+        // Clear all loaded sounds
+        presetState.removeAllChildren(nullptr);
+        
+        // Prepare some variables for note layout
+        int nNotesPerSound = 128 / nSounds;
+        
+        for (int i=0; i<nSounds; i++){
             FSSound sound = soundsFound[i];
-            ValueTree sourceSound = Helpers::createEmptySourceSoundState();
-            sourceSound.setProperty (IDs::name, sound.name, nullptr);
+            juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState(sound.name);
+            sourceSound.setProperty(IDs::soundId, sound.id, nullptr);
+            sourceSound.setProperty (IDs::username, sound.user, nullptr);
+            sourceSound.setProperty(IDs::license, sound.license, nullptr);
+            sourceSound.setProperty(IDs::previewURL, sound.getOGGPreviewURL().toString(false), nullptr);
+            sourceSound.setProperty(IDs::format, sound.format, nullptr);
+            sourceSound.setProperty(IDs::filesize, sound.filesize, nullptr);
             
-            // WIP VT refactor, add all properties below
+            juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState((int)sourceSound.getProperty(IDs::soundId), sourceSound.getProperty(IDs::previewURL).toString());
+            juce::ValueTree soundAnalysis = Helpers::createAnalysisFromFreesoundAnalysis(sound.analysis);
+            sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
             
-            soundInfo.setProperty(STATE_SOUND_INFO_ID, sound.id, nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_USER, sound.user, nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, sound.license, nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL,sound.getOGGPreviewURL().toString(false), nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_TYPE, sound.format, nullptr);
-            soundInfo.setProperty(STATE_SOUND_INFO_SIZE, sound.filesize, nullptr);
-            ValueTree soundAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS);
-            if (sound.analysis.hasProperty("rhythm")){
-                if (sound.analysis["rhythm"].hasProperty("onset_times")){
-                    ValueTree soundAnalysisOnsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
-                    for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
-                        ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
-                        onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, sound.analysis["rhythm"]["onset_times"][j], nullptr);
-                        soundAnalysisOnsetTimes.appendChild(onset, nullptr);
-                    }
-                    soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
+            // Calcualte note layout stuff
+            int midiRootNote;
+            BigInteger midiNotes;
+            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+                // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+                midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
+                midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
+            } else {
+                // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
+                midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
+                for (int i=midiRootNote; i<128; i=i+nSounds){
+                    midiNotes.setBit(i);  // Map notes in upwards direction
+                }
+                for (int i=midiRootNote; i>=0; i=i-nSounds){
+                    midiNotes.setBit(i);  // Map notes in downwards direction
                 }
             }
-            soundInfo.appendChild(soundAnalysis, nullptr);
-            soundsInfo.appendChild(soundInfo, nullptr);
+            sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
+            sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+            
+
+            // Add the source sampler sound to source sound, and source sound to the state
+            sourceSound.addChild(sourceSamplerSound, -1, nullptr);
+            presetState.addChild(sourceSound, -1, nullptr);
         }
-        
-        // Clear existing sounds in sampler
-        sampler.clearSounds();
-        
-        // Save the generated ValueTree to loadedSoundsInfo and trigger download of sounds
-        // The loading of sounds will be triggered automatically when sounds finish downloading
-        loadedSoundsInfo = soundsInfo; 
-        downloadSounds(false, -1);
-        
+         
     } else {
         logToState("Query got no results...");
     }
