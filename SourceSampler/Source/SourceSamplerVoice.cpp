@@ -132,7 +132,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, Synthesi
             playheadSamplePosition = sound->gpf("playheadPosition") * sound->getLengthInSamples();
         } else {
             // Set initial playhead position according to start/end times
-            if (sound->gpf("reverse") == 0){
+            if (sound->gpi("reverse") == 0){
                 playheadSamplePosition = startPositionSample;
                 playheadDirectionIsForward = true;
             } else {
