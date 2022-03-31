@@ -357,27 +357,8 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 //==============================================================================
 ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
 {
+    // TODO: remove all these state functions once transition to VT is done
     ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
-    
-    // Add general stuff
-    state.setProperty(STATE_PRESET_NAME, presetName.get(), nullptr);
-    state.setProperty(STATE_PRESET_NUMBER, currentPresetIndex.get(), nullptr);
-    state.setProperty(STATE_PRESET_NOTE_LAYOUT_TYPE, noteLayoutType.get(), nullptr);
-    
-    // Add sampler main settings (not including individual sound settings because it will be in soundsData value tree)
-    state.appendChild(sampler.getState(), nullptr);
-    
-    // Add sounds info (including sampler sound settings)
-    ValueTree soundsData = ValueTree(STATE_SOUNDS_INFO);
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        ValueTree soundInfo = loadedSoundsInfo.getChild(i).createCopy();  // Retrieve basic sound info
-        soundInfo.removeChild(soundInfo.getChildWithName(STATE_SAMPLER_SOUND), nullptr); // Remove existing sampler sound child so we replace it with updated version from sampler
-        ValueTree samplerSoundInfo = sampler.getStateForSound(i);
-        soundInfo.appendChild(samplerSoundInfo, nullptr);
-        soundsData.appendChild(soundInfo, nullptr);
-    }
-    state.appendChild(soundsData, nullptr);
-    
     return state;
 }
 
@@ -558,7 +539,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getIdx() + ",";
+                voiceSoundIdxs += (String)playingSound->getSourceSoundPointer()->getName() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -603,7 +584,7 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getIdx() + ",";
+                voiceSoundIdxs += (String)playingSound->getSourceSoundPointer()->getName() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -754,49 +735,39 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         #endif
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
-        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
         String parameterName = parameters[1];
         float parameterValue = parameters[2].getFloatValue();
         DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
-            if (soundIndex < sampler.getNumSounds()){
-                auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
-                if (sound != nullptr){
-                    sound->setParameterByNameFloat(parameterName, parameterValue);
-                }
+        if (soundIndex >= 0) {
+            // Change one sound
+            SourceSound* sound = sounds->getSoundAt(soundIndex);
+            if (sound != nullptr){
+                sound->setParameterByNameFloat(parameterName, parameterValue, false);
             }
         } else {
-            for (int i=0; i<sampler.getNumSounds(); i++){
-                auto* sound = sampler.getSourceSamplerSoundInPosition(i);  // Here we do want to get sound by sampler position (not loadedSoundsInfo idx) because we're iterating over them all
-                if (sound != nullptr){
-                    sound->setParameterByNameFloat(parameterName, parameterValue);
-                }
+            // Change all sounds
+            for (auto* sound: sounds->objects){
+                sound->setParameterByNameFloat(parameterName, parameterValue, false);
             }
         }
-        
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
-        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
         String parameterName = parameters[1];
         int parameterValue = parameters[2].getIntValue();
         DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if ((soundIndex >= 0) && (soundIndex < sampler.getNumSounds())){
-            if (soundIndex < sampler.getNumSounds()){
-                auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
-                if (sound != nullptr){
-                    sound->setParameterByNameInt(parameterName, parameterValue);
-                }
+        if (soundIndex >= 0) {
+            // Change one sound
+            SourceSound* sound = sounds->getSoundAt(soundIndex);
+            if (sound != nullptr){
+                sound->setParameterByNameInt(parameterName, parameterValue);
             }
         } else {
-            for (int i=0; i<sampler.getNumSounds(); i++){
-                auto* sound = sampler.getSourceSamplerSoundInPosition(i);  // Here we do want to get sound by sampler position (not loadedSoundsInfo idx) because we're iterating over them all
-                if (sound != nullptr){
-                    sound->setParameterByNameInt(parameterName, parameterValue);
-                }
+            // Change all sounds
+            for (auto* sound: sounds->objects){
+                sound->setParameterByNameInt(parameterName, parameterValue);
             }
         }
-        
     } else if (actionName == ACTION_SET_REVERB_PARAMETERS){
         // TODO: VT refactor
         Reverb::Parameters reverbParameters;
@@ -841,23 +812,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         sampler.setSamplerVoices(numVoices);
 
     } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
-        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         int randomID = parameters[1].getIntValue();
         int ccNumber = parameters[2].getIntValue();
         String parameterName = parameters[3];
         float minRange = parameters[4].getFloatValue();
         float maxRange = parameters[5].getFloatValue();
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundAt(soundIndex);
         if (sound != nullptr){
             sound->addOrEditMidiMapping(randomID, ccNumber, parameterName, minRange, maxRange);
         }
 
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
-        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         int randomID = parameters[1].getIntValue();
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundAt(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->removeMidiMapping(randomID);
         }
@@ -904,7 +873,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         reapplyNoteLayout(newNoteLayout);
         
     } else if (actionName == ACTION_SET_SOUND_SLICES){
-        // TODO: VT refactor
+        // TODO: VT refactor (?)
         int soundIndex = parameters[0].getIntValue();
         String serializedSlices = parameters[1];
         StringArray slices;
@@ -936,7 +905,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         loadedSoundsInfo.getChild(soundIndex) = soundInfo;
         
         // Load them into sound object
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundAt(soundIndex)->getFirstLinkedSourceSamplerSound();  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             std::vector<float> onsets = {};
             for (int i=0; i<onsetTimes.getNumChildren(); i++){
@@ -947,7 +916,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sound->setOnsetTimesSamples(onsets);
         }
     } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
-        // TODO: VT refactor
         int soundIndex = parameters[0].getIntValue();
         String assignedNotesBigInteger = parameters[1];
         int rootNote = parameters[2].getIntValue();
@@ -957,7 +925,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
         
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundAt(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->setMappedMidiNotes(midiNotes);
             sound->setMidiRootNote(rootNote);
@@ -1039,7 +1007,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     FreesoundClient client(FREESOUND_API_KEY);
     logToState("Querying new sounds for: " + textQuery);
     auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
-    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 150, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 80, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
         
         // Randmomize results and prepare for iteration
@@ -1353,6 +1321,9 @@ bool SourceSamplerAudioProcessor::allSoundsFinishedDownloading(){
 
 void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx)
 {
+    // TODO: reimplement with new VT structure (probably does not need to be reimplemented or only partially)
+    
+    /*
     // Clear existing sound for this soundIdx in sampler (if any)
     sampler.clearSourceSamplerSoundByIdx(soundIdx);
     
@@ -1367,7 +1338,7 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
         // 1) Create SourceSamplerSound object and add to sampler
         std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
         bool loadingPreviewVersion = audioSample.getFullPathName().indexOf("original") == -1;
-        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(ValueTree(), nullptr, soundIdx, *reader, loadingPreviewVersion, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
+        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(ValueTree(), nullptr, *reader, loadingPreviewVersion, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
         
         // Pass onset times to the just added sound (if info is preset in Freesound analysis)
         ValueTree soundAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
@@ -1444,11 +1415,15 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
     } else {
         logToState("- Skipping sound in index " + (String)soundIdx + " (no file found or file is empty)");
     }
+     */
 }
 
 
 void SourceSamplerAudioProcessor::removeSound(int soundIndex)
 {
+    // TODO: reimplement with new VT structure
+    
+    /*
     // Clear existing sound for this soundIdx in sampler (if any)
     sampler.clearSourceSamplerSoundByIdx(soundIndex);
     
@@ -1461,7 +1436,7 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
                 // In this case the sound will have moved one position down in the new list of "loadedSoundsInfo", so idx in the sampler should be updated
                 auto* sound = sampler.getSourceSamplerSoundByIdx(i);
                 if (sound != nullptr){
-                    sound->setIdx(sound->getIdx() - 1);
+                    //sound->setIdx(sound->getSourceSoundPointer()->getIdx() - 1);
                 }
             }
         } else {
@@ -1469,11 +1444,14 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
         }
     }
     loadedSoundsInfo = newLoadedSoundsInfo;
-    
+    */
 }
 
 int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
 {
+    // TODO: reimplement with new VT structure
+    
+    /*
     bool replacing = soundIndex > -1;  // If sound index > -1, we are replacing a sound, otherwise we're adding a new one
     
     if (replacing){
@@ -1523,7 +1501,7 @@ int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int sou
         loadedSoundsInfo.appendChild(newSoundInfo, nullptr);
         int newSoundIndex = loadedSoundsInfo.getNumChildren() - 1;
         return newSoundIndex;
-    }
+    }*/
 }
 
 void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int soundIdx,
@@ -1600,6 +1578,9 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
 {
+    // TODO: VT refactor
+    
+    /*
     // TODO: this function uses code repeaded from "setSingleSourceSamplerSoundObject" method, we should abstract that
     noteLayoutType = newNoteLayoutType;
     int nSounds = loadedSoundsInfo.getNumChildren();
@@ -1648,7 +1629,7 @@ void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
                 sound->loadState(samplerSoundParametersToUpdate);
             }
         }
-    }
+    }*/
 }
 
 void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff)
@@ -1656,7 +1637,7 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff
     
     int nSounds = loadedSoundsInfo.getNumChildren();
     if (nSounds > 0){
-        auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);
+        auto* sound = sounds->getSoundAt(soundIndex)->getFirstLinkedSourceSamplerSound();
         int midiNoteForNormalPitch = 36;
         if (sound != nullptr){
             midiNoteForNormalPitch = sound->getMidiRootNote();

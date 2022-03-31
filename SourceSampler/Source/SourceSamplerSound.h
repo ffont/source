@@ -36,7 +36,6 @@ public:
     */
     SourceSamplerSound (const juce::ValueTree& _state,
                         SourceSound* _sourceSoundPointer,
-                        int _idx,
                         AudioFormatReader& source,
                         bool _loadingPreviewVersion,
                         double maxSampleLengthSeconds,
@@ -59,25 +58,15 @@ public:
     bool appliesToChannel (int midiChannel) override;
     
     //==============================================================================
-    void setParameterByNameFloat(juce::Identifier identifier, float value);
-    void setParameterByNameFloatNorm(juce::Identifier identifier, float value0to1);
-    void setParameterByNameInt(juce::Identifier identifier, int value);
     float getParameterFloat(juce::Identifier identifier);
     float gpf(juce::Identifier identifier) { return getParameterFloat(identifier);};
     int getParameterInt(juce::Identifier identifier);
     float gpi(juce::Identifier identifier) { return getParameterInt(identifier);};
     
     //==============================================================================
-    ValueTree getState();
-    void loadState(ValueTree soundState);
-    
-    //==============================================================================
     int getLengthInSamples();
     float getLengthInSeconds();
     float getPlayingPositionPercentage();
-    
-    void setIdx(int newIdx);
-    int getIdx();
     
     //==============================================================================
     int getNumberOfMappedMidiNotes();
@@ -86,14 +75,9 @@ public:
     int getMidiRootNote();
     void setMidiRootNote(int newMidiRootNote);
     
+    //==============================================================================
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
     std::vector<int> getOnsetTimesSamples();
-    
-    void addOrEditMidiMapping(int randomId, int ccNumber, String parameterName, float minRange, float maxRange);
-    std::vector<MidiCCMapping> getMidiMappingsForCcNumber(int ccNumber);
-    std::vector<MidiCCMapping> getMidiMappingsSorted();
-    void removeMidiMapping(int randomID);
-    
     
 private:
     //==============================================================================
@@ -115,10 +99,6 @@ private:
     double pluginSampleRate;
     int pluginBlockSize;
     
-    // Things that should be moved to SourceSound objects
-    int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
-    std::vector<MidiCCMapping> midiMappings = {};
-
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };
 
@@ -382,6 +362,49 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
+    void addOrEditMidiMapping(int randomID, int ccNumber, String parameterName, float minRange, float maxRange){
+        if (randomID < 0){
+            midiMappings.push_back(MidiCCMapping(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange)));
+        } else {
+            for (int i=0; i<midiMappings.size(); i++){
+                if (midiMappings[i].randomID == randomID){
+                    midiMappings[i].ccNumber = ccNumber;
+                    midiMappings[i].parameterName = parameterName;
+                    midiMappings[i].minRange = minRange;
+                    midiMappings[i].maxRange = maxRange;
+                }
+            }
+        }
+    }
+
+    std::vector<MidiCCMapping> getMidiMappingsForCcNumber(int ccNumber){
+        std::vector<MidiCCMapping> toReturn = {};
+        for (int i=0; i<midiMappings.size(); i++){
+            if (midiMappings[i].ccNumber == ccNumber){
+                toReturn.push_back(midiMappings[i]);
+            }
+        }
+        return toReturn;
+    }
+
+    std::vector<MidiCCMapping> getMidiMappingsSorted(){
+        std::vector<MidiCCMapping> midiMappingsSorted = midiMappings;
+        std::sort(midiMappingsSorted.begin(), midiMappingsSorted.end());
+        return midiMappingsSorted;
+    }
+
+    void removeMidiMapping(int randomID){
+        std::vector<MidiCCMapping> newMidiMappings = {};
+        for (int i=0; i<midiMappings.size(); i++){
+            if (midiMappings[i].randomID != randomID){
+                newMidiMappings.push_back(midiMappings[i]);
+            }
+        }
+        midiMappings = newMidiMappings;
+    }
+    
+    // ------------------------------------------------------------------------------------------------
+    
     std::vector<SourceSamplerSound*> createSourceSamplerSounds ()
     {
         // Generate all the SourceSamplerSound objects corresponding to this sound
@@ -406,7 +429,6 @@ public:
                     std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
                     SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                               this,
-                                                                              soundId,
                                                                               *reader,
                                                                               true,
                                                                               MAX_SAMPLE_LENGTH,
@@ -572,6 +594,9 @@ private:
     juce::CachedValue<float> vel2GainAmt;
     // --> End auto-generated code A
     
+    // MIDI mappings (this should be moved to state)
+    std::vector<MidiCCMapping> midiMappings = {};
+    
     // Sound downloading
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
@@ -621,4 +646,11 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
     void objectOrderChanged() override       {}
     
     std::function<GlobalContextStruct()> getGlobalContext;
+    
+    SourceSound* getSoundAt(int position) {
+        if ((position > 0) && (position < objects.size() - 1)){
+            return objects[position];
+        }
+        return nullptr;
+    }
 };

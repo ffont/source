@@ -70,114 +70,7 @@ void SourceSamplerSynthesiser::prepare (const juce::dsp::ProcessSpec& spec) noex
     fxChain.prepare (spec);
 }
 
-SourceSamplerSound* SourceSamplerSynthesiser::getSourceSamplerSoundByIdx (int idx) const noexcept {
-    // Return the sound with the given idx (rember idx can be different than sound "child" number)
-    for (int i=0; i<getNumSounds(); i++){
-        auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
-        if (sound->getIdx() == idx){
-            return sound;
-        }
-    }
-    return nullptr;
-}
-
-void SourceSamplerSynthesiser::clearSourceSamplerSoundByIdx (int idx) {
-    int indexInSamplerSoundsList = -1;
-    for (int i=0; i<getNumSounds(); i++){
-        auto* sound = static_cast<SourceSamplerSound*> (getSound(i).get());
-        if (sound->getIdx() == idx){
-            indexInSamplerSoundsList = i;
-            break;
-        }
-    }
-    if (indexInSamplerSoundsList > -1){
-        removeSound(indexInSamplerSoundsList);
-    }
-}
-
-SourceSamplerSound* SourceSamplerSynthesiser::getSourceSamplerSoundInPosition (int i) const noexcept {
-    // Return the sound with the given idx (rember idx can be different than sound "child" number)
-    if (i<getNumSounds()){
-        return static_cast<SourceSamplerSound*> (getSound(i).get());
-    }
-    return nullptr;
-}
-
 //==============================================================================
-ValueTree SourceSamplerSynthesiser::getState(){
-    
-    // NOTE: this collects sampeler's state but excludes individual sounds' state (see getStateForSound to get state of a sound)
-    
-    ValueTree state = ValueTree(STATE_SAMPLER);
-    
-    state.setProperty(STATE_PRESET_NUMVOICES, getNumVoices(), nullptr);
-    
-    // Add reverb settings to state
-    ValueTree reverbParameters = ValueTree(STATE_REVERB_PARAMETERS);
-    auto& reverb = fxChain.get<reverbIndex>();
-    Reverb::Parameters params = reverb.getParameters();
-    reverbParameters.setProperty(STATE_REVERB_ROOMSIZE, params.roomSize, nullptr);
-    reverbParameters.setProperty(STATE_REVERB_DAMPING, params.damping, nullptr);
-    reverbParameters.setProperty(STATE_REVERB_WETLEVEL, params.wetLevel, nullptr);
-    reverbParameters.setProperty(STATE_REVERB_DRYLEVEL, params.dryLevel, nullptr);
-    reverbParameters.setProperty(STATE_REVERB_WIDTH, params.width, nullptr);
-    reverbParameters.setProperty(STATE_REVERB_FREEZEMODE, params.freezeMode, nullptr);
-    state.appendChild(reverbParameters, nullptr);
-    
-    return state;
-}
-
-ValueTree SourceSamplerSynthesiser::getStateForSound(int idx){
-    auto* sound = getSourceSamplerSoundByIdx(idx);  // This index corresponds to sound idx (ID) in the sampler, not to the sound position
-    if (sound != nullptr){  // Safety check to make sure we don't try to access a sound that does not exist
-        return sound->getState();
-    }
-    return ValueTree(STATE_SAMPLER_SOUND);  // Otherwise return empty ValueTree
-}
-
-void SourceSamplerSynthesiser::loadState(ValueTree samplerState){
-    
-    // NOTE: this loads the sampeler's state but excludes individual sounds' state (see loadStateForSound to load the state for a sound)
-            
-    // Load number of voices
-    if (samplerState.hasProperty(STATE_PRESET_NUMVOICES)){
-        int numVoices = (int)samplerState.getProperty(STATE_PRESET_NUMVOICES);
-        setSamplerVoices(numVoices);
-    }
-    
-    // Load reverb parameters
-    ValueTree reveberParametersVT = samplerState.getChildWithName(STATE_REVERB_PARAMETERS);
-    if (reveberParametersVT.isValid()){
-        Reverb::Parameters reverbParameters;
-        if (reveberParametersVT.hasProperty(STATE_REVERB_ROOMSIZE)){
-            reverbParameters.roomSize = (float)reveberParametersVT.getProperty(STATE_REVERB_ROOMSIZE);
-        }
-        if (reveberParametersVT.hasProperty(STATE_REVERB_DAMPING)){
-            reverbParameters.damping = (float)reveberParametersVT.getProperty(STATE_REVERB_DAMPING);
-        }
-        if (reveberParametersVT.hasProperty(STATE_REVERB_WETLEVEL)){
-            reverbParameters.wetLevel = (float)reveberParametersVT.getProperty(STATE_REVERB_WETLEVEL);
-        }
-        if (reveberParametersVT.hasProperty(STATE_REVERB_DRYLEVEL)){
-            reverbParameters.dryLevel = (float)reveberParametersVT.getProperty(STATE_REVERB_DRYLEVEL);
-        }
-        if (reveberParametersVT.hasProperty(STATE_REVERB_WIDTH)){
-            reverbParameters.width = (float)reveberParametersVT.getProperty(STATE_REVERB_WIDTH);
-        }
-        if (reveberParametersVT.hasProperty(STATE_REVERB_FREEZEMODE)){
-            reverbParameters.freezeMode = (float)reveberParametersVT.getProperty(STATE_REVERB_FREEZEMODE);
-        }
-        auto& reverb = fxChain.get<reverbIndex>();
-        reverb.setParameters(reverbParameters);
-    }
-}
-
-void SourceSamplerSynthesiser::loadStateForSound(int idx, ValueTree soundState){
-    auto* sound = getSourceSamplerSoundByIdx(idx);  // This index corresponds to sound idx (ID) in the sampler, not to the sound position
-    if (sound != nullptr){  // Safety check to make sure we don't try to access a sound that does not exist
-        sound->loadState(soundState);
-    }
-}
 
 void SourceSamplerSynthesiser::noteOn (const int midiChannel,
              const int midiNoteNumber,
@@ -256,11 +149,11 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
         for (auto* s : sounds)
         {
             if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
-                std::vector<MidiCCMapping> mappings = sound->getMidiMappingsForCcNumber(number);
+                std::vector<MidiCCMapping> mappings = sound->getSourceSoundPointer()->getMidiMappingsForCcNumber(number);
                 for (int i=0; i<mappings.size(); i++){
                     float normInputValue = (float)value/127.0;  // This goes from 0 to 1
                     float value = jmap(normInputValue, mappings[i].minRange, mappings[i].maxRange);
-                    sound->setParameterByNameFloatNorm(mappings[i].parameterName, value);
+                    sound->getSourceSoundPointer()->setParameterByNameFloat(mappings[i].parameterName, value, true);
                 }
             }
         }

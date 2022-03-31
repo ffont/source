@@ -27,15 +27,8 @@ public:
     void setSamplerVoices(int nVoices);
     void setReverbParameters (Reverb::Parameters params);
     void prepare (const juce::dsp::ProcessSpec& spec) noexcept;
-    SourceSamplerSound* getSourceSamplerSoundByIdx (int idx) const noexcept;
-    void clearSourceSamplerSoundByIdx (int idx) ;
-    SourceSamplerSound* getSourceSamplerSoundInPosition (int i) const noexcept;
     
     //==============================================================================
-    ValueTree getState();
-    ValueTree getStateForSound(int idx);
-    void loadState(ValueTree samplerState);
-    void loadStateForSound(int idx, ValueTree soundState);
     void noteOn (const int midiChannel,
                  const int midiNoteNumber,
                  const float velocity) override;
