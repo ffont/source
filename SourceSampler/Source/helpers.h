@@ -50,6 +50,7 @@ namespace Helpers
         sound.setProperty (IDs::name, soundName, nullptr);
         sound.setProperty (IDs::enabled, true, nullptr);
         // --> Start auto-generated code A
+        sound.setProperty (IDs::soundType, 0, nullptr);
         sound.setProperty (IDs::launchMode, 0, nullptr);
         sound.setProperty (IDs::startPosition, 0.0f, nullptr);
         sound.setProperty (IDs::endPosition, 1.0f, nullptr);
@@ -75,7 +76,6 @@ namespace Helpers
         sound.setProperty (IDs::ampS, 1.0f, nullptr);
         sound.setProperty (IDs::ampR, 0.01f, nullptr);
         sound.setProperty (IDs::pan, 0.0f, nullptr);
-        sound.setProperty (IDs::midiRootNote, 64, nullptr);
         sound.setProperty (IDs::pitch, 0.0f, nullptr);
         sound.setProperty (IDs::pitchBendRangeUp, 12.0f, nullptr);
         sound.setProperty (IDs::pitchBendRangeDown, 12.0f, nullptr);

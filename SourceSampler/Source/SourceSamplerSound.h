@@ -81,9 +81,10 @@ public:
     
     //==============================================================================
     int getNumberOfMappedMidiNotes();
-    void setMappedMidiNotes(BigInteger newMappedMidiNotes);
-    BigInteger getMappedMidiNotes();
+    juce::BigInteger getMappedMidiNotes();
+    void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
     int getMidiRootNote();
+    void setMidiRootNote(int newMidiRootNote);
     
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
     std::vector<int> getOnsetTimesSamples();
@@ -101,9 +102,10 @@ private:
     int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
     juce::String name;
     bool loadedPreviewVersion = false;
-    std::unique_ptr<AudioBuffer<float>> data;
+    std::unique_ptr<juce::AudioBuffer<float>> data;
     double soundSampleRate;
-    BigInteger midiNotes;
+    juce::BigInteger midiNotes;
+    int midiRootNote;
     int length = 0;
     std::vector<int> onsetTimesSamples = {};
     std::vector<MidiCCMapping> midiMappings = {};
@@ -151,6 +153,7 @@ public:
         enabled.referTo(state, IDs::enabled, nullptr);
         
         // --> Start auto-generated code C
+        soundType.referTo(state, IDs::soundType, nullptr, Defaults::soundType);
         launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
         startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
         endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
@@ -176,7 +179,6 @@ public:
         ampS.referTo(state, IDs::ampS, nullptr, Defaults::ampS);
         ampR.referTo(state, IDs::ampR, nullptr, Defaults::ampR);
         pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
-        midiRootNote.referTo(state, IDs::midiRootNote, nullptr, Defaults::midiRootNote);
         pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
         pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
         pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
@@ -189,6 +191,30 @@ public:
         // --> End auto-generated code C
     }
     
+    std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds() {
+        std::vector<SourceSamplerSound*> objects;
+        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
+            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+            if (sourceSamplerSound->sourceSoundPointer == this){
+                objects.push_back(sourceSamplerSound);
+            }
+        }
+        return objects;
+    }
+    
+    SourceSamplerSound* getFirstLinkedSourceSamplerSound() {
+        std::vector<SourceSamplerSound*> objects;
+        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
+            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+            if (sourceSamplerSound->sourceSoundPointer == this){
+                return sourceSamplerSound;
+            }
+        }
+        return nullptr;
+    }
+    
+    // --------------------------------------------------------------------------------------------
+    
     const juce::String& getName() {
         return name.get();
     }
@@ -199,12 +225,12 @@ public:
     
     int getParameterInt(juce::Identifier identifier){
         // --> Start auto-generated code E
-        if (identifier == IDs::launchMode) { return launchMode.get(); }
+        if (identifier == IDs::soundType) { return soundType.get(); }
+        else if (identifier == IDs::launchMode) { return launchMode.get(); }
         else if (identifier == IDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
         else if (identifier == IDs::reverse) { return reverse.get(); }
         else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
         else if (identifier == IDs::numSlices) { return numSlices.get(); }
-        else if (identifier == IDs::midiRootNote) { return midiRootNote.get(); }
         // --> End auto-generated code E
         throw std::runtime_error("No int parameter with this name");
     }
@@ -295,14 +321,58 @@ public:
     
     void setParameterByNameInt(juce::Identifier identifier, int value){
         // --> Start auto-generated code D
-        if (identifier == IDs::launchMode) { launchMode = jlimit(0, 4, value); }
+        if (identifier == IDs::soundType) { soundType = jlimit(0, 1, value); }
+        else if (identifier == IDs::launchMode) { launchMode = jlimit(0, 4, value); }
         else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = jlimit(10, 100000, value); }
         else if (identifier == IDs::reverse) { reverse = jlimit(0, 1, value); }
         else if (identifier == IDs::noteMappingMode) { noteMappingMode = jlimit(0, 3, value); }
         else if (identifier == IDs::numSlices) { numSlices = jlimit(0, 100, value); }
-        else if (identifier == IDs::midiRootNote) { midiRootNote = jlimit(0, 127, value); }
         // --> End auto-generated code D
         else { throw std::runtime_error("No int parameter with this name"); }
+    }
+    
+    juce::BigInteger getMappedMidiNotes(){
+        // Get the mapped midi notes of the first sound
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
+        if (first != nullptr){
+            return first->getMappedMidiNotes();
+        }
+        juce::BigInteger defaultValue;
+        defaultValue.setRange(0, 127, true);
+        return defaultValue;
+    }
+    
+    int getNumberOfMappedMidiNotes(){
+        // Get the mapped midi notes of the first sound
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        return getMappedMidiNotes().countNumberOfSetBits();
+    }
+    
+    void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes){
+        // Set the mapped midi notes to all of the sampler sounds
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+            sourceSamplerSound->setMappedMidiNotes(newMappedMidiNotes);
+        }
+    }
+    
+    int getMidiRootNote(){
+        // Get the midi root note of the first sound
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
+        if (first != nullptr){
+            return first->getMidiRootNote();
+        }
+        return -1;
+    }
+    
+    void setMidiRootNote(int newMidiRootNote){
+        // Set the midi root note to all of the sampler sounds
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+            sourceSamplerSound->setMidiRootNote(newMidiRootNote);
+        }
     }
     
     // ------------------------------------------------------------------------------------------------
@@ -340,6 +410,7 @@ public:
                     BigInteger midiNotes;
                     midiNotes.parseString(child.getProperty(IDs::midiNotes).toString(), 16);
                     createdSound->setMappedMidiNotes(midiNotes);
+                    createdSound->setMidiRootNote((int)child.getProperty(IDs::midiRootNote));
                     sounds.push_back(createdSound);
                 }
             }
@@ -466,6 +537,7 @@ private:
     juce::CachedValue<bool> enabled;
 
     // --> Start auto-generated code A
+    juce::CachedValue<int> soundType;
     juce::CachedValue<int> launchMode;
     juce::CachedValue<float> startPosition;
     juce::CachedValue<float> endPosition;
@@ -491,7 +563,6 @@ private:
     juce::CachedValue<float> ampS;
     juce::CachedValue<float> ampR;
     juce::CachedValue<float> pan;
-    juce::CachedValue<int> midiRootNote;
     juce::CachedValue<float> pitch;
     juce::CachedValue<float> pitchBendRangeUp;
     juce::CachedValue<float> pitchBendRangeDown;

@@ -959,7 +959,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         auto* sound = sampler.getSourceSamplerSoundByIdx(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->setMappedMidiNotes(midiNotes);
-            sound->setParameterByNameInt("midiRootNote", rootNote);
+            sound->setMidiRootNote(rootNote);
         }
         
     } else if (actionName == ACTION_CLEAR_ALL_SOUNDS){

@@ -94,6 +94,8 @@
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
 
+#define SOUND_TYPE_SINGLE_SAMPLE 0
+#define SOUND_TYPE_MULTI_SAMPLE 1
 
 #define LAUNCH_MODE_GATE 0
 #define LAUNCH_MODE_LOOP 1
@@ -205,6 +207,7 @@ inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
 inline int currentPresetIndex = -1;
 
 // --> Start auto-generated code A
+inline int soundType = 0;
 inline int launchMode = 0;
 inline float  startPosition = 0.0f;
 inline float  endPosition = 1.0f;
@@ -230,7 +233,6 @@ inline float  ampD = 0.0f;
 inline float  ampS = 1.0f;
 inline float  ampR = 0.01f;
 inline float  pan = 0.0f;
-inline int midiRootNote = 64;
 inline float  pitch = 0.0f;
 inline float  pitchBendRangeUp = 12.0f;
 inline float  pitchBendRangeDown = 12.0f;
@@ -273,9 +275,11 @@ DECLARE_ID (filesize)
 DECLARE_ID (onsets)
 DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
+DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
 
 // --> Start auto-generated code B
+DECLARE_ID (soundType)
 DECLARE_ID (launchMode)
 DECLARE_ID (startPosition)
 DECLARE_ID (endPosition)
@@ -301,7 +305,6 @@ DECLARE_ID (ampD)
 DECLARE_ID (ampS)
 DECLARE_ID (ampR)
 DECLARE_ID (pan)
-DECLARE_ID (midiRootNote)
 DECLARE_ID (pitch)
 DECLARE_ID (pitchBendRangeUp)
 DECLARE_ID (pitchBendRangeDown)

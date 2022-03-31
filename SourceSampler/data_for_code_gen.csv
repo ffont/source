@@ -1,4 +1,5 @@
 name;type;min;max;default;midiCCenabled;
+soundType;int;0;1;0;;single-sample,multi-sample
 launchMode;int;0;4;0;;gate,loop,loop ping-pong,trigger,freeze
 startPosition;float;0;1;0;1;percentage position
 endPosition;float;0;1;1;1;percentage position
@@ -24,7 +25,6 @@ ampD;float;0.0;1.0;0.0;;seconds
 ampS;float;0.0;1.0;1.0;;amount
 ampR;float;0.0;1.0;0.01;;seconds
 pan;float;-1;1;0;1;
-midiRootNote;int;0;127;64;;midi note that will play the sound at original speed
 pitch;float;-36;36;0;1;semitones (with respect to midi root note)
 pitchBendRangeUp;float;0;36;12;;semitones
 pitchBendRangeDown;float;0;36;12;;semitones

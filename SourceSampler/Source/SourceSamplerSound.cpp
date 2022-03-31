@@ -96,6 +96,11 @@ ValueTree SourceSamplerSound::getState(){
     // --> Start auto-generated code B
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "soundType", nullptr)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi(IDs::soundType), nullptr),
+                      nullptr);
+    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
+                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "launchMode", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi(IDs::launchMode), nullptr),
                       nullptr);
@@ -220,11 +225,6 @@ ValueTree SourceSamplerSound::getState(){
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf(IDs::pan), nullptr),
                       nullptr);
     state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi(IDs::midiRootNote), nullptr),
-                      nullptr);
-    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "pitch", nullptr)
                       .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf(IDs::pitch), nullptr),
@@ -329,19 +329,24 @@ int SourceSamplerSound::getNumberOfMappedMidiNotes()
     return midiNotes.countNumberOfSetBits();
 }
 
-BigInteger SourceSamplerSound::getMappedMidiNotes()
+juce::BigInteger SourceSamplerSound::getMappedMidiNotes()
 {
     return midiNotes;
 }
 
-void SourceSamplerSound::setMappedMidiNotes(BigInteger newMappedMidiNotes)
+void SourceSamplerSound::setMappedMidiNotes(juce::BigInteger newMappedMidiNotes)
 {
     midiNotes = newMappedMidiNotes;
 }
 
 int SourceSamplerSound::getMidiRootNote()
 {
-    return gpi(IDs::midiRootNote);
+    return midiRootNote;
+}
+
+void SourceSamplerSound::setMidiRootNote(int newRootNote)
+{
+    midiRootNote = newRootNote;
 }
 
 void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){

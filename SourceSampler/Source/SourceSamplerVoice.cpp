@@ -166,7 +166,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
             currenltlyPlayingNote = getCurrentlyPlayingNote();
         } else {
             // If note mapping by pitch is not enabled, compute pitchRatio pretending the currently playing note is the same as the root note configured for that sound. In this way, pitch will not be modified depending on the played notes (but pitch bends and other modulations will still affect)
-            currenltlyPlayingNote = sound->gpi(IDs::midiRootNote);
+            currenltlyPlayingNote = sound->getMidiRootNote();
         }
         
         // When computing the distance to the root note, do it based on the note index and not the raw MIDI note value
@@ -175,7 +175,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         // a region is left empty, and then a new region of assigned notes is added. That second region will play notes
         // unintuitively because the notes in the "blank" region in the middle won't be counted
         // If this behaviour becomes a problem it could be turned into a sound parameter
-        int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->gpi(IDs::midiRootNote));
+        int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->getMidiRootNote());
         double currentNoteFrequency = std::pow (2.0, (sound->getParameterFloat("pitch") + distanceToRootNote) / 12.0);
         pitchRatio = currentNoteFrequency * sound->soundSampleRate / getSampleRate();
         
@@ -282,7 +282,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     float newFilterCutoffMod = filterCutoffMod + (currentModWheelValue/127.0) * filterCutoff * sound->gpf(IDs::mod2CutoffAmt);  // Add mod wheel modulation and aftertouch here
     float filterADSRMod = adsrFilter.getNextSample() * filterCutoff * sound->gpf(IDs::filterADSR2CutoffAmt);
     auto& filter = processorChain.get<filterIndex>();
-    float computedCutoff = (1.0 - sound->gpf(IDs::filterKeyboardTracking)) * filterCutoff + sound->gpf(IDs::filterKeyboardTracking) * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->gpi(IDs::midiRootNote))/12) + // Base cutoff and kb tracking
+    float computedCutoff = (1.0 - sound->gpf(IDs::filterKeyboardTracking)) * filterCutoff + sound->gpf(IDs::filterKeyboardTracking) * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->getMidiRootNote())/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            filterADSRMod; // ADSR mod

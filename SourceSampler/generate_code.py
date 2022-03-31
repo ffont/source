@@ -121,7 +121,6 @@ def generate_code(controls_data_filename):
     # Generate helpers.h code to include all sound parameters when creating an empry sound
     current_code_a = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
-        
         if control_data['type'] == 'float':
             defaultf = float(control_data['default'])
             control_data.update({'defaultf': defaultf})
