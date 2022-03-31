@@ -59,13 +59,13 @@ public:
     bool appliesToChannel (int midiChannel) override;
     
     //==============================================================================
-    void setParameterByNameFloat(const String& name, float value);
-    void setParameterByNameFloatNorm(const String& name, float value0to1);
-    void setParameterByNameInt(const String& name, int value);
-    float getParameterFloat(const String& name);
-    float gpf(const String& name) { return getParameterFloat(name);};
-    int getParameterInt(const String& name);
-    float gpi(const String& name) { return getParameterInt(name);};
+    void setParameterByNameFloat(juce::Identifier identifier, float value);
+    void setParameterByNameFloatNorm(juce::Identifier identifier, float value0to1);
+    void setParameterByNameInt(juce::Identifier identifier, int value);
+    float getParameterFloat(juce::Identifier identifier);
+    float gpf(juce::Identifier identifier) { return getParameterFloat(identifier);};
+    int getParameterInt(juce::Identifier identifier);
+    float gpi(juce::Identifier identifier) { return getParameterInt(identifier);};
     
     //==============================================================================
     ValueTree getState();
@@ -197,84 +197,84 @@ public:
         return enabled.get();
     }
     
-    int getParameterInt(const juce::String& name){
+    int getParameterInt(juce::Identifier identifier){
         // --> Start auto-generated code E
-        if (name == "launchMode") { return launchMode.get(); }
-        else if (name == "loopXFadeNSamples") { return loopXFadeNSamples.get(); }
-        else if (name == "reverse") { return reverse.get(); }
-        else if (name == "noteMappingMode") { return noteMappingMode.get(); }
-        else if (name == "numSlices") { return numSlices.get(); }
-        else if (name == "midiRootNote") { return midiRootNote.get(); }
+        if (identifier == IDs::launchMode) { return launchMode.get(); }
+        else if (identifier == IDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
+        else if (identifier == IDs::reverse) { return reverse.get(); }
+        else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
+        else if (identifier == IDs::numSlices) { return numSlices.get(); }
+        else if (identifier == IDs::midiRootNote) { return midiRootNote.get(); }
         // --> End auto-generated code E
         throw std::runtime_error("No int parameter with this name");
     }
     
-    float getParameterFloat(const juce::String& name, bool normed){
+    float getParameterFloat(juce::Identifier identifier, bool normed){
         // --> Start auto-generated code F
-        if (name == "startPosition") { return !normed ? startPosition.get() : jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "endPosition") { return !normed ? endPosition.get() : jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "loopStartPosition") { return !normed ? loopStartPosition.get() : jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "loopEndPosition") { return !normed ? loopEndPosition.get() : jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "playheadPosition") { return !normed ? playheadPosition.get() : jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "freezePlayheadSpeed") { return !normed ? freezePlayheadSpeed.get() : jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
-        else if (name == "filterCutoff") { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
-        else if (name == "filterRessonance") { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterKeyboardTracking") { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterA") { return !normed ? filterA.get() : jmap(filterA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterD") { return !normed ? filterD.get() : jmap(filterD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterS") { return !normed ? filterS.get() : jmap(filterS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterR") { return !normed ? filterR.get() : jmap(filterR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "filterADSR2CutoffAmt") { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (name == "gain") { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
-        else if (name == "ampA") { return !normed ? ampA.get() : jmap(ampA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "ampD") { return !normed ? ampD.get() : jmap(ampD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "ampS") { return !normed ? ampS.get() : jmap(ampS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "ampR") { return !normed ? ampR.get() : jmap(ampR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "pan") { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "pitch") { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
-        else if (name == "pitchBendRangeUp") { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (name == "pitchBendRangeDown") { return !normed ? pitchBendRangeDown.get() : jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (name == "mod2CutoffAmt") { return !normed ? mod2CutoffAmt.get() : jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (name == "mod2GainAmt") { return !normed ? mod2GainAmt.get() : jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (name == "mod2PitchAmt") { return !normed ? mod2PitchAmt.get() : jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (name == "mod2PlayheadPos") { return !normed ? mod2PlayheadPos.get() : jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (name == "vel2CutoffAmt") { return !normed ? vel2CutoffAmt.get() : jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (name == "vel2GainAmt") { return !normed ? vel2GainAmt.get() : jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        if (identifier == IDs::startPosition) { return !normed ? startPosition.get() : jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::endPosition) { return !normed ? endPosition.get() : jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopStartPosition) { return !normed ? loopStartPosition.get() : jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopEndPosition) { return !normed ? loopEndPosition.get() : jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::playheadPosition) { return !normed ? playheadPosition.get() : jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterA) { return !normed ? filterA.get() : jmap(filterA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterD) { return !normed ? filterD.get() : jmap(filterD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterS) { return !normed ? filterS.get() : jmap(filterS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterR) { return !normed ? filterR.get() : jmap(filterR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::gain) { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampA) { return !normed ? ampA.get() : jmap(ampA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampD) { return !normed ? ampD.get() : jmap(ampD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampS) { return !normed ? ampS.get() : jmap(ampS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampR) { return !normed ? ampR.get() : jmap(ampR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pan) { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitch) { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
         throw std::runtime_error("No float parameter with this name");
     }
     
-    void setParameterByNameFloat(const String& name, float value, bool normed){
+    void setParameterByNameFloat(juce::Identifier identifier, float value, bool normed){
         // --> Start auto-generated code B
-        if (name == "startPosition") { startPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "endPosition") { endPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "loopStartPosition") { loopStartPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "loopEndPosition") { loopEndPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "playheadPosition") { playheadPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "freezePlayheadSpeed") { freezePlayheadSpeed = !normed ? jlimit(1.0f, 5000.0f, value) : jmap(value, 1.0f, 5000.0f); }
-        else if (name == "filterCutoff") { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
-        else if (name == "filterRessonance") { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterKeyboardTracking") { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterA") { filterA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterD") { filterD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterS") { filterS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterR") { filterR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "filterADSR2CutoffAmt") { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (name == "gain") { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
-        else if (name == "ampA") { ampA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "ampD") { ampD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "ampS") { ampS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "ampR") { ampR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "pan") { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
-        else if (name == "pitch") { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
-        else if (name == "pitchBendRangeUp") { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (name == "pitchBendRangeDown") { pitchBendRangeDown = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (name == "mod2CutoffAmt") { mod2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (name == "mod2GainAmt") { mod2GainAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (name == "mod2PitchAmt") { mod2PitchAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (name == "mod2PlayheadPos") { mod2PlayheadPos = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (name == "vel2CutoffAmt") { vel2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (name == "vel2GainAmt") { vel2GainAmt = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        if (identifier == IDs::startPosition) { startPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::endPosition) { endPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopStartPosition) { loopStartPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopEndPosition) { loopEndPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::playheadPosition) { playheadPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? jlimit(1.0f, 5000.0f, value) : jmap(value, 1.0f, 5000.0f); }
+        else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
+        else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterA) { filterA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterD) { filterD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterS) { filterS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterR) { filterR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::gain) { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
+        else if (identifier == IDs::ampA) { ampA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampD) { ampD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampS) { ampS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::ampR) { ampR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::pan) { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
+        else if (identifier == IDs::pitch) { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
+        else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
+        else if (identifier == IDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
+        else if (identifier == IDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::mod2GainAmt) { mod2GainAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
+        else if (identifier == IDs::mod2PitchAmt) { mod2PitchAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
+        else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
         // --> End auto-generated code B
         else { throw std::runtime_error("No float parameter with this name"); }
         
@@ -293,14 +293,14 @@ public:
         }
     }
     
-    void setParameterByNameInt(const String& name, int value){
+    void setParameterByNameInt(juce::Identifier identifier, int value){
         // --> Start auto-generated code D
-        if (name == "launchMode") { launchMode = jlimit(0, 4, value); }
-        else if (name == "loopXFadeNSamples") { loopXFadeNSamples = jlimit(10, 100000, value); }
-        else if (name == "reverse") { reverse = jlimit(0, 1, value); }
-        else if (name == "noteMappingMode") { noteMappingMode = jlimit(0, 3, value); }
-        else if (name == "numSlices") { numSlices = jlimit(0, 100, value); }
-        else if (name == "midiRootNote") { midiRootNote = jlimit(0, 127, value); }
+        if (identifier == IDs::launchMode) { launchMode = jlimit(0, 4, value); }
+        else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = jlimit(10, 100000, value); }
+        else if (identifier == IDs::reverse) { reverse = jlimit(0, 1, value); }
+        else if (identifier == IDs::noteMappingMode) { noteMappingMode = jlimit(0, 3, value); }
+        else if (identifier == IDs::numSlices) { numSlices = jlimit(0, 100, value); }
+        else if (identifier == IDs::midiRootNote) { midiRootNote = jlimit(0, 127, value); }
         // --> End auto-generated code D
         else { throw std::runtime_error("No int parameter with this name"); }
     }
