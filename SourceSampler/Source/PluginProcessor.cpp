@@ -539,7 +539,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getSourceSoundPointer()->getName() + ",";
+                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getSoundId() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -560,7 +560,6 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
         audioLevels += (String)lms.getRMSLevel(i) + ",";
     }
     state.setProperty(STATE_VOLATILE_AUDIO_LEVELS, audioLevels, nullptr);
-    
     return state;
 }
 
@@ -584,7 +583,7 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getSourceSoundPointer()->getName() + ",";
+                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getSoundId() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -1436,7 +1435,7 @@ void SourceSamplerAudioProcessor::removeSound(int soundIndex)
                 // In this case the sound will have moved one position down in the new list of "loadedSoundsInfo", so idx in the sampler should be updated
                 auto* sound = sampler.getSourceSamplerSoundByIdx(i);
                 if (sound != nullptr){
-                    //sound->setIdx(sound->getSourceSoundPointer()->getIdx() - 1);
+                    //sound->setIdx(sound->getSourceSound()->getIdx() - 1);
                 }
             }
         } else {

@@ -47,10 +47,11 @@ public:
     juce::ValueTree state;
     void bindState ();
     
-    SourceSound* getSourceSoundPointer() { return sourceSoundPointer; };
+    SourceSound* getSourceSound() { return sourceSoundPointer; };
    
     AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     
+    int getSoundId() { return soundId.get(); };
     bool getLoadedPreviewVersion();
 
     //==============================================================================
@@ -87,6 +88,7 @@ private:
     
     // Parameters binded in state
     juce::CachedValue<juce::String> name;
+    juce::CachedValue<int> soundId;
     juce::CachedValue<int> midiRootNote;
     juce::CachedValue<juce::String> midiNotesAsString;
 
@@ -180,7 +182,7 @@ public:
         std::vector<SourceSamplerSound*> objects;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSoundPointer() == this){
+            if (sourceSamplerSound->getSourceSound() == this){
                 objects.push_back(sourceSamplerSound);
             }
         }
@@ -191,7 +193,7 @@ public:
         std::vector<SourceSamplerSound*> objects;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSoundPointer() == this){
+            if (sourceSamplerSound->getSourceSound() == this){
                 return sourceSamplerSound;
             }
         }
@@ -200,7 +202,7 @@ public:
     
     // --------------------------------------------------------------------------------------------
     
-    const juce::String& getName() {
+    juce::String getName() {
         return name.get();
     }
     
@@ -456,7 +458,7 @@ public:
         std::vector<int> soundIndexesToDelete;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSoundPointer() == this){
+            if (sourceSamplerSound->getSourceSound() == this){
                 // If the pointer to sourceSound of the sourceSamplerSound is the current sourceSound, then the sound should be deleted
                 soundIndexesToDelete.push_back(i);
             }

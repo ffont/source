@@ -149,11 +149,11 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
         for (auto* s : sounds)
         {
             if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
-                std::vector<MidiCCMapping> mappings = sound->getSourceSoundPointer()->getMidiMappingsForCcNumber(number);
+                std::vector<MidiCCMapping> mappings = sound->getSourceSound()->getMidiMappingsForCcNumber(number);
                 for (int i=0; i<mappings.size(); i++){
                     float normInputValue = (float)value/127.0;  // This goes from 0 to 1
                     float value = jmap(normInputValue, mappings[i].minRange, mappings[i].maxRange);
-                    sound->getSourceSoundPointer()->setParameterByNameFloat(mappings[i].parameterName, value, true);
+                    sound->getSourceSound()->setParameterByNameFloat(mappings[i].parameterName, value, true);
                 }
             }
         }

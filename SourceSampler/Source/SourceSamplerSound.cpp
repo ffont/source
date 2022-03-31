@@ -42,6 +42,7 @@ SourceSamplerSound::~SourceSamplerSound()
 void SourceSamplerSound::bindState ()
 {
     name.referTo(state, IDs::name, nullptr);
+    soundId.referTo(state, IDs::soundId, nullptr);
     midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
     midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
 }
