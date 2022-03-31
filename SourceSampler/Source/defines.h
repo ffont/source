@@ -243,6 +243,13 @@ inline float  mod2PlayheadPos = 0.0f;
 inline float  vel2CutoffAmt = 0.0f;
 inline float  vel2GainAmt = 0.5f;
 // --> End auto-generated code A
+
+inline float reverbRoomSize = 0.5f;
+inline float reverbDamping = 0.3f;
+inline float reverbWetLevel = 0.0f;
+inline float reverbDryLevel = 1.0f;
+inline float reverbWidth = 0.5f;
+inline float reverbFreezeMode = 0.0f;
 }
 
 
@@ -277,6 +284,13 @@ DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
 DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
+
+DECLARE_ID (reverbRoomSize)
+DECLARE_ID (reverbDamping)
+DECLARE_ID (reverbWetLevel)
+DECLARE_ID (reverbDryLevel)
+DECLARE_ID (reverbWidth)
+DECLARE_ID (reverbFreezeMode)
 
 // --> Start auto-generated code B
 DECLARE_ID (soundType)

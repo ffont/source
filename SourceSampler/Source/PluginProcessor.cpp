@@ -105,7 +105,13 @@ void SourceSamplerAudioProcessor::bindState()
     
     ValueTree preset = state.getChildWithName(IDs::PRESET);
     presetName.referTo(preset, IDs::name, nullptr);
-    noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr);
+    noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr, Defaults::noteLayoutType);
+    reverbRoomSize.referTo(preset, IDs::reverbRoomSize, nullptr, Defaults::reverbRoomSize);
+    reverbDamping.referTo(preset, IDs::reverbDamping, nullptr, Defaults::reverbDamping);
+    reverbWetLevel.referTo(preset, IDs::reverbWetLevel, nullptr, Defaults::reverbWetLevel);
+    reverbDryLevel.referTo(preset, IDs::reverbDryLevel, nullptr, Defaults::reverbDryLevel);
+    reverbWidth.referTo(preset, IDs::reverbWidth, nullptr, Defaults::reverbWidth);
+    reverbFreezeMode.referTo(preset, IDs::reverbFreezeMode, nullptr, Defaults::reverbFreezeMode);
     
     sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET),
                                                [this]{return getGlobalContext();});
@@ -302,7 +308,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // Also get timestamp of the last received message
     for (const MidiMessageMetadata metadata : midiMessages){
         MidiMessage message = metadata.getMessage();
-        if ((sampler.midiInChannel == 0) || (message.getChannel() == sampler.midiInChannel)){
+        if ((sampler.getMidiInChannel() == 0) || (message.getChannel() == sampler.getMidiInChannel())){
             midiMessagesPresentInLastStateReport = true;
             if (message.isController()){
                 lastReceivedMIDIControllerNumber = message.getControllerNumber();
@@ -422,6 +428,9 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _sta
     
     // Trigger bind state again to re-create sounds and the rest
     bindState();
+    
+    // Run some more actions needed to sync some parameters which are not automatically loaded from state
+    updateReverbParameters();
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
@@ -446,7 +455,7 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
 ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
 {
     ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.midiInChannel, nullptr);
+    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.getMidiInChannel(), nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex.get(), nullptr);
     settings.setProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES, useOriginalFilesPreference, nullptr);
@@ -482,7 +491,7 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             ValueTree settings = ValueTree::fromXml(*xmlState.get());
             
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL)){
-                sampler.midiInChannel = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL);
+                sampler.setMidiInChannel((int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL));
             }
             
             if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU)){
@@ -644,6 +653,18 @@ void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, Str
     }
 }
 
+void SourceSamplerAudioProcessor::updateReverbParameters()
+{
+    Reverb::Parameters reverbParameters;
+    reverbParameters.roomSize = reverbRoomSize;
+    reverbParameters.damping = reverbDamping;
+    reverbParameters.wetLevel = reverbWetLevel;
+    reverbParameters.dryLevel = reverbDryLevel;
+    reverbParameters.width = reverbWidth;
+    reverbParameters.freezeMode = reverbFreezeMode;
+    sampler.setReverbParameters(reverbParameters);
+}
+
 
 //==============================================================================
 
@@ -768,15 +789,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
         }
     } else if (actionName == ACTION_SET_REVERB_PARAMETERS){
-        // TODO: VT refactor
-        Reverb::Parameters reverbParameters;
-        reverbParameters.roomSize = parameters[0].getFloatValue();
-        reverbParameters.damping = parameters[1].getFloatValue();
-        reverbParameters.wetLevel = parameters[2].getFloatValue();
-        reverbParameters.dryLevel = parameters[3].getFloatValue();
-        reverbParameters.width = parameters[4].getFloatValue();
-        reverbParameters.freezeMode = parameters[5].getFloatValue();
-        sampler.setReverbParameters(reverbParameters);
+        reverbRoomSize = parameters[0].getFloatValue();
+        reverbDamping = parameters[1].getFloatValue();
+        reverbWetLevel = parameters[2].getFloatValue();
+        reverbDryLevel = parameters[3].getFloatValue();
+        reverbWidth = parameters[4].getFloatValue();
+        reverbFreezeMode = parameters[5].getFloatValue();
+        updateReverbParameters();
         
     } else if (actionName == ACTION_SAVE_PRESET){
         String presetName = parameters[0];
@@ -981,7 +1000,7 @@ void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
     } else if (channel > 16){
         channel = 16;
     }
-    sampler.midiInChannel = channel;
+    sampler.setMidiInChannel(channel);
     saveGlobalPersistentStateToFile();
 }
 
@@ -1649,7 +1668,7 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff
         if (midiNoteForNormalPitch < 0){
             // If for some reason no note was found, don't play anything
         } else {
-            int midiChannel = sampler.midiInChannel;
+            int midiChannel = sampler.getMidiInChannel();
             if (midiChannel == 0){
                 midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
             }

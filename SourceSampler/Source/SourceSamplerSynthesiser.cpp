@@ -52,11 +52,6 @@ void SourceSamplerSynthesiser::setSamplerVoices(int nVoices)
     setNoteStealingEnabled (true);
 }
 
-void SourceSamplerSynthesiser::setReverbParameters (Reverb::Parameters params) {
-    auto& reverb = fxChain.get<reverbIndex>();
-    reverb.setParameters(params);
-}
-
 void SourceSamplerSynthesiser::prepare (const juce::dsp::ProcessSpec& spec) noexcept
 {
     // Store current processing specs to be later used for voice processing and re-preparing
@@ -175,3 +170,17 @@ void SourceSamplerSynthesiser::renderVoices (AudioBuffer< float > &outputAudio, 
     fxChain.process (contextToUse);
 }
 
+//==============================================================================
+
+int SourceSamplerSynthesiser::getMidiInChannel(){
+    return midiInChannel;
+}
+
+void SourceSamplerSynthesiser::setMidiInChannel(int newMidiInChannel){
+    midiInChannel = newMidiInChannel;
+}
+
+void SourceSamplerSynthesiser::setReverbParameters (Reverb::Parameters params) {
+    auto& reverb = fxChain.get<reverbIndex>();
+    reverb.setParameters(params);
+}

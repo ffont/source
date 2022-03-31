@@ -93,7 +93,6 @@ public:
     void sendStateToExternalServer(ValueTree state, String stringData);
     
     //==============================================================================
-    // Action listener
     void actionListenerCallback (const String &message) override;
     
     //==============================================================================
@@ -111,6 +110,9 @@ public:
     //==============================================================================
     void setMidiInChannelFilter(int channel);
     void setMidiThru(bool doMidiTrhu);
+    
+    //==============================================================================
+    void updateReverbParameters();
     
     //==============================================================================
     class QueryMakerThread : private Thread
@@ -206,14 +208,25 @@ protected:
     
 private:
     AudioFormatManager audioFormatManager;
-    
     SourceSamplerSynthesiser sampler;
+    ServerInterface serverInterface;
+    foleys::LevelMeterSource lms;  // Object to measure audio output levels
+    Downloader downloader; // Object to download sounds in the background (or synchrounously)
+    juce::OSCSender oscSender;  // Used to send state updates to glue app
+    
+    // Properties binded to state
     std::unique_ptr<SourceSoundList> sounds;
+    juce::CachedValue<juce::String> presetName;
+    juce::CachedValue<int> noteLayoutType;
+    juce::CachedValue<float> reverbRoomSize;
+    juce::CachedValue<float> reverbDamping;
+    juce::CachedValue<float> reverbWetLevel;
+    juce::CachedValue<float> reverbDryLevel;
+    juce::CachedValue<float> reverbWidth;
+    juce::CachedValue<float> reverbFreezeMode;
     
-    // The next two objects are to preview sounds independently of the sampler
-    std::unique_ptr<AudioFormatReaderSource> readerSource;
-    AudioTransportSource transportSource;
-    
+    // Other volatile properties
+    bool oscSenderIsConnected = false;
     MidiBuffer midiFromEditor;
     bool midiOutForwardsMidiIn = true;
     int lastReceivedMIDIControllerNumber = -1;
@@ -223,22 +236,16 @@ private:
     double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
     bool aconnectWasRun = false;
-    juce::CachedValue<juce::String> presetName;
-    juce::CachedValue<int> noteLayoutType;
     ValueTree loadedSoundsInfo;
     
-    ServerInterface serverInterface;
-    
-    foleys::LevelMeterSource lms;  // Object to measure audio output levels
-    
-    Downloader downloader; // Object to download sounds in the background (or synchrounously)
+    // The next two objects are to preview sounds independently of the sampler
+    std::unique_ptr<AudioFormatReaderSource> readerSource;
+    AudioTransportSource transportSource;
     
     void logToState(const String& message);
     std::vector<String> recentLogMessages = {};
     String recentLogMessagesSerialized = "";
-    
-    juce::OSCSender oscSender;  // Used to send state updates to glue app
-    bool oscSenderIsConnected = false;
+
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
