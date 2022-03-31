@@ -177,7 +177,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         // If this behaviour becomes a problem it could be turned into a sound parameter
         int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->getMidiRootNote());
         double currentNoteFrequency = std::pow (2.0, (sound->getParameterFloat("pitch") + distanceToRootNote) / 12.0);
-        pitchRatio = currentNoteFrequency * sound->soundSampleRate / getSampleRate();
+        pitchRatio = currentNoteFrequency * sound->soundSampleRate / sound->pluginSampleRate;
         
         // Set start/end and loop start/end settings
         int soundLoopStartPosition, soundLoopEndPosition;  // To be set later
@@ -442,7 +442,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                             float rcrossfadeSample = 0.0;
                             float crossfadeGain = 0.0;
                             float crossfadePos = (float)fixedLoopEndPositionSample + samplesToLoopStartPositionSample;
-                            if (crossfadePos < sound->length){
+                            if (crossfadePos < sound->lengthInSamples){
                                 lcrossfadeSample = interpolateSample(crossfadePos, inL);
                                 rcrossfadeSample = (inR != nullptr) ? interpolateSample(crossfadePos, inR) : lcrossfadeSample;
                                 crossfadeGain = (float)samplesToLoopStartPositionSample/sound->gpi(IDs::loopXFadeNSamples);

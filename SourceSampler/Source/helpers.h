@@ -89,10 +89,11 @@ namespace Helpers
         return sound;
     }
 
-    inline juce::ValueTree createSourceSampleSoundState(int soundId, const juce::String previewURL)
+    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL)
     {
         juce::ValueTree ss (IDs::SOUND_SAMPLE);
         Helpers::createUuidProperty (ss);
+        ss.setProperty (IDs::name, soundName, nullptr);
         ss.setProperty (IDs::soundId, soundId, nullptr);
         ss.setProperty (IDs::previewURL, previewURL, nullptr);
         ss.setProperty(IDs::midiRootNote, 64, nullptr);
@@ -127,7 +128,7 @@ namespace Helpers
         for (int sn = 0; sn < numSounds; ++sn)
         {
             juce::ValueTree s = createEmptySourceSoundState("Sound " + juce::String (sn + 1));
-            juce::ValueTree ss = createSourceSampleSoundState(433328, "https://freesound.org/data/previews/433/433328_735175-hq.ogg");
+            juce::ValueTree ss = createSourceSampleSoundState("433328 - 1", 433328, "https://freesound.org/data/previews/433/433328_735175-hq.ogg");
             s.addChild(ss, -1, nullptr);
             preset.addChild (s, -1, nullptr);
         }

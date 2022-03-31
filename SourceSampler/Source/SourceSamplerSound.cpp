@@ -11,34 +11,41 @@
 #include "SourceSamplerSound.h"
 
 
-SourceSamplerSound::SourceSamplerSound (int _idx,
-                                        const String& _soundName,
+SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
+                                        SourceSound* _sourceSoundPointer,
+                                        int _idx,
                                         AudioFormatReader& source,
                                         bool _loadingPreviewVersion,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
-    : idx (_idx),
-      name(_soundName),
+    : state(_state),
       loadedPreviewVersion (_loadingPreviewVersion),
       soundSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
-      pluginBlockSize (_pluginBlockSize)
+      pluginBlockSize (_pluginBlockSize),
+      idx (_idx)
 {
-    if (soundSampleRate > 0 && source.lengthInSamples > 0)
-    {
-        length = jmin ((int) source.lengthInSamples,
-                       (int) (maxSampleLengthSeconds * soundSampleRate));
-
-        data.reset (new AudioBuffer<float> (jmin (2, (int) source.numChannels), length + 4));
-
-        source.read (data.get(), 0, length + 4, 0, true, true);
-
+    sourceSoundPointer = _sourceSoundPointer;
+    bindState();
+    
+    // Load audio
+    if (soundSampleRate > 0 && source.lengthInSamples > 0) {
+        lengthInSamples = jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));
+        data.reset (new AudioBuffer<float> (jmin (2, (int) source.numChannels), lengthInSamples + 4));
+        source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
     }
 }
 
 SourceSamplerSound::~SourceSamplerSound()
 {
+}
+
+void SourceSamplerSound::bindState ()
+{
+    name.referTo(state, IDs::name, nullptr);
+    midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
+    midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
 }
 
 //==============================================================================
@@ -50,7 +57,7 @@ bool SourceSamplerSound::getLoadedPreviewVersion()
 
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
 {
-    return midiNotes[midiNoteNumber];
+    return getMappedMidiNotes()[midiNoteNumber];
 }
 
 bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
@@ -83,7 +90,7 @@ int SourceSamplerSound::getParameterInt(juce::Identifier identifier){
 
 ValueTree SourceSamplerSound::getState(){
     ValueTree state = ValueTree(STATE_SAMPLER_SOUND);
-    state.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
+    state.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotesAsString.get(), nullptr);
     state.setProperty(STATE_SAMPLER_SOUND_LOADED_PREVIEW, loadedPreviewVersion, nullptr);
     state.setProperty(STATE_SOUND_INFO_IDX, idx, nullptr);  // idx is set to the state sot hat the UI gets it, but never loaded because it is generated dynamically
 
@@ -277,7 +284,9 @@ ValueTree SourceSamplerSound::getState(){
 void SourceSamplerSound::loadState(ValueTree soundState){
     
     if (soundState.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
+        juce::BigInteger midiNotes;
         midiNotes.parseString(soundState.getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES).toString(), 16);
+        setMappedMidiNotes(midiNotes);
     }
     
     // Iterate over sound parameters and midi mappings and load them
@@ -308,7 +317,7 @@ void SourceSamplerSound::loadState(ValueTree soundState){
 }
 
 int SourceSamplerSound::getLengthInSamples(){
-    return length;
+    return lengthInSamples;
 }
 
 float SourceSamplerSound::getLengthInSeconds(){
@@ -326,17 +335,19 @@ int SourceSamplerSound::getIdx(){
 
 int SourceSamplerSound::getNumberOfMappedMidiNotes()
 {
-    return midiNotes.countNumberOfSetBits();
+    return getMappedMidiNotes().countNumberOfSetBits();
 }
 
 juce::BigInteger SourceSamplerSound::getMappedMidiNotes()
 {
+    juce::BigInteger midiNotes;
+    midiNotes.parseString(midiNotesAsString.get(), 16);
     return midiNotes;
 }
 
 void SourceSamplerSound::setMappedMidiNotes(juce::BigInteger newMappedMidiNotes)
 {
-    midiNotes = newMappedMidiNotes;
+    midiNotesAsString = newMappedMidiNotes.toString(16);
 }
 
 int SourceSamplerSound::getMidiRootNote()

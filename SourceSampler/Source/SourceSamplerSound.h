@@ -34,21 +34,21 @@ public:
         @param _pluginSampleRate  sample rate of the host plugin
         @param _pluginBlockSize  block size of the host plugin
     */
-    SourceSamplerSound (int _idx,
-                        const String& name,
+    SourceSamplerSound (const juce::ValueTree& _state,
+                        SourceSound* _sourceSoundPointer,
+                        int _idx,
                         AudioFormatReader& source,
                         bool _loadingPreviewVersion,
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
     
-    SourceSamplerSound (const juce::ValueTree& state);
-
-    /** Destructor. */
     ~SourceSamplerSound() override;
     
-    SourceSound* sourceSoundPointer = nullptr;
-    void setSourceSoundPointer(SourceSound* _sourceSoundPointer) { sourceSoundPointer = _sourceSoundPointer; }
+    juce::ValueTree state;
+    void bindState ();
+    
+    SourceSound* getSourceSoundPointer() { return sourceSoundPointer; };
    
     AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     
@@ -99,19 +99,25 @@ private:
     //==============================================================================
     friend class SourceSamplerVoice;
     
-    int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
-    juce::String name;
-    bool loadedPreviewVersion = false;
-    std::unique_ptr<juce::AudioBuffer<float>> data;
-    double soundSampleRate;
-    juce::BigInteger midiNotes;
-    int midiRootNote;
-    int length = 0;
-    std::vector<int> onsetTimesSamples = {};
-    std::vector<MidiCCMapping> midiMappings = {};
+    SourceSound* sourceSoundPointer = nullptr;
     
+    // Parameters binded in state
+    juce::CachedValue<juce::String> name;
+    juce::CachedValue<int> midiRootNote;
+    juce::CachedValue<juce::String> midiNotesAsString;
+
+    // "Volatile" properties that are created when creating a sound
+    std::unique_ptr<juce::AudioBuffer<float>> data;
+    std::vector<int> onsetTimesSamples = {};
+    bool loadedPreviewVersion = false;
+    int lengthInSamples = 0;
+    double soundSampleRate;
     double pluginSampleRate;
     int pluginBlockSize;
+    
+    // Things that should be moved to SourceSound objects
+    int idx = -1;  // This is the idx of the sound in the loadedSoundsInfo ValueTree stored in the plugin processor
+    std::vector<MidiCCMapping> midiMappings = {};
 
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };
@@ -146,7 +152,6 @@ public:
     }
     
     juce::ValueTree state;
-    
     void bindState ()
     {
         name.referTo(state, IDs::name, nullptr);
@@ -195,7 +200,7 @@ public:
         std::vector<SourceSamplerSound*> objects;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->sourceSoundPointer == this){
+            if (sourceSamplerSound->getSourceSoundPointer() == this){
                 objects.push_back(sourceSamplerSound);
             }
         }
@@ -206,7 +211,7 @@ public:
         std::vector<SourceSamplerSound*> objects;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->sourceSoundPointer == this){
+            if (sourceSamplerSound->getSourceSoundPointer() == this){
                 return sourceSamplerSound;
             }
         }
@@ -399,18 +404,14 @@ public:
                         .getChildFile("sounds")
                         .getChildFile((juce::String)soundId).withFileExtension("ogg");
                     std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
-                    SourceSamplerSound* createdSound = new SourceSamplerSound(soundId,
-                                                                              soundName,
+                    SourceSamplerSound* createdSound = new SourceSamplerSound(child,
+                                                                              this,
+                                                                              soundId,
                                                                               *reader,
                                                                               true,
                                                                               MAX_SAMPLE_LENGTH,
                                                                               getGlobalContext().sampleRate,
                                                                               getGlobalContext().samplesPerBlock);
-                    createdSound->setSourceSoundPointer(this);
-                    BigInteger midiNotes;
-                    midiNotes.parseString(child.getProperty(IDs::midiNotes).toString(), 16);
-                    createdSound->setMappedMidiNotes(midiNotes);
-                    createdSound->setMidiRootNote((int)child.getProperty(IDs::midiRootNote));
                     sounds.push_back(createdSound);
                 }
             }
@@ -422,9 +423,7 @@ public:
     {
         // TODO: add lock here?
         std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
-        for (auto sourceSamplerSound: sourceSamplerSounds) {
-            SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->addSound(sourceSamplerSound));
-        }
+        for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
         std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
     }
     
@@ -435,7 +434,7 @@ public:
         std::vector<int> soundIndexesToDelete;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->sourceSoundPointer == this){
+            if (sourceSamplerSound->getSourceSoundPointer() == this){
                 // If the pointer to sourceSound of the sourceSamplerSound is the current sourceSound, then the sound should be deleted
                 soundIndexesToDelete.push_back(i);
             }
@@ -531,7 +530,6 @@ public:
     }
     
 private:
-
     // Sound properties
     juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> enabled;

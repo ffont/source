@@ -12,6 +12,7 @@
 #include "PluginEditor.h"
 #include "api_key.h"
 #include <climits>  // for using INT_MAX
+#include <algorithm> // for using shuffle
 
 
 //==============================================================================
@@ -1040,11 +1041,12 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 150, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     if (list.getCount() > 0){
-        logToState("Query got " + (String)list.getCount() + " results");
         
         // Randmomize results and prepare for iteration
         Array<FSSound> soundsFound = list.toArrayOfSounds();
-        std::random_shuffle(soundsFound.begin(), soundsFound.end());
+        logToState("Query got " + (String)list.getCount() + " results, " + (String)soundsFound.size() + " in the first page. Will load " + (String)numSounds + " sounds.");
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
         soundsFound.resize(jmin(numSounds, list.getCount()));
         int nSounds = soundsFound.size();
         
@@ -1067,7 +1069,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             sourceSound.setProperty(IDs::format, sound.format, nullptr);
             sourceSound.setProperty(IDs::filesize, sound.filesize, nullptr);
             
-            juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState((int)sourceSound.getProperty(IDs::soundId), sourceSound.getProperty(IDs::previewURL).toString());
+            juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(sourceSound.getProperty(IDs::soundId).toString() + " - 1", (int)sourceSound.getProperty(IDs::soundId), sourceSound.getProperty(IDs::previewURL).toString());
             juce::ValueTree soundAnalysis = Helpers::createAnalysisFromFreesoundAnalysis(sound.analysis);
             sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
             
@@ -1365,7 +1367,7 @@ void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx
         // 1) Create SourceSamplerSound object and add to sampler
         std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
         bool loadingPreviewVersion = audioSample.getFullPathName().indexOf("original") == -1;
-        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(soundIdx, String(soundIdx), *reader, loadingPreviewVersion, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
+        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(ValueTree(), nullptr, soundIdx, *reader, loadingPreviewVersion, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
         
         // Pass onset times to the just added sound (if info is preset in Freesound analysis)
         ValueTree soundAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
