@@ -118,6 +118,25 @@ def generate_code(controls_data_filename):
     code_dict['defines.h']['A'] = current_code_a
     code_dict['defines.h']['B'] = current_code_b
 
+    # Generate helpers.h code to include all sound parameters when creating an empry sound
+    current_code_a = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list]):
+        
+        if control_data['type'] == 'float':
+            defaultf = float(control_data['default'])
+            control_data.update({'defaultf': defaultf})
+            current_code_a += "        sound.setProperty (IDs::{name}, {defaultf}f, nullptr);\n".format(**control_data)
+        elif control_data['type'] == 'int':
+            defaulti = int(control_data['default'])
+            control_data.update({'defaulti': defaulti})
+            current_code_a += "        sound.setProperty (IDs::{name}, {defaulti}, nullptr);\n".format(**control_data)
+        else:
+            # Don't know what to do with other types
+            pass
+    current_code_a += "        "
+    code_dict['helpers.h'] = {}
+    code_dict['helpers.h']['A'] = current_code_a
+
     # Generate SourceSamplerSound code to save state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):

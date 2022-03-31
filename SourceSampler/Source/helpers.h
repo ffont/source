@@ -49,6 +49,43 @@ namespace Helpers
         Helpers::createUuidProperty (sound);
         sound.setProperty (IDs::name, soundName, nullptr);
         sound.setProperty (IDs::enabled, true, nullptr);
+        // --> Start auto-generated code A
+        sound.setProperty (IDs::launchMode, 0, nullptr);
+        sound.setProperty (IDs::startPosition, 0.0f, nullptr);
+        sound.setProperty (IDs::endPosition, 1.0f, nullptr);
+        sound.setProperty (IDs::loopStartPosition, 0.0f, nullptr);
+        sound.setProperty (IDs::loopEndPosition, 1.0f, nullptr);
+        sound.setProperty (IDs::loopXFadeNSamples, 500, nullptr);
+        sound.setProperty (IDs::reverse, 0, nullptr);
+        sound.setProperty (IDs::noteMappingMode, 0, nullptr);
+        sound.setProperty (IDs::numSlices, 0, nullptr);
+        sound.setProperty (IDs::playheadPosition, 0.0f, nullptr);
+        sound.setProperty (IDs::freezePlayheadSpeed, 100.0f, nullptr);
+        sound.setProperty (IDs::filterCutoff, 20000.0f, nullptr);
+        sound.setProperty (IDs::filterRessonance, 0.0f, nullptr);
+        sound.setProperty (IDs::filterKeyboardTracking, 0.0f, nullptr);
+        sound.setProperty (IDs::filterA, 0.01f, nullptr);
+        sound.setProperty (IDs::filterD, 0.0f, nullptr);
+        sound.setProperty (IDs::filterS, 1.0f, nullptr);
+        sound.setProperty (IDs::filterR, 0.01f, nullptr);
+        sound.setProperty (IDs::filterADSR2CutoffAmt, 1.0f, nullptr);
+        sound.setProperty (IDs::gain, -10.0f, nullptr);
+        sound.setProperty (IDs::ampA, 0.01f, nullptr);
+        sound.setProperty (IDs::ampD, 0.0f, nullptr);
+        sound.setProperty (IDs::ampS, 1.0f, nullptr);
+        sound.setProperty (IDs::ampR, 0.01f, nullptr);
+        sound.setProperty (IDs::pan, 0.0f, nullptr);
+        sound.setProperty (IDs::midiRootNote, 64, nullptr);
+        sound.setProperty (IDs::pitch, 0.0f, nullptr);
+        sound.setProperty (IDs::pitchBendRangeUp, 12.0f, nullptr);
+        sound.setProperty (IDs::pitchBendRangeDown, 12.0f, nullptr);
+        sound.setProperty (IDs::mod2CutoffAmt, 10.0f, nullptr);
+        sound.setProperty (IDs::mod2GainAmt, 6.0f, nullptr);
+        sound.setProperty (IDs::mod2PitchAmt, 0.0f, nullptr);
+        sound.setProperty (IDs::mod2PlayheadPos, 0.0f, nullptr);
+        sound.setProperty (IDs::vel2CutoffAmt, 0.0f, nullptr);
+        sound.setProperty (IDs::vel2GainAmt, 0.5f, nullptr);
+        // --> End auto-generated code A
         return sound;
     }
 
