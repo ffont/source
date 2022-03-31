@@ -176,6 +176,8 @@ public:
         vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
         vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
         // --> End auto-generated code C
+        
+        midiCCmappings = std::make_unique<MidiCCMappingList>(state);
     }
     
     std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds() {
@@ -364,45 +366,36 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
-    void addOrEditMidiMapping(int randomID, int ccNumber, String parameterName, float minRange, float maxRange){
-        if (randomID < 0){
-            midiMappings.push_back(MidiCCMapping(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange)));
+    void addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange){
+        
+        ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
+        if (existingMapping.isValid()) {
+            // Modify existing mapping
+            existingMapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
+            existingMapping.setProperty (IDs::parameterName, parameterName, nullptr);
+            existingMapping.setProperty (IDs::minRange, jlimit(0.0f, 1.0f, minRange), nullptr);
+            existingMapping.setProperty (IDs::maxRange, jlimit(0.0f, 1.0f, maxRange), nullptr);
         } else {
-            for (int i=0; i<midiMappings.size(); i++){
-                if (midiMappings[i].randomID == randomID){
-                    midiMappings[i].ccNumber = ccNumber;
-                    midiMappings[i].parameterName = parameterName;
-                    midiMappings[i].minRange = minRange;
-                    midiMappings[i].maxRange = maxRange;
-                }
-            }
+            // No mapping with uuid found, create a new one
+            // TODO: move this to the MidiCCMappingList class?
+            ValueTree newMapping = Helpers::createMidiMappingState(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange));
+            state.addChild(newMapping, -1, nullptr);
         }
     }
 
-    std::vector<MidiCCMapping> getMidiMappingsForCcNumber(int ccNumber){
-        std::vector<MidiCCMapping> toReturn = {};
-        for (int i=0; i<midiMappings.size(); i++){
-            if (midiMappings[i].ccNumber == ccNumber){
-                toReturn.push_back(midiMappings[i]);
+    std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber){
+        // TODO: transofrm to use pointer
+        std::vector<MidiCCMapping*> toReturn = {};
+        for (auto* midiCCmapping: midiCCmappings->objects){
+            if (midiCCmapping->ccNumber == ccNumber){
+                toReturn.push_back(midiCCmapping);
             }
         }
         return toReturn;
     }
 
-    std::vector<MidiCCMapping> getMidiMappingsSorted(){
-        std::vector<MidiCCMapping> midiMappingsSorted = midiMappings;
-        std::sort(midiMappingsSorted.begin(), midiMappingsSorted.end());
-        return midiMappingsSorted;
-    }
-
-    void removeMidiMapping(int randomID){
-        std::vector<MidiCCMapping> newMidiMappings = {};
-        for (int i=0; i<midiMappings.size(); i++){
-            if (midiMappings[i].randomID != randomID){
-                newMidiMappings.push_back(midiMappings[i]);
-            }
-        }
-        midiMappings = newMidiMappings;
+    void removeMidiMapping(juce::String uuid){
+        midiCCmappings->removeMidiCCMappingWithUUID(uuid);
     }
     
     // ------------------------------------------------------------------------------------------------
@@ -557,6 +550,8 @@ private:
     // Sound properties
     juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> enabled;
+    
+    std::unique_ptr<MidiCCMappingList> midiCCmappings;
 
     // --> Start auto-generated code A
     juce::CachedValue<int> soundType;
@@ -595,9 +590,6 @@ private:
     juce::CachedValue<float> vel2CutoffAmt;
     juce::CachedValue<float> vel2GainAmt;
     // --> End auto-generated code A
-    
-    // MIDI mappings (this should be moved to state)
-    std::vector<MidiCCMapping> midiMappings = {};
     
     // Sound downloading
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;

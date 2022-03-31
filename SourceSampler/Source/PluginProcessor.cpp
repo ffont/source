@@ -831,22 +831,22 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 
     } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
         int soundIndex = parameters[0].getIntValue();
-        int randomID = parameters[1].getIntValue();
+        String uuid = parameters[1];
         int ccNumber = parameters[2].getIntValue();
         String parameterName = parameters[3];
         float minRange = parameters[4].getFloatValue();
         float maxRange = parameters[5].getFloatValue();
         auto* sound = sounds->getSoundAt(soundIndex);
         if (sound != nullptr){
-            sound->addOrEditMidiMapping(randomID, ccNumber, parameterName, minRange, maxRange);
+            sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
         }
 
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
         int soundIndex = parameters[0].getIntValue();
-        int randomID = parameters[1].getIntValue();
+        String uuid = parameters[1];
         auto* sound = sounds->getSoundAt(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
-            sound->removeMidiMapping(randomID);
+            sound->removeMidiMapping(uuid);
         }
 
     } else if (actionName == ACTION_SET_STATE_TIMER_HZ){

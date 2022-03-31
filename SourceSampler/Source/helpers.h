@@ -16,6 +16,18 @@
 #include "defines.h"
 #include "drow_ValueTreeObjectList.h"
 
+
+struct GlobalContextStruct {
+    double sampleRate = 0.0;
+    int samplesPerBlock = 0;
+    Synthesiser* sampler = nullptr;
+    File sourceDataLocation;
+    File soundsDownloadLocation;
+    File presetFilesLocation;
+    File tmpFilesLocation;
+};
+
+
 namespace Helpers
 {
 
@@ -120,6 +132,17 @@ namespace Helpers
         return soundAnalysis;
     }
 
+    inline juce::ValueTree createMidiMappingState(int ccNumber, String parameterName, float minRange, float maxRange)
+    {
+        juce::ValueTree mapping (IDs::MIDI_CC_MAPPING);
+        Helpers::createUuidProperty (mapping);
+        mapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
+        mapping.setProperty (IDs::parameterName, parameterName, nullptr);
+        mapping.setProperty (IDs::minRange, minRange, nullptr);
+        mapping.setProperty (IDs::maxRange, maxRange, nullptr);
+        return mapping;
+    }
+
     inline juce::ValueTree createDefaultState(int numSounds)
     {
         juce::ValueTree state = createEmptyState();
@@ -143,46 +166,68 @@ class MidiCCMapping
 {
 public:
     
-    MidiCCMapping(int _ccNumber, String _parameterName, float _minRange, float _maxRange){
-        randomID = juce::Random::getSystemRandom().nextInt (99999);
-        ccNumber = _ccNumber;
-        parameterName = _parameterName;
-        minRange = _minRange;
-        maxRange = _maxRange;
+    MidiCCMapping(const juce::ValueTree& _state): state(_state)
+    {
+        bindState();
+    }
+    
+    juce::ValueTree state;
+    void bindState ()
+    {
+        ccNumber.referTo(state, IDs::ccNumber, nullptr, Defaults::ccNumber);
+        minRange.referTo(state, IDs::minRange, nullptr, Defaults::minRange);
+        maxRange.referTo(state, IDs::maxRange, nullptr, Defaults::maxRange);
+        parameterName.referTo(state, IDs::parameterName, nullptr);
     }
     
     bool operator< (const MidiCCMapping &other) const {
-        if (ccNumber != other.ccNumber){
-            return ccNumber < other.ccNumber;
+        if (ccNumber.get() != other.ccNumber.get()){
+            return ccNumber.get() < other.ccNumber.get();
         } else {
-            return parameterName < other.parameterName;
+            return parameterName.get() < other.parameterName.get();
         }
     }
-    
-    ValueTree getState(){
-        ValueTree state = ValueTree(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING);
-        state.setProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_RANDOM_ID, randomID, nullptr);  // This number is serialized so the UI can use it, but when creating a new object a new random ID is generated
-        state.setProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NUMBER, ccNumber, nullptr);
-        state.setProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NAME, parameterName, nullptr);
-        state.setProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MIN, minRange, nullptr);
-        state.setProperty(STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MAX, maxRange, nullptr);
-        return state;
-    }
-    
-    int randomID;
-    int ccNumber;
-    String parameterName;
-    float minRange;
-    float maxRange;
+
+    juce::CachedValue<int> ccNumber;
+    juce::CachedValue<juce::String> parameterName;
+    juce::CachedValue<float> minRange;
+    juce::CachedValue<float> maxRange;    
 };
 
 
-struct GlobalContextStruct {
-    double sampleRate = 0.0;
-    int samplesPerBlock = 0;
-    Synthesiser* sampler = nullptr;
-    File sourceDataLocation;
-    File soundsDownloadLocation;
-    File presetFilesLocation;
-    File tmpFilesLocation;
+struct MidiCCMappingList: public drow::ValueTreeObjectList<MidiCCMapping>
+{
+    MidiCCMappingList (const juce::ValueTree& v): drow::ValueTreeObjectList<MidiCCMapping> (v)
+    {
+        rebuildObjects();
+    }
+
+    ~MidiCCMappingList()
+    {
+        freeObjects();
+    }
+
+    bool isSuitableType (const juce::ValueTree& v) const override
+    {
+        return v.hasType (IDs::MIDI_CC_MAPPING);
+    }
+
+    MidiCCMapping* createNewObject (const juce::ValueTree& v) override
+    {
+        return new MidiCCMapping (v);
+    }
+
+    void deleteObject (MidiCCMapping* s) override
+    {
+        delete s;
+    }
+
+    void newObjectAdded (MidiCCMapping* s) override    {}
+    void objectRemoved (MidiCCMapping*) override     {}
+    void objectOrderChanged() override       {}
+    
+    void removeMidiCCMappingWithUUID(juce::String uuid)
+    {
+        parent.removeChild(parent.getChildWithProperty(IDs::uuid, uuid), nullptr);
+    }
 };

@@ -250,6 +250,11 @@ inline float reverbWetLevel = 0.0f;
 inline float reverbDryLevel = 1.0f;
 inline float reverbWidth = 0.5f;
 inline float reverbFreezeMode = 0.0f;
+
+inline int randomID = -1;
+inline int ccNumber = -1;
+inline float minRange = 0.0;
+inline float maxRange = 127.0;
 }
 
 
@@ -260,6 +265,7 @@ namespace IDs
 DECLARE_ID (SOURCE_STATE)
 DECLARE_ID (PRESET)
 DECLARE_ID (SOUND)
+DECLARE_ID (MIDI_CC_MAPPING)
 DECLARE_ID (SOUND_SAMPLE)
 DECLARE_ID (ANALYSIS)
 
@@ -291,6 +297,12 @@ DECLARE_ID (reverbWetLevel)
 DECLARE_ID (reverbDryLevel)
 DECLARE_ID (reverbWidth)
 DECLARE_ID (reverbFreezeMode)
+
+DECLARE_ID (randomID)
+DECLARE_ID (ccNumber)
+DECLARE_ID (parameterName)
+DECLARE_ID (minRange)
+DECLARE_ID (maxRange)
 
 // --> Start auto-generated code B
 DECLARE_ID (soundType)
