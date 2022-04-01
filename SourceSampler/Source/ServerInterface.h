@@ -137,6 +137,7 @@ public:
     OSCServer oscServer;
     #endif
     String serializedAppState;
+    String serializedAppStateVolatile;
 };
 
 
@@ -206,6 +207,14 @@ void HTTPServer::run()
     server.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {
         if (interface != nullptr){
             res.set_content((interface->serializedAppState).toStdString(), "text/xml");
+        } else {
+            res.set_content("", "text/xml");
+        }
+    });
+    
+    server.Get("/update_state_volatile", [this](const httplib::Request &, httplib::Response &res) {
+        if (interface != nullptr){
+            res.set_content((interface->serializedAppStateVolatile).toStdString(), "text/xml");
         } else {
             res.set_content("", "text/xml");
         }

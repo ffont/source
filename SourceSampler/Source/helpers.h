@@ -43,6 +43,9 @@ namespace Helpers
         juce::ValueTree state (IDs::SOURCE_STATE);
         Helpers::createUuidProperty (state);
         state.setProperty (IDs::currentPresetIndex, Defaults::currentPresetIndex, nullptr);
+        state.setProperty (IDs::globalMidiInChannel, Defaults::globalMidiInChannel, nullptr);
+        state.setProperty (IDs::midiOutForwardsMidiIn, Defaults::midiOutForwardsMidiIn, nullptr);
+        state.setProperty (IDs::useOriginalFilesPreference, Defaults::useOriginalFilesPreference, nullptr);
         return state;
     }
 
@@ -52,6 +55,13 @@ namespace Helpers
         Helpers::createUuidProperty (preset);
         preset.setProperty (IDs::name, juce::Time::getCurrentTime().formatted("%Y%m%d") + " unnamed", nullptr);
         preset.setProperty (IDs::noteLayoutType, Defaults::noteLayoutType, nullptr);
+        preset.setProperty (IDs::numVoices, Defaults::numVoices, nullptr);
+        preset.setProperty (IDs::reverbDamping, Defaults::reverbDamping, nullptr);
+        preset.setProperty (IDs::reverbWetLevel, Defaults::reverbWetLevel, nullptr);
+        preset.setProperty (IDs::reverbDryLevel, Defaults::reverbDryLevel, nullptr);
+        preset.setProperty (IDs::reverbWidth, Defaults::reverbWidth, nullptr);
+        preset.setProperty (IDs::reverbFreezeMode, Defaults::reverbFreezeMode, nullptr);
+        preset.setProperty (IDs::reverbRoomSize, Defaults::reverbRoomSize, nullptr);
         return preset;
     }
 
@@ -144,20 +154,11 @@ namespace Helpers
         return mapping;
     }
 
-    inline juce::ValueTree createDefaultState(int numSounds)
+    inline juce::ValueTree createDefaultEmptyState()
     {
         juce::ValueTree state = createEmptyState();
         juce::ValueTree preset = createEmptyPresetState();
-    
-        for (int sn = 0; sn < numSounds; ++sn)
-        {
-            juce::ValueTree s = createEmptySourceSoundState("Sound " + juce::String (sn + 1));
-            juce::ValueTree ss = createSourceSampleSoundState("433328 - 1", 433328, "https://freesound.org/data/previews/433/433328_735175-hq.ogg");
-            s.addChild(ss, -1, nullptr);
-            preset.addChild (s, -1, nullptr);
-        }
         state.addChild (preset, -1, nullptr);
-
         return state;
     }
 }

@@ -65,25 +65,24 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     sampler.addActionListener(this);
     downloader.addActionListener(this);
     
-    // Load global settings and do extra configuration
-    loadGlobalPersistentStateFromFile();
-    
     // Start timer to collect state and pass it to the UI
     startTimerHz(STATE_UPDATE_HZ);
+    
+    // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
+    
+    // Load empty session to state
+    state = Helpers::createDefaultEmptyState();
+    
+    // Add state change listener and bind cached properties to state properties (including loaded sounds)
+    bindState();
+    
+    // Load global settings and do extra configuration
+    loadGlobalPersistentStateFromFile();
     
     // If on ELK build, start loading preset 0
     #if ELK_BUILD
     setCurrentProgram(latestLoadedPreset);
     #endif
-    
-    // NOTE: code below is for the VT refactor, things above willl most likely need to change as well...
-    
-    // Load empty session to state
-    int numSounds = 0;
-    state = Helpers::createDefaultState(numSounds);
-    
-    // Add state change listener and bind cached properties to state properties (including loaded sounds)
-    bindState();
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -101,9 +100,19 @@ void SourceSamplerAudioProcessor::bindState()
 {
     state.addListener(this);
     
-    currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr);
+    state.setProperty(IDs::sourceDataLocation, sourceDataLocation.getFullPathName(), nullptr);
+    state.setProperty(IDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
+    state.setProperty(IDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
+    state.setProperty(IDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
+    state.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);
+    
+    currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr, Defaults::currentPresetIndex);
+    globalMidiInChannel.referTo(state, IDs::globalMidiInChannel, nullptr, Defaults::globalMidiInChannel);
+    midiOutForwardsMidiIn.referTo(state, IDs::midiOutForwardsMidiIn, nullptr, Defaults::midiOutForwardsMidiIn);
+    useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
     
     ValueTree preset = state.getChildWithName(IDs::PRESET);
+    numVoices.referTo(preset, IDs::numVoices, nullptr, Defaults::numVoices);
     presetName.referTo(preset, IDs::name, nullptr);
     noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr, Defaults::noteLayoutType);
     reverbRoomSize.referTo(preset, IDs::reverbRoomSize, nullptr, Defaults::reverbRoomSize);
@@ -113,8 +122,7 @@ void SourceSamplerAudioProcessor::bindState()
     reverbWidth.referTo(preset, IDs::reverbWidth, nullptr, Defaults::reverbWidth);
     reverbFreezeMode.referTo(preset, IDs::reverbFreezeMode, nullptr, Defaults::reverbFreezeMode);
     
-    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET),
-                                               [this]{return getGlobalContext();});
+    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET), [this]{return getGlobalContext();});
 }
 
 GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
@@ -333,7 +341,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     lms.measureBlock (buffer);
     
     // Remove midi messages from buffer if these should not be forwarded
-    if (!midiOutForwardsMidiIn){
+    if (!midiOutForwardsMidiIn.get()){
         midiMessages.clear();
     }
     
@@ -361,14 +369,6 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 }
 
 //==============================================================================
-ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
-{
-    // TODO: remove all these state functions once transition to VT is done
-    juce::ValueTree stateToSend = state.getChildWithName(IDs::PRESET).createCopy();
-    stateToSend.setProperty(IDs::numVoices, sampler.getNumVoices(), nullptr);
-    return stateToSend;
-    
-}
 
 void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName, int index)
 {
@@ -426,13 +426,14 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _sta
     // Load new state informaiton to the state
     logToState("Loading state...");
     state.copyPropertiesAndChildrenFrom(_state, nullptr);
-    DBG(state.toXmlString());
     
     // Trigger bind state again to re-create sounds and the rest
     bindState();
     
     // Run some more actions needed to sync some parameters which are not automatically loaded from state
     updateReverbParameters();
+    sampler.setSamplerVoices(numVoices);
+    setMidiInChannelFilter(globalMidiInChannel);
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
@@ -454,26 +455,18 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     
 }
 
-ValueTree SourceSamplerAudioProcessor::collectGlobalSettingsStateInformation ()
-{
-    ValueTree settings = ValueTree(GLOBAL_PERSISTENT_STATE);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL, sampler.getMidiInChannel(), nullptr);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU, midiOutForwardsMidiIn, nullptr);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET, currentPresetIndex.get(), nullptr);
-    settings.setProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES, useOriginalFilesPreference, nullptr);
-    settings.setProperty(STATE_SOURCE_DATA_LOCATION, sourceDataLocation.getFullPathName(), nullptr);
-    settings.setProperty(STATE_SOUNDS_DATA_LOCATION, soundsDownloadLocation.getFullPathName(), nullptr);
-    settings.setProperty(STATE_PRESETS_DATA_LOCATION, presetFilesLocation.getFullPathName(), nullptr);
-    settings.setProperty(STATE_TMP_DATA_LOCATION, tmpFilesLocation.getFullPathName(), nullptr);
-    settings.setProperty(STATE_PLUGIN_VERSION, String(JucePlugin_VersionString), nullptr);
-    return settings;
-}
-
 void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
 {
     // This is to save settings that need to persist between sampler runs and that do not
     // change per preset
-    ValueTree settings = collectGlobalSettingsStateInformation();
+    
+    ValueTree settings = ValueTree(IDs::GLOBAL_SETTINGS);
+    settings.setProperty(IDs::globalMidiInChannel, globalMidiInChannel.get(), nullptr);
+    settings.setProperty(IDs::midiOutForwardsMidiIn, midiOutForwardsMidiIn.get(), nullptr);
+    settings.setProperty(IDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
+    settings.setProperty(IDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
+    settings.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);
+    
     std::unique_ptr<XmlElement> xml (settings.createXml());
     File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
@@ -491,23 +484,18 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
         std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             ValueTree settings = ValueTree::fromXml(*xmlState.get());
-            
-            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL)){
-                sampler.setMidiInChannel((int)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL));
+            if (settings.hasProperty(IDs::globalMidiInChannel)){
+                sampler.setMidiInChannel((int)settings.getProperty(IDs::globalMidiInChannel));
             }
-            
-            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU)){
-                midiOutForwardsMidiIn = (bool)settings.getProperty(GLOBAL_PERSISTENT_STATE_MIDI_THRU);
+            if (settings.hasProperty(IDs::midiOutForwardsMidiIn)){
+                midiOutForwardsMidiIn = (bool)settings.getProperty(IDs::midiOutForwardsMidiIn);
             }
-            
-            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET)){
-                latestLoadedPreset = (int)settings.getProperty(GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET);
+            if (settings.hasProperty(IDs::latestLoadedPresetIndex)){
+                latestLoadedPreset = (int)settings.getProperty(IDs::latestLoadedPresetIndex);
             }
-            
-            if (settings.hasProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES)){
-                useOriginalFilesPreference = settings.getProperty(GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES).toString();
+            if (settings.hasProperty(IDs::useOriginalFilesPreference)){
+                useOriginalFilesPreference = settings.getProperty(IDs::useOriginalFilesPreference).toString();
             }
-            
         }
     }
 }
@@ -531,14 +519,12 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 }
 
 ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
-    ValueTree state = ValueTree(STATE_VOLATILE_IDENTIFIER);
-    
-    state.setProperty(STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS, isQueryDownloadingAndLoadingSounds, nullptr);
-    
-    state.setProperty(STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT, midiMessagesPresentInLastStateReport, nullptr);
+    ValueTree state = ValueTree(IDs::VOLATILE_STATE);
+    state.setProperty(IDs::isQueryingAndDownloadingSounds, isQueryDownloadingAndLoadingSounds, nullptr);
+    state.setProperty(IDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
     midiMessagesPresentInLastStateReport = false;
-    state.setProperty(STATE_VOLATILE_LAST_MIDI_CC, lastReceivedMIDIControllerNumber, nullptr);
-    state.setProperty(STATE_VOLATILE_LAST_MIDI_NOE, lastReceivedMIDINoteNumber, nullptr);
+    state.setProperty(IDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
+    state.setProperty(IDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber, nullptr);
     
     String voiceActivations = "";
     String voiceSoundIdxs = "";
@@ -562,15 +548,15 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
         }
     }
     
-    state.setProperty(STATE_VOLATILE_VOICE_ACTIVATIONS, voiceActivations, nullptr);
-    state.setProperty(STATE_VOLATILE_VOICE_SOUND_IDXS, voiceSoundIdxs, nullptr);
-    state.setProperty(STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION, voiceSoundPlayPositions, nullptr);
+    state.setProperty(IDs::voiceActivations, voiceActivations, nullptr);
+    state.setProperty(IDs::voiceSoundIdxs, voiceSoundIdxs, nullptr);
+    state.setProperty(IDs::voiceSoundPlayPosition, voiceSoundPlayPositions, nullptr);
     
     String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
         audioLevels += (String)lms.getRMSLevel(i) + ",";
     }
-    state.setProperty(STATE_VOLATILE_AUDIO_LEVELS, audioLevels, nullptr);
+    state.setProperty(IDs::audioLevels, audioLevels, nullptr);
     return state;
 }
 
@@ -618,19 +604,6 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     stateAsStringParts.add(audioLevels);
     
     return stateAsStringParts.joinIntoString(";");
-}
-
-ValueTree SourceSamplerAudioProcessor::collectFullStateInformation(bool skipVolatile)
-{
-    ValueTree fullState = ValueTree(STATE_FULL_STATE);
-    fullState.appendChild(collectPresetStateInformation(), nullptr);
-    fullState.appendChild(collectGlobalSettingsStateInformation(), nullptr);
-    if (!skipVolatile){
-        fullState.appendChild(collectVolatileStateInformation(), nullptr);
-    }
-    fullState.setProperty(STATE_LOG_MESSAGES, recentLogMessagesSerialized, nullptr);
-    
-    return fullState;
 }
 
 void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, String stringData)
@@ -688,8 +661,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         String soundID = parameters[0];
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundID == soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()){
-                soundInfo.setProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS, 100, nullptr); // Set download progress to 100 to indicate download has finished
+            if (soundID == soundInfo.getProperty(IDs::soundId).toString()){
+                soundInfo.setProperty(IDs::downloadProgress, 100, nullptr); // Set download progress to 100 to indicate download has finished
                 
                 #if LOAD_SAMPLES_IN_THREAD
                     // Trigger loading of audio sample into the sampler in thread
@@ -736,13 +709,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int percentageDone = parameters[1].getIntValue();
         for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundID == soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()){
-                soundInfo.setProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS, percentageDone, nullptr); // Set download progress to 100 to indicate download has finished
+            if (soundID == soundInfo.getProperty(IDs::soundId).toString()){
+                soundInfo.setProperty(IDs::downloadProgress, percentageDone, nullptr); // Set download progress to 100 to indicate download has finished
             }
         }
         
     } else if (actionName == ACTION_NEW_QUERY){
-        // TODO: VT refactor
         String query = parameters[0];
         int numSounds = parameters[1].getIntValue();
         float minSoundLength = parameters[2].getFloatValue();
@@ -827,8 +799,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         addToMidiBuffer(soundUUID, true);
         
     } else if (actionName == ACTION_SET_POLYPHONY){
-        // TODO: VT refactor
-        int numVoices = parameters[0].getIntValue();
+        numVoices = parameters[0].getIntValue();
         sampler.setSamplerVoices(numVoices);
 
     } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
@@ -977,7 +948,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             #endif
             
         } else if (stateType == "full"){
-            sendStateToExternalServer(collectFullStateInformation(true), "");
+            sendStateToExternalServer(state, "");
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         String soundPath = parameters[0];
@@ -1003,7 +974,8 @@ void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
     } else if (channel > 16){
         channel = 16;
     }
-    sampler.setMidiInChannel(channel);
+    globalMidiInChannel = channel;
+    sampler.setMidiInChannel(globalMidiInChannel);
     saveGlobalPersistentStateToFile();
 }
 
@@ -1106,25 +1078,28 @@ bool SourceSamplerAudioProcessor::fileLocationIsSupportedAudioFileFormat(File lo
 
 File SourceSamplerAudioProcessor::getSoundPreviewLocation(ValueTree soundInfo)
 {
-    if (soundInfo.hasProperty(STATE_SOUND_INFO_ID)){
-        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString()).withFileExtension("ogg");
+    // TODO: vt refactor
+    if (soundInfo.hasProperty(IDs::soundId)){
+        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(IDs::soundId).toString()).withFileExtension("ogg");
     }
     return File();  // Return empty path
 }
 
 File SourceSamplerAudioProcessor::getSoundOriginalFileLocation(ValueTree soundInfo)
 {
-    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ".original." + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString());
+    // TODO: vt refactor
+    if (soundInfo.hasProperty(IDs::format)){
+        return soundsDownloadLocation.getChildFile(soundInfo.getProperty(IDs::soundId).toString() + ".original." + soundInfo.getProperty(IDs::format).toString());
     }
     return File();  // Return empty path
 }
 
 File SourceSamplerAudioProcessor::getSoundLocalPathLocation(ValueTree soundInfo)
 {
-    if (soundInfo.hasProperty(STATE_SOUND_INFO_LOCAL_FILE_PATH)){
+    // TODO: vt refactor
+    if (soundInfo.hasProperty(IDs::pathInDisk)){
         // This is for sounds loaded directly from SD card
-        return File(soundInfo.getProperty(STATE_SOUND_INFO_LOCAL_FILE_PATH).toString());
+        return File(soundInfo.getProperty(IDs::pathInDisk).toString());
     }
     return File();  // Return empty path
 }
@@ -1138,7 +1113,7 @@ File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo
         return localPath;
     }
     
-    if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+    if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ALWAYS){
         // Return path to original sound if sound has "type" property and the file at sonund_id.original.type exists
         // Otherwise the function will default to the preview file path
         File originalFilePath = getSoundOriginalFileLocation(soundInfo);
@@ -1147,13 +1122,13 @@ File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo
                 return originalFilePath;
             }
         }
-    } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+    } else if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ONLY_SHORT){
         
-        if (soundInfo.hasProperty(STATE_SOUND_INFO_SIZE)){
+        if (soundInfo.hasProperty(IDs::filesize)){
             // If sound has property "size", check if it is below the maximum allowed for original files and then
             // check if original file exists at sonund_id.original.type (like in the previous case)
             // Otherwise the function will default to the preview file path
-            if ((int)soundInfo.getProperty(STATE_SOUND_INFO_SIZE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+            if ((int)soundInfo.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
                 File originalFilePath = getSoundOriginalFileLocation(soundInfo);
                 if (originalFilePath.getFullPathName() != ""){
                     if (originalFilePath.exists() && originalFilePath.getSize() > 0){
@@ -1181,9 +1156,9 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
         if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundInfo.hasProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL)){
-                String soundID = soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
-                String preview_url = soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL);
+            if (soundInfo.hasProperty(IDs::previewURL)){
+                String soundID = soundInfo.getProperty(IDs::soundId).toString();
+                String preview_url = soundInfo.getProperty(IDs::previewURL);
                 soundTargetLocationsAndUrlsToDownload.push_back({soundsDownloadLocation, soundID, preview_url});
             } else {
                 // If sound does not have property STATE_SOUND_INFO_OGG_DOWNLOAD_URL, it means the
@@ -1218,7 +1193,7 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
         if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
             ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundInfo.hasProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL)){
+            if (soundInfo.hasProperty(IDs::previewURL)){
                 // If sound has property STATE_SOUND_INFO_OGG_DOWNLOAD_URL it means it is a Freesound sound
                 // First check if the sound has already been downloaded in the original or preview locations
                 // (which one to check for will depend on usage of original files preference).
@@ -1229,12 +1204,12 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
                 File previewFilePath = getSoundPreviewLocation(soundInfo);
                 File originalFilePath = getSoundOriginalFileLocation(soundInfo);
 
-                if (useOriginalFilesPreference == USE_ORIGINAL_FILES_NEVER){
+                if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_NEVER){
                     if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
                         soundAlreadyDownloaded = true;
                     }
                     
-                } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+                } else if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ALWAYS){
                     if (fileLocationIsSupportedAudioFileFormat(originalFilePath)){
                         if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
                             soundAlreadyDownloaded = true;
@@ -1246,10 +1221,10 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
                         }
                     }
                     
-                } else if (useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+                } else if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ONLY_SHORT){
                     
-                    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-                        if (((int)soundInfo.getProperty(STATE_SOUND_INFO_TYPE) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD) && (fileLocationIsSupportedAudioFileFormat(originalFilePath))){
+                    if (soundInfo.hasProperty(IDs::format)){
+                        if (((int)soundInfo.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD) && (fileLocationIsSupportedAudioFileFormat(originalFilePath))){
                             if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
                                 soundAlreadyDownloaded = true;
                             }
@@ -1263,23 +1238,23 @@ void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexF
                 }
                 
                 if (soundAlreadyDownloaded) {
-                    String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundInfo.getProperty(STATE_SOUND_INFO_ID).toString();
+                    String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundInfo.getProperty(IDs::soundId).toString();
                     actionListenerCallback(actionMessage);
                     nAlreadyDownloaded += 1;
                     
                 } else {
-                    if (soundInfo.hasProperty(STATE_SOUND_INFO_TYPE)){
-                        typesParam = typesParam + soundInfo.getProperty(STATE_SOUND_INFO_TYPE).toString() + ",";
+                    if (soundInfo.hasProperty(IDs::format)){
+                        typesParam = typesParam + soundInfo.getProperty(IDs::format).toString() + ",";
                     } else {
                         typesParam = typesParam + "not_available,";
                     }
-                    if (soundInfo.hasProperty(STATE_SOUND_INFO_SIZE)){
-                        sizesParam = sizesParam + soundInfo.getProperty(STATE_SOUND_INFO_SIZE).toString() + ",";
+                    if (soundInfo.hasProperty(IDs::filesize)){
+                        sizesParam = sizesParam + soundInfo.getProperty(IDs::filesize).toString() + ",";
                     } else {
                         sizesParam = sizesParam + "0,";
                     }
-                    oggUrlsParam = oggUrlsParam + soundInfo.getProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL).toString() + ",";
-                    idsParam = idsParam + soundInfo.getProperty(STATE_SOUND_INFO_ID).toString() + ",";
+                    oggUrlsParam = oggUrlsParam + soundInfo.getProperty(IDs::previewURL).toString() + ",";
+                    idsParam = idsParam + soundInfo.getProperty(IDs::soundId).toString() + ",";
                     nSentToDownload += 1;
                 }
                 
@@ -1333,7 +1308,7 @@ bool SourceSamplerAudioProcessor::allSoundsFinishedDownloading(){
     
     for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
         ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-        if ((int)soundInfo.getProperty(STATE_SOUND_INFO_DOWNLOAD_PROGRESS) != 100){
+        if ((int)soundInfo.getProperty(IDs::downloadProgress) != 100){
             return false;
         }
     }
@@ -1539,6 +1514,9 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
                                                                             int midiRootNote,
                                                                             const String& triggerDownloadSoundAction)
 {
+    // TODO: VT refactor
+    
+    /*
     ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
     soundInfo.setProperty(STATE_SOUND_INFO_ID, soundID, nullptr);
     soundInfo.setProperty(STATE_SOUND_INFO_NAME, soundName, nullptr);
@@ -1594,7 +1572,7 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int 
     } else {
         // Trigger download of only the added/replaced sound
         downloadSounds(false, newSoundIdx);
-    }
+    }*/
 }
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
@@ -1687,12 +1665,13 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
-    // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server
-    ValueTree fullState = collectFullStateInformation(false);
-    
+    // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server    
     #if ENABLE_EMBEDDED_HTTP_SERVER
-    fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
-    serverInterface.serializedAppState = fullState.toXmlString();
+    //fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
+    serverInterface.serializedAppState = state.toXmlString();
+    juce::ValueTree volatileState = collectVolatileStateInformation();
+    volatileState.setProperty(IDs::logMessages, recentLogMessagesSerialized, nullptr);
+    serverInterface.serializedAppStateVolatile = volatileState.toXmlString();
     #endif
     
     // NOTE: if using externall HTTP server (i.e. in ELK), we don't send state updates from a timer but only send
@@ -1795,7 +1774,7 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
-    DBG("Added VT child " << childWhichHasBeenAdded.toXmlString());
+    DBG("Added VT child " << childWhichHasBeenAdded.getType());
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
@@ -1803,7 +1782,7 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
-    DBG("Removed VT child " << childWhichHasBeenRemoved.toXmlString());
+    DBG("Removed VT child " << childWhichHasBeenRemoved.getType());
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildOrderChanged (juce::ValueTree& parentTree, int oldIndex, int newIndex)

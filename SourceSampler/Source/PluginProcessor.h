@@ -70,42 +70,36 @@ public:
     void setCurrentProgram (int index) override;
     const String getProgramName (int index) override;
     void changeProgramName (int index, const String& newName) override;
-    String getPresetFilenameByIndex(int index);
+    juce::String getPresetFilenameByIndex(int index);
     juce::CachedValue<int> currentPresetIndex;
     int latestLoadedPreset = 0; // Only used in ELK builds to re-load the last preset that was loaded (in previous runs included)
 
     //==============================================================================
-    ValueTree collectPresetStateInformation ();
     void getStateInformation (MemoryBlock& destData) override;
     void loadPresetFromStateInformation (ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
     void saveCurrentPresetToFile(const String& presetName, int index);
     bool loadPresetFromFile (const String& fileName);
     
-    ValueTree collectGlobalSettingsStateInformation ();
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
     
-    ValueTree collectVolatileStateInformation ();
-    String collectVolatileStateInformationAsString ();
-    
-    ValueTree collectFullStateInformation (bool skipVolatile);
-    void sendStateToExternalServer(ValueTree state, String stringData);
+    juce::ValueTree collectVolatileStateInformation ();
+    juce::String collectVolatileStateInformationAsString ();
+    void sendStateToExternalServer(juce::ValueTree state, juce::String stringData);
     
     //==============================================================================
-    void actionListenerCallback (const String &message) override;
+    void actionListenerCallback (const juce::String &message) override;
     
     //==============================================================================
-    File sourceDataLocation;
-    File soundsDownloadLocation;
-    File presetFilesLocation;
-    File tmpFilesLocation;
+    juce::File sourceDataLocation;
+    juce::File soundsDownloadLocation;
+    juce::File presetFilesLocation;
+    juce::File tmpFilesLocation;
     
-    String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
-    
-    File getPresetFilePath(const String& presetFilename);
-    String getPresetFilenameFromNameAndIndex(const String& presetName, int index);
-    File getGlobalSettingsFilePathFromName();
+    juce::File getPresetFilePath(const juce::String& presetFilename);
+    juce::String getPresetFilenameFromNameAndIndex(const juce::String& presetName, int index);
+    juce::File getGlobalSettingsFilePathFromName();
     
     //==============================================================================
     void setMidiInChannelFilter(int channel);
@@ -215,8 +209,13 @@ private:
     juce::OSCSender oscSender;  // Used to send state updates to glue app
     
     // Properties binded to state
+    juce::CachedValue<int> globalMidiInChannel;
+    juce::CachedValue<int> midiOutForwardsMidiIn;
+    juce::CachedValue<juce::String> useOriginalFilesPreference;
+    
     std::unique_ptr<SourceSoundList> sounds;
     juce::CachedValue<juce::String> presetName;
+    juce::CachedValue<int> numVoices;
     juce::CachedValue<int> noteLayoutType;
     juce::CachedValue<float> reverbRoomSize;
     juce::CachedValue<float> reverbDamping;
@@ -228,7 +227,6 @@ private:
     // Other volatile properties
     bool oscSenderIsConnected = false;
     MidiBuffer midiFromEditor;
-    bool midiOutForwardsMidiIn = true;
     int lastReceivedMIDIControllerNumber = -1;
     int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;

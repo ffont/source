@@ -115,89 +115,11 @@
 #define NOTE_MAPPING_TYPE_INTERLEAVED 1
 #define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
 
-#define STATE_FULL_STATE "SourceFullState"
-#define STATE_PLUGIN_VERSION "PluginVersion"
 
-#define STATE_PRESET_IDENTIFIER "SourcePresetState"
-#define STATE_SAMPLER "Sampler"
-#define STATE_PRESET_NAME "presetName"
-#define STATE_PRESET_NUMBER "presetNumber"
-#define STATE_PRESET_NUMVOICES "NumVoices"
-#define STATE_PRESET_NOTE_LAYOUT_TYPE "noteLayoutType"
-
-#define STATE_CURRENT_PORT "currentPort"
-#define STATE_LOG_MESSAGES "logMessages"
-#define STATE_SOURCE_DATA_LOCATION "sourceDataLocation"
-#define STATE_SOUNDS_DATA_LOCATION "soundsDataLocation"
-#define STATE_PRESETS_DATA_LOCATION "presetsDataLocation"
-#define STATE_TMP_DATA_LOCATION "tmpDataLocation"
-
-#define STATE_SOUNDS_INFO "soundsInfo"
-#define STATE_SOUND_INFO "soundInfo"
-#define STATE_SOUND_INFO_ID "soundId"
-#define STATE_SOUND_INFO_IDX "soundIdx"  // This is the id of the sound in the Sampler object, nothing to do with Freesound
-#define STATE_SOUND_INFO_NAME "soundName"
-#define STATE_SOUND_INFO_DOWNLOAD_PROGRESS "downloadProgress"
-#define STATE_SOUND_INFO_USER "soundUser"
-#define STATE_SOUND_INFO_DURATION "soundDurationInSeconds"  // Set when sound loaded in buffer, not before
-#define STATE_SOUND_INFO_LICENSE "soundLicense"
-#define STATE_SOUND_INFO_OGG_DOWNLOAD_URL "soundOGGURL"
-#define STATE_SOUND_INFO_LOCAL_FILE_PATH "soundLocalFilePath"
-#define STATE_SOUND_INFO_TYPE "soundType"
-#define STATE_SOUND_INFO_SIZE "soundSize"
-#define STATE_SOUND_FS_SOUND_ANALYSIS "fsAnalysis"
-#define STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS "onsets"
-#define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET "onset"
-#define STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME "time"
-#define STATE_SOUND_INFO_FS_ANALYSIS_ONSET_TIMES "fsAnalysisOnsetTimes"
-
-#define STATE_REVERB_PARAMETERS "ReverbParameters"
-#define STATE_REVERB_ROOMSIZE "reverb_roomSize"
-#define STATE_REVERB_DAMPING "reverb_damping"
-#define STATE_REVERB_WETLEVEL "reverb_wetLevel"
-#define STATE_REVERB_DRYLEVEL "reverb_dryLevel"
-#define STATE_REVERB_WIDTH "reverb_width"
-#define STATE_REVERB_FREEZEMODE "reverb_freezeMode"
-
-#define STATE_SAMPLER_SOUNDS "SamplerSounds"
-#define STATE_SAMPLER_NSOUNDS "nSounds"
-#define STATE_SAMPLER_SOUND "SamplerSound"
-#define STATE_SAMPLER_SOUND_PARAMETER "SamplerSoundParameter"
-#define STATE_SAMPLER_SOUND_PARAMETER_TYPE "parameter_type"
-#define STATE_SAMPLER_SOUND_PARAMETER_NAME "parameter_name"
-#define STATE_SAMPLER_SOUND_PARAMETER_VALUE "parameter_value"
-#define STATE_SAMPLER_SOUND_MIDI_NOTES "midiNotes"
-#define STATE_SAMPLER_SOUND_LOADED_PREVIEW "loadedPreviewVersion"
-
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING "SamplerSoundMidiCCMapping"
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_RANDOM_ID "midiMappingRandomId"
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NUMBER "midiMappingCcNumber"
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_NAME "midiMappingParameterName"
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MIN "midiMappingMinRange"
-#define STATE_SAMPLER_SOUND_MIDI_CC_MAPPING_MAX "midiMappingMaxRange"
-
-#define GLOBAL_PERSISTENT_STATE "GlobalSettings"
-#define GLOBAL_PERSISTENT_STATE_MIDI_IN_CHANNEL "midiInChannel"
-#define GLOBAL_PERSISTENT_STATE_MIDI_THRU "doMidiThru"
-#define GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING "presetMapping"
-#define GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_NUMBER "number"
-#define GLOBAL_PERSISTENT_STATE_PRESET_NUMBER_MAPPING_FILENAME "name"
-#define GLOBAL_PERSISTENT_STATE_LATEST_LOADED_PRESET "latestPreset"
-#define GLOBAL_PERSISTENT_STATE_USE_ORIGINAL_FILES "useOriginalFiles"
 
 #define USE_ORIGINAL_FILES_NEVER "never"
 #define USE_ORIGINAL_FILES_ONLY_SHORT "onlyShort"
 #define USE_ORIGINAL_FILES_ALWAYS "always"
-
-#define STATE_VOLATILE_IS_QUERYING_AND_DOWNLOADING_SOUNDS "isQueryingAndDownloadingSounds"
-#define STATE_VOLATILE_IDENTIFIER "VolatileState"
-#define STATE_VOLATILE_VOICE_ACTIVATIONS "voiceActivations"
-#define STATE_VOLATILE_VOICE_SOUND_IDXS "voiceSoundIdxs"
-#define STATE_VOLATILE_VOICE_SOUND_PLAY_POSITION "voiceSoundPlayPosition"
-#define STATE_VOLATILE_AUDIO_LEVELS "audioLevels"
-#define STATE_VOLATILE_LAST_MIDI_CC "lastMIDICCNumber"
-#define STATE_VOLATILE_LAST_MIDI_NOE "lastMIDINoteNumber"
-#define STATE_VOLATILE_MIDI_IN_LAST_STATE_REPORT "midiInLastStateReportBlock"
 
 #define SERIALIZATION_SEPARATOR ";"
 
@@ -205,6 +127,10 @@ namespace Defaults
 {
 inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
 inline int currentPresetIndex = -1;
+inline int globalMidiInChannel = 0;
+inline int numVoices = 8;
+inline bool midiOutForwardsMidiIn = false;
+inline juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
 
 // --> Start auto-generated code A
 inline int soundType = 0;
@@ -268,10 +194,13 @@ DECLARE_ID (SOUND)
 DECLARE_ID (MIDI_CC_MAPPING)
 DECLARE_ID (SOUND_SAMPLE)
 DECLARE_ID (ANALYSIS)
+DECLARE_ID (GLOBAL_SETTINGS)
+DECLARE_ID (VOLATILE_STATE)
 
 DECLARE_ID (filePath)
 DECLARE_ID (downloadProgress)
 DECLARE_ID (downloadCompleted)
+DECLARE_ID (logMessages)
 
 DECLARE_ID (uuid)
 DECLARE_ID (name)
@@ -280,6 +209,7 @@ DECLARE_ID (previewURL)
 DECLARE_ID (pathInDisk)
 DECLARE_ID (enabled)
 DECLARE_ID (currentPresetIndex)
+DECLARE_ID (latestLoadedPresetIndex)
 DECLARE_ID (noteLayoutType)
 DECLARE_ID (username)
 DECLARE_ID (license)
@@ -291,8 +221,17 @@ DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
 DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
+DECLARE_ID (midiOutForwardsMidiIn)
 
+DECLARE_ID (globalMidiInChannel)
 DECLARE_ID (numVoices)
+DECLARE_ID (useOriginalFilesPreference)
+
+DECLARE_ID (sourceDataLocation)
+DECLARE_ID (soundsDownloadLocation)
+DECLARE_ID (presetFilesLocation)
+DECLARE_ID (tmpFilesLocation)
+DECLARE_ID (pluginVersion)
 
 DECLARE_ID (reverbRoomSize)
 DECLARE_ID (reverbDamping)
@@ -344,6 +283,16 @@ DECLARE_ID (mod2PlayheadPos)
 DECLARE_ID (vel2CutoffAmt)
 DECLARE_ID (vel2GainAmt)
 // --> End auto-generated code B
+
+// Volatile state
+DECLARE_ID (isQueryingAndDownloadingSounds)
+DECLARE_ID (midiInLastStateReportBlock)
+DECLARE_ID (lastMIDICCNumber)
+DECLARE_ID (lastMIDINoteNumber)
+DECLARE_ID (voiceActivations)
+DECLARE_ID (voiceSoundIdxs)
+DECLARE_ID (voiceSoundPlayPosition)
+DECLARE_ID (audioLevels)
 
 #undef DECLARE_ID
 }

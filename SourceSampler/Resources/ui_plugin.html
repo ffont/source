@@ -214,10 +214,13 @@
         var updateStateTimer;
         var lastReceivedStateText;
         var lastReceivedStateXml;
-        var updateStateInterval = 100;
+        var updateStateInterval = 150;
+        
+        var updateVolatileStateTimer;
+        var updateVolatileStateInterval = 50;
 
         document.addEventListener("DOMContentLoaded", function () {
-            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls(-1);
+            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
             updateAllSliderLabels();
 
             startAutoUpdate();
@@ -227,10 +230,15 @@
             updateStateTimer = setInterval(function () {
                 updateState();
             }, updateStateInterval);
+            
+            updateVolatileStateTimer = setInterval(function () {
+                updateVolatileState();
+            }, updateVolatileStateInterval);
         }
 
         function stopAutoUpdate() {
             window.clearInterval(updateStateTimer);
+            window.clearInterval(updateVolatileStateTimer);
         }
 
         function updateAllSliderLabels(){
@@ -595,44 +603,15 @@
                 }
             }
         }
-
-        function syncUIWithState(xmlState){
+        
+        function syncUIWithVolatileState(xmlState){
+            var VolatileState = xmlState.getElementsByTagName('VOLATILE_STATE')[0];
             
-            var port = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('currentPort');
-            if (port != undefined){
-                if (document.getElementById("portIndicator").innerHTML != '(' + port + ')'){
-                    //document.getElementById("portIndicator").innerHTML = '(' + port + ')';
-                }
-            }
-            var logMessages = xmlState.getElementsByTagName('SourceFullState')[0].getAttribute('logMessages').split(';');
+            var logMessages = VolatileState.getAttribute('logMessages').split(';');
             document.getElementById("log").innerHTML = '';
             for (var i=0; i<logMessages.length; i++){
                 document.getElementById("log").innerHTML += logMessages[i] + '<br>';
             }
-            
-            var SourcePresetState = xmlState.getElementsByTagName('PRESET')[0];
-            var GlobalSettings = xmlState.getElementsByTagName('GlobalSettings')[0];
-            var OldStateSourcePresetState, OldStateGlobalSettings = undefined;
-            if (lastReceivedStateXml !== undefined){
-                OldStateSourcePresetState = lastReceivedStateXml.getElementsByTagName('SourcePresetState')[0];
-                OldStateGlobalSettings = lastReceivedStateXml.getElementsByTagName('GlobalSettings')[0];
-            }
-            
-            // Update main preset settings and global settings (only update if state has changed)
-            updateElementValueFromXmlStates(document.getElementsByName('presetIdx')[0], 'presetNumber', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'presetName', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiThru', GlobalSettings, OldStateGlobalSettings);
-            updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'midiInChannel', GlobalSettings, OldStateGlobalSettings);
-            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'NumVoices', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverbRoomSize', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverbDamping', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverbWetLevel', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverbDryLevel', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverbWidth', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverbFreezeMode', SourcePresetState, OldStateSourcePresetState);
-            
-            // Update volatile state
-            var VolatileState = xmlState.getElementsByTagName('VolatileState')[0];
 
             var voicesStateElement = document.getElementById('voicesState');
             var html = '<div class="voices">';
@@ -663,6 +642,31 @@
             }
             html += "</div>";
             metersStateElement.innerHTML = html;
+        }
+
+        function syncUIWithState(xmlState){
+            
+            var State = xmlState.getElementsByTagName('SOURCE_STATE')[0];
+            var SourcePresetState = xmlState.getElementsByTagName('PRESET')[0];
+            var OldStateSourcePresetState, OldState = undefined;
+            if (lastReceivedStateXml !== undefined){
+                OldStateSourcePresetState = lastReceivedStateXml.getElementsByTagName('PRESET')[0];
+                OldState = lastReceivedStateXml.getElementsByTagName('SOURCE_STATE')[0];
+            }
+            
+            // Update main preset settings and global settings (only update if state has changed)
+            updateElementValueFromXmlStates(document.getElementsByName('presetIdx')[0], 'currentPresetIndex', State, OldState);
+            updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'name', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiOutForwardsMidiIn', State, OldState);
+            updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'globalMidiInChannel', State, OldState);
+            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'numVoices', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverbRoomSize', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverbDamping', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverbWetLevel', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverbDryLevel', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverbWidth', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverbFreezeMode', SourcePresetState, OldStateSourcePresetState);
+
  
             // Update individual sound editors
 
@@ -798,6 +802,20 @@
                 }
             };
             xhr.open('GET', '/update_state', true);
+            xhr.send();
+        }
+        
+        function updateVolatileState(){
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState != 4) return;
+                if (this.status == 200) {
+                    if (this.responseXML != undefined){
+                        syncUIWithVolatileState(this.responseXML);
+                    }
+                }
+            };
+            xhr.open('GET', '/update_state_volatile', true);
             xhr.send();
         }
         
