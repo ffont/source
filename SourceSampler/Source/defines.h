@@ -45,7 +45,7 @@
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 #define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
 
-#define MAX_SAMPLE_LENGTH 300
+#define MAX_SAMPLE_LENGTH 300  // minutes maximum sample length
 
 #define ACONNECT_MIDI_INTERFACE_ID 16
 #define ACONNECT_SUSHI_ID 128
