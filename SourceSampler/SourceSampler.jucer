@@ -14,7 +14,6 @@
       <FILE id="wHELQH" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
-      <FILE id="IeSbhf" name="Downloader.h" compile="0" resource="0" file="Source/Downloader.h"/>
       <FILE id="wRsXOS" name="ServerInterface.h" compile="0" resource="0"
             file="Source/ServerInterface.h"/>
       <FILE id="NeAMrM" name="PluginProcessor.cpp" compile="1" resource="0"

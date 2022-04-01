@@ -382,8 +382,8 @@
             sendOsc('/stop_sound', [soundUUID], 'str')
         }
                                        
-        function removeSound(soundIdx){
-            sendOsc('/remove_sound', [soundIdx], 'int')
+        function removeSound(soundUUID){
+            sendOsc('/remove_sound', [soundUUID], 'str')
         }
 
         function savePreset(){

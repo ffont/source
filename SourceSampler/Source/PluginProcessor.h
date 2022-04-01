@@ -16,7 +16,6 @@
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
-#include "Downloader.h"
 #include "LevelMeterSource.h"
 #include "defines.h"
 
@@ -139,38 +138,16 @@ public:
     File getSoundOriginalFileLocation(ValueTree sound);
     File getSoundLocalPathLocation(ValueTree sound);
     File getSoundFileLocationToLoad(ValueTree sound);
-    void downloadSounds(bool blocking, int soundIndexFilter);
-    bool allSoundsFinishedDownloading();
     
-    class SampleLoaderThread : private Thread
-    {
-    public:
-        SampleLoaderThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
-        
-        void setSoundToLoad(int _soundIdx){
-            soundIdx = _soundIdx;
-        }
-        
-        void run() override
-        {
-            // NOTE: commented for testing purposes
-            //processor.setSingleSourceSamplerSoundObject(soundIdx);
-        }
-        SourceSamplerAudioProcessor& processor;
-        int soundIdx;
-    };
-    SampleLoaderThread sampleLoaderThread;
-    void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
-    void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
-    int addOrReplaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Add or replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
-    void addOrReplaceSoundFromBasicSoundProperties(int soundIdx,
+    void removeSound(const juce::String& soundUUID);
+    void addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
                                                    int soundID,
                                                    const String& soundName,
                                                    const String& soundUser,
                                                    const String& soundLicense,
                                                    const String& oggDownloadURL,
                                                    const String& localFilePath,
-                                                   const String& type,
+                                                   const String& format,
                                                    int sizeBytes,
                                                    StringArray slices,
                                                    BigInteger midiNotes,
@@ -205,7 +182,6 @@ private:
     SourceSamplerSynthesiser sampler;
     ServerInterface serverInterface;
     foleys::LevelMeterSource lms;  // Object to measure audio output levels
-    Downloader downloader; // Object to download sounds in the background (or synchrounously)
     juce::OSCSender oscSender;  // Used to send state updates to glue app
     
     // Properties binded to state

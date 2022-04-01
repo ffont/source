@@ -36,6 +36,9 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
         // Add duration to state
         state.setProperty(IDs::duration, getLengthInSeconds(), nullptr);
     }
+    
+    // Load calculated onsets (if any)
+    loadOnsetTimesSamplesFromAnalysis();
 }
 
 SourceSamplerSound::~SourceSamplerSound()
@@ -119,4 +122,20 @@ void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 
 std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
     return onsetTimesSamples;
+}
+
+void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
+    ValueTree soundAnalysis = state.getChildWithName(IDs::ANALYSIS);
+    if (soundAnalysis.isValid()){
+        ValueTree onsetTimes = soundAnalysis.getChildWithName(IDs::onsets);
+        if (onsetTimes.isValid()){
+            std::vector<float> onsets = {};
+            for (int i=0; i<onsetTimes.getNumChildren(); i++){
+                ValueTree onsetVT = onsetTimes.getChild(i);
+                float onset = (float)(onsetVT.getProperty(IDs::onsetTime));
+                onsets.push_back(onset);
+            }
+            setOnsetTimesSamples(onsets);
+        }
+    }
 }

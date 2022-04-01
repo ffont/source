@@ -90,7 +90,6 @@
 		129B2FA0A9E3ECEE9589F0CA /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		13136607F9291DD5C2F82BAE /* defines.h */ /* defines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = defines.h; path = ../../Source/defines.h; sourceTree = SOURCE_ROOT; };
 		160F33129C21F39682D768BC /* Info-AU.plist */ /* Info-AU.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-AU.plist"; path = "Info-AU.plist"; sourceTree = SOURCE_ROOT; };
-		180ED24B9D53FD74026E0D8A /* Downloader.h */ /* Downloader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Downloader.h; path = ../../Source/Downloader.h; sourceTree = SOURCE_ROOT; };
 		1D60E7D5B1EF58ED10B71F7D /* xenomai_stubs.h */ /* xenomai_stubs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xenomai_stubs.h; path = ../../3rdParty/twine/src/xenomai_stubs.h; sourceTree = SOURCE_ROOT; };
 		1DEE04B05B79DF8EA3A9E5DD /* include_juce_dsp.mm */ /* include_juce_dsp.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_dsp.mm; path = ../../JuceLibraryCode/include_juce_dsp.mm; sourceTree = SOURCE_ROOT; };
 		231731DB1E7A71CF246DF02C /* SourceSamplerSynthesiser.h */ /* SourceSamplerSynthesiser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SourceSamplerSynthesiser.h; path = ../../Source/SourceSamplerSynthesiser.h; sourceTree = SOURCE_ROOT; };
@@ -444,7 +443,6 @@
 				F8908F9ECA7D95B6AE630FEE,
 				3CAABA94EAA743182819A1D8,
 				F913441AFAB33F45033E472D,
-				180ED24B9D53FD74026E0D8A,
 				372BAC76C5A8F2B77569BB78,
 				0093CD2C1A4C423E37B299BC,
 				042B13F5D6A591E5AA8E1FF6,

@@ -26,7 +26,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                        .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
                        ),
-    sampleLoaderThread (*this),
     queryMakerThread (*this)
 #endif
 {
@@ -63,7 +62,6 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // Action listeners
     serverInterface.addActionListener(this);
     sampler.addActionListener(this);
-    downloader.addActionListener(this);
     
     // Start timer to collect state and pass it to the UI
     startTimerHz(STATE_UPDATE_HZ);
@@ -93,7 +91,6 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
     // Remove listeners
     serverInterface.removeActionListener(this);
     sampler.removeActionListener(this);
-    downloader.removeActionListener(this);
 }
 
 void SourceSamplerAudioProcessor::bindState()
@@ -657,62 +654,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     
     if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
         // TODO: VT refactor
-        // A sound has finished downloading, trigger loading into sampler
-        String soundID = parameters[0];
-        for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundID == soundInfo.getProperty(IDs::soundId).toString()){
-                soundInfo.setProperty(IDs::downloadProgress, 100, nullptr); // Set download progress to 100 to indicate download has finished
-                
-                #if LOAD_SAMPLES_IN_THREAD
-                    // Trigger loading of audio sample into the sampler in thread
-                    sampleLoaderThread.setSoundToLoad(i);
-                    sampleLoaderThread.run();
-                #else
-                    // Trigger loading of audio sample into the sampler
-                    // NOTE: commented for testing purposes
-                    //setSingleSourceSamplerSoundObject(i);
-                #endif
-            }
-        }
-        
-        if (allSoundsFinishedDownloading()){
-            isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
-        }
+        // Used when sound finished downloading
+       
         
     } else if (actionName == ACTION_SOUND_READY_TO_LOAD){
         // TODO: VT refactor
-        // A sound can be loaded because the local file already exists
-        // NOTE: for sounds that come from Freesound, we call ACTION_FINISHED_DOWNLOADING_SOUND even if
-        // the sound is already downloaded from previous uses. ACTION_FINISHED_DOWNLOADING_SOUND will also
-        // load the sound in the sampler just like ACTION_SOUND_READY_TO_LOAD
+        // Used when sound was already in disk
         
-        int soundIndex = parameters[0].getIntValue();
-        #if LOAD_SAMPLES_IN_THREAD
-            // Trigger loading of audio sample into the sampler in thread
-            sampleLoaderThread.setSoundToLoad(soundIndex);
-            sampleLoaderThread.run();
-        #else
-            // Trigger loading of audio sample into the sampler
-            // NOTE: commented for testing purposes
-            // setSingleSourceSamplerSoundObject(soundIndex);
-        #endif
-        
-        if (allSoundsFinishedDownloading()){
-            isQueryDownloadingAndLoadingSounds = false;  // Set flag to false because we finished downloading and loading sounds
-        }
         
     } else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
-        // A sound has finished downloading, trigger loading into sampler
         // TODO: VT refactor
-        String soundID = parameters[0];
-        int percentageDone = parameters[1].getIntValue();
-        for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundID == soundInfo.getProperty(IDs::soundId).toString()){
-                soundInfo.setProperty(IDs::downloadProgress, percentageDone, nullptr); // Set download progress to 100 to indicate download has finished
-            }
-        }
+        // Used to update downloading progress
         
     } else if (actionName == ACTION_NEW_QUERY){
         String query = parameters[0];
@@ -828,13 +780,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         startTimerHz(newHz);
         
     } else if (actionName == ACTION_REMOVE_SOUND){
-        // TODO: VT refactor
-        int soundIndex = parameters[0].getIntValue();
-        removeSound(soundIndex);
+        juce::String soundUUID = parameters[0];
+        removeSound(soundUUID);
         
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
-        // TODO: VT refactor
-        int soundIndex = parameters[0].getIntValue();
+        juce::String soundUUID = parameters[0];
         int soundID = parameters[1].getIntValue();
         String soundName = parameters[2];
         String soundUser = parameters[3];
@@ -856,7 +806,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         int midiRootNote = parameters[11].getIntValue();
         String triggerDownloadSoundAction = parameters[12];
         
-        addOrReplaceSoundFromBasicSoundProperties(soundIndex, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
+        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
         
     } else if (actionName == ACTION_REAPPLY_LAYOUT){
         // TODO: VT refactor
@@ -1022,19 +972,8 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         
         for (int i=0; i<nSounds; i++){
             FSSound sound = soundsFound[i];
-            juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState(sound.name);
-            sourceSound.setProperty(IDs::soundId, sound.id, nullptr);
-            sourceSound.setProperty (IDs::username, sound.user, nullptr);
-            sourceSound.setProperty(IDs::license, sound.license, nullptr);
-            sourceSound.setProperty(IDs::previewURL, sound.getOGGPreviewURL().toString(false), nullptr);
-            sourceSound.setProperty(IDs::format, sound.format, nullptr);
-            sourceSound.setProperty(IDs::filesize, sound.filesize, nullptr);
             
-            juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(sourceSound.getProperty(IDs::soundId).toString() + " - 1", (int)sourceSound.getProperty(IDs::soundId), sourceSound.getProperty(IDs::previewURL).toString());
-            juce::ValueTree soundAnalysis = Helpers::createAnalysisFromFreesoundAnalysis(sound.analysis);
-            sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
-            
-            // Calcualte note layout stuff
+            // Calculate assigned notes
             int midiRootNote;
             BigInteger midiNotes;
             if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
@@ -1051,13 +990,9 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
                     midiNotes.setBit(i);  // Map notes in downwards direction
                 }
             }
-            sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
-            sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
             
-
-            // Add the source sampler sound to source sound, and source sound to the state
-            sourceSound.addChild(sourceSamplerSound, -1, nullptr);
-            presetState.addChild(sourceSound, -1, nullptr);
+            // Create sound
+            addOrReplaceSoundFromBasicSoundProperties("", sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, {}, midiNotes, midiRootNote, "");
         }
          
     } else {
@@ -1097,9 +1032,9 @@ File SourceSamplerAudioProcessor::getSoundOriginalFileLocation(ValueTree soundIn
 File SourceSamplerAudioProcessor::getSoundLocalPathLocation(ValueTree soundInfo)
 {
     // TODO: vt refactor
-    if (soundInfo.hasProperty(IDs::pathInDisk)){
+    if (soundInfo.hasProperty(IDs::filePath)){
         // This is for sounds loaded directly from SD card
-        return File(soundInfo.getProperty(IDs::pathInDisk).toString());
+        return File(soundInfo.getProperty(IDs::filePath).toString());
     }
     return File();  // Return empty path
 }
@@ -1142,437 +1077,72 @@ File SourceSamplerAudioProcessor::getSoundFileLocationToLoad(ValueTree soundInfo
     return getSoundPreviewLocation(soundInfo);
 }
 
-void SourceSamplerAudioProcessor::downloadSounds (bool blocking, int soundIndexFilter)
+void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
 {
-    // NOTE: blocking only has effect in non-elk situation
-    
-    #if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
-    
-    // Download the sounds within the plugin
-    // NOTE that when downloading in the plugin, only using previews is supported so
-    // we make no check about useOriginalFilesPreference
-    
-    std::vector<std::tuple<File, String, String>> soundTargetLocationsAndUrlsToDownload = {};
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
-            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundInfo.hasProperty(IDs::previewURL)){
-                String soundID = soundInfo.getProperty(IDs::soundId).toString();
-                String preview_url = soundInfo.getProperty(IDs::previewURL);
-                soundTargetLocationsAndUrlsToDownload.push_back({soundsDownloadLocation, soundID, preview_url});
-            } else {
-                // If sound does not have property STATE_SOUND_INFO_OGG_DOWNLOAD_URL, it means the
-                // sound does not come from Freesound and therefore should not be downloaded
-                // Trigger directly an action to indicate that the sound is ready to be loaded
-                String actionMessage = String(ACTION_SOUND_READY_TO_LOAD) + ":" + (String)i;
-                actionListenerCallback(actionMessage);
-            }
-        }
-    }
-    
-    // Download the sounds (if not already downloaded)
-    logToState("Downloading new sounds...");
-    downloader.setSoundsToDownload(soundTargetLocationsAndUrlsToDownload);
-    if (!blocking){
-        downloader.startThread(0);
-    } else {
-        downloader.downloadAllSounds();
-    }
-        
-    #else
-    
-    URL url;
-    url = URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds");
-    String oggUrlsParam = "";
-    String typesParam = "";
-    String idsParam = "";
-    String sizesParam = "";
-    int nSentToDownload = 0;
-    int nAlreadyDownloaded = 0;
-    int nLocalSounds = 0;
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        if ((soundIndexFilter == -1) || (soundIndexFilter == i)){
-            ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-            if (soundInfo.hasProperty(IDs::previewURL)){
-                // If sound has property STATE_SOUND_INFO_OGG_DOWNLOAD_URL it means it is a Freesound sound
-                // First check if the sound has already been downloaded in the original or preview locations
-                // (which one to check for will depend on usage of original files preference).
-                // If sounds have already been downloaded, trigger ACTION_FINISHED_DOWNLOADING_SOUND directly, otherwise
-                // send request to server to download sounds
-                
-                bool soundAlreadyDownloaded = false;
-                File previewFilePath = getSoundPreviewLocation(soundInfo);
-                File originalFilePath = getSoundOriginalFileLocation(soundInfo);
-
-                if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_NEVER){
-                    if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
-                        soundAlreadyDownloaded = true;
-                    }
-                    
-                } else if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ALWAYS){
-                    if (fileLocationIsSupportedAudioFileFormat(originalFilePath)){
-                        if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
-                            soundAlreadyDownloaded = true;
-                        }
-                    } else {
-                        // If we want original file but original file format is not supported, check for preview
-                        if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
-                            soundAlreadyDownloaded = true;
-                        }
-                    }
-                    
-                } else if (useOriginalFilesPreference.get() == USE_ORIGINAL_FILES_ONLY_SHORT){
-                    
-                    if (soundInfo.hasProperty(IDs::format)){
-                        if (((int)soundInfo.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD) && (fileLocationIsSupportedAudioFileFormat(originalFilePath))){
-                            if (originalFilePath.exists() && originalFilePath.getSize() > 0) {
-                                soundAlreadyDownloaded = true;
-                            }
-                        } else {
-                            // If original file is too big or file format is not supported, check for preview
-                            if (previewFilePath.exists() && previewFilePath.getSize() > 0) {
-                                soundAlreadyDownloaded = true;
-                            }
-                        }
-                    }
-                }
-                
-                if (soundAlreadyDownloaded) {
-                    String actionMessage = String(ACTION_FINISHED_DOWNLOADING_SOUND) + ":" + soundInfo.getProperty(IDs::soundId).toString();
-                    actionListenerCallback(actionMessage);
-                    nAlreadyDownloaded += 1;
-                    
-                } else {
-                    if (soundInfo.hasProperty(IDs::format)){
-                        typesParam = typesParam + soundInfo.getProperty(IDs::format).toString() + ",";
-                    } else {
-                        typesParam = typesParam + "not_available,";
-                    }
-                    if (soundInfo.hasProperty(IDs::filesize)){
-                        sizesParam = sizesParam + soundInfo.getProperty(IDs::filesize).toString() + ",";
-                    } else {
-                        sizesParam = sizesParam + "0,";
-                    }
-                    oggUrlsParam = oggUrlsParam + soundInfo.getProperty(IDs::previewURL).toString() + ",";
-                    idsParam = idsParam + soundInfo.getProperty(IDs::soundId).toString() + ",";
-                    nSentToDownload += 1;
-                }
-                
-                
-            } else {
-                
-                // If sound does not have property STATE_SOUND_INFO_OGG_DOWNLOAD_URL, it means the
-                // sound does not come from Freesound and therefore should not be downloaded
-                // Trigger directly an action to indicate that the sound is ready to be loaded
-                String actionMessage = String(ACTION_SOUND_READY_TO_LOAD) + ":" + (String)i;
-                actionListenerCallback(actionMessage);
-                nLocalSounds += 1;
-            }
-        }
-    }
-    url = url.withParameter("oggUrls", oggUrlsParam);
-    url = url.withParameter("ids", idsParam);
-    url = url.withParameter("types", typesParam);
-    url = url.withParameter("sizes", sizesParam);
-    url = url.withParameter("location", soundsDownloadLocation.getFullPathName());
-    
-    logToState("Downloading sounds...");
-    logToState("- " + (String)nSentToDownload + " sounds sent to python server for downloading");
-    logToState("- " + (String)nAlreadyDownloaded + " already downloaded and should not be downloaded");
-    logToState("- " + (String)nLocalSounds + " sounds are local and should not be downloaded");
-    
-    if (nSentToDownload > 0){
-        String header;
-        int statusCode = -1;
-        StringPairArray responseHeaders;
-        String data = "";
-        if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-        bool postLikeRequest = false;
-        
-        if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-            &responseHeaders, &statusCode)))
-        {
-            //Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
-            String resp = stream->readEntireStreamAsString();
-            logToState("Python server download response with " + (String)statusCode + ": " + resp);
-        } else {
-            logToState("Python server error downloading!");
-        }
-    }
-    #endif
+    sounds->removeSoundWithUUID(soundUUID);
 }
 
-
-bool SourceSamplerAudioProcessor::allSoundsFinishedDownloading(){
-    
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        ValueTree soundInfo = loadedSoundsInfo.getChild(i);
-        if ((int)soundInfo.getProperty(IDs::downloadProgress) != 100){
-            return false;
-        }
-    }
-    return true;
-}
-
-void SourceSamplerAudioProcessor::setSingleSourceSamplerSoundObject(int soundIdx)
-{
-    // TODO: reimplement with new VT structure (probably does not need to be reimplemented or only partially)
-    
-    /*
-    // Clear existing sound for this soundIdx in sampler (if any)
-    sampler.clearSourceSamplerSoundByIdx(soundIdx);
-    
-    int nSounds = loadedSoundsInfo.getNumChildren();
-    int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
-    
-    ValueTree soundInfo = loadedSoundsInfo.getChild(soundIdx);
-    File audioSample = getSoundFileLocationToLoad(soundInfo);  // Get location of file to download. If original freesound is preset, take preference
-    if (audioSample.exists() && audioSample.getSize() > 0){  // Check that file exists and is not empty
-        logToState("- Adding sound " + audioSample.getFullPathName());
-        
-        // 1) Create SourceSamplerSound object and add to sampler
-        std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
-        bool loadingPreviewVersion = audioSample.getFullPathName().indexOf("original") == -1;
-        SourceSamplerSound* justAddedSound = static_cast<SourceSamplerSound*>(sampler.addSound(new SourceSamplerSound(ValueTree(), nullptr, *reader, loadingPreviewVersion, MAX_SAMPLE_LENGTH, getSampleRate(), getBlockSize()))); // Create sound (this sets idx property in the sound)
-        
-        // Pass onset times to the just added sound (if info is preset in Freesound analysis)
-        ValueTree soundAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
-        if (soundAnalysis.isValid()){
-            ValueTree onsetTimes = soundAnalysis.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
-            if (onsetTimes.isValid()){
-                std::vector<float> onsets = {};
-                for (int i=0; i<onsetTimes.getNumChildren(); i++){
-                    ValueTree onsetVT = onsetTimes.getChild(i);
-                    float onset = (float)(onsetVT.getProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME));
-                    onsets.push_back(onset);
-                }
-                justAddedSound->setOnsetTimesSamples(onsets);
-                logToState("    ...with analysis info of " + (String)onsets.size() + " onsets");
-            }
-        }
-        
-        // Add duration information to loadedSoundsInfo ValueTree (we do it here because this is a reliable value which also takes into account MAX_SAMPLE_LENGTH)
-        soundInfo.setProperty(STATE_SOUND_INFO_DURATION, justAddedSound->getLengthInSeconds(), nullptr);
-        
-        // 2) Load sound parameters to sampler
-        
-        // Get ValueTree with note parameters. If none in the preset data, create an empty one.
-        ValueTree samplerSoundParameters = soundInfo.getChildWithName(STATE_SAMPLER_SOUND);
-        if (!samplerSoundParameters.isValid()){ samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND); }
-        
-        // Check if midiRootNote is in the provided sound parameters, if not, add it with an appropriate value
-        int midiRootNote = -1;
-        for (int j=0; j<samplerSoundParameters.getNumChildren();j++){
-            if (samplerSoundParameters.getChild(j).getProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME).toString() == "midiRootNote"){
-                midiRootNote = (int)samplerSoundParameters.getChild(j).getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-            }
-        }
-        if (midiRootNote == -1){
-            // root note was not found on sound propperties, generate considering the note mapping type
-            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-                // Set midi root note to the center of the assigned range
-                samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, soundIdx * nNotesPerSound + nNotesPerSound / 2, nullptr),
-                    nullptr);
-            } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
-                // Set midi root note starting at C2 (midi note=36)
-                samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                    .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx, nullptr),
-                    nullptr);
-            }
-        }
-        
-        // Check if midiNotes is in the provided sound sampelr state, if not, add it with an appropriate value
-        if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
-            BigInteger midiNotes;
-            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-                // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
-                midiNotes.setRange(soundIdx * nNotesPerSound, nNotesPerSound, true);
-            } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
-                // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound.
-                int rootNoteForSound = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIdx;
-                for (int i=rootNoteForSound; i<128; i=i+nSounds){
-                    midiNotes.setBit(i);  // Map notes in upwards direction
-                }
-                for (int i=rootNoteForSound; i>=0; i=i-nSounds){
-                    midiNotes.setBit(i);  // Map notes in downwards direction
-                }
-            }
-            samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
-        }
-        
-        // Now to load all parameters to the sound
-        justAddedSound->loadState(samplerSoundParameters);
-    } else {
-        logToState("- Skipping sound in index " + (String)soundIdx + " (no file found or file is empty)");
-    }
-     */
-}
-
-
-void SourceSamplerAudioProcessor::removeSound(int soundIndex)
-{
-    // TODO: reimplement with new VT structure
-    
-    /*
-    // Clear existing sound for this soundIdx in sampler (if any)
-    sampler.clearSourceSamplerSoundByIdx(soundIndex);
-    
-    // Update "loadedSoundsInfo" to remove this element and, at the same time, update the "idx" in SamplerSound objects to be in sync with new "loadedSoundsInfo"
-    ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
-    for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-        if (i != soundIndex){
-            newLoadedSoundsInfo.appendChild(loadedSoundsInfo.getChild(i).createCopy(), nullptr);
-            if (i >= soundIndex){
-                // In this case the sound will have moved one position down in the new list of "loadedSoundsInfo", so idx in the sampler should be updated
-                auto* sound = sampler.getSourceSamplerSoundByIdx(i);
-                if (sound != nullptr){
-                    //sound->setIdx(sound->getSourceSound()->getIdx() - 1);
-                }
-            }
-        } else {
-            // Do nothing here, don't add the sound we are removing to new "loadedSoundsInfo" and also don't update the index of the sound in the sampler because it was already removed
-        }
-    }
-    loadedSoundsInfo = newLoadedSoundsInfo;
-    */
-}
-
-int SourceSamplerAudioProcessor::addOrReplaceSoundFromSoundInfoValueTree(int soundIndex, ValueTree newSoundInfo)
-{
-    // TODO: reimplement with new VT structure
-    
-    /*
-    bool replacing = soundIndex > -1;  // If sound index > -1, we are replacing a sound, otherwise we're adding a new one
-    
-    if (replacing){
-        // If replacing an existing sound, first we need to remove it from the sampelr, then update "loadedSoundsInfo" with the info from the new sound (and copying note assignment and midi root note information from the old sound if the new is not carrying it), and the trigger download of the new sound
-        
-        // Clear existing sound for this soundIdx in sampler (if any)
-        sampler.clearSourceSamplerSoundByIdx(soundIndex);
-        
-        // Replace the corresponding position of the loadedSoundsInfo ValueTree with the new sound
-        ValueTree newLoadedSoundsInfo = ValueTree(STATE_SOUNDS_INFO);
-        for (int i=0; i<loadedSoundsInfo.getNumChildren(); i++){
-            if (i == soundIndex){
-                // Check if newSoundInfo has sotred sound sampler parameters, if not, create an empty value tree for them
-                ValueTree samplerSoundParameters = newSoundInfo.getChildWithName(STATE_SAMPLER_SOUND);
-                if (!samplerSoundParameters.isValid()){ samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND); }
-                
-                // If sampler sound parameters have no MIDI notes assigned, copy them form the sound we are replacing
-                if (!samplerSoundParameters.hasProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)){
-                    ValueTree existingSoundInfo = loadedSoundsInfo.getChild(i);
-                    samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES,
-                                                       existingSoundInfo.getChildWithName(STATE_SAMPLER_SOUND).getProperty(STATE_SAMPLER_SOUND_MIDI_NOTES)
-                                                       , nullptr);
-                }
-                
-                // If samplerSoundParameters have no midiRootNote sound parameter set, copy it from the existing sound
-                ValueTree midiRootNoteParameterVT = samplerSoundParameters.getChildWithProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote");
-                if (midiRootNoteParameterVT.isValid()){
-                    int midiRootNote = (int)midiRootNoteParameterVT.getProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE);
-                    samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-                        .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
-                        nullptr);
-                }
-                
-                // Finally add new modified newSoundInfo to the new loadedSoundsInfo list
-                newLoadedSoundsInfo.appendChild(newSoundInfo, nullptr);
-            } else {
-                newLoadedSoundsInfo.appendChild(loadedSoundsInfo.getChild(i).createCopy(), nullptr);
-            }
-        }
-        loadedSoundsInfo = newLoadedSoundsInfo;
-        return soundIndex;
-        
-    } else {
-        // If creating a new sound, just add the ValueTree to loadedSoundsInfo, get the new ID and return it
-        loadedSoundsInfo.appendChild(newSoundInfo, nullptr);
-        int newSoundIndex = loadedSoundsInfo.getNumChildren() - 1;
-        return newSoundIndex;
-    }*/
-}
-
-void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(int soundIdx,
+void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
                                                                             int soundID,
                                                                             const String& soundName,
                                                                             const String& soundUser,
                                                                             const String& soundLicense,
-                                                                            const String& oggDownloadURL,
+                                                                            const String& previewURL,
                                                                             const String& localFilePath,
-                                                                            const String& type,
+                                                                            const String& format,
                                                                             int sizeBytes,
                                                                             StringArray slices,
                                                                             BigInteger midiNotes,
                                                                             int midiRootNote,
                                                                             const String& triggerDownloadSoundAction)
 {
-    // TODO: VT refactor
+    juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState(soundName);
+    sourceSound.setProperty(IDs::soundId, soundID, nullptr);
+    sourceSound.setProperty (IDs::username, soundUser, nullptr);
+    sourceSound.setProperty(IDs::license, soundLicense, nullptr);
+    sourceSound.setProperty(IDs::previewURL, previewURL, nullptr);
+    sourceSound.setProperty(IDs::format, format, nullptr);
+    sourceSound.setProperty(IDs::filesize, sizeBytes, nullptr);
     
+    // TODO: pass analysis in addOrReplaceSoundFromBasicSoundProperties
+    // Use the already existing "slices" StringArray to create a VT?
     /*
-    ValueTree soundInfo = ValueTree(STATE_SOUND_INFO);
-    soundInfo.setProperty(STATE_SOUND_INFO_ID, soundID, nullptr);
-    soundInfo.setProperty(STATE_SOUND_INFO_NAME, soundName, nullptr);
-    soundInfo.setProperty(STATE_SOUND_INFO_USER, soundUser, nullptr);
-    soundInfo.setProperty(STATE_SOUND_INFO_LICENSE, soundLicense, nullptr);
-    soundInfo.setProperty(STATE_SOUND_INFO_SIZE, sizeBytes, nullptr);
-    soundInfo.setProperty(STATE_SOUND_INFO_TYPE, type, nullptr);
-    if (oggDownloadURL != ""){
-        soundInfo.setProperty(STATE_SOUND_INFO_OGG_DOWNLOAD_URL, oggDownloadURL, nullptr);
-    }
-    if (localFilePath != ""){
-        soundInfo.setProperty(STATE_SOUND_INFO_LOCAL_FILE_PATH, localFilePath, nullptr);
-    }
+     if (slices.size() > 0){
+             ValueTree soundAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS);
+             ValueTree soundAnalysisOnsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
+             for (int i=0; i<slices.size(); i++){
+                 ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
+                 onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, slices[i].getFloatValue(), nullptr);
+                 soundAnalysisOnsetTimes.appendChild(onset, nullptr);
+             }
+             soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
+             soundInfo.appendChild(soundAnalysis, nullptr);
+         }
+     */
+    //juce::ValueTree soundAnalysis = Helpers::createAnalysisFromFreesoundAnalysis(sound.analysis);
+    //sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
     
-    ValueTree samplerSoundParameters = ValueTree(STATE_SAMPLER_SOUND);
-    
-    if (!midiNotes.isZero()){
-        samplerSoundParameters.setProperty(STATE_SAMPLER_SOUND_MIDI_NOTES, midiNotes.toString(16), nullptr);
-    }
-    
+    juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(sourceSound.getProperty(IDs::soundId).toString() + " - 1", (int)sourceSound.getProperty(IDs::soundId), previewURL, localFilePath);
+
     if (midiRootNote >  -1){
-        samplerSoundParameters.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "midiRootNote", nullptr)
-            .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, midiRootNote, nullptr),
-            nullptr);
+        sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
+    }
+    if (!midiNotes.isZero()){
+        sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
     }
     
-    if (samplerSoundParameters.isValid()){
-        soundInfo.appendChild(samplerSoundParameters, nullptr);
-    }
-    
-    if (slices.size() > 0){
-        ValueTree soundAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS);
-        ValueTree soundAnalysisOnsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
-        for (int i=0; i<slices.size(); i++){
-            ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
-            onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, slices[i].getFloatValue(), nullptr);
-            soundAnalysisOnsetTimes.appendChild(onset, nullptr);
-        }
-        soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
-        soundInfo.appendChild(soundAnalysis, nullptr);
-    }
-    
-    int newSoundIdx = addOrReplaceSoundFromSoundInfoValueTree(soundIdx, soundInfo);
-    
-    // If requested, trigger download (and further loading) of the new sound (or of all sounds if specificed like this)
-    if (triggerDownloadSoundAction == "none"){
-        // Trigger no download task
-    } else if (triggerDownloadSoundAction == "all"){
-        // Trigger download of all sounds
-        downloadSounds(false, -1);
+    sourceSound.addChild(sourceSamplerSound, -1, nullptr);
+    juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+    int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
+    if (existingSoundIndex > -1){
+        // If a sound exists for that UUID, remove the sound with that UUID and replace it by the new sound
+        presetState.removeChild(existingSoundIndex, nullptr);
+        presetState.addChild(sourceSound, existingSoundIndex, nullptr);
+        
     } else {
-        // Trigger download of only the added/replaced sound
-        downloadSounds(false, newSoundIdx);
-    }*/
+        // If no sound exists with the given UUID, add the sound as a NEW one at the end of the list
+        presetState.addChild(sourceSound, -1, nullptr);
+    }
 }
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)

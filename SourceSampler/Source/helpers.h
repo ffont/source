@@ -111,13 +111,14 @@ namespace Helpers
         return sound;
     }
 
-    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL)
+    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL, const juce::String filePath)
     {
         juce::ValueTree ss (IDs::SOUND_SAMPLE);
         Helpers::createUuidProperty (ss);
         ss.setProperty (IDs::name, soundName, nullptr);
         ss.setProperty (IDs::soundId, soundId, nullptr);
         ss.setProperty (IDs::previewURL, previewURL, nullptr);
+        ss.setProperty (IDs::filePath, filePath, nullptr);
         ss.setProperty (IDs::midiRootNote, 64, nullptr);
         ss.setProperty (IDs::duration, -1.0, nullptr);
         BigInteger midiNotes;

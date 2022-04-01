@@ -77,6 +77,7 @@ public:
     void setMidiRootNote(int newMidiRootNote);
     
     //==============================================================================
+    void loadOnsetTimesSamplesFromAnalysis();
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
     std::vector<int> getOnsetTimesSamples();
     
@@ -442,7 +443,6 @@ public:
     
     void addSourceSamplerSoundsToSampler()
     {
-        // TODO: add lock here?
         std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
         for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
         std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
@@ -450,8 +450,6 @@ public:
     
     void removeSourceSampleSoundsFromSampler()
     {
-        // TODO: add lock here?
-        
         std::vector<int> soundIndexesToDelete;
         for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
             auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
@@ -478,6 +476,7 @@ public:
     
     void triggerSoundDownloads()
     {
+        // TODO: add support for non-freesound sounds. If filePath is passed and sound is already there, don't trigger any downloading
         bool allAlreadyDownloaded = true;
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
@@ -659,5 +658,20 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
             }
         }
         return nullptr;
+    }
+    
+    int getIndexOfSoundWithUUID(const juce::String& uuid) {
+        int index = 0;
+        for (auto* sound: objects){
+            if (sound->getUUID() == uuid){
+                return index;
+            }
+            index += 1;
+        }
+        return -1;
+    }
+    
+    void removeSoundWithUUID(const juce::String& uuid){
+        parent.removeChild(parent.getChildWithProperty(IDs::uuid, uuid), nullptr);
     }
 };
