@@ -127,20 +127,16 @@ namespace Helpers
         return ss;
     }
 
-    inline juce::ValueTree createAnalysisFromFreesoundAnalysis(juce::var fsAnalysisValueTree)
+    inline juce::ValueTree createAnalysisFromSlices(StringArray slices)
     {
         juce::ValueTree soundAnalysis = juce::ValueTree(IDs::ANALYSIS);
-        if (fsAnalysisValueTree.hasProperty("rhythm")){
-            if (fsAnalysisValueTree["rhythm"].hasProperty("onset_times")){
-                juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
-                for (int j=0; j<fsAnalysisValueTree["rhythm"]["onset_times"].size(); j++){
-                    ValueTree onset = ValueTree(IDs::onset);
-                    onset.setProperty(IDs::onsetTime, fsAnalysisValueTree["rhythm"]["onset_times"][j], nullptr);
-                    soundAnalysisOnsetTimes.appendChild(onset, nullptr);
-                }
-                soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
-            }
+        juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
+        for (auto sliceString: slices){
+            ValueTree onset = ValueTree(IDs::onset);
+            onset.setProperty(IDs::onsetTime, sliceString.getFloatValue(), nullptr);
+            soundAnalysisOnsetTimes.appendChild(onset, nullptr);
         }
+        soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
         return soundAnalysis;
     }
 

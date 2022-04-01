@@ -991,8 +991,18 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
                 }
             }
             
+            // Prepare slices
+            StringArray slices;
+            if (sound.analysis.hasProperty("rhythm")){
+                if (sound.analysis["rhythm"].hasProperty("onset_times")){
+                    for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
+                        slices.add(sound.analysis["rhythm"]["onset_times"][j].toString());
+                    }
+                }
+            }
+            
             // Create sound
-            addOrReplaceSoundFromBasicSoundProperties("", sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, {}, midiNotes, midiRootNote, "");
+            addOrReplaceSoundFromBasicSoundProperties("", sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote, "");
         }
          
     } else {
@@ -1104,24 +1114,6 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     sourceSound.setProperty(IDs::format, format, nullptr);
     sourceSound.setProperty(IDs::filesize, sizeBytes, nullptr);
     
-    // TODO: pass analysis in addOrReplaceSoundFromBasicSoundProperties
-    // Use the already existing "slices" StringArray to create a VT?
-    /*
-     if (slices.size() > 0){
-             ValueTree soundAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS);
-             ValueTree soundAnalysisOnsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);
-             for (int i=0; i<slices.size(); i++){
-                 ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
-                 onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, slices[i].getFloatValue(), nullptr);
-                 soundAnalysisOnsetTimes.appendChild(onset, nullptr);
-             }
-             soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
-             soundInfo.appendChild(soundAnalysis, nullptr);
-         }
-     */
-    //juce::ValueTree soundAnalysis = Helpers::createAnalysisFromFreesoundAnalysis(sound.analysis);
-    //sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
-    
     juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(sourceSound.getProperty(IDs::soundId).toString() + " - 1", (int)sourceSound.getProperty(IDs::soundId), previewURL, localFilePath);
 
     if (midiRootNote >  -1){
@@ -1129,6 +1121,11 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     }
     if (!midiNotes.isZero()){
         sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+    }
+    
+    if (slices.size() > 0){
+        juce::ValueTree soundAnalysis = Helpers::createAnalysisFromSlices(slices);
+        sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
     }
     
     sourceSound.addChild(sourceSamplerSound, -1, nullptr);
