@@ -155,16 +155,16 @@ public:
         filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
         filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
         filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
-        filterA.referTo(state, IDs::filterA, nullptr, Defaults::filterA);
-        filterD.referTo(state, IDs::filterD, nullptr, Defaults::filterD);
-        filterS.referTo(state, IDs::filterS, nullptr, Defaults::filterS);
-        filterR.referTo(state, IDs::filterR, nullptr, Defaults::filterR);
+        filterAttack.referTo(state, IDs::filterAttack, nullptr, Defaults::filterAttack);
+        filterDecay.referTo(state, IDs::filterDecay, nullptr, Defaults::filterDecay);
+        filterSustain.referTo(state, IDs::filterSustain, nullptr, Defaults::filterSustain);
+        filterRelease.referTo(state, IDs::filterRelease, nullptr, Defaults::filterRelease);
         filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
         gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
-        ampA.referTo(state, IDs::ampA, nullptr, Defaults::ampA);
-        ampD.referTo(state, IDs::ampD, nullptr, Defaults::ampD);
-        ampS.referTo(state, IDs::ampS, nullptr, Defaults::ampS);
-        ampR.referTo(state, IDs::ampR, nullptr, Defaults::ampR);
+        attack.referTo(state, IDs::attack, nullptr, Defaults::attack);
+        decay.referTo(state, IDs::decay, nullptr, Defaults::decay);
+        sustain.referTo(state, IDs::sustain, nullptr, Defaults::sustain);
+        release.referTo(state, IDs::release, nullptr, Defaults::release);
         pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
         pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
         pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
@@ -208,6 +208,10 @@ public:
         return name.get();
     }
     
+    juce::String getUUID() {
+        return state.getProperty(IDs::uuid).toString();
+    }
+    
     bool isEnabled() {
         return enabled.get();
     }
@@ -235,16 +239,16 @@ public:
         else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterA) { return !normed ? filterA.get() : jmap(filterA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterD) { return !normed ? filterD.get() : jmap(filterD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterS) { return !normed ? filterS.get() : jmap(filterS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterR) { return !normed ? filterR.get() : jmap(filterR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterAttack) { return !normed ? filterAttack.get() : jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterDecay) { return !normed ? filterDecay.get() : jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterSustain) { return !normed ? filterSustain.get() : jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRelease) { return !normed ? filterRelease.get() : jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::gain) { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampA) { return !normed ? ampA.get() : jmap(ampA.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampD) { return !normed ? ampD.get() : jmap(ampD.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampS) { return !normed ? ampS.get() : jmap(ampS.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampR) { return !normed ? ampR.get() : jmap(ampR.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::attack) { return !normed ? attack.get() : jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::decay) { return !normed ? decay.get() : jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::sustain) { return !normed ? sustain.get() : jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::release) { return !normed ? release.get() : jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::pan) { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::pitch) { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
@@ -270,16 +274,16 @@ public:
         else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
         else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
         else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterA) { filterA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterD) { filterD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterS) { filterS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterR) { filterR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterAttack) { filterAttack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterDecay) { filterDecay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterSustain) { filterSustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRelease) { filterRelease = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
         else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
         else if (identifier == IDs::gain) { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
-        else if (identifier == IDs::ampA) { ampA = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampD) { ampD = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampS) { ampS = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::ampR) { ampR = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::attack) { attack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::decay) { decay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::sustain) { sustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::release) { release = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
         else if (identifier == IDs::pan) { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
         else if (identifier == IDs::pitch) { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
         else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
@@ -569,16 +573,16 @@ private:
     juce::CachedValue<float> filterCutoff;
     juce::CachedValue<float> filterRessonance;
     juce::CachedValue<float> filterKeyboardTracking;
-    juce::CachedValue<float> filterA;
-    juce::CachedValue<float> filterD;
-    juce::CachedValue<float> filterS;
-    juce::CachedValue<float> filterR;
+    juce::CachedValue<float> filterAttack;
+    juce::CachedValue<float> filterDecay;
+    juce::CachedValue<float> filterSustain;
+    juce::CachedValue<float> filterRelease;
     juce::CachedValue<float> filterADSR2CutoffAmt;
     juce::CachedValue<float> gain;
-    juce::CachedValue<float> ampA;
-    juce::CachedValue<float> ampD;
-    juce::CachedValue<float> ampS;
-    juce::CachedValue<float> ampR;
+    juce::CachedValue<float> attack;
+    juce::CachedValue<float> decay;
+    juce::CachedValue<float> sustain;
+    juce::CachedValue<float> release;
     juce::CachedValue<float> pan;
     juce::CachedValue<float> pitch;
     juce::CachedValue<float> pitchBendRangeUp;
@@ -642,8 +646,17 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
     std::function<GlobalContextStruct()> getGlobalContext;
     
     SourceSound* getSoundAt(int position) {
-        if ((position > 0) && (position < objects.size() - 1)){
+        if ((position >= 0) && (position < objects.size() - 1)){
             return objects[position];
+        }
+        return nullptr;
+    }
+    
+    SourceSound* getSoundWithUUID(const juce::String& uuid) {
+        for (auto* sound: objects){
+            if (sound->getUUID() == uuid){
+                return sound;
+            }
         }
         return nullptr;
     }

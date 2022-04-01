@@ -222,16 +222,16 @@ inline float  freezePlayheadSpeed = 100.0f;
 inline float  filterCutoff = 20000.0f;
 inline float  filterRessonance = 0.0f;
 inline float  filterKeyboardTracking = 0.0f;
-inline float  filterA = 0.01f;
-inline float  filterD = 0.0f;
-inline float  filterS = 1.0f;
-inline float  filterR = 0.01f;
+inline float  filterAttack = 0.01f;
+inline float  filterDecay = 0.0f;
+inline float  filterSustain = 1.0f;
+inline float  filterRelease = 0.01f;
 inline float  filterADSR2CutoffAmt = 1.0f;
 inline float  gain = -10.0f;
-inline float  ampA = 0.01f;
-inline float  ampD = 0.0f;
-inline float  ampS = 1.0f;
-inline float  ampR = 0.01f;
+inline float  attack = 0.01f;
+inline float  decay = 0.0f;
+inline float  sustain = 1.0f;
+inline float  release = 0.01f;
 inline float  pan = 0.0f;
 inline float  pitch = 0.0f;
 inline float  pitchBendRangeUp = 12.0f;
@@ -285,11 +285,14 @@ DECLARE_ID (username)
 DECLARE_ID (license)
 DECLARE_ID (format)
 DECLARE_ID (filesize)
+DECLARE_ID (duration)
 DECLARE_ID (onsets)
 DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
 DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
+
+DECLARE_ID (numVoices)
 
 DECLARE_ID (reverbRoomSize)
 DECLARE_ID (reverbDamping)
@@ -320,16 +323,16 @@ DECLARE_ID (freezePlayheadSpeed)
 DECLARE_ID (filterCutoff)
 DECLARE_ID (filterRessonance)
 DECLARE_ID (filterKeyboardTracking)
-DECLARE_ID (filterA)
-DECLARE_ID (filterD)
-DECLARE_ID (filterS)
-DECLARE_ID (filterR)
+DECLARE_ID (filterAttack)
+DECLARE_ID (filterDecay)
+DECLARE_ID (filterSustain)
+DECLARE_ID (filterRelease)
 DECLARE_ID (filterADSR2CutoffAmt)
 DECLARE_ID (gain)
-DECLARE_ID (ampA)
-DECLARE_ID (ampD)
-DECLARE_ID (ampS)
-DECLARE_ID (ampR)
+DECLARE_ID (attack)
+DECLARE_ID (decay)
+DECLARE_ID (sustain)
+DECLARE_ID (release)
 DECLARE_ID (pan)
 DECLARE_ID (pitch)
 DECLARE_ID (pitchBendRangeUp)

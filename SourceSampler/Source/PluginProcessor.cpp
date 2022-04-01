@@ -364,8 +364,10 @@ AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 ValueTree SourceSamplerAudioProcessor::collectPresetStateInformation ()
 {
     // TODO: remove all these state functions once transition to VT is done
-    ValueTree state = ValueTree(STATE_PRESET_IDENTIFIER);
-    return state;
+    juce::ValueTree stateToSend = state.getChildWithName(IDs::PRESET).createCopy();
+    stateToSend.setProperty(IDs::numVoices, sampler.getNumVoices(), nullptr);
+    return stateToSend;
+    
 }
 
 void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName, int index)
@@ -755,13 +757,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         #endif
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
-        int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
-        String parameterName = parameters[1];
+        juce::String soundUUID = parameters[0];  // "" means all sounds
+        juce::String parameterName = parameters[1];
         float parameterValue = parameters[2].getFloatValue();
-        DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if (soundIndex >= 0) {
+        DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundUUID << " to value " << parameterValue);
+        if (soundUUID != "") {
             // Change one sound
-            SourceSound* sound = sounds->getSoundAt(soundIndex);
+            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
             if (sound != nullptr){
                 sound->setParameterByNameFloat(parameterName, parameterValue, false);
             }
@@ -772,13 +774,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             }
         }
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
-        int soundIndex = parameters[0].getIntValue();  // -1 means all sounds
-        String parameterName = parameters[1];
+        juce::String soundUUID = parameters[0];  // "" means all sounds
+        juce::String parameterName = parameters[1];
         int parameterValue = parameters[2].getIntValue();
-        DBG("Setting INT parameter " << parameterName << " of sound " << soundIndex << " to value " << parameterValue);
-        if (soundIndex >= 0) {
+        DBG("Setting INT parameter " << parameterName << " of sound " << soundUUID << " to value " << parameterValue);
+        if (soundUUID != "") {
             // Change one sound
-            SourceSound* sound = sounds->getSoundAt(soundIndex);
+            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
             if (sound != nullptr){
                 sound->setParameterByNameInt(parameterName, parameterValue);
             }
@@ -817,12 +819,12 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         setMidiThru(midiThru);
         
     } else if (actionName == ACTION_PLAY_SOUND){
-        int soundIndex = parameters[0].getIntValue();
-        addToMidiBuffer(soundIndex, false);
+        juce::String soundUUID = parameters[0];
+        addToMidiBuffer(soundUUID, false);
         
     } else if (actionName == ACTION_STOP_SOUND){
-        int soundIndex = parameters[0].getIntValue();
-        addToMidiBuffer(soundIndex, true);
+        juce::String soundUUID = parameters[0];
+        addToMidiBuffer(soundUUID, true);
         
     } else if (actionName == ACTION_SET_POLYPHONY){
         // TODO: VT refactor
@@ -830,21 +832,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         sampler.setSamplerVoices(numVoices);
 
     } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
-        int soundIndex = parameters[0].getIntValue();
-        String uuid = parameters[1];
+        juce::String soundUUID = parameters[0];
+        juce::String uuid = parameters[1];
         int ccNumber = parameters[2].getIntValue();
-        String parameterName = parameters[3];
+        juce::String parameterName = parameters[3];
         float minRange = parameters[4].getFloatValue();
         float maxRange = parameters[5].getFloatValue();
-        auto* sound = sounds->getSoundAt(soundIndex);
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
         }
 
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
-        int soundIndex = parameters[0].getIntValue();
+        juce::String soundUUID = parameters[0];
         String uuid = parameters[1];
-        auto* sound = sounds->getSoundAt(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundWithUUID(soundUUID);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             sound->removeMidiMapping(uuid);
         }
@@ -892,20 +894,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         
     } else if (actionName == ACTION_SET_SOUND_SLICES){
         // TODO: VT refactor (?)
-        int soundIndex = parameters[0].getIntValue();
-        String serializedSlices = parameters[1];
-        StringArray slices;
+        juce::String soundUUID = parameters[0];
+        juce::String serializedSlices = parameters[1];
+        juce::StringArray slices;
         slices.addTokens(serializedSlices, ",", "");
         
+        /*
+        
         // Add slices to sound info
-        ValueTree soundInfo = loadedSoundsInfo.getChild(soundIndex);
-        ValueTree onsetTimes = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);  // TODO: this should be renamed or something to store slices with a proper name instead of fs analysis onsets
+        juce::ValueTree onsetTimes = juce::ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS);  // TODO: this should be renamed or something to store slices with a proper name instead of fs analysis onsets
         for (int i=0; i<slices.size(); i++){
             ValueTree onset = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET);
             onset.setProperty(STATE_SOUND_FS_SOUND_ANALYSIS_ONSET_TIME, slices[i].getFloatValue(), nullptr);
             onsetTimes.appendChild(onset, nullptr);
         }
-        ValueTree existingFsAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
+        juce::ValueTree existingFsAnalysis = soundInfo.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS);
         if (!existingFsAnalysis.isValid()){ existingFsAnalysis = ValueTree(STATE_SOUND_FS_SOUND_ANALYSIS); }
         
         if (existingFsAnalysis.getChildWithName(STATE_SOUND_FS_SOUND_ANALYSIS_ONSETS).isValid()){
@@ -923,7 +926,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         loadedSoundsInfo.getChild(soundIndex) = soundInfo;
         
         // Load them into sound object
-        auto* sound = sounds->getSoundAt(soundIndex)->getFirstLinkedSourceSamplerSound();  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundWithUUID(soundUUID)->getFirstLinkedSourceSamplerSound();  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
         if (sound != nullptr){
             std::vector<float> onsets = {};
             for (int i=0; i<onsetTimes.getNumChildren(); i++){
@@ -932,9 +935,9 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
                 onsets.push_back(onset);
             }
             sound->setOnsetTimesSamples(onsets);
-        }
+        }*/
     } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
-        int soundIndex = parameters[0].getIntValue();
+        juce::String soundUUID = parameters[0];
         String assignedNotesBigInteger = parameters[1];
         int rootNote = parameters[2].getIntValue();
         
@@ -943,7 +946,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
         
-        auto* sound = sounds->getSoundAt(soundIndex);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->setMappedMidiNotes(midiNotes);
             sound->setMidiRootNote(rootNote);
@@ -1650,20 +1653,17 @@ void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
     }*/
 }
 
-void SourceSamplerAudioProcessor::addToMidiBuffer(int soundIndex, bool doNoteOff)
+void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff)
 {
     
-    int nSounds = loadedSoundsInfo.getNumChildren();
-    if (nSounds > 0){
-        auto* sound = sounds->getSoundAt(soundIndex)->getFirstLinkedSourceSamplerSound();
+    auto* sound = sounds->getSoundWithUUID(soundUUID);
+    if (sound != nullptr){
         int midiNoteForNormalPitch = 36;
-        if (sound != nullptr){
-            midiNoteForNormalPitch = sound->getMidiRootNote();
-            BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
-            if (assignedMidiNotes[midiNoteForNormalPitch] == false){
-                // If the root note is not mapped to the sound, find the closest mapped one
-                midiNoteForNormalPitch = assignedMidiNotes.findNextSetBit(midiNoteForNormalPitch);
-            }
+        midiNoteForNormalPitch = sound->getMidiRootNote();
+        BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
+        if (assignedMidiNotes[midiNoteForNormalPitch] == false){
+            // If the root note is not mapped to the sound, find the closest mapped one
+            midiNoteForNormalPitch = assignedMidiNotes.findNextSetBit(midiNoteForNormalPitch);
         }
         if (midiNoteForNormalPitch < 0){
             // If for some reason no note was found, don't play anything
@@ -1785,21 +1785,25 @@ void SourceSamplerAudioProcessor::stopPreviewingFile(){
 void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
 {
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
-    // TODO: do proper real-time safe implementation, uncomment jassert below to check we're not calling this from RT thread
-    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
-    std::cout << "Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString() << std::endl;
+    // TODO: proper check that this is not audio thread
+    //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    DBG("Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
 {
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
-    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    // TODO: proper check that this is not audio thread
+    //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    DBG("Added VT child " << childWhichHasBeenAdded.toXmlString());
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
 {
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
-    // jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    // TODO: proper check that this is not audio thread
+    //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+    DBG("Removed VT child " << childWhichHasBeenRemoved.toXmlString());
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildOrderChanged (juce::ValueTree& parentTree, int oldIndex, int newIndex)

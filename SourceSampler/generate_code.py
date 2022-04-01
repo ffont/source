@@ -40,8 +40,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '        '
-    code_dict['SourceSamplerSound.h'] = {}
-    code_dict['SourceSamplerSound.h']['B'] = current_code
+    code_dict['Source/SourceSamplerSound.h'] = {}
+    code_dict['Source/SourceSamplerSound.h']['B'] = current_code
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
     current_code = ''
@@ -57,7 +57,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '        '
-    code_dict['SourceSamplerSound.h']['D'] = current_code
+    code_dict['Source/SourceSamplerSound.h']['D'] = current_code
 
      # Generate SourceSamplerSound attributes for getParameterFloat i getParameterInt
     current_code_e = ''
@@ -75,8 +75,8 @@ def generate_code(controls_data_filename):
         
     current_code_e += '        '
     current_code_f += '        '
-    code_dict['SourceSamplerSound.h']['E'] = current_code_e
-    code_dict['SourceSamplerSound.h']['F'] = current_code_f
+    code_dict['Source/SourceSamplerSound.h']['E'] = current_code_e
+    code_dict['Source/SourceSamplerSound.h']['F'] = current_code_f
 
     # Generate SourceSamplerSound.h code to define parameters
     current_code = ''
@@ -89,14 +89,14 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSamplerSound.h']['A'] = current_code
+    code_dict['Source/SourceSamplerSound.h']['A'] = current_code
 
     # Generate SourceSamplerSound.h code to bind state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         current_code += "        {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
     current_code += '        '
-    code_dict['SourceSamplerSound.h']['C'] = current_code
+    code_dict['Source/SourceSamplerSound.h']['C'] = current_code
 
     # Generate defines.h code to define parameter IDs and defaults
     current_code_a = ''
@@ -114,9 +114,9 @@ def generate_code(controls_data_filename):
         else:
             # Don't know what to do with other types
             pass
-    code_dict['defines.h'] = {}
-    code_dict['defines.h']['A'] = current_code_a
-    code_dict['defines.h']['B'] = current_code_b
+    code_dict['Source/defines.h'] = {}
+    code_dict['Source/defines.h']['A'] = current_code_a
+    code_dict['Source/defines.h']['B'] = current_code_b
 
     # Generate helpers.h code to include all sound parameters when creating an empry sound
     current_code_a = ''
@@ -133,32 +133,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code_a += "        "
-    code_dict['helpers.h'] = {}
-    code_dict['helpers.h']['A'] = current_code_a
-
-    # Generate SourceSamplerSound code to save state
-    current_code = ''
-    for count, control_data in enumerate([control_data for control_data in controls_list]):
-        if control_data['type'] == 'float':
-            current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpf(IDs::{name}), nullptr),
-                      nullptr);
-""".format(**control_data)
-        elif control_data['type'] == 'int':
-            current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, gpi(IDs::{name}), nullptr),
-                      nullptr);
-""".format(**control_data)
-        else:
-            # Don't know what to do with other types
-            pass
-    current_code += '    '
-    code_dict['SourceSamplerSound.cpp'] = {}
-    code_dict['SourceSamplerSound.cpp']['B'] = current_code
+    code_dict['Source/helpers.h'] = {}
+    code_dict['Source/helpers.h']['A'] = current_code_a
 
     # Generate HTML interface sound edit elements code
     current_code = ''
@@ -168,29 +144,21 @@ def generate_code(controls_data_filename):
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf, 'step': 1.0 if control_data['name'] == 'basePitch' else 0.01})
-            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi, 'defaulti': defaulti, 'step': 1})
-            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="setSoundParameterInt(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="setSoundParameterInt(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
-        elif control_data['type'] == 'adsr':
-            for count, adsr_phase in enumerate(['attack', 'decay', 'sustain', 'release']):  # Note that these names ust match ADSR::Parameters names
-                minf = [0.0, 0.0, 0.0, 0.0][count]
-                maxf = [20.0, 20.0, 1.0, 20.0][count]
-                defaultf = float(control_data['default'].replace('f', '').split(',')[count])
-                control_data.update({'adsr_phase': adsr_phase, 'minf': minf, 'maxf': maxf, 'defaultf': defaultf})
-                current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}.{adsr_phase}" name="{name}.{adsr_phase}" min="{minf}" max="{maxf}" value="{defaultf}" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}.{adsr_phase}: <span id="' + soundIdx + '_{name}.{adsr_phase}Label"></span><br>'\n""".format(
-                    **control_data)
         else:
             # Don't know what to do with other types
             pass
     current_code += '            '
-    code_dict['../Resources/index.html'] = {}
-    #code_dict['../Resources/index.html']['A'] = current_code
+    code_dict['Resources/ui_plugin.html'] = {}
+    code_dict['Resources/ui_plugin.html']['A'] = current_code
 
     # Generate list of controls modifiable via MIDI cc in interface.hmtl
     current_code = '            parameterNames = ['
@@ -201,7 +169,29 @@ def generate_code(controls_data_filename):
         else:
             current_code += '"{name}"]'.format(**control_data)
     current_code += '\n            '
-    #code_dict['../Resources/index.html']['B'] = current_code
+    code_dict['Resources/ui_plugin.html']['B'] = current_code
+
+    # Generate list of all controls in interface.hmtl
+    current_code = '            parameterNames = ['
+    allControls = [control_data for control_data in controls_list]
+    for count, control_data in enumerate(allControls):
+        if count != len(allControls) - 1:
+            current_code += '"{name}", '.format(**control_data)
+        else:
+            current_code += '"{name}"]'.format(**control_data)
+    current_code += '\n            '
+    code_dict['Resources/ui_plugin.html']['C'] = current_code
+
+    # Generate list of all control types in interface.hmtl
+    current_code = '            parameterTypes = ['
+    allControls = [control_data for control_data in controls_list]
+    for count, control_data in enumerate(allControls):
+        if count != len(allControls) - 1:
+            current_code += '"{type}", '.format(**control_data)
+        else:
+            current_code += '"{type}"]'.format(**control_data)
+    current_code += '\n            '
+    code_dict['Resources/ui_plugin.html']['D'] = current_code
 
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))
@@ -219,7 +209,7 @@ def insert_code(code_dict):
     for key, sections_dict in code_dict.items():
         for section_key, code in sections_dict.items():
             replace_in_file(
-                os.path.join(SOURCE_CODE_FOLDER, key), 
+                key, 
                 START_DELIMITER_TEMPLATE.format(section_key), 
                 END_DELIMITER_TEMPLATE.format(section_key),
                 code)

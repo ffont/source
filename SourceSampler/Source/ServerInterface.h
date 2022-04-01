@@ -212,8 +212,12 @@ void HTTPServer::run()
     });
     
     #if !ELK_BUILD
-    // In desktop builds we want each instace to use a separate port so that each instance has its own interface
-    port = server.bind_to_any_port("0.0.0.0");
+        #if !JUCE_DEBUG
+        // In desktop builds we want each instace to use a separate port so that each instance has its own interface
+        port = server.bind_to_any_port("0.0.0.0");
+        #else
+        server.bind_to_port("0.0.0.0", port);
+        #endif
     #else
     // In ELK build there will allways going to be a single instance for the plugin, run it at a port known to be free
     server.bind_to_port("0.0.0.0", port);

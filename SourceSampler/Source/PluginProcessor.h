@@ -186,7 +186,7 @@ public:
     
     void reapplyNoteLayout(int newNoteLayoutType);
     
-    void addToMidiBuffer(int soundIndex, bool doNoteOff);
+    void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);
 
     double getStartTime();
     

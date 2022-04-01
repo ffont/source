@@ -247,6 +247,8 @@
                     labelElement.innerHTML = ["gate", "loop", "loopfb", "trigger", "freeze"][sliderElement.value];
                 } else if (labelElement.id.indexOf("noteMappingMode") > -1){
                     labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
+                } else if (labelElement.id.indexOf("soundType") > -1){
+                    labelElement.innerHTML = ["single-sample", "multi-sample"][sliderElement.value];
                 } else if (labelElement.id.indexOf("numSlices") > -1){
                     var names =  ["auto (onsets)", "auto (n notes)"]
                     for (var i=2; i<=128; i++){
@@ -272,9 +274,9 @@
         function sliderShouldBehaveExponentially(sliderElement){
             var name = sliderElement.name;
             if (name != null){
-                if ((name.indexOf("attack") > -1) ||
-                    (name.indexOf("decay") > -1) ||
-                    (name.indexOf("release") > -1) ||
+                if ((name.toLowerCase().indexOf("attack") > -1) ||
+                    (name.toLowerCase().indexOf("decay") > -1) ||
+                    (name.toLowerCase().indexOf("release") > -1) ||
                     (name == "filterCutoff")
                 ){
                     return true;
@@ -312,16 +314,16 @@
             xhr.send();
         }
 
-        function setSoundParameter(soundIdx, sliderElement){
+        function setSoundParameter(soundUUID, sliderElement){
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
-            sendOsc('/set_sound_parameter', [soundIdx, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'int;str;float')
+            sendOsc('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'str;str;float')
         }
 
-        function setSoundParameterInt(soundIdx, sliderElement){
+        function setSoundParameterInt(soundUUID, sliderElement){
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
-            sendOsc('/set_sound_parameter_int', [soundIdx, sliderElement.name, sliderElement.value], 'int;str;int')
+            sendOsc('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value], 'str;str;int')
         }
 
         function makeQuery(){
@@ -364,12 +366,12 @@
             sendOsc('/set_polyphony', [numVoices], 'int')
         }
 
-        function playSound(soundIdx){
-            sendOsc('/play_sound', [soundIdx], 'int')
+        function playSound(soundUUID){
+            sendOsc('/play_sound', [soundUUID], 'str')
         }
 
-        function stopSound(soundIdx){
-            sendOsc('/stop_sound', [soundIdx], 'int')
+        function stopSound(soundUUID){
+            sendOsc('/stop_sound', [soundUUID], 'str')
         }
                                        
         function removeSound(soundIdx){
@@ -418,27 +420,27 @@
         }
 
         function createUpdateMapping(mappingID){
-            var randomID = parseInt(mappingID.split('_')[0], 10);
-            var soundIdx = parseInt(mappingID.split('_')[1], 10);
+            var randomID = mappingID.split('_')[0];
+            var soundUUID = mappingID.split('_')[1];
             var ccNumber = document.getElementById(mappingID + '_mappingCCNumber').value;
             var name = document.getElementById(mappingID + '_mappingParameterName').value;
             var minRange = parseFloat(document.getElementById(mappingID + '_mappingMinRange').value, 10);
             var maxRange = parseFloat(document.getElementById(mappingID + '_mappingMaxRange').value, 10);
-            sendOsc('/add_or_update_cc_mapping', [soundIdx, randomID, ccNumber, name, minRange, maxRange], 'int;int;int;str;float;float');
-            if (randomID == -1){
+            sendOsc('/add_or_update_cc_mapping', [soundUUID, randomID, ccNumber, name, minRange, maxRange], 'str;str;int;str;float;float');
+            if (randomID == ""){
                 // Remove this element from DOM because this one is only while creating a new mappping
-                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = "";
+                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";
             }
         }
 
         function removeMidiMapping(mappingID){
-            var randomID = parseInt(mappingID.split('_')[0], 10);
-            var soundIdx = parseInt(mappingID.split('_')[1], 10);
-            if (randomID != -1){
-                sendOsc('/remove_cc_mapping', [soundIdx, randomID], 'int;int');
+            var randomID = mappingID.split('_')[0];
+            var soundUUID = mappingID.split('_')[1];
+            if (randomID != ""){
+                sendOsc('/remove_cc_mapping', [soundUUID, randomID], 'str;str');
                 //document.getElementById(mappingID).remove();  // No need to remove because it will be removed when updating state
             } else {
-                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
+                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
             }
         }
 
@@ -450,15 +452,29 @@
             // --> End auto-generated code B
             return parameterNames;
         }
+        
+        function getAllSoundParameterNames(){
+            // --> Start auto-generated code C
+            parameterNames = ["soundType", "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt"]
+            // --> End auto-generated code C
+            return parameterNames;
+        }
+        
+        function getAllSoundParameterTypes(){
+            // --> Start auto-generated code D
+            parameterTypes = ["int", "int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"]
+            // --> End auto-generated code D
+            return parameterTypes;
+        }
 
-        function addNewMIDIMappingEditor(soundIdx) {
-                document.getElementById('newMappingPlaceholder_' + soundIdx).innerHTML = createMIDIMappingEditor(soundIdx, -1, 0, "", 0.0, 1.0);
+        function addNewMIDIMappingEditor(soundUUID) {
+                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = createMIDIMappingEditor(soundUUID, "", 0, "", 0.0, 1.0);
             }
 
-        function createMIDIMappingEditor(soundIdx, randomID, ccNumber, parameterName, minRange, maxRange){
-            html = '<div id="' + randomID + '_' + soundIdx + '" class="midiMapping">';
-            html += 'CC number: <input id="' + randomID + '_' + soundIdx + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
-            html += 'Parameter: <select class="select-css" id="' + randomID + '_' + soundIdx + '_mappingParameterName">';
+        function createMIDIMappingEditor(soundUUID, randomID, ccNumber, parameterName, minRange, maxRange){
+            html = '<div id="' + randomID + '_' + soundUUID + '" class="midiMapping">';
+            html += 'CC number: <input id="' + randomID + '_' + soundUUID + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
+            html += 'Parameter: <select class="select-css" id="' + randomID + '_' + soundUUID + '_mappingParameterName">';
             var availableParams = getMidiControllableParameterNames();
             for (var i=0; i<availableParams.length; i++){
                 if (availableParams[i] != parameterName){
@@ -468,52 +484,52 @@
                 }
             }
             html += '</select><br>';
-            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundIdx + '_mappingMinRangeLabel"></span><br>';
-            html += '<input type="range" id="' + randomID + '_' + soundIdx + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + randomID + '_' + soundIdx + '_mappingMaxRangeLabel"></span><br>';
-            html += '<button onclick="createUpdateMapping(\'' + randomID + '_' + soundIdx + '\')">save</button><button onclick="removeMidiMapping(\'' + randomID + '_' + soundIdx + '\')">x</button>';
+            html += '<input type="range" id="' + randomID + '_' + soundUUID + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundUUID + '_mappingMinRangeLabel"></span><br>';
+            html += '<input type="range" id="' + randomID + '_' + soundUUID + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + randomID + '_' + soundUUID + '_mappingMaxRangeLabel"></span><br>';
+            html += '<button onclick="createUpdateMapping(\'' + randomID + '_' + soundUUID + '\')">save</button><button onclick="removeMidiMapping(\'' + randomID + '_' + soundUUID + '\')">x</button>';
             html += '</div>';
             return html;
         }
 
 
-        function generateSoundEditControls(soundIdx){
+        function generateSoundEditControls(soundUUID){
             html = '';
             // --> Start auto-generated code A
-            html += '<input type="range" id="' + soundIdx + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > launchMode: <span id="' + soundIdx + '_launchModeLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > startPosition: <span id="' + soundIdx + '_startPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > endPosition: <span id="' + soundIdx + '_endPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopStartPosition: <span id="' + soundIdx + '_loopStartPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > loopEndPosition: <span id="' + soundIdx + '_loopEndPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > loopXFadeNSamples: <span id="' + soundIdx + '_loopXFadeNSamplesLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > reverse: <span id="' + soundIdx + '_reverseLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > noteMappingMode: <span id="' + soundIdx + '_noteMappingModeLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_numSlices" name="numSlices" min="0" max="100" value="0" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > numSlices: <span id="' + soundIdx + '_numSlicesLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_playheadPosition" name="playheadPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > playheadPosition: <span id="' + soundIdx + '_playheadPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_freezePlayheadSpeed" name="freezePlayheadSpeed" min="1.0" max="5000.0" value="100.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > freezePlayheadSpeed: <span id="' + soundIdx + '_freezePlayheadSpeedLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterCutoff" name="filterCutoff" min="10.0" max="20000.0" value="20000.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterCutoff: <span id="' + soundIdx + '_filterCutoffLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterRessonance: <span id="' + soundIdx + '_filterRessonanceLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterKeyboardTracking" name="filterKeyboardTracking" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterKeyboardTracking: <span id="' + soundIdx + '_filterKeyboardTrackingLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR.attack" name="filterADSR.attack" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.attack: <span id="' + soundIdx + '_filterADSR.attackLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR.decay" name="filterADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.decay: <span id="' + soundIdx + '_filterADSR.decayLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR.sustain" name="filterADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.sustain: <span id="' + soundIdx + '_filterADSR.sustainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR.release" name="filterADSR.release" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR.release: <span id="' + soundIdx + '_filterADSR.releaseLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_filterADSR2CutoffAmt" name="filterADSR2CutoffAmt" min="0.0" max="100.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > filterADSR2CutoffAmt: <span id="' + soundIdx + '_filterADSR2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > gain: <span id="' + soundIdx + '_gainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.attack" name="ampADSR.attack" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.attack: <span id="' + soundIdx + '_ampADSR.attackLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.decay" name="ampADSR.decay" min="0.0" max="20.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.decay: <span id="' + soundIdx + '_ampADSR.decayLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.sustain" name="ampADSR.sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.sustain: <span id="' + soundIdx + '_ampADSR.sustainLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_ampADSR.release" name="ampADSR.release" min="0.0" max="20.0" value="0.01" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > ampADSR.release: <span id="' + soundIdx + '_ampADSR.releaseLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pan: <span id="' + soundIdx + '_panLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_midiRootNote" name="midiRootNote" min="0" max="127" value="64" step="1" oninput="setSoundParameterInt(' + soundIdx + ', this)" > midiRootNote: <span id="' + soundIdx + '_midiRootNoteLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_pitch" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitch: <span id="' + soundIdx + '_pitchLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeUp: <span id="' + soundIdx + '_pitchBendRangeUpLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > pitchBendRangeDown: <span id="' + soundIdx + '_pitchBendRangeDownLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_mod2CutoffAmt" name="mod2CutoffAmt" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2CutoffAmt: <span id="' + soundIdx + '_mod2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_mod2GainAmt" name="mod2GainAmt" min="-12.0" max="12.0" value="6.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2GainAmt: <span id="' + soundIdx + '_mod2GainAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_mod2PitchAmt" name="mod2PitchAmt" min="-12.0" max="12.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2PitchAmt: <span id="' + soundIdx + '_mod2PitchAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > mod2PlayheadPos: <span id="' + soundIdx + '_mod2PlayheadPosLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > vel2CutoffAmt: <span id="' + soundIdx + '_vel2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundIdx + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > vel2GainAmt: <span id="' + soundIdx + '_vel2GainAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_soundType" name="soundType" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > soundType: <span id="' + soundUUID + '_soundTypeLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > launchMode: <span id="' + soundUUID + '_launchModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > startPosition: <span id="' + soundUUID + '_startPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > endPosition: <span id="' + soundUUID + '_endPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > loopStartPosition: <span id="' + soundUUID + '_loopStartPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > loopEndPosition: <span id="' + soundUUID + '_loopEndPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > loopXFadeNSamples: <span id="' + soundUUID + '_loopXFadeNSamplesLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > reverse: <span id="' + soundUUID + '_reverseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > noteMappingMode: <span id="' + soundUUID + '_noteMappingModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_numSlices" name="numSlices" min="0" max="100" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > numSlices: <span id="' + soundUUID + '_numSlicesLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_playheadPosition" name="playheadPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > playheadPosition: <span id="' + soundUUID + '_playheadPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_freezePlayheadSpeed" name="freezePlayheadSpeed" min="1.0" max="5000.0" value="100.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > freezePlayheadSpeed: <span id="' + soundUUID + '_freezePlayheadSpeedLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterCutoff" name="filterCutoff" min="10.0" max="20000.0" value="20000.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterCutoff: <span id="' + soundUUID + '_filterCutoffLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterRessonance: <span id="' + soundUUID + '_filterRessonanceLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterKeyboardTracking" name="filterKeyboardTracking" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterKeyboardTracking: <span id="' + soundUUID + '_filterKeyboardTrackingLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterAttack" name="filterAttack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterAttack: <span id="' + soundUUID + '_filterAttackLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterDecay" name="filterDecay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterDecay: <span id="' + soundUUID + '_filterDecayLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterSustain" name="filterSustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterSustain: <span id="' + soundUUID + '_filterSustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterRelease" name="filterRelease" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterRelease: <span id="' + soundUUID + '_filterReleaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterADSR2CutoffAmt" name="filterADSR2CutoffAmt" min="0.0" max="100.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterADSR2CutoffAmt: <span id="' + soundUUID + '_filterADSR2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > gain: <span id="' + soundUUID + '_gainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_attack" name="attack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > attack: <span id="' + soundUUID + '_attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_decay" name="decay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > decay: <span id="' + soundUUID + '_decayLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_sustain" name="sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > sustain: <span id="' + soundUUID + '_sustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_release" name="release" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > release: <span id="' + soundUUID + '_releaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pan: <span id="' + soundUUID + '_panLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitch" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitch: <span id="' + soundUUID + '_pitchLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeUp: <span id="' + soundUUID + '_pitchBendRangeUpLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeDown: <span id="' + soundUUID + '_pitchBendRangeDownLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2CutoffAmt" name="mod2CutoffAmt" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2CutoffAmt: <span id="' + soundUUID + '_mod2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2GainAmt" name="mod2GainAmt" min="-12.0" max="12.0" value="6.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2GainAmt: <span id="' + soundUUID + '_mod2GainAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2PitchAmt" name="mod2PitchAmt" min="-12.0" max="12.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2PitchAmt: <span id="' + soundUUID + '_mod2PitchAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2PlayheadPos: <span id="' + soundUUID + '_mod2PlayheadPosLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2CutoffAmt: <span id="' + soundUUID + '_vel2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2GainAmt: <span id="' + soundUUID + '_vel2GainAmtLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
@@ -528,24 +544,24 @@
             }
         }
 
-        function createCardForSound(idx, sound){ //sound = xml element
-            var cardElementId = idx + "_" + sound.getAttribute('soundId');
+        function createCardForSound(soundUUID, sound){ //sound = xml element
+            var cardElementId = soundUUID + "_" + sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
             html = '<div class="controls_card" id="' + cardElementId + '">';
-            html += '<div id="soundCardInfo_' + idx + '"></div>';
-            html += '<div id="soundCardControls_' + idx +'" style="display:none;">' + generateSoundEditControls(idx) + '</div>';
-            html += '<div id="soundCardMappingsWrapper_' + idx + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(' + idx +');">Add CC mapping</button><div id="newMappingPlaceholder_' + idx + '"></div>';
-            html += '<div id="soundCardMappings_' + idx + '"></div>';
+            html += '<div id="soundCardInfo_' + soundUUID + '"></div>';
+            html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
+            html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
+            html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
             html += '</div></div>';
             return html;
         }
     
-        function updateCardForSound(idx, sound){ //sound = xml element
-            var soundInfoElement = document.getElementById('soundCardInfo_' + idx);
-            var downloadProgress = sound.getAttribute('downloadProgress');
-            var soundID = sound.getAttribute('soundId');
+        function updateCardForSound(soundUUID, sound, idx){ //sound = xml element
+            var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
+            var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
+            var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
             if ((downloadProgress != 100) && (soundID != -1)){
                 // Sound not yet loaded, show download progress
-                html = '<h5>' + idx + " - " + sound.getAttribute('soundId') + '</h5>';
+                html = '<h5>' + idx + " - " + soundID + '</h5>';
                 if (downloadProgress == null){
                     downloadProgress = 0;
                 }
@@ -555,25 +571,25 @@
             } else {
                 // Sound already loaded, show all info (if it has not been already shown)
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
-                    html = '<div class="transportSoundButtons"><button onclick="playSound(' + idx + ')">&#x25b6</button><button onclick="stopSound(' + idx + ')">&#x25fc</button><button onclick="removeSound(' + idx + ')">x</button></div>';
+                    html = '<div class="transportSoundButtons"><button onclick="playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="removeSound(\'' + soundUUID + '\')">x</button></div>';
                     html += '<h4>' + (parseInt(idx, 10) + 1) + " - " + soundID + '</h4>';
-                    html += sound.getAttribute('soundName') + '<br>';
-                    var licenseURL = sound.getAttribute('soundLicense');
+                    html += sound.getAttribute('name') + '<br>';
+                    var licenseURL = sound.getAttribute('license');
                     var licenseName = "-";
                     if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
                     else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
                     else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
                     else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-                    html += parseFloat(sound.getAttribute('soundDurationInSeconds'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+                    html += parseFloat(sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
                     soundInfoElement.innerHTML = html;
                 }
                 
-                var soundControlsElement = document.getElementById('soundCardControls_' + idx);
+                var soundControlsElement = document.getElementById('soundCardControls_' + soundUUID);
                 if (soundControlsElement.style.display === "none") {
                     soundControlsElement.style.display = "block";
                 }
 
-                var soundMappingsWrapperElement = document.getElementById('soundCardMappingsWrapper_' + idx);
+                var soundMappingsWrapperElement = document.getElementById('soundCardMappingsWrapper_' + soundUUID);
                 if (soundMappingsWrapperElement.style.display === "none") {
                     soundMappingsWrapperElement.style.display = "block";
                 }
@@ -594,16 +610,12 @@
                 document.getElementById("log").innerHTML += logMessages[i] + '<br>';
             }
             
-            var SourcePresetState = xmlState.getElementsByTagName('SourcePresetState')[0];
+            var SourcePresetState = xmlState.getElementsByTagName('PRESET')[0];
             var GlobalSettings = xmlState.getElementsByTagName('GlobalSettings')[0];
-            var SamplerState = xmlState.getElementsByTagName('Sampler')[0];
-            var OldStateSourcePresetState, OldStateGlobalSettings, OldStateSamplerState, OldStateReverbParameters = undefined; 
-            var ReverbParameters = xmlState.getElementsByTagName('ReverbParameters')[0];
+            var OldStateSourcePresetState, OldStateGlobalSettings = undefined;
             if (lastReceivedStateXml !== undefined){
                 OldStateSourcePresetState = lastReceivedStateXml.getElementsByTagName('SourcePresetState')[0];
                 OldStateGlobalSettings = lastReceivedStateXml.getElementsByTagName('GlobalSettings')[0];
-                OldStateSamplerState = lastReceivedStateXml.getElementsByTagName('Sampler')[0];
-                OldStateReverbParameters = lastReceivedStateXml.getElementsByTagName('ReverbParameters')[0];
             }
             
             // Update main preset settings and global settings (only update if state has changed)
@@ -611,13 +623,13 @@
             updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'presetName', SourcePresetState, OldStateSourcePresetState);
             updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiThru', GlobalSettings, OldStateGlobalSettings);
             updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'midiInChannel', GlobalSettings, OldStateGlobalSettings);
-            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'NumVoices', SamplerState, OldStateSamplerState);
-            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverb_roomSize', ReverbParameters, OldStateReverbParameters);
-            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverb_damping', ReverbParameters, OldStateReverbParameters);
-            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverb_wetLevel', ReverbParameters, OldStateReverbParameters);
-            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverb_dryLevel', ReverbParameters, OldStateReverbParameters);
-            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverb_width', ReverbParameters, OldStateReverbParameters);
-            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverb_freezeMode', ReverbParameters, OldStateReverbParameters);
+            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'NumVoices', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverbRoomSize', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverbDamping', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverbWetLevel', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverbDryLevel', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverbWidth', SourcePresetState, OldStateSourcePresetState);
+            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverbFreezeMode', SourcePresetState, OldStateSourcePresetState);
             
             // Update volatile state
             var VolatileState = xmlState.getElementsByTagName('VolatileState')[0];
@@ -656,21 +668,21 @@
 
             // Check if the sound listing has changed
             var shouldRedoCards = false;
-            var soundInfoElements = xmlState.getElementsByTagName('soundInfo');
+            var soundInfoElements = xmlState.getElementsByTagName('SOUND');
             var OldStateSoundInfoElements = undefined;
 
             if (lastReceivedStateXml === undefined){
                 shouldRedoCards = true;
             } else {
-                OldStateSoundInfoElements = lastReceivedStateXml.getElementsByTagName('soundInfo');
+                OldStateSoundInfoElements = lastReceivedStateXml.getElementsByTagName('SOUND');
                 
                 var newStateIds = "";
                 var oldStateIds = "";
                 for (var i=0; i<soundInfoElements.length; i++){
-                    newStateIds += soundInfoElements[i].getAttribute('soundId') + ',';
+                    newStateIds += soundInfoElements[i].getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId') + ',';
                 }
                 for (var i=0; i<OldStateSoundInfoElements.length; i++){
-                    oldStateIds += OldStateSoundInfoElements[i].getAttribute('soundId') + ',';
+                    oldStateIds += OldStateSoundInfoElements[i].getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId') + ',';
                 }
                 if (newStateIds != oldStateIds){
                     shouldRedoCards = true;
@@ -683,7 +695,8 @@
                 individualSoundEditorsElement.innerHTML = '';
                 for (var i = 0; i < soundInfoElements.length; i++) {
                     var sound = soundInfoElements[i];
-                    var soundCardHtml = createCardForSound(i, sound);
+                    var soundUUID = sound.getAttribute('uuid');
+                    var soundCardHtml = createCardForSound(soundUUID, sound);
                     individualSoundEditorsElement.innerHTML += soundCardHtml;
                 }
             }
@@ -692,22 +705,20 @@
             var slidersToUpdate = [];
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var sound = soundInfoElements[i];
-                updateCardForSound(i, sound); // Update basic card details
-                
-                var samplerSound = sound.getElementsByTagName('SamplerSound')[0];
-                var soundIdx = samplerSound.getAttribute('soundIdx');
-                var samplerSoundParameters = samplerSound.getElementsByTagName('SamplerSoundParameter');
-                for (var j = 0; j < samplerSoundParameters.length; j++) {
-                    var parameter = samplerSoundParameters[j];
-                    var name = parameter.getAttribute('parameter_name');
-                    var type = parameter.getAttribute('parameter_type');
-                    var rawValue = parameter.getAttribute('parameter_value');
+                var soundUUID = sound.getAttribute('uuid');
+                updateCardForSound(soundUUID, sound, i); // Update basic card details
+                var soundParameterNames = getAllSoundParameterNames();
+                var soundParameterTpes = getAllSoundParameterTypes();
+                for (var j = 0; j < soundParameterNames.length; j++) {
+                    var name = soundParameterNames[j];
+                    var type = soundParameterTpes[j];
+                    var rawValue = sound.getAttribute(name);
                     if (type == "float"){
-                        var sliderElement = document.getElementById(i + '_' + name) // Needed to get slider max value
+                        var sliderElement = document.getElementById(soundUUID + '_' + name) // Needed to get slider max value
                         var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
-                        slidersToUpdate.push([i + '_' + name, value])
+                        slidersToUpdate.push([soundUUID + '_' + name, value])
                     } else if (type == "int"){
-                        slidersToUpdate.push([i + '_' + name, parseInt(rawValue, 10)])
+                        slidersToUpdate.push([soundUUID + '_' + name, parseInt(rawValue, 10)])
                     }
                 }
             }
@@ -726,27 +737,26 @@
             // Add/updae sound MIDI mappings
             for (var i = 0; i < soundInfoElements.length; i++) {
                 var sound = soundInfoElements[i];
-                var samplerSound = sound.getElementsByTagName('SamplerSound')[0];
-                var soundIdx = samplerSound.getAttribute('soundIdx');
-                var samplerSoundMappings = samplerSound.getElementsByTagName('SamplerSoundMidiCCMapping');
-                var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundIdx);
+                var soundUUID = sound.getAttribute('uuid');
+                var samplerSoundMappings = sound.getElementsByTagName('MIDI_CC_MAPPING');
+                var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
                 var currentMappingIDs = []; // Used later to decide whether some elements should be removed
                 for (var j = 0; j < samplerSoundMappings.length; j++) {
                     var mapping = samplerSoundMappings[j];
-                    var randomID = parseInt(mapping.getAttribute('midiMappingRandomId'), 10);
-                    var ccNumber = parseInt(mapping.getAttribute('midiMappingCcNumber'), 10);
-                    var name = mapping.getAttribute('midiMappingParameterName');
-                    var minRange = parseFloat(mapping.getAttribute('midiMappingMinRange'), 10);
-                    var maxRange = parseFloat(mapping.getAttribute('midiMappingMaxRange'), 10);
+                    var randomID = mapping.getAttribute('uuid');
+                    var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
+                    var name = mapping.getAttribute('parameterName');
+                    var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
+                    var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
 
-                    var mappingID = randomID + '_' + soundIdx;
+                    var mappingID = randomID + '_' + soundUUID;
                     currentMappingIDs.push(mappingID);
                     if (document.getElementById(mappingID) != undefined){
                         // if a div with that mappingID already exists in the samplerSoundMappingsElement, do nothing
                         
                     } else {
                         // if such a mappingID is not yet there, add it
-                        html = createMIDIMappingEditor(soundIdx, randomID, ccNumber, name, minRange, maxRange);
+                        html = createMIDIMappingEditor(soundUUID, randomID, ccNumber, name, minRange, maxRange);
                         samplerSoundMappingsElement.innerHTML += html;
                     }
                 

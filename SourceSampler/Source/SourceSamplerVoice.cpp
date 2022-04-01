@@ -271,9 +271,9 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     }
     
     // ADSRs
-    juce::ADSR::Parameters ampADSRParams = {sound->gpf(IDs::ampA), sound->gpf(IDs::ampD), sound->gpf(IDs::ampS), sound->gpf(IDs::ampR)};
+    juce::ADSR::Parameters ampADSRParams = {sound->gpf(IDs::attack), sound->gpf(IDs::decay), sound->gpf(IDs::sustain), sound->gpf(IDs::release)};
     adsr.setParameters (ampADSRParams);
-    juce::ADSR::Parameters filterADSRParams = {sound->gpf(IDs::filterA), sound->gpf(IDs::filterD), sound->gpf(IDs::filterS), sound->gpf(IDs::filterR)};
+    juce::ADSR::Parameters filterADSRParams = {sound->gpf(IDs::filterAttack), sound->gpf(IDs::filterDecay), sound->gpf(IDs::filterSustain), sound->gpf(IDs::filterRelease)};
     adsrFilter.setParameters (filterADSRParams);
     
     // Filter

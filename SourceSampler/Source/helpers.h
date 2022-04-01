@@ -77,16 +77,16 @@ namespace Helpers
         sound.setProperty (IDs::filterCutoff, 20000.0f, nullptr);
         sound.setProperty (IDs::filterRessonance, 0.0f, nullptr);
         sound.setProperty (IDs::filterKeyboardTracking, 0.0f, nullptr);
-        sound.setProperty (IDs::filterA, 0.01f, nullptr);
-        sound.setProperty (IDs::filterD, 0.0f, nullptr);
-        sound.setProperty (IDs::filterS, 1.0f, nullptr);
-        sound.setProperty (IDs::filterR, 0.01f, nullptr);
+        sound.setProperty (IDs::filterAttack, 0.01f, nullptr);
+        sound.setProperty (IDs::filterDecay, 0.0f, nullptr);
+        sound.setProperty (IDs::filterSustain, 1.0f, nullptr);
+        sound.setProperty (IDs::filterRelease, 0.01f, nullptr);
         sound.setProperty (IDs::filterADSR2CutoffAmt, 1.0f, nullptr);
         sound.setProperty (IDs::gain, -10.0f, nullptr);
-        sound.setProperty (IDs::ampA, 0.01f, nullptr);
-        sound.setProperty (IDs::ampD, 0.0f, nullptr);
-        sound.setProperty (IDs::ampS, 1.0f, nullptr);
-        sound.setProperty (IDs::ampR, 0.01f, nullptr);
+        sound.setProperty (IDs::attack, 0.01f, nullptr);
+        sound.setProperty (IDs::decay, 0.0f, nullptr);
+        sound.setProperty (IDs::sustain, 1.0f, nullptr);
+        sound.setProperty (IDs::release, 0.01f, nullptr);
         sound.setProperty (IDs::pan, 0.0f, nullptr);
         sound.setProperty (IDs::pitch, 0.0f, nullptr);
         sound.setProperty (IDs::pitchBendRangeUp, 12.0f, nullptr);
@@ -108,10 +108,11 @@ namespace Helpers
         ss.setProperty (IDs::name, soundName, nullptr);
         ss.setProperty (IDs::soundId, soundId, nullptr);
         ss.setProperty (IDs::previewURL, previewURL, nullptr);
-        ss.setProperty(IDs::midiRootNote, 64, nullptr);
+        ss.setProperty (IDs::midiRootNote, 64, nullptr);
+        ss.setProperty (IDs::duration, -1.0, nullptr);
         BigInteger midiNotes;
         midiNotes.setRange(0, 127, true);
-        ss.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+        ss.setProperty (IDs::midiNotes, midiNotes.toString(16), nullptr);
         return ss;
     }
 

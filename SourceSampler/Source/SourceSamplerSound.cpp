@@ -32,6 +32,9 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
         lengthInSamples = jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));
         data.reset (new AudioBuffer<float> (jmin (2, (int) source.numChannels), lengthInSamples + 4));
         source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
+        
+        // Add duration to state
+        state.setProperty(IDs::duration, getLengthInSeconds(), nullptr);
     }
 }
 
