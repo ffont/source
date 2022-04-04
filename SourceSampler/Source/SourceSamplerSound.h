@@ -433,11 +433,8 @@ public:
                 int soundId = (int)child.getProperty(IDs::soundId, -1);
                 if (soundId > -1){
                     juce::String soundName = name + "-" + (juce::String)soundId;
-                    File audioSample = File::getSpecialLocation(File::userDocumentsDirectory)
-                        .getChildFile("SourceSampler/")
-                        .getChildFile("sounds")
-                        .getChildFile((juce::String)soundId).withFileExtension("ogg");
-                    std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(audioSample));
+                    File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+                    std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
                     SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                               this,
                                                                               *reader,
@@ -537,7 +534,7 @@ public:
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
-                File locationInDisk = File(getGlobalContext().sourceDataLocation.getFullPathName() + "/" + child.getProperty(IDs::filePath, "").toString());
+                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
                 if (task->getTargetLocation() == locationInDisk){
                     // Find the sample that corresponds to this download task and update state
                     child.setProperty(IDs::downloadCompleted, true, nullptr);
@@ -560,7 +557,7 @@ public:
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
-                File locationInDisk = File(child.getProperty(IDs::filePath, "").toString());
+                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
                 if (task->getTargetLocation() == locationInDisk){
                     // Find the sample that corresponds to this download task and update state
                     child.setProperty(IDs::downloadProgress, 100.0*(float)bytesDownloaded/(float)totalLength, nullptr);
