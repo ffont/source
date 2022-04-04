@@ -371,6 +371,17 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
+    void setOnsetTimesSamples(std::vector<float> onsetTimes){
+        // Set the given onset times as slices
+        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
+        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
+        if (first != nullptr){
+            first->setOnsetTimesSamples(onsetTimes);
+        }
+    }
+    
+    // ------------------------------------------------------------------------------------------------
+    
     void addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange){
         
         ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
@@ -468,8 +479,17 @@ public:
         std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
     }
     
-    
-    
+    bool isSupportedAudioFileFormat(const String& extension)
+    {
+        return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
+    }
+
+
+    bool fileLocationIsSupportedAudioFileFormat(File location)
+    {
+        return isSupportedAudioFileFormat(location.getFileExtension());
+    }
+
     void run(){
         // TODO: use thread to download and load sounds (?)
     }

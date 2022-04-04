@@ -111,7 +111,7 @@ public:
     class QueryMakerThread : private Thread
     {
     public:
-        QueryMakerThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
+        QueryMakerThread(SourceSamplerAudioProcessor& p) : Thread ("QueryMakerThread"), processor (p){}
         
         void setQueryParameters(const String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
             query = _query;
@@ -132,13 +132,6 @@ public:
     };
     QueryMakerThread queryMakerThread;
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
-    bool isSupportedAudioFileFormat(const String& extension);
-    bool fileLocationIsSupportedAudioFileFormat(File location);
-    File getSoundPreviewLocation(ValueTree sound);
-    File getSoundOriginalFileLocation(ValueTree sound);
-    File getSoundLocalPathLocation(ValueTree sound);
-    File getSoundFileLocationToLoad(ValueTree sound);
-    
     void removeSound(const juce::String& soundUUID);
     void addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
                                                    int soundID,
@@ -206,8 +199,6 @@ private:
     int lastReceivedMIDIControllerNumber = -1;
     int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;
-    bool isQueryDownloadingAndLoadingSounds = false;
-    double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
     bool aconnectWasRun = false;
     ValueTree loadedSoundsInfo;
@@ -220,7 +211,6 @@ private:
     std::vector<String> recentLogMessages = {};
     String recentLogMessagesSerialized = "";
 
-    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };
