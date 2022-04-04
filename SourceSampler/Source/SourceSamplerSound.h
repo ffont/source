@@ -506,7 +506,7 @@ public:
                 if ((previewURL != "") && (soundId > -1)){
                     juce::File locationInDisk = getGlobalContext().soundsDownloadLocation
                         .getChildFile((juce::String)soundId).withFileExtension("ogg");
-                    child.setProperty(IDs::filePath, locationInDisk.getFullPathName(), nullptr);
+                    child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
                     if (!locationInDisk.exists()){
                         // Trigger download if sound not in disk
                         allAlreadyDownloaded = false;
@@ -537,7 +537,7 @@ public:
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
-                File locationInDisk = File(child.getProperty(IDs::filePath, "").toString());
+                File locationInDisk = File(getGlobalContext().sourceDataLocation.getFullPathName() + "/" + child.getProperty(IDs::filePath, "").toString());
                 if (task->getTargetLocation() == locationInDisk){
                     // Find the sample that corresponds to this download task and update state
                     child.setProperty(IDs::downloadCompleted, true, nullptr);

@@ -65,11 +65,46 @@ namespace Helpers
         return preset;
     }
 
-    inline juce::ValueTree createEmptySourceSoundState(const juce::String soundName)
+    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL, const juce::String filePath)
+    {
+        juce::ValueTree ss (IDs::SOUND_SAMPLE);
+        Helpers::createUuidProperty (ss);
+        ss.setProperty (IDs::name, soundName, nullptr);
+        ss.setProperty (IDs::soundId, soundId, nullptr);
+        ss.setProperty (IDs::previewURL, previewURL, nullptr);
+        ss.setProperty (IDs::filePath, filePath, nullptr);
+        ss.setProperty (IDs::duration, -1.0, nullptr);
+        return ss;
+    }
+
+    inline juce::ValueTree createAnalysisFromSlices(StringArray slices)
+    {
+        juce::ValueTree soundAnalysis = juce::ValueTree(IDs::ANALYSIS);
+        juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
+        for (auto sliceString: slices){
+            ValueTree onset = ValueTree(IDs::onset);
+            onset.setProperty(IDs::onsetTime, sliceString.getFloatValue(), nullptr);
+            soundAnalysisOnsetTimes.appendChild(onset, nullptr);
+        }
+        soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
+        return soundAnalysis;
+    }
+
+    inline juce::ValueTree createMidiMappingState(int ccNumber, String parameterName, float minRange, float maxRange)
+    {
+        juce::ValueTree mapping (IDs::MIDI_CC_MAPPING);
+        Helpers::createUuidProperty (mapping);
+        mapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
+        mapping.setProperty (IDs::parameterName, parameterName, nullptr);
+        mapping.setProperty (IDs::minRange, minRange, nullptr);
+        mapping.setProperty (IDs::maxRange, maxRange, nullptr);
+        return mapping;
+    }
+
+    inline juce::ValueTree createEmptySourceSoundState()
     {
         juce::ValueTree sound (IDs::SOUND);
         Helpers::createUuidProperty (sound);
-        sound.setProperty (IDs::name, soundName, nullptr);
         sound.setProperty (IDs::enabled, true, nullptr);
         // --> Start auto-generated code A
         sound.setProperty (IDs::soundType, 0, nullptr);
@@ -111,44 +146,45 @@ namespace Helpers
         return sound;
     }
 
-    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL, const juce::String filePath)
-    {
-        juce::ValueTree ss (IDs::SOUND_SAMPLE);
-        Helpers::createUuidProperty (ss);
-        ss.setProperty (IDs::name, soundName, nullptr);
-        ss.setProperty (IDs::soundId, soundId, nullptr);
-        ss.setProperty (IDs::previewURL, previewURL, nullptr);
-        ss.setProperty (IDs::filePath, filePath, nullptr);
-        ss.setProperty (IDs::midiRootNote, 64, nullptr);
-        ss.setProperty (IDs::duration, -1.0, nullptr);
-        BigInteger midiNotes;
-        midiNotes.setRange(0, 127, true);
-        ss.setProperty (IDs::midiNotes, midiNotes.toString(16), nullptr);
-        return ss;
-    }
+    inline juce::ValueTree createSourceSoundAndSourceSamplerSoundFromProperties(const String& soundUUID,
+                                                                                int soundID,
+                                                                                const String& soundName,
+                                                                                const String& soundUser,
+                                                                                const String& soundLicense,
+                                                                                const String& previewURL,
+                                                                                const String& localFilePath,
+                                                                                const String& format,
+                                                                                int sizeBytes,
+                                                                                StringArray slices,
+                                                                                BigInteger midiNotes,
+                                                                                int midiRootNote){
+        juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState();
+        
+        juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(soundName,
+                                                                                   (int)sourceSound.getProperty(IDs::soundId),
+                                                                                   previewURL,
+                                                                                   localFilePath);
+        sourceSamplerSound.setProperty(IDs::format, format, nullptr);
+        sourceSamplerSound.setProperty(IDs::filesize, sizeBytes, nullptr);
+        sourceSamplerSound.setProperty(IDs::soundId, soundID, nullptr);
+        sourceSamplerSound.setProperty (IDs::username, soundUser, nullptr);
+        sourceSamplerSound.setProperty(IDs::license, soundLicense, nullptr);
 
-    inline juce::ValueTree createAnalysisFromSlices(StringArray slices)
-    {
-        juce::ValueTree soundAnalysis = juce::ValueTree(IDs::ANALYSIS);
-        juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
-        for (auto sliceString: slices){
-            ValueTree onset = ValueTree(IDs::onset);
-            onset.setProperty(IDs::onsetTime, sliceString.getFloatValue(), nullptr);
-            soundAnalysisOnsetTimes.appendChild(onset, nullptr);
+        if (midiRootNote >  -1){
+            sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
         }
-        soundAnalysis.appendChild(soundAnalysisOnsetTimes, nullptr);
-        return soundAnalysis;
-    }
-
-    inline juce::ValueTree createMidiMappingState(int ccNumber, String parameterName, float minRange, float maxRange)
-    {
-        juce::ValueTree mapping (IDs::MIDI_CC_MAPPING);
-        Helpers::createUuidProperty (mapping);
-        mapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
-        mapping.setProperty (IDs::parameterName, parameterName, nullptr);
-        mapping.setProperty (IDs::minRange, minRange, nullptr);
-        mapping.setProperty (IDs::maxRange, maxRange, nullptr);
-        return mapping;
+        if (!midiNotes.isZero()){
+            sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+        }
+        
+        if (slices.size() > 0){
+            juce::ValueTree soundAnalysis = Helpers::createAnalysisFromSlices(slices);
+            sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
+        }
+        
+        sourceSound.addChild(sourceSamplerSound, -1, nullptr);
+        
+        return sourceSound;
     }
 
     inline juce::ValueTree createDefaultEmptyState()

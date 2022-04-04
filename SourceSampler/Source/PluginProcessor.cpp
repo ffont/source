@@ -787,9 +787,8 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
         int midiRootNote = parameters[11].getIntValue();
-        String triggerDownloadSoundAction = parameters[12];
         
-        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, triggerDownloadSoundAction);
+        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote);
         
     } else if (actionName == ACTION_REAPPLY_LAYOUT){
         int newNoteLayout = parameters[0].getIntValue();
@@ -913,11 +912,9 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         // Clear all loaded sounds
         presetState.removeAllChildren(nullptr);
         
-        // Prepare some variables for note layout
+        // Load the first nSounds from the found ones
         int nNotesPerSound = 128 / nSounds;
-        
         for (int i=0; i<nSounds; i++){
-            FSSound sound = soundsFound[i];
             
             // Calculate assigned notes
             int midiRootNote;
@@ -937,18 +934,8 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
                 }
             }
             
-            // Prepare slices
-            StringArray slices;
-            if (sound.analysis.hasProperty("rhythm")){
-                if (sound.analysis["rhythm"].hasProperty("onset_times")){
-                    for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
-                        slices.add(sound.analysis["rhythm"]["onset_times"][j].toString());
-                    }
-                }
-            }
-            
             // Create sound
-            addOrReplaceSoundFromBasicSoundProperties("", sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote, "");
+            addOrReplaceSoundFromBasicSoundProperties("", soundsFound[i], midiNotes, midiRootNote);
         }
     } else {
         logToState("Query got no results...");
@@ -972,32 +959,9 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
                                                                             int sizeBytes,
                                                                             StringArray slices,
                                                                             BigInteger midiNotes,
-                                                                            int midiRootNote,
-                                                                            const String& triggerDownloadSoundAction)
+                                                                            int midiRootNote)
 {
-    juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState(soundName);
-    sourceSound.setProperty(IDs::soundId, soundID, nullptr);
-    sourceSound.setProperty (IDs::username, soundUser, nullptr);
-    sourceSound.setProperty(IDs::license, soundLicense, nullptr);
-    sourceSound.setProperty(IDs::previewURL, previewURL, nullptr);
-    sourceSound.setProperty(IDs::format, format, nullptr);
-    sourceSound.setProperty(IDs::filesize, sizeBytes, nullptr);
-    
-    juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(sourceSound.getProperty(IDs::soundId).toString() + " - 1", (int)sourceSound.getProperty(IDs::soundId), previewURL, localFilePath);
-
-    if (midiRootNote >  -1){
-        sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
-    }
-    if (!midiNotes.isZero()){
-        sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
-    }
-    
-    if (slices.size() > 0){
-        juce::ValueTree soundAnalysis = Helpers::createAnalysisFromSlices(slices);
-        sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
-    }
-    
-    sourceSound.addChild(sourceSamplerSound, -1, nullptr);
+    juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundUUID, soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote);
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
     int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
     if (existingSoundIndex > -1){
@@ -1009,6 +973,25 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
         // If no sound exists with the given UUID, add the sound as a NEW one at the end of the list
         presetState.addChild(sourceSound, -1, nullptr);
     }
+}
+
+void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
+                                                                            FSSound sound,
+                                                                            BigInteger midiNotes,
+                                                                            int midiRootNote)
+{
+    // Prepare slices
+    StringArray slices;
+    if (sound.analysis.hasProperty("rhythm")){
+        if (sound.analysis["rhythm"].hasProperty("onset_times")){
+            for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
+                slices.add(sound.analysis["rhythm"]["onset_times"][j].toString());
+            }
+        }
+    }
+    
+    // Create sound
+    addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "ogg", sound.format, sound.filesize, slices, midiNotes, midiRootNote);
 }
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)

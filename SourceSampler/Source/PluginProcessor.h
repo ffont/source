@@ -144,10 +144,11 @@ public:
                                                    int sizeBytes,
                                                    StringArray slices,
                                                    BigInteger midiNotes,
-                                                   int midiRootNote,
-                                                   const String& triggerDownloadSoundAction
-                                                   );  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
-    
+                                                   int midiRootNote);
+    void addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
+                                                   FSSound sound,
+                                                   BigInteger midiNotes,
+                                                   int midiRootNote);
     void reapplyNoteLayout(int newNoteLayoutType);
     
     void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);

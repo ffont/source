@@ -567,6 +567,8 @@
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
             var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
             var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
+            var soundName = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
+            var licenseURL = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             if ((downloadProgress != 100) && (soundID != -1)){
                 // Sound not yet loaded, show download progress
                 html = '<h5>' + idx + " - " + soundID + '</h5>';
@@ -581,8 +583,7 @@
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
                     html = '<div class="transportSoundButtons"><button onclick="playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="removeSound(\'' + soundUUID + '\')">x</button></div>';
                     html += '<h4>' + (parseInt(idx, 10) + 1) + " - " + soundID + '</h4>';
-                    html += sound.getAttribute('name') + '<br>';
-                    var licenseURL = sound.getAttribute('license');
+                    html += soundName + '<br>';
                     var licenseName = "-";
                     if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
                     else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
