@@ -431,7 +431,7 @@ public:
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
                 File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-                if (locationInDisk.existsAsFile() && fileLocationIsSupportedAudioFileFormat(locationInDisk) && locationInDisk.getSize() > 0){
+                if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
                     std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
                     SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                               this,
@@ -491,7 +491,7 @@ public:
         juce::File locationInDisk;
         juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
         if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
-            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + ".original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
+            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
         } else {
             locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
         }
@@ -517,6 +517,13 @@ public:
         return false;
     }
     
+    bool fileAlreadyInDisk(File locationInDisk)
+    {
+        // Check that file exists in disk and that it has at least half of the expected full size
+        int fileMinSize = 100; // Something smaller than 100 bytes will be considered corrupt file
+        return locationInDisk.existsAsFile() && locationInDisk.getSize() > fileMinSize;
+    }
+    
     void triggerSoundDownloads()
     {
         // Trigger the downloading of all SourceSamplerSound(s) of SourceSound. This will normally be one single sound except for the
@@ -540,32 +547,37 @@ public:
                     // download original quality files (e.g. have no access token set)
                     locationInDisk = getFreesoundFileLocation(child);
                     child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
-                    if (locationInDisk.existsAsFile() && locationInDisk.getSize() > 0){
+                    if (fileAlreadyInDisk(locationInDisk)){
                         // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
                         child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                         child.setProperty(IDs::downloadCompleted, true, nullptr);
                     } else {
                         // If the sound does not exist, then trigger the download
                         allAlreadyDownloaded = false;
+                        child.setProperty(IDs::downloadProgress, 0.0, nullptr);
+                        child.setProperty(IDs::downloadCompleted, false, nullptr);
                         if (shouldUseOriginalQualityFile(child)){
                             // Download original quality file
-                            // TODO: implement that feature
+                            juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
+                            DBG(downloadURL);
+                            URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
+                            std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
+                            downloadTasks.push_back(std::move(downloadTask));
                         } else {
                             // Download preview quality file
                             juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
-                            child.setProperty(IDs::downloadProgress, 0.0, nullptr);
-                            child.setProperty(IDs::downloadCompleted, false, nullptr);
                             URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
                             std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
                             downloadTasks.push_back(std::move(downloadTask));
-                            std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
+                            
                         }
+                        std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
                     }
                 } else {
                     // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
                     if (filePath != ""){
                         locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
-                        if (locationInDisk.existsAsFile() && locationInDisk.getSize() > 0){
+                        if (fileAlreadyInDisk(locationInDisk)){
                             child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                             child.setProperty(IDs::downloadCompleted, true, nullptr);
                         }
@@ -586,9 +598,10 @@ public:
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
+                // Find the sample that corresponds to this download task and update state
+                // To consider a download as succeeded, check that the the task returned succes
                 File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-                if (task->getTargetLocation() == locationInDisk){
-                    // Find the sample that corresponds to this download task and update state
+                if (success && (task->getTargetLocation() == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
                     child.setProperty(IDs::downloadCompleted, true, nullptr);
                     child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                 } else {
