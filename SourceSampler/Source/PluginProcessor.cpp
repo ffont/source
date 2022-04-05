@@ -126,10 +126,12 @@ GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
     context.sampleRate = getSampleRate();
     context.samplesPerBlock = getBlockSize();
     context.sampler = &sampler;
+    context.useOriginalFilesPreference = useOriginalFilesPreference.get();
     context.soundsDownloadLocation = soundsDownloadLocation;
     context.sourceDataLocation = sourceDataLocation;
     context.presetFilesLocation = presetFilesLocation;
     context.tmpFilesLocation = tmpFilesLocation;
+    context.freesoundOauthAccessToken = ""; // TODO: implement support for obtaining an access token and enable downloading original quality files
     return context;
 }
 
@@ -991,7 +993,7 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     }
     
     // Create sound
-    addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "ogg", sound.format, sound.filesize, slices, midiNotes, midiRootNote);
+    addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote);
 }
 
 void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)

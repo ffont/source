@@ -20,11 +20,13 @@
 struct GlobalContextStruct {
     double sampleRate = 0.0;
     int samplesPerBlock = 0;
-    Synthesiser* sampler = nullptr;
+    juce::Synthesiser* sampler = nullptr;
+    juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
     File sourceDataLocation;
     File soundsDownloadLocation;
     File presetFilesLocation;
     File tmpFilesLocation;
+    juce::String freesoundOauthAccessToken = "";
 };
 
 
@@ -65,15 +67,18 @@ namespace Helpers
         return preset;
     }
 
-    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundId, const juce::String previewURL, const juce::String filePath)
+    inline juce::ValueTree createSourceSampleSoundState(const juce::String soundName, int soundID, const juce::String previewURL, const juce::String format, int sizeBytes, const juce::String filePath)
     {
         juce::ValueTree ss (IDs::SOUND_SAMPLE);
         Helpers::createUuidProperty (ss);
         ss.setProperty (IDs::name, soundName, nullptr);
-        ss.setProperty (IDs::soundId, soundId, nullptr);
-        ss.setProperty (IDs::previewURL, previewURL, nullptr);
+        ss.setProperty (IDs::soundId, soundID, nullptr); // This might be -1 if sound is not from freesound
+        ss.setProperty (IDs::format, format, nullptr);
+        ss.setProperty (IDs::previewURL, previewURL, nullptr); // This might be "" if sound is not from freesound
         ss.setProperty (IDs::filePath, filePath, nullptr);
-        ss.setProperty (IDs::duration, -1.0, nullptr);
+        ss.setProperty (IDs::duration, -1.0, nullptr);  // This will be set when sound is loaded
+        ss.setProperty (IDs::filesize, sizeBytes, nullptr);  // This might be -1 if sound is not from freesound
+        ss.setProperty (IDs::soundFromFreesound, soundID > -1, nullptr);
         return ss;
     }
 
@@ -106,6 +111,7 @@ namespace Helpers
         juce::ValueTree sound (IDs::SOUND);
         Helpers::createUuidProperty (sound);
         sound.setProperty (IDs::enabled, true, nullptr);
+        sound.setProperty (IDs::allSoundsLoaded, false, nullptr);
         // --> Start auto-generated code A
         sound.setProperty (IDs::soundType, 0, nullptr);
         sound.setProperty (IDs::launchMode, 0, nullptr);
@@ -161,13 +167,12 @@ namespace Helpers
         juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState();
         
         juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(soundName,
-                                                                                   (int)sourceSound.getProperty(IDs::soundId),
+                                                                                   soundID,
                                                                                    previewURL,
+                                                                                   format,
+                                                                                   sizeBytes,
                                                                                    localFilePath);
-        sourceSamplerSound.setProperty(IDs::format, format, nullptr);
-        sourceSamplerSound.setProperty(IDs::filesize, sizeBytes, nullptr);
-        sourceSamplerSound.setProperty(IDs::soundId, soundID, nullptr);
-        sourceSamplerSound.setProperty (IDs::username, soundUser, nullptr);
+        sourceSamplerSound.setProperty(IDs::username, soundUser, nullptr);
         sourceSamplerSound.setProperty(IDs::license, soundLicense, nullptr);
 
         if (midiRootNote >  -1){

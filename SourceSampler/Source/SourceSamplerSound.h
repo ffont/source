@@ -139,6 +139,7 @@ public:
     {
         name.referTo(state, IDs::name, nullptr);
         enabled.referTo(state, IDs::enabled, nullptr);
+        allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
         
         // --> Start auto-generated code C
         soundType.referTo(state, IDs::soundType, nullptr, Defaults::soundType);
@@ -426,14 +427,11 @@ public:
         AudioFormatManager audioFormatManager;
         audioFormatManager.registerBasicFormats();
         std::vector<SourceSamplerSound*> sounds = {};
-        
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
-                int soundId = (int)child.getProperty(IDs::soundId, -1);
-                if (soundId > -1){
-                    juce::String soundName = name + "-" + (juce::String)soundId;
-                    File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+                if (locationInDisk.existsAsFile() && fileLocationIsSupportedAudioFileFormat(locationInDisk) && locationInDisk.getSize() > 0){
                     std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
                     SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                               this,
@@ -454,6 +452,7 @@ public:
         std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
         for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
         std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
+        allSoundsLoaded = true;
     }
     
     void removeSourceSampleSoundsFromSampler()
@@ -486,37 +485,90 @@ public:
     {
         return isSupportedAudioFileFormat(location.getFileExtension());
     }
+    
+    File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
+    {
+        juce::File locationInDisk;
+        juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
+        if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
+            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + ".original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
+        } else {
+            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
+        }
+        return locationInDisk;
+    }
 
     void run(){
         // TODO: use thread to download and load sounds (?)
     }
     
+    bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
+    {
+        if (getGlobalContext().freesoundOauthAccessToken != ""){
+            if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+                return true;
+            } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+                // Only return true if sound has a filesize below the threshold
+                if ((int)sourceSamplerSoundState.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
     void triggerSoundDownloads()
     {
-        // TODO: add support for non-freesound sounds. If filePath is passed and sound is already there, don't trigger any downloading
+        // Trigger the downloading of all SourceSamplerSound(s) of SourceSound. This will normally be one single sound except for the
+        // case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
+        
+        allSoundsLoaded = false;
+        
         bool allAlreadyDownloaded = true;
         for (int i=0; i<state.getNumChildren(); i++){
             auto child = state.getChild(i);
             if (child.hasType(IDs::SOUND_SAMPLE)){
-                int soundId = (int)child.getProperty(IDs::soundId, -1);
-                juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
-                if ((previewURL != "") && (soundId > -1)){
-                    juce::File locationInDisk = getGlobalContext().soundsDownloadLocation
-                        .getChildFile((juce::String)soundId).withFileExtension("ogg");
+                
+                bool isFromFreesound = child.getProperty(IDs::soundFromFreesound, false);
+                juce::String filePath = child.getProperty(IDs::filePath, ""); // Relative file path
+                juce::File locationInDisk; // The location in disk where sound should be downloaded/placed
+                
+                if (isFromFreesound){
+                    // Check if sound already exists in disk, otherwise trigger download
+                    // If sound is from Freesound, compute the expected file location and update the state with that location (it will most likely be the same)
+                    // This can be useful if sharing presets that had downloaded original quality files with plugin instances that don't have the ability to
+                    // download original quality files (e.g. have no access token set)
+                    locationInDisk = getFreesoundFileLocation(child);
                     child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
-                    if (!locationInDisk.exists()){
-                        // Trigger download if sound not in disk
-                        allAlreadyDownloaded = false;
-                        child.setProperty(IDs::downloadProgress, 0.0, nullptr);
-                        child.setProperty(IDs::downloadCompleted, false, nullptr);
-                        URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
-                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
-                        downloadTasks.push_back(std::move(downloadTask));
-                        std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
-                    } else {
-                        // If sound already downloaded, save info in VT
+                    if (locationInDisk.existsAsFile() && locationInDisk.getSize() > 0){
+                        // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
                         child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                         child.setProperty(IDs::downloadCompleted, true, nullptr);
+                    } else {
+                        // If the sound does not exist, then trigger the download
+                        allAlreadyDownloaded = false;
+                        if (shouldUseOriginalQualityFile(child)){
+                            // Download original quality file
+                            // TODO: implement that feature
+                        } else {
+                            // Download preview quality file
+                            juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
+                            child.setProperty(IDs::downloadProgress, 0.0, nullptr);
+                            child.setProperty(IDs::downloadCompleted, false, nullptr);
+                            URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
+                            std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
+                            downloadTasks.push_back(std::move(downloadTask));
+                            std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
+                        }
+                    }
+                } else {
+                    // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
+                    if (filePath != ""){
+                        locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
+                        if (locationInDisk.existsAsFile() && locationInDisk.getSize() > 0){
+                            child.setProperty(IDs::downloadProgress, 100.0, nullptr);
+                            child.setProperty(IDs::downloadCompleted, true, nullptr);
+                        }
                     }
                 }
             }
@@ -570,6 +622,7 @@ private:
     // Sound properties
     juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> enabled;
+    juce::CachedValue<bool> allSoundsLoaded;
     
     std::unique_ptr<MidiCCMappingList> midiCCmappings;
 
