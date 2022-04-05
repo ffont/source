@@ -665,7 +665,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         // If using external server to download sounds, send progress updates through this action
         juce::String soundUUID = parameters[0];
         juce::File targetFileLocation = juce::File(parameters[1]);
-        bool downloadedPercentage = parameters[2].getFloatValue();
+        float downloadedPercentage = parameters[2].getFloatValue();
         SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->downloadProgressUpdate(targetFileLocation, downloadedPercentage);

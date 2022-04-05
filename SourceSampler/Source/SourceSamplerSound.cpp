@@ -584,7 +584,7 @@ void SourceSound::triggerSoundDownloads()
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
                         # else
                         juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds").withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
                         int statusCode = -1;
                         StringPairArray responseHeaders;
                         if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
@@ -606,7 +606,7 @@ void SourceSound::triggerSoundDownloads()
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
                         # else
                         juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds").withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
                         int statusCode = -1;
                         StringPairArray responseHeaders;
                         if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",

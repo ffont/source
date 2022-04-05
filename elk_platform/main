@@ -470,75 +470,70 @@ def run_elk_bridge_loop():
 # --- Sound downloader ------------------------------------------------------------------------
 
 class SoundDownloaderProgress:
-    def __init__(self, url, outfile, sound_id, no_report):
+    def __init__(self, url, outfile, sound_uuid):
         self.time_started = time.time()
         self.old_percent = 0
         self.url = url
         self.outfile = outfile
-        self.sound_id = sound_id
-        self.no_report = no_report
+        self.sound_uuid = sound_uuid
 
     def download_progress_hook(self, count, blockSize, totalSize):
-        percent = int(count * blockSize * 100 / totalSize)
+        percent = count * blockSize * 100 / totalSize
         if percent > self.old_percent:
             self.old_percent = percent
-            if not self.no_report:
-                osc_client.send_message('/downloading_sound_progress', [str(self.sound_id), percent])
+            osc_client.send_message('/downloading_sound_progress', [self.sound_uuid, self.outfile, percent])
         if percent >= 100:
             os.rename(self.outfile + '.tmp', self.outfile)
-            if not self.no_report:
-                osc_client.send_message('/finished_downloading_sound', [str(self.sound_id)])
-
+            osc_client.send_message('/finished_downloading_sound', [self.sound_uuid, self.outfile, True])
             n_seconds = time.time() - self.time_started
             kbytes_per_second = count * blockSize / n_seconds / 1000
             print('- Finished downloading {} ({} at {:.0f}kbps)'.format(self.url, sizeof_fmt(totalSize), kbytes_per_second))
 
-
-def download_sound(url, outfile, sound_id, no_report):
-    if not (os.path.exists(outfile) and os.path.getsize(outfile) > 0):
-        # If sound does not exist, start downloading
-        print('- Downloading ' + url)
-        progress = SoundDownloaderProgress(url, outfile, sound_id, no_report)
-        if '/download' in url:
-            # Downloading original quality file, add required authorization header
-            opener = urllib.request.build_opener()
-            opener.addheaders = [('Authorization', 'Bearer {}'.format(get_stored_access_token()))]
-            urllib.request.install_opener(opener)
-        try:
-            urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)
-        except urllib.error.ContentTooShortError as e:
-            print('ERROR DOWNLOADING AFTER {:.2f} seconds: {}'.format(time.time()-progress.time_started, progress.url))
-            print(e)
-    else:
-        if not no_report:
-            # If sound already exists, notify plugin about that
-            print('- Skip downloading ' + url + ' (already downloaded)')
-            osc_client.send_message('/finished_downloading_sound', [str(sound_id)])
-
+def download_sound(url, outfile, sound_uuid, use_header):
+    print('- Downloading ' + url)
+    progress = SoundDownloaderProgress(url, outfile, sound_uuid)
+    if ':' in use_header:
+        opener = urllib.request.build_opener()
+        opener.addheaders = [(use_header.split(':')[0], use_header.split(':')[1])]
+        urllib.request.install_opener(opener)
+    try:
+        urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)
+    except urllib.error.ContentTooShortError as e:
+        print('ERROR DOWNLOADING AFTER {:.2f} seconds: {}'.format(time.time()-progress.time_started, progress.url))
+        print(e)
 
 class DownloadSoundsThread(threading.Thread):
 
-    url = None
-    outfile = None
+    download_url = None
+    download_to_path = None
+    sound_uuid = None
+    use_header = None
 
-    def __init__(self, _url, _outfile, _sound_id, _no_report):
+    def __init__(self, _download_url, _download_to_path, _sound_uuid, _use_header):
         super(DownloadSoundsThread, self).__init__()
-        self.url = _url
-        self.outfile = _outfile
-        self.sound_id = _sound_id
-        self.no_report = _no_report
+        self.download_url = _download_url
+        self.download_to_path = _download_to_path
+        self.sound_uuid = _sound_uuid
+        self.use_header = _use_header
 
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
-        download_sound(self.url, self.outfile, self.sound_id, self.no_report)
-
-
-def download_all_sounds(urls, outfiles, sound_ids, no_report=False):
-    for url, outfile, sound_id in zip(urls, outfiles, sound_ids):
-        DownloadSoundsThread(url, outfile, sound_id, no_report).start()
+        download_sound(self.download_url, self.download_to_path, self.sound_uuid, self.use_header)
 
 
 # --- HTTP Server ------------------------------------------------------------------------
+
+@http_server.route('/download_sound', methods=['GET'])  # Download the sounds requested by the plugin
+def download_sound_endpoint():
+    sound_uuid = request.args['soundUUID']
+    download_url = request.args['urlToDownloadFrom']
+    download_to_path = request.args['pathToSaveDownloadedFile']
+    use_header = request.args['downloadHeaders']
+    DownloadSoundsThread(download_url, download_to_path, sound_uuid, use_header).start()
+
+    
+    return 'Downloading async...'
+
 
 @http_server.route('/', methods=['GET', 'POST'])  # Serve main interface HTML file
 def index():
@@ -737,50 +732,6 @@ def process_state_from_plugin(received_plugin_state):
 def state_from_plugin():
     process_state_from_plugin(request.data)
     return 'State received'
-
-
-@http_server.route('/download_sounds', methods=['GET'])  # Download the sounds requested by the plugin
-def download_sounds():
-    urls_to_download = []
-    outfiles = []
-    sound_ids = []
-    preview_urls = [url for url in request.args['oggUrls'].split(',') if url]
-    ids = [sid for sid in request.args['ids'].split(',') if sid]
-    types = [ty.lower() for ty in request.args['types'].split(',') if ty]
-    sizes = [int(s) for s in request.args['sizes'].split(',') if s]
-    extra_preview_files_to_download_urls = []  # This is to download extra previews of sounds which do not need to be notified to plugin
-    extra_preview_files_to_download_outfiles = []  # This is to download extra previews of sounds which do not need to be notified to plugin
-    MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES = 1024 * 1024 * 15  # 15 MB This should be in sync with MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD in defines.h
-    use_original_preference = state_manager.source_state.get(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never')
-
-    for (sound_id, ty, preview_url, size) in zip(ids, types, preview_urls, sizes):
-        if (use_original_preference == 'always' or (use_original_preference == 'onlyShort' and size <= MAX_DOWNLOAD_SIZE_FOR_ORIGINAL_FILES)) and ty != 'not_available' and is_logged_in() and ty in ALLOWED_AUDIO_FILE_EXTENSIONS:
-            # If downloading original files, construct sound download URL and use proper sound type to store
-            # To download original files, users needs to be logged in
-            # Also only download original quality files for supported formats, for others use previews
-            urls_to_download.append('https://freesound.org/apiv2/sounds/{}/download/'.format(sound_id))
-            outfiles.append(os.path.join(request.args['location'], sound_id + '.original.{}'.format(ty)))
-
-            # Add urls to download and outfiles to extra lists. This will also be downloaded but the plugin won't be notified
-            # This is mainly used to have sound files compatible with the slice editor
-            extra_preview_files_to_download_urls.append(preview_url)
-            extra_preview_files_to_download_outfiles.append(os.path.join(request.args['location'], sound_id + '.ogg'))
-        else:
-            # If not downloading original files, trigger download of preview with the URL passed
-            urls_to_download.append(preview_url)
-            outfiles.append(os.path.join(request.args['location'], sound_id + '.ogg'))
-
-        sound_ids.append(sound_id)
-
-    # Trigger the download of "main" files
-    download_all_sounds(urls_to_download, outfiles, sound_ids)
-
-    # Trigger the download of preview files for those files that are also being downloaded in original quality
-    # These versions of the files will be used in the slice editor and possibly in other places if the main original quality download does not succeed
-    # These download tasks do not report status to the plugin as the plugin is not waiting for them to finish to load any sound
-    download_all_sounds(extra_preview_files_to_download_urls, extra_preview_files_to_download_outfiles, sound_ids, no_report=True)
-
-    return 'Downloading async...'
 
 
 # --- Main ------------------------------------------------------------------------
