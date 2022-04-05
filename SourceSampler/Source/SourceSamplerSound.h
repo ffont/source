@@ -169,8 +169,12 @@ public:
     bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState);
     bool fileAlreadyInDisk(File locationInDisk);
     void triggerSoundDownloads();
-    void finished(URL::DownloadTask *task, bool success);
+    void downloadProgressUpdate(File targetFileLocation, float percentageCompleted);
+    void downloadFinished(File targetFileLocation, bool taskSucceeded);
+    
     void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength);
+    void finished(URL::DownloadTask *task, bool success);
+    
     void run();
     
 private:

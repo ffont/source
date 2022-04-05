@@ -577,19 +577,48 @@ void SourceSound::triggerSoundDownloads()
                     if (shouldUseOriginalQualityFile(child)){
                         // Download original quality file
                         juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
-                        DBG(downloadURL);
+                        # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
+                        DBG("Downloading sound to " << locationInDisk.getFullPathName());
+                        # else
+                        juce::URL downloadServerUrlEndpoint;
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds").withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
+                        int statusCode = -1;
+                        StringPairArray responseHeaders;
+                        if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
+                            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+                            &responseHeaders, &statusCode))){
+                            String resp = stream->readEntireStreamAsString();
+                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
+                        } else {
+                            DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
+                        }
+                        # endif
                     } else {
                         // Download preview quality file
                         juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
+                        # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
-                        
+                        DBG("Downloading sound to " << locationInDisk.getFullPathName());
+                        # else
+                        juce::URL downloadServerUrlEndpoint;
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sounds").withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
+                        int statusCode = -1;
+                        StringPairArray responseHeaders;
+                        if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
+                            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
+                            &responseHeaders, &statusCode))){
+                            String resp = stream->readEntireStreamAsString();
+                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
+                        } else {
+                            DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
+                        }
+                        # endif
                     }
-                    std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
                 }
             } else {
                 // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
@@ -610,7 +639,22 @@ void SourceSound::triggerSoundDownloads()
     }
 }
 
-void SourceSound::finished(URL::DownloadTask *task, bool success){
+void SourceSound::downloadProgressUpdate(File targetFileLocation, float percentageCompleted)
+{
+    for (int i=0; i<state.getNumChildren(); i++){
+        auto child = state.getChild(i);
+        if (child.hasType(IDs::SOUND_SAMPLE)){
+            File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+            if (targetFileLocation == locationInDisk){
+                // Find the sample that corresponds to this download task and update state
+                child.setProperty(IDs::downloadProgress, percentageCompleted, nullptr);
+            }
+        }
+    }
+}
+
+void SourceSound::downloadFinished(File targetFileLocation, bool taskSucceeded)
+{
     bool allAlreadyDownloaded = true;
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
@@ -618,7 +662,7 @@ void SourceSound::finished(URL::DownloadTask *task, bool success){
             // Find the sample that corresponds to this download task and update state
             // To consider a download as succeeded, check that the the task returned succes
             File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-            if (success && (task->getTargetLocation() == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
+            if (taskSucceeded && (targetFileLocation == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
                 child.setProperty(IDs::downloadCompleted, true, nullptr);
                 child.setProperty(IDs::downloadProgress, 100.0, nullptr);
             } else {
@@ -634,17 +678,15 @@ void SourceSound::finished(URL::DownloadTask *task, bool success){
     }
 }
 
-void SourceSound::progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength){
-    for (int i=0; i<state.getNumChildren(); i++){
-        auto child = state.getChild(i);
-        if (child.hasType(IDs::SOUND_SAMPLE)){
-            File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-            if (task->getTargetLocation() == locationInDisk){
-                // Find the sample that corresponds to this download task and update state
-                child.setProperty(IDs::downloadProgress, 100.0*(float)bytesDownloaded/(float)totalLength, nullptr);
-            }
-        }
-    }
+void SourceSound::progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength)
+{
+    float percentageCompleted = 100.0*(float)bytesDownloaded/(float)totalLength;
+    downloadProgressUpdate(task->getTargetLocation(), percentageCompleted);
+}
+
+void SourceSound::finished(URL::DownloadTask *task, bool success)
+{
+    downloadFinished(task->getTargetLocation(), success);
 }
  
 void SourceSound::run(){

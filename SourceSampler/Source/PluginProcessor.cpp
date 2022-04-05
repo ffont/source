@@ -651,7 +651,27 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         DBG("Action message: " << message);
     }
     
-    if (actionName == ACTION_NEW_QUERY){
+    if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
+        // If using external server to download sounds, notify download fininshed through this action
+        juce::String soundUUID = parameters[0];
+        juce::File targetFileLocation = juce::File(parameters[1]);
+        bool taskSucceeded = parameters[2].getIntValue() == 1;
+        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->downloadFinished(targetFileLocation, taskSucceeded);
+        }
+        
+    } else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
+        // If using external server to download sounds, send progress updates through this action
+        juce::String soundUUID = parameters[0];
+        juce::File targetFileLocation = juce::File(parameters[1]);
+        bool downloadedPercentage = parameters[2].getFloatValue();
+        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->downloadProgressUpdate(targetFileLocation, downloadedPercentage);
+        }
+        
+    } else if (actionName == ACTION_NEW_QUERY){
         String query = parameters[0];
         int numSounds = parameters[1].getIntValue();
         float minSoundLength = parameters[2].getFloatValue();
