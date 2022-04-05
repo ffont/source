@@ -40,8 +40,8 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '        '
-    code_dict['Source/SourceSamplerSound.h'] = {}
-    code_dict['Source/SourceSamplerSound.h']['B'] = current_code
+    code_dict['Source/SourceSamplerSound.cpp'] = {}
+    code_dict['Source/SourceSamplerSound.cpp']['B'] = current_code
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
     current_code = ''
@@ -57,7 +57,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '        '
-    code_dict['Source/SourceSamplerSound.h']['D'] = current_code
+    code_dict['Source/SourceSamplerSound.cpp']['D'] = current_code
 
      # Generate SourceSamplerSound attributes for getParameterFloat i getParameterInt
     current_code_e = ''
@@ -75,8 +75,8 @@ def generate_code(controls_data_filename):
         
     current_code_e += '        '
     current_code_f += '        '
-    code_dict['Source/SourceSamplerSound.h']['E'] = current_code_e
-    code_dict['Source/SourceSamplerSound.h']['F'] = current_code_f
+    code_dict['Source/SourceSamplerSound.cpp']['E'] = current_code_e
+    code_dict['Source/SourceSamplerSound.cpp']['F'] = current_code_f
 
     # Generate SourceSamplerSound.h code to define parameters
     current_code = ''
@@ -89,6 +89,7 @@ def generate_code(controls_data_filename):
             # Don't know what to do with other types
             pass
     current_code += '    '
+    code_dict['Source/SourceSamplerSound.h'] = {}
     code_dict['Source/SourceSamplerSound.h']['A'] = current_code
 
     # Generate SourceSamplerSound.h code to bind state
@@ -96,7 +97,7 @@ def generate_code(controls_data_filename):
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         current_code += "        {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
     current_code += '        '
-    code_dict['Source/SourceSamplerSound.h']['C'] = current_code
+    code_dict['Source/SourceSamplerSound.cpp']['C'] = current_code
 
     # Generate defines.h code to define parameter IDs and defaults
     current_code_a = ''

@@ -120,516 +120,58 @@ class SourceSound: public juce::URL::DownloadTask::Listener,
 {
 public:
     SourceSound (const juce::ValueTree& _state,
-                 std::function<GlobalContextStruct()> globalContextGetter): Thread ("LoaderThread"), state(_state)
-    {
-        getGlobalContext = globalContextGetter;
-        bindState();
-        triggerSoundDownloads();
-    }
-    
-    ~SourceSound ()
-    {
-        for (int i = 0; i < downloadTasks.size(); i++) {
-            downloadTasks.at(i).reset();
-        }
-    }
+                 std::function<GlobalContextStruct()> globalContextGetter);
+    ~SourceSound ();
     
     juce::ValueTree state;
-    void bindState ()
-    {
-        name.referTo(state, IDs::name, nullptr);
-        enabled.referTo(state, IDs::enabled, nullptr);
-        allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
-        
-        // --> Start auto-generated code C
-        soundType.referTo(state, IDs::soundType, nullptr, Defaults::soundType);
-        launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
-        startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
-        endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
-        loopStartPosition.referTo(state, IDs::loopStartPosition, nullptr, Defaults::loopStartPosition);
-        loopEndPosition.referTo(state, IDs::loopEndPosition, nullptr, Defaults::loopEndPosition);
-        loopXFadeNSamples.referTo(state, IDs::loopXFadeNSamples, nullptr, Defaults::loopXFadeNSamples);
-        reverse.referTo(state, IDs::reverse, nullptr, Defaults::reverse);
-        noteMappingMode.referTo(state, IDs::noteMappingMode, nullptr, Defaults::noteMappingMode);
-        numSlices.referTo(state, IDs::numSlices, nullptr, Defaults::numSlices);
-        playheadPosition.referTo(state, IDs::playheadPosition, nullptr, Defaults::playheadPosition);
-        freezePlayheadSpeed.referTo(state, IDs::freezePlayheadSpeed, nullptr, Defaults::freezePlayheadSpeed);
-        filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
-        filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
-        filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
-        filterAttack.referTo(state, IDs::filterAttack, nullptr, Defaults::filterAttack);
-        filterDecay.referTo(state, IDs::filterDecay, nullptr, Defaults::filterDecay);
-        filterSustain.referTo(state, IDs::filterSustain, nullptr, Defaults::filterSustain);
-        filterRelease.referTo(state, IDs::filterRelease, nullptr, Defaults::filterRelease);
-        filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
-        gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
-        attack.referTo(state, IDs::attack, nullptr, Defaults::attack);
-        decay.referTo(state, IDs::decay, nullptr, Defaults::decay);
-        sustain.referTo(state, IDs::sustain, nullptr, Defaults::sustain);
-        release.referTo(state, IDs::release, nullptr, Defaults::release);
-        pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
-        pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
-        pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
-        pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
-        mod2CutoffAmt.referTo(state, IDs::mod2CutoffAmt, nullptr, Defaults::mod2CutoffAmt);
-        mod2GainAmt.referTo(state, IDs::mod2GainAmt, nullptr, Defaults::mod2GainAmt);
-        mod2PitchAmt.referTo(state, IDs::mod2PitchAmt, nullptr, Defaults::mod2PitchAmt);
-        mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
-        vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
-        vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
-        // --> End auto-generated code C
-        
-        midiCCmappings = std::make_unique<MidiCCMappingList>(state);
-    }
+    void bindState ();
     
-    std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds() {
-        std::vector<SourceSamplerSound*> objects;
-        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSound() == this){
-                objects.push_back(sourceSamplerSound);
-            }
-        }
-        return objects;
-    }
-    
-    SourceSamplerSound* getFirstLinkedSourceSamplerSound() {
-        std::vector<SourceSamplerSound*> objects;
-        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSound() == this){
-                return sourceSamplerSound;
-            }
-        }
-        return nullptr;
-    }
+    std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds();
+    SourceSamplerSound* getFirstLinkedSourceSamplerSound();
+    juce::String getName();
+    juce::String getUUID();
+    bool isEnabled();
     
     // --------------------------------------------------------------------------------------------
     
-    juce::String getName() {
-        return name.get();
-    }
-    
-    juce::String getUUID() {
-        return state.getProperty(IDs::uuid).toString();
-    }
-    
-    bool isEnabled() {
-        return enabled.get();
-    }
-    
-    int getParameterInt(juce::Identifier identifier){
-        // --> Start auto-generated code E
-        if (identifier == IDs::soundType) { return soundType.get(); }
-        else if (identifier == IDs::launchMode) { return launchMode.get(); }
-        else if (identifier == IDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
-        else if (identifier == IDs::reverse) { return reverse.get(); }
-        else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
-        else if (identifier == IDs::numSlices) { return numSlices.get(); }
-        // --> End auto-generated code E
-        throw std::runtime_error("No int parameter with this name");
-    }
-    
-    float getParameterFloat(juce::Identifier identifier, bool normed){
-        // --> Start auto-generated code F
-        if (identifier == IDs::startPosition) { return !normed ? startPosition.get() : jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { return !normed ? endPosition.get() : jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { return !normed ? loopStartPosition.get() : jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { return !normed ? loopEndPosition.get() : jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { return !normed ? playheadPosition.get() : jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { return !normed ? filterAttack.get() : jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { return !normed ? filterDecay.get() : jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { return !normed ? filterSustain.get() : jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { return !normed ? filterRelease.get() : jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::gain) { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::attack) { return !normed ? attack.get() : jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { return !normed ? decay.get() : jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { return !normed ? sustain.get() : jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { return !normed ? release.get() : jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        // --> End auto-generated code F
-        throw std::runtime_error("No float parameter with this name");
-    }
-    
-    void setParameterByNameFloat(juce::Identifier identifier, float value, bool normed){
-        // --> Start auto-generated code B
-        if (identifier == IDs::startPosition) { startPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { endPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { loopStartPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { loopEndPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { playheadPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? jlimit(1.0f, 5000.0f, value) : jmap(value, 1.0f, 5000.0f); }
-        else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
-        else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { filterAttack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { filterDecay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { filterSustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { filterRelease = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::gain) { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
-        else if (identifier == IDs::attack) { attack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { decay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { sustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { release = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::mod2GainAmt) { mod2GainAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { mod2PitchAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        // --> End auto-generated code B
-        else { throw std::runtime_error("No float parameter with this name"); }
-        
-        // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
-        if (endPosition < startPosition) {
-            endPosition = startPosition.get();
-        }
-        if (loopStartPosition < startPosition){
-            loopStartPosition = startPosition.get();
-        }
-        if (loopEndPosition > endPosition){
-            loopEndPosition = endPosition.get();
-        }
-        if (loopStartPosition > loopEndPosition){
-            loopStartPosition = loopEndPosition.get();
-        }
-    }
-    
-    void setParameterByNameInt(juce::Identifier identifier, int value){
-        // --> Start auto-generated code D
-        if (identifier == IDs::soundType) { soundType = jlimit(0, 1, value); }
-        else if (identifier == IDs::launchMode) { launchMode = jlimit(0, 4, value); }
-        else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = jlimit(10, 100000, value); }
-        else if (identifier == IDs::reverse) { reverse = jlimit(0, 1, value); }
-        else if (identifier == IDs::noteMappingMode) { noteMappingMode = jlimit(0, 3, value); }
-        else if (identifier == IDs::numSlices) { numSlices = jlimit(0, 100, value); }
-        // --> End auto-generated code D
-        else { throw std::runtime_error("No int parameter with this name"); }
-    }
-    
-    juce::BigInteger getMappedMidiNotes(){
-        // Get the mapped midi notes of the first sound
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-        if (first != nullptr){
-            return first->getMappedMidiNotes();
-        }
-        juce::BigInteger defaultValue;
-        defaultValue.setRange(0, 127, true);
-        return defaultValue;
-    }
-    
-    int getNumberOfMappedMidiNotes(){
-        // Get the mapped midi notes of the first sound
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        return getMappedMidiNotes().countNumberOfSetBits();
-    }
-    
-    void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes){
-        // Set the mapped midi notes to all of the sampler sounds
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
-            sourceSamplerSound->setMappedMidiNotes(newMappedMidiNotes);
-        }
-    }
-    
-    int getMidiRootNote(){
-        // Get the midi root note of the first sound
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-        if (first != nullptr){
-            return first->getMidiRootNote();
-        }
-        return -1;
-    }
-    
-    void setMidiRootNote(int newMidiRootNote){
-        // Set the midi root note to all of the sampler sounds
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
-            sourceSamplerSound->setMidiRootNote(newMidiRootNote);
-        }
-    }
+    int getParameterInt(juce::Identifier identifier);
+    float getParameterFloat(juce::Identifier identifier, bool normed);
+    void setParameterByNameFloat(juce::Identifier identifier, float value, bool normed);
+    void setParameterByNameInt(juce::Identifier identifier, int value);
     
     // ------------------------------------------------------------------------------------------------
     
-    void setOnsetTimesSamples(std::vector<float> onsetTimes){
-        // Set the given onset times as slices
-        // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-        SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-        if (first != nullptr){
-            first->setOnsetTimesSamples(onsetTimes);
-        }
-    }
+    juce::BigInteger getMappedMidiNotes();
+    int getNumberOfMappedMidiNotes();
+    void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
+    int getMidiRootNote();
+    void setMidiRootNote(int newMidiRootNote);
     
     // ------------------------------------------------------------------------------------------------
     
-    void addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange){
-        
-        ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
-        if (existingMapping.isValid()) {
-            // Modify existing mapping
-            existingMapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
-            existingMapping.setProperty (IDs::parameterName, parameterName, nullptr);
-            existingMapping.setProperty (IDs::minRange, jlimit(0.0f, 1.0f, minRange), nullptr);
-            existingMapping.setProperty (IDs::maxRange, jlimit(0.0f, 1.0f, maxRange), nullptr);
-        } else {
-            // No mapping with uuid found, create a new one
-            // TODO: move this to the MidiCCMappingList class?
-            ValueTree newMapping = Helpers::createMidiMappingState(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange));
-            state.addChild(newMapping, -1, nullptr);
-        }
-    }
-
-    std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber){
-        // TODO: transofrm to use pointer
-        std::vector<MidiCCMapping*> toReturn = {};
-        for (auto* midiCCmapping: midiCCmappings->objects){
-            if (midiCCmapping->ccNumber == ccNumber){
-                toReturn.push_back(midiCCmapping);
-            }
-        }
-        return toReturn;
-    }
-
-    void removeMidiMapping(juce::String uuid){
-        midiCCmappings->removeMidiCCMappingWithUUID(uuid);
-    }
+    void setOnsetTimesSamples(std::vector<float> onsetTimes);
     
     // ------------------------------------------------------------------------------------------------
     
-    std::vector<SourceSamplerSound*> createSourceSamplerSounds ()
-    {
-        // Generate all the SourceSamplerSound objects corresponding to this sound
-        // In most of the cases this will be a single sound, but it could be that
-        // some sounds have more than one SourceSamplerSound (multi-layered sounds
-        // for example)
-        
-        AudioFormatManager audioFormatManager;
-        audioFormatManager.registerBasicFormats();
-        std::vector<SourceSamplerSound*> sounds = {};
-        for (int i=0; i<state.getNumChildren(); i++){
-            auto child = state.getChild(i);
-            if (child.hasType(IDs::SOUND_SAMPLE)){
-                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-                if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
-                    std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
-                    SourceSamplerSound* createdSound = new SourceSamplerSound(child,
-                                                                              this,
-                                                                              *reader,
-                                                                              true,
-                                                                              MAX_SAMPLE_LENGTH,
-                                                                              getGlobalContext().sampleRate,
-                                                                              getGlobalContext().samplesPerBlock);
-                    sounds.push_back(createdSound);
-                }
-            }
-        }
-        return sounds;
-    }
+    void addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange);
+    std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber);
+    void removeMidiMapping(juce::String uuid);
     
-    void addSourceSamplerSoundsToSampler()
-    {
-        std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
-        for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
-        std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
-        allSoundsLoaded = true;
-    }
+    // ------------------------------------------------------------------------------------------------
     
-    void removeSourceSampleSoundsFromSampler()
-    {
-        std::vector<int> soundIndexesToDelete;
-        for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-            auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
-            if (sourceSamplerSound->getSourceSound() == this){
-                // If the pointer to sourceSound of the sourceSamplerSound is the current sourceSound, then the sound should be deleted
-                soundIndexesToDelete.push_back(i);
-            }
-        }
-        
-        int numDeleted = 0;
-        for (auto idx: soundIndexesToDelete)
-        {
-            getGlobalContext().sampler->removeSound(idx - numDeleted);  // Compensate index updates as sounds get removed
-            numDeleted += 1;
-        }
-        std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
-    }
+    std::vector<SourceSamplerSound*> createSourceSamplerSounds ();
+    void addSourceSamplerSoundsToSampler();
+    void removeSourceSampleSoundsFromSampler();
     
-    bool isSupportedAudioFileFormat(const String& extension)
-    {
-        return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
-    }
-
-
-    bool fileLocationIsSupportedAudioFileFormat(File location)
-    {
-        return isSupportedAudioFileFormat(location.getFileExtension());
-    }
-    
-    File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
-    {
-        juce::File locationInDisk;
-        juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
-        if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
-            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
-        } else {
-            locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
-        }
-        return locationInDisk;
-    }
-
-    void run(){
-        // TODO: use thread to download and load sounds (?)
-    }
-    
-    bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
-    {
-        if (getGlobalContext().freesoundOauthAccessToken != ""){
-            if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
-                return true;
-            } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
-                // Only return true if sound has a filesize below the threshold
-                if ((int)sourceSamplerSoundState.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    
-    bool fileAlreadyInDisk(File locationInDisk)
-    {
-        // Check that file exists in disk and that it has at least half of the expected full size
-        int fileMinSize = 100; // Something smaller than 100 bytes will be considered corrupt file
-        return locationInDisk.existsAsFile() && locationInDisk.getSize() > fileMinSize;
-    }
-    
-    void triggerSoundDownloads()
-    {
-        // Trigger the downloading of all SourceSamplerSound(s) of SourceSound. This will normally be one single sound except for the
-        // case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
-        
-        allSoundsLoaded = false;
-        
-        bool allAlreadyDownloaded = true;
-        for (int i=0; i<state.getNumChildren(); i++){
-            auto child = state.getChild(i);
-            if (child.hasType(IDs::SOUND_SAMPLE)){
-                
-                bool isFromFreesound = child.getProperty(IDs::soundFromFreesound, false);
-                juce::String filePath = child.getProperty(IDs::filePath, ""); // Relative file path
-                juce::File locationInDisk; // The location in disk where sound should be downloaded/placed
-                
-                if (isFromFreesound){
-                    // Check if sound already exists in disk, otherwise trigger download
-                    // If sound is from Freesound, compute the expected file location and update the state with that location (it will most likely be the same)
-                    // This can be useful if sharing presets that had downloaded original quality files with plugin instances that don't have the ability to
-                    // download original quality files (e.g. have no access token set)
-                    locationInDisk = getFreesoundFileLocation(child);
-                    child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
-                    if (fileAlreadyInDisk(locationInDisk)){
-                        // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
-                        child.setProperty(IDs::downloadProgress, 100.0, nullptr);
-                        child.setProperty(IDs::downloadCompleted, true, nullptr);
-                    } else {
-                        // If the sound does not exist, then trigger the download
-                        allAlreadyDownloaded = false;
-                        child.setProperty(IDs::downloadProgress, 0.0, nullptr);
-                        child.setProperty(IDs::downloadCompleted, false, nullptr);
-                        if (shouldUseOriginalQualityFile(child)){
-                            // Download original quality file
-                            juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
-                            DBG(downloadURL);
-                            URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
-                            std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
-                            downloadTasks.push_back(std::move(downloadTask));
-                        } else {
-                            // Download preview quality file
-                            juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
-                            URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
-                            std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
-                            downloadTasks.push_back(std::move(downloadTask));
-                            
-                        }
-                        std::cout << "Downloading sound to " << locationInDisk.getFullPathName() << std::endl;
-                    }
-                } else {
-                    // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
-                    if (filePath != ""){
-                        locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
-                        if (fileAlreadyInDisk(locationInDisk)){
-                            child.setProperty(IDs::downloadProgress, 100.0, nullptr);
-                            child.setProperty(IDs::downloadCompleted, true, nullptr);
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (allAlreadyDownloaded){
-            // If no sound needs downloading
-            addSourceSamplerSoundsToSampler();
-        }
-    }
-    
-    void finished(URL::DownloadTask *task, bool success){
-        // TODO: load sound into buffer so it is already loaded before calling addSourceSamplerSoundsToSampler (and can be done in a background thread?)
-        bool allAlreadyDownloaded = true;
-        for (int i=0; i<state.getNumChildren(); i++){
-            auto child = state.getChild(i);
-            if (child.hasType(IDs::SOUND_SAMPLE)){
-                // Find the sample that corresponds to this download task and update state
-                // To consider a download as succeeded, check that the the task returned succes
-                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-                if (success && (task->getTargetLocation() == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
-                    child.setProperty(IDs::downloadCompleted, true, nullptr);
-                    child.setProperty(IDs::downloadProgress, 100.0, nullptr);
-                } else {
-                    if (!child.getProperty(IDs::downloadCompleted, false)){
-                        allAlreadyDownloaded = false;
-                    }
-                }
-            }
-        }
-        
-        if (allAlreadyDownloaded){
-            // If all sounds finished downloading
-            addSourceSamplerSoundsToSampler();
-        }
-    }
-    
-    void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength){
-        for (int i=0; i<state.getNumChildren(); i++){
-            auto child = state.getChild(i);
-            if (child.hasType(IDs::SOUND_SAMPLE)){
-                File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-                if (task->getTargetLocation() == locationInDisk){
-                    // Find the sample that corresponds to this download task and update state
-                    child.setProperty(IDs::downloadProgress, 100.0*(float)bytesDownloaded/(float)totalLength, nullptr);
-                }
-            }
-        }
-    }
+    bool isSupportedAudioFileFormat(const String& extension);
+    bool fileLocationIsSupportedAudioFileFormat(File location);
+    File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
+    bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState);
+    bool fileAlreadyInDisk(File locationInDisk);
+    void triggerSoundDownloads();
+    void finished(URL::DownloadTask *task, bool success);
+    void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength);
+    void run();
     
 private:
     // Sound properties
