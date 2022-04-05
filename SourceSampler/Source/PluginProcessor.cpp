@@ -983,9 +983,17 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
                                                                             BigInteger midiNotes,
                                                                             int midiRootNote)
 {
+    int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
+    if ((existingSoundIndex > -1) && (midiRootNote ==  -1) && (midiNotes.isZero())){
+        // If sound exists for that UUID and midiNotes/midiRootNote are not passed as parameters, use the same parameters from the original sound
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        midiNotes = sound->getMappedMidiNotes();
+        midiRootNote = sound->getMidiRootNote();
+    }
+    
     juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundUUID, soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote);
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
-    int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
+    
     if (existingSoundIndex > -1){
         // If a sound exists for that UUID, remove the sound with that UUID and replace it by the new sound
         presetState.removeChild(existingSoundIndex, nullptr);
