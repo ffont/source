@@ -79,6 +79,7 @@ namespace Helpers
         ss.setProperty (IDs::duration, -1.0, nullptr);  // This will be set when sound is loaded
         ss.setProperty (IDs::filesize, sizeBytes, nullptr);  // This might be -1 if sound is not from freesound
         ss.setProperty (IDs::soundFromFreesound, soundID > -1, nullptr);
+        ss.setProperty (IDs::usesPreview, false, nullptr);
         return ss;
     }
 

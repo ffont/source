@@ -74,18 +74,18 @@ sound_parameters_info_dict = {
     "endPosition": (lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
     "loopStartPosition": (lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
     "loopEndPosition": (lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
-    "ampADSR.attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Attack", "{0:.2f}s", "/set_sound_parameter"),
-    "ampADSR.decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Decay", "{0:.2f}s", "/set_sound_parameter"),
-    "ampADSR.sustain": (lambda x: x, lambda x: float(x), "Sustain", "{0:.2f}", "/set_sound_parameter"),
-    "ampADSR.release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Release", "{0:.2f}s", "/set_sound_parameter"),
+    "attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Attack", "{0:.2f}s", "/set_sound_parameter"),
+    "decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Decay", "{0:.2f}s", "/set_sound_parameter"),
+    "sustain": (lambda x: x, lambda x: float(x), "Sustain", "{0:.2f}", "/set_sound_parameter"),
+    "release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Release", "{0:.2f}s", "/set_sound_parameter"),
     "filterCutoff": (lambda x: 10 + 20000 * lin_to_exp(x), lambda x: float(x), "Cutoff", "{0:.2f}Hz", "/set_sound_parameter"),
     "filterRessonance": (lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
     "filterKeyboardTracking": (lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
     "filterADSR2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Env amt", "{0:.0f}%", "/set_sound_parameter"),    
-    "filterADSR.attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Attack", "{0:.2f}s", "/set_sound_parameter"),
-    "filterADSR.decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Decay", "{0:.2f}s", "/set_sound_parameter"),
-    "filterADSR.sustain": (lambda x: x, lambda x: float(x), "Filter Sustain", "{0:.2f}", "/set_sound_parameter"),
-    "filterADSR.release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Release", "{0:.2f}s", "/set_sound_parameter"),
+    "filterAttack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Attack", "{0:.2f}s", "/set_sound_parameter"),
+    "filterDecay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Decay", "{0:.2f}s", "/set_sound_parameter"),
+    "filterSustain": (lambda x: x, lambda x: float(x), "Filter Sustain", "{0:.2f}", "/set_sound_parameter"),
+    "filterRelease": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Release", "{0:.2f}s", "/set_sound_parameter"),
     "noteMappingMode": (lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
     "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
     "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
@@ -99,7 +99,7 @@ sound_parameters_info_dict = {
     "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
     "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
-    "midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
+    #"midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
     "loopXFadeNSamples": (lambda x: 10 + int(round(lin_to_exp(x) * (100000 - 10))), lambda x: int(x), "Loop X fade len", "{0}", "/set_sound_parameter_int"),  
 }
 
@@ -122,20 +122,20 @@ sound_parameter_pages = [
         "loopStartPosition",
         "loopEndPosition",
     ], [
-        "ampADSR.attack",
-        "ampADSR.decay",
-        "ampADSR.sustain",
-        "ampADSR.release",
+        "attack",
+        "decay",
+        "sustain",
+        "release",
     ], [
         "filterCutoff",
         "filterRessonance",
         "filterKeyboardTracking",
         "filterADSR2CutoffAmt",
     ], [
-        "filterADSR.attack",
-        "filterADSR.decay",
-        "filterADSR.sustain",
-        "filterADSR.release",
+        "filterAttack",
+        "filterDecay",
+        "filterSustain",
+        "filterRelease",
     ], [
         "pitchBendRangeUp",
         "pitchBendRangeDown",
@@ -149,7 +149,7 @@ sound_parameter_pages = [
     ], [
         "pan",
         "loopXFadeNSamples",
-        "midiRootNote",
+        None,
         None
     ]
 ]
@@ -499,7 +499,7 @@ class State(object):
             'Always': 'always',
         }[preference]])
 
-    def send_add_or_replace_sound_to_plugin(self, sound_idx, new_sound, assinged_notes="", root_note=-1, trigger_download="", local_file_path="", move_once_loaded=False):
+    def send_add_or_replace_sound_to_plugin(self, sound_uuid, new_sound, assinged_notes="", root_note=-1, local_file_path="", move_once_loaded=False):
         sound_onsets_list = []
         if 'analysis' in new_sound and new_sound['analysis'] is not None:
             if 'rhythm' in new_sound['analysis']:
@@ -513,7 +513,7 @@ class State(object):
         sound_onsets_list = sound_onsets_list[:128]  
 
         sm.send_osc_to_plugin("/add_or_replace_sound", [
-            sound_idx, 
+            sound_uuid, 
             new_sound['id'], 
             new_sound['name'], 
             new_sound['username'], 
@@ -524,11 +524,10 @@ class State(object):
             new_sound['filesize'],
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
             assinged_notes,  # This should be string representation of hex number
-            root_note, # The note to be used as root
-            trigger_download  # "" -> yes, "none" -> no, "all" -> all sounds
+            root_note # The note to be used as root
             ])
 
-        if sound_idx == -1 and move_once_loaded:
+        if sound_uuid == "" and move_once_loaded:
             sm.set_waiting_to_go_to_last_loaded_sound()
 
     def load_query_results(self, new_sounds, note_mapping_type=1, assigned_notes_per_sound_list=[]):
@@ -562,20 +561,20 @@ class State(object):
                 midi_notes = assigned_notes_per_sound_list[sound_idx]
                 root_note = assigned_notes_per_sound_list[len(assigned_notes_per_sound_list)//2]
 
-            self.send_add_or_replace_sound_to_plugin(-1, sound, assinged_notes=midi_notes, root_note=root_note, trigger_download="none" if sound_idx < n_sounds -1 else "all")
+            self.send_add_or_replace_sound_to_plugin("", sound, assinged_notes=midi_notes, root_note=root_note)
 
     def consolidate_ac_descriptors_from_kwargs(self, kwargs_dict):
         return {key: value for key, value in kwargs_dict.items() if key in ac_descriptors_names and value != 'off'}
 
 
-    def add_or_replace_sound_by_query(self, sound_idx=-1, query='', min_length=0, max_length=300, page_size=50, move_once_loaded=False, **kwargs):
+    def add_or_replace_sound_by_query(self, sound_uuid='', query='', min_length=0, max_length=300, page_size=50, move_once_loaded=False, **kwargs):
         sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         sm.block_ui_input = True
         try:
             selected_sound = find_sound_by_query(query=query, min_length=min_length, max_length=max_length, page_size=page_size, license=kwargs.get('license', None), ac_descriptors_filters=self.consolidate_ac_descriptors_from_kwargs(kwargs))
             if selected_sound is not None:
                 sm.show_global_message("Loading sound...")
-                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound, move_once_loaded=move_once_loaded)
+                self.send_add_or_replace_sound_to_plugin(sound_uuid, selected_sound, move_once_loaded=move_once_loaded)
             else:
                 sm.show_global_message("No results found!")
         except Exception as e:
@@ -584,14 +583,14 @@ class State(object):
             sm.show_global_message("Error :(")
         sm.block_ui_input = False
 
-    def replace_sound_by_similarity(self, sound_idx, selected_sound_id):
+    def replace_sound_by_similarity(self, sound_uuid, selected_sound_id):
         sm.block_ui_input = True
         sm.show_global_message("Searching\nsimilar...", duration=3600)
         try:
             selected_sound = find_sound_by_similarity(selected_sound_id)
             if selected_sound is not None:
                 sm.show_global_message("Replacing sound...")
-                self.send_add_or_replace_sound_to_plugin(sound_idx, selected_sound)
+                self.send_add_or_replace_sound_to_plugin(sound_uuid, selected_sound)
             else:
                 sm.show_global_message("No results found!")
         except Exception as e:
@@ -600,7 +599,7 @@ class State(object):
             sm.show_global_message("Error :(")
         sm.block_ui_input = False
 
-    def add_or_replace_sound_random(self, sound_idx=-1, num_sounds=1, min_length=0, max_length=10, layout=1, move_once_loaded=False, **kwargs):
+    def add_or_replace_sound_random(self, sound_uuid='', num_sounds=1, min_length=0, max_length=10, layout=1, move_once_loaded=False, **kwargs):
         sm.show_global_message("Finding\nrandom...", duration=3600)
         sm.block_ui_input = True
         try:
@@ -610,7 +609,7 @@ class State(object):
             else:
                 new_sound = new_sound[0]
                 sm.show_global_message("Loading sound...")
-                self.send_add_or_replace_sound_to_plugin(sound_idx, new_sound, move_once_loaded=move_once_loaded)
+                self.send_add_or_replace_sound_to_plugin(sound_uuid, new_sound, move_once_loaded=move_once_loaded)
         except Exception as e:
             print("ERROR while querying Freesound: {0}".format(e))
             traceback.print_tb(e.__traceback__)
@@ -690,9 +689,9 @@ class State(object):
             sm.show_global_message("Error :(")
         sm.block_ui_input = False
 
-    def set_slices_for_sound(self, sound_idx, slices):
-        if sound_idx >  -1:
-            sm.send_osc_to_plugin('/set_slices', [sound_idx, ','.join([str(s) for s in slices])])
+    def set_slices_for_sound(self, sound_uuid, slices):
+        if sound_uuid != "":
+            sm.send_osc_to_plugin('/set_slices', [sound_uuid, ','.join([str(s) for s in slices])])
 
     def get_sound_idx_from_note(self, midi_note):
         # Iterate over sounds to find the first one that has that note assigned
@@ -701,9 +700,9 @@ class State(object):
             if raw_assigned_notes is not None:
                 if midi_note in raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
                     return i
-        return 0
+        return -1
 
-    def set_assigned_notes_for_sound(self, sound_idx, assinged_notes, root_note=None):
+    def set_assigned_notes_for_sound(self, sound_uuid, assinged_notes, root_note=None):
         # assigned_notes here is a list with the midi note numbers
         assinged_notes = sorted(list(set(assinged_notes)))  # make sure they're all sorted and there are no duplicates
         if root_note is None:
@@ -711,15 +710,15 @@ class State(object):
                 root_note = assinged_notes[len(assigned_notes)//2]  # Default to the middle note of the assigned notes
             else:
                 root_note = 69
-        if sound_idx > -1:
+        if sound_uuid != "":
             assinged_notes_aux = ['0'] * 128
             for note in assinged_notes:
                 assinged_notes_aux[note] = '1'
             midi_notes = hex(int("".join(reversed(''.join(assinged_notes_aux))), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
-            sm.send_osc_to_plugin('/set_assigned_notes', [sound_idx, midi_notes, root_note])
+            sm.send_osc_to_plugin('/set_assigned_notes', [sound_uuid, midi_notes, root_note])
 
-    def remove_sound(self, sound_idx):
-        sm.send_osc_to_plugin('/remove_sound', [sound_idx])
+    def remove_sound(self, sound_uuid):
+        sm.send_osc_to_plugin('/remove_sound', [sound_uuid])
         sm.show_global_message("Sound removed!")
 
     def on_activating_state(self):
@@ -968,13 +967,14 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain" or shift and parameter_name == "mod2PitchAmt":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                sm.send_osc_to_plugin(osc_address, [-1, parameter_name, send_value])
+                sm.send_osc_to_plugin(osc_address, ["", parameter_name, send_value])
 
 
 class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     pages = [EXTRA_PAGE_1_NAME, EXTRA_PAGE_2_NAME]
     sound_idx = -1
+    sound_uuid = ''
     selected_sound_is_playing = False
 
     def __init__(self, sound_idx, *args, **kwargs):
@@ -985,6 +985,8 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             self.sound_idx = num_sounds - 1
         else:
             self.sound_idx = sound_idx
+        self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
+
         if self.sound_is_loaded_in_sampler():
             self.pages += sound_parameter_pages
         super().__init__(*args, **kwargs)
@@ -1073,12 +1075,12 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def play_selected_sound(self):
         if self.selected_sound_is_playing:
             self.stop_selected_sound()
-        sm.send_osc_to_plugin("/play_sound", [self.sound_idx])
+        sm.send_osc_to_plugin("/play_sound", [self.sound_uuid])
         self.selected_sound_is_playing = True
 
     def stop_selected_sound(self):
         if self.selected_sound_is_playing:
-            sm.send_osc_to_plugin("/stop_sound", [self.sound_idx])
+            sm.send_osc_to_plugin("/stop_sound", [self.sound_uuid])
             self.selected_sound_is_playing = False
 
     def on_activating_state(self):
@@ -1160,7 +1162,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                sm.send_osc_to_plugin(osc_address, [self.sound_idx, parameter_name, send_value])
+                sm.send_osc_to_plugin(osc_address, [self.sound_uuid, parameter_name, send_value])
 
 
 class MenuState(State):
@@ -1528,7 +1530,7 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                     title1="Select a file...",
                     go_back_n_times=3,
                     callback=lambda file_path: (self.send_add_or_replace_sound_to_plugin(
-                        -1,  # -1 to add new sound 
+                        "",  # "" to add new sound 
                         {
                             'id': -1, 
                             'name': file_path.split('/')[-1], 
@@ -1553,7 +1555,7 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                     title1="Select a sound...",
                     go_back_n_times=3,
                     callback=lambda sound_name: (self.send_add_or_replace_sound_to_plugin(
-                        -1,  # -1 to add new sound 
+                        "",  # "" to add new sound 
                         sounds_data[sound_name],
                         move_once_loaded=True
                     ), sm.show_global_message('Loading file\n{}...'.format(sound_name))),
@@ -1721,12 +1723,14 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
     OPTION_FROM_BOOKMARK = "From bookmark"
 
     sound_idx = -1
+    sound_uuid = ''
     items = [OPTION_BY_QUERY, OPTION_BY_SIMILARITY, OPTION_BY_RANDOM, OPTION_FROM_DISK]
     page_size = 3
 
     def __init__(self, sound_idx, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sound_idx = sound_idx
+        self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
 
     def get_properties(self):
         properties = super().get_properties().copy()
@@ -1760,7 +1764,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                         title="Enter query",
                         web_form_id="enterQuery", 
                         callback=self.add_or_replace_sound_by_query, 
-                        extra_data_for_callback=merge_dicts(query_settings, {'sound_idx': self.sound_idx}),
+                        extra_data_for_callback=merge_dicts(query_settings, {'sound_uuid': self.sound_uuid}),
                         go_back_n_times=4
                     )),
                 num_sounds=1,
@@ -1770,11 +1774,11 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         elif action_name == self.OPTION_BY_SIMILARITY:
             selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
-                self.replace_sound_by_similarity(self.sound_idx, selected_sound_id)
+                self.replace_sound_by_similarity(self.sound_uuid, selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
         elif action_name == self.OPTION_BY_RANDOM:
             sm.move_to(EnterQuerySettingsState(
-                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'sound_idx': self.sound_idx})), sm.go_back(n_times=3)),
+                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'sound_uuid': self.sound_uuid})), sm.go_back(n_times=3)),
                 num_sounds=1,
                 allow_change_num_sounds=False,
                 allow_change_layout=False
@@ -1791,7 +1795,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     title1="Select a file...",
                     go_back_n_times=3,
                     callback=lambda file_path: (self.send_add_or_replace_sound_to_plugin(
-                        self.sound_idx, 
+                        self.sound_uuid, 
                         {
                             'id': -1, 
                             'name': file_path.split('/')[-1], 
@@ -1815,7 +1819,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     title1="Select a sound...",
                     go_back_n_times=3,
                     callback=lambda sound_name: (self.send_add_or_replace_sound_to_plugin(
-                        self.sound_idx,
+                        self.sound_uuid,
                         sounds_data[sound_name]
                     ), sm.show_global_message('Loading file\n{}...'.format(sound_name))),
                 ))
@@ -1838,12 +1842,14 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     MIDI_CC_ADD_NEW_TEXT = "Add new..."
 
     sound_idx = -1
+    sound_uuid = ''
     items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND, OPTION_DELETE, OPTION_GO_TO_SOUND]
     page_size = 4
 
-    def __init__(self, sound_idx, sound_finished_loading, *args, **kwargs):
+    def __init__(self, sound_idx, sound_finished_loading=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sound_idx = sound_idx
+        self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
 
         if not sound_finished_loading:
             # If sound is not yet loaded in sampler, don't show precision editor option
@@ -1885,7 +1891,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
         if action_name == self.OPTION_REPLACE:
             sm.move_to(ReplaceByOptionsMenuState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_DELETE:
-            self.remove_sound(self.sound_idx)
+            self.remove_sound(self.sound_uuid)
             sm.go_back()
         elif action_name == self.OPTION_OPEN_IN_FREESOUND:
             sm.show_global_message('Sound opened\nin browser')
@@ -1944,14 +1950,14 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                     parameter_name = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME],
                     min_range = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE],
                     max_range = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE],
-                    random_id = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID],
+                    uuid = midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID],
                     sound_idx = self.sound_idx
                 ))
 
     def handle_delete_midi_cc_assignment(self, midi_cc_assignment_label):
         midi_cc_assignment = sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
         if midi_cc_assignment is not None:
-            sm.send_osc_to_plugin('/remove_cc_mapping', [self.sound_idx, int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID])])
+            sm.send_osc_to_plugin('/remove_cc_mapping', [self.sound_uuid, int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
             sm.show_global_message('Removing MIDI\nmapping...')
 
 class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
@@ -1960,8 +1966,9 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
     parameter_name = ""
     min_range = 0.0
     max_range = 1.0
-    random_id = -1
+    uuid = ""
     sound_idx = -1
+    sound_uuid = ""
     available_parameter_names = midi_cc_available_parameters_list
 
     def __init__(self, *args, **kwargs):
@@ -1970,8 +1977,9 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
         self.parameter_name = kwargs.get('parameter_name', self.available_parameter_names[-1])
         self.min_range = kwargs.get('min_range', 0.0)
         self.max_range = kwargs.get('max_range', 1.0)
-        self.random_id = kwargs.get('random_id', -1)
+        self.uuid = kwargs.get('uuid', -1)
         self.sound_idx = kwargs.get('sound_idx', -1)
+        self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
 
     def draw_display_frame(self):
         if self.cc_number > -1:
@@ -2009,7 +2017,7 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
             if last_cc_received < 0:
                 last_cc_received = 0
             cc_number = last_cc_received
-        sm.send_osc_to_plugin('/add_or_update_cc_mapping', [self.sound_idx, int(self.random_id), cc_number, self.parameter_name, self.min_range, self.max_range])
+        sm.send_osc_to_plugin('/add_or_update_cc_mapping', [self.sound_uuid, int(self.uuid), cc_number, self.parameter_name, self.min_range, self.max_range])
         sm.show_global_message('Adding MIDI\nmapping...')
         sm.go_back()
 
@@ -2282,6 +2290,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
 
     frame_count = 0
     sound_idx = -1
+    sound_uuid = ""
     sound_data_array = None  # numpy array of shape (x, 1)
     cursor_position = 0  # In samples
     sound_length = 0  # In samples
@@ -2317,15 +2326,16 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         super().__init__(*args, **kwargs)
         self.sound_idx = kwargs.get('sound_idx', -1)
         if self.sound_idx > -1:
+            self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
             sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID, default=None)
             if sound_id is not None:
                 if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default=''):
-                    path = sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)
+                    path = os.path.join(sm.source_state.get(StateNames.SOURCE_DATA_LOCATION, ''), sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)) 
                 else:
                     ty = sm.gsp(self.sound_idx, StateNames.SOUND_TYPE, default='')
                     if ty != '' and ty.lower() in ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR:
                         # If sound has type property, try with original file path first
-                        original_filename = '{}.original.{}'.format(sound_id, ty)
+                        original_filename = '{}-original.{}'.format(sound_id, ty)
                         path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), original_filename)
                         if not os.path.exists(path):
                             # If original file does not exist, assign path to preview path
@@ -2431,7 +2441,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
     def on_encoder_pressed(self, shift):
         # Save slices
         time_slices = [s * 1.0 / self.sound_sr for s in self.slices]
-        self.set_slices_for_sound(self.sound_idx, time_slices)
+        self.set_slices_for_sound(self.sound_uuid, time_slices)
         sm.show_global_message('Updated {} slices'.format(len(time_slices)))
         if not shift:
             # If shift is not pressed, go back to sound selected state
@@ -2440,16 +2450,16 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
             # Set start position
-            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "startPosition", self.cursor_position * 1.0 / self.sound_length])
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_uuid, "startPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 2:
             # Set loop start position
-            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_uuid, "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 3:
             # Set loop end position
-            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_uuid, "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 4:
             # Set end position
-            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_idx, "endPosition", self.cursor_position * 1.0 / self.sound_length])
+            sm.send_osc_to_plugin('/set_sound_parameter', [self.sound_uuid, "endPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 5:
             # Add slice
             if self.cursor_position not in self.slices:
@@ -2484,6 +2494,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
 class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
 
     sound_idx = -1
+    sound_uuid = ''
     assigned_notes = []
     root_note = None
     cursor_position = 64  # In midi notes
@@ -2515,6 +2526,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         super().__init__(*args, **kwargs)
         self.sound_idx = kwargs.get('sound_idx', -1)
         if self.sound_idx > -1:
+            self.sound_uuid = sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '')
             sound_assigned_notes = sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
             if sound_assigned_notes is not None:
                 self.root_note = int(sm.gsparam(self.sound_idx, "midiRootNote", default=-1))
@@ -2526,18 +2538,18 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
                         self.cursor_position = self.assigned_notes[0]
 
     def save_assigned_notes(self, unassign_from_others=False):
-        self.set_assigned_notes_for_sound(self.sound_idx, self.assigned_notes, root_note=self.root_note)
+        self.set_assigned_notes_for_sound(self.sound_uuid, self.assigned_notes, root_note=self.root_note)
         if unassign_from_others:
             # Iterate over all sounds and make sure the notes for the current sound are not assinged
             # to any other sound
             for sound_idx, sound in enumerate(sm.source_state.get(StateNames.SOUNDS_INFO, [])):
-                if sound_idx != self.sound_idx: 
+                if sound[StateNames.SOUND_UUID] != self.sound_uuid: 
                     sound_assigned_notes = sm.gsp(sound_idx, StateNames.SOUND_ASSIGNED_NOTES, default=None)
                     if sound_assigned_notes is not None:
                         midi_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
                         new_midi_notes = [note for note in midi_notes if note not in self.assigned_notes]
                         if len(midi_notes) != len(new_midi_notes):
-                            self.set_assigned_notes_for_sound(sound_idx, new_midi_notes, root_note=int(sm.gsparam(sound_idx, "midiRootNote", default=-1)))
+                            self.set_assigned_notes_for_sound(sound[StateNames.SOUND_UUID], new_midi_notes, root_note=int(sm.gsparam(sound_idx, "midiRootNote", default=-1)))
 
         sm.show_global_message('Updated {}\n assigned notes{}'.format(len(self.assigned_notes), ' (U)' if unassign_from_others else ''))
                     

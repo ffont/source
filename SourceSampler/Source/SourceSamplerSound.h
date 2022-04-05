@@ -274,7 +274,7 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
     std::function<GlobalContextStruct()> getGlobalContext;
     
     SourceSound* getSoundAt(int position) {
-        if ((position >= 0) && (position < objects.size() - 1)){
+        if ((position >= 0) && (position < objects.size())){
             return objects[position];
         }
         return nullptr;

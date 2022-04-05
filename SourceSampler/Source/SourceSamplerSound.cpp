@@ -598,6 +598,7 @@ void SourceSound::triggerSoundDownloads()
                         # endif
                     } else {
                         // Download preview quality file
+                        child.setProperty(IDs::usesPreview, true, nullptr);
                         juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);

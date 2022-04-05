@@ -530,8 +530,6 @@ def download_sound_endpoint():
     download_to_path = request.args['pathToSaveDownloadedFile']
     use_header = request.args['downloadHeaders']
     DownloadSoundsThread(download_url, download_to_path, sound_uuid, use_header).start()
-
-    
     return 'Downloading async...'
 
 
@@ -697,7 +695,7 @@ def process_state_from_plugin(received_plugin_state):
         used_parser = "lxml"
         plugin_state_xml = BeautifulSoup(received_plugin_state, "lxml")
 
-        if len(plugin_state_xml.find_all("SourcePresetState".lower())) == 0:
+        if len(plugin_state_xml.find_all("SOURCE_STATE".lower())) == 0:
             # Plugin has sent volatile state information only
             volatile_state = process_xml_volatile_state_from_plugin(plugin_state_xml)
             plugin_state_dict.update(volatile_state)

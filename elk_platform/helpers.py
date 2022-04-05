@@ -51,11 +51,13 @@ class StateNames(Enum):
     NUM_SOUNDS_LOADED_IN_SAMPLER = auto()
     SOUNDS_INFO = auto()
     SOUND_NAME = auto()
+    SOUND_UUID = auto()
     SOUND_ID = auto()
     SOUND_LICENSE = auto()
     SOUND_AUTHOR = auto()
     SOUND_DURATION = auto()
     SOUND_DOWNLOAD_PROGRESS = auto()
+    SOUND_DOWNLOAD_COMPLETED = auto()
     SOUND_PARAMETERS = auto()
     SOUND_OGG_URL = auto()
     SOUND_LOCAL_FILE_PATH = auto()
@@ -71,7 +73,7 @@ class StateNames(Enum):
     SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME = auto()
     SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE = auto()
     SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID = auto()
+    SOUND_MIDI_CC_ASSIGNMENT_UUID = auto()
 
     REVERB_SETTINGS = auto()
 
@@ -145,15 +147,14 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     clear_old_items_in_sp_cache()  
             
     # Get sub XML element to avoid repeating many queries
-    preset_state = plugin_state_xml.find_all("SourcePresetState".lower())[0]
-    sampler_state = preset_state.find_all("Sampler".lower())[0]
-    global_state = plugin_state_xml.find_all("GlobalSettings".lower())[0]
+    full_state = plugin_state_xml.find_all("SOURCE_STATE".lower())[0]
+    preset_state2 = plugin_state_xml.find_all("PRESET".lower())[0]
 
     # File paths and other global settings
-    source_state[StateNames.SOURCE_DATA_LOCATION] = global_state.get('sourceDataLocation'.lower(), None)
-    source_state[StateNames.SOUNDS_DATA_LOCATION] = global_state.get('soundsDataLocation'.lower(), None)
-    source_state[StateNames.PRESETS_DATA_LOCATION] = global_state.get('presetsDataLocation'.lower(), None)
-    source_state[StateNames.TMP_DATA_LOCATION] = global_state.get('tmpDataLocation'.lower(), None)
+    source_state[StateNames.SOURCE_DATA_LOCATION] = full_state.get('sourceDataLocation'.lower(), None)
+    source_state[StateNames.SOUNDS_DATA_LOCATION] = full_state.get('soundsDataLocation'.lower(), None)
+    source_state[StateNames.PRESETS_DATA_LOCATION] = full_state.get('presetsDataLocation'.lower(), None)
+    source_state[StateNames.TMP_DATA_LOCATION] = full_state.get('tmpDataLocation'.lower(), None)
 
     if source_state[StateNames.SOURCE_DATA_LOCATION] is not None:
         if recent_queries_and_filters is None:
@@ -163,81 +164,70 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
         if tmp_base_path is None:
             tmp_base_path = source_state.get(StateNames.TMP_DATA_LOCATION, None)
 
-    source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = global_state.get('useOriginalFiles'.lower(), 'never')
-    source_state[StateNames.MIDI_IN_CHANNEL] = int(global_state.get('midiInChannel'.lower(), -1))
-    source_state[StateNames.PLUGIN_VERSION] = global_state.get('pluginVersion'.lower(), '0.0')
+    source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = full_state.get('useOriginalFilesPreference'.lower(), 'never')
+    source_state[StateNames.MIDI_IN_CHANNEL] = int(full_state.get('globalMidiInChannel'.lower(), -1))
+    source_state[StateNames.PLUGIN_VERSION] = full_state.get('pluginVersion'.lower(), '0.0')
     
     # Get properties from the volatile state
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
 
     # Basic preset properties
-    source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("presetName".lower(), "Noname")
-    source_state[StateNames.LOADED_PRESET_INDEX] = int(preset_state.get("presetNumber".lower(), "-1"))
-    source_state[StateNames.NUM_VOICES] = int(sampler_state.get("NumVoices".lower(), "1"))
-    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state.get("noteLayoutType".lower(), "1"))
+    source_state[StateNames.LOADED_PRESET_NAME] = preset_state2.get("name".lower(), "Noname")
+    source_state[StateNames.LOADED_PRESET_INDEX] = int(full_state.get("currentPresetIndex".lower(), "-1"))
+    source_state[StateNames.NUM_VOICES] = int(preset_state2.get("numVoices".lower(), "1"))
+    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state2.get("noteLayoutType".lower(), "1"))
 
     # Reverb settings
-    reverb_state = plugin_state_xml.find_all("ReverbParameters".lower())[0]
     source_state[StateNames.REVERB_SETTINGS] = [
-        float(reverb_state.get('reverb_roomSize'.lower(), 0.0)),
-        float(reverb_state.get('reverb_damping'.lower(), 0.0)),
-        float(reverb_state.get('reverb_wetLevel'.lower(), 0.0)),
-        float(reverb_state.get('reverb_dryLevel'.lower(), 0.0)),
-        float(reverb_state.get('reverb_width'.lower(), 0.0)),
-        float(reverb_state.get('reverb_freezeMode'.lower(), 0.0)),
+        float(preset_state2.get('reverbRoomSize'.lower(), 0.0)),
+        float(preset_state2.get('reverbDamping'.lower(), 0.0)),
+        float(preset_state2.get('reverbWetLevel'.lower(), 0.0)),
+        float(preset_state2.get('reverbDryLevel'.lower(), 0.0)),
+        float(preset_state2.get('reverbWidth'.lower(), 0.0)),
+        float(preset_state2.get('reverbFreezeMode'.lower(), 0.0)),
     ]
     
     # Loaded sounds properties
-    sounds_info = preset_state.find_all("soundsInfo".lower())[0].find_all("soundInfo".lower())
+    sounds_info = preset_state2.find_all("SOUND".lower())
     source_state[StateNames.NUM_SOUNDS] = len(sounds_info)
     source_state[StateNames.NUM_SOUNDS_CHANGED] = current_state.get(StateNames.NUM_SOUNDS, len(sounds_info)) != len(sounds_info)
     processed_sounds_info = []
-    for sound_idx, sound_info in enumerate(sounds_info):
-
-        sampler_sound = sound_info.find_all("SamplerSound".lower())[0]
-        sound_parameters = sampler_sound.find_all('SamplerSoundParameter'.lower())
+    for _, sound_info in enumerate(sounds_info):
+        sound_uuid = sound_info['uuid']
 
         # Consolidate sound slices into a list
         slices = []
-        for onset in sound_info.find_all('onset'):
-            slices.append(float(onset['time']))
+        try:
+            analysis_onsets = sound_info.find_all("ANALYSIS".lower())[0].find_all("onsets".lower())[0]
+            for onset in analysis_onsets.find_all('onset'):
+                slices.append(float(onset['onsettime']))
+        except IndexError:
+            pass
 
         # Consolidate all sound parameter values into a dict
         processed_sound_parameters_info = {}
-        for parameter in sound_parameters:
-            """
-            <SamplerSoundParameter parameter_type="int" parameter_name="launchMode" parameter_value="1"/>
-            """
-            val = parameter['parameter_value']
-            name = parameter['parameter_name']
-            processed_sound_parameters_info[name] = val
+        for parameter_name in sound_parameters_info_dict:
+            val = sound_info[parameter_name.lower()]
+            processed_sound_parameters_info[parameter_name] = val
 
         # Concoslidate MIDI CC mapping data into a dict
         # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
         processed_sound_midi_cc_info = {}
         processed_sound_midi_cc_info_list_aux = []
-        for midi_cc in sampler_sound.find_all('SamplerSoundMidiCCMapping'.lower()):
-            """
-            <SamplerSoundMidiCCMapping
-                midiMappingRandomId="14562" 
-                midiMappingCcNumber="2" 
-                midiMappingParameterName="filterCutoff"
-                midiMappingMinRange="0.0" 
-                midiMappingMaxRange="1.0"
-            />
-            """
-            cc_number = int(midi_cc['midiMappingCcNumber'.lower()])
-            parameter_name = midi_cc['midiMappingParameterName'.lower()]
+        # TODO: update midi mappings to MIDI_CC_MAPPING
+        for midi_cc in sound_info.find_all('SamplerSoundMidiCCMapping'.lower()): 
+            cc_number = int(midi_cc['ccNumber'.lower()])
+            parameter_name = midi_cc['parameterName'.lower()]
             label = 'CC#{}->{}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
             processed_sound_midi_cc_info_list_aux.append((label, {
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
                 StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['midiMappingMinRange'.lower()]),
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['midiMappingMaxRange'.lower()]),
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID: int(midi_cc['midiMappingRandomId'.lower()]) ,
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['minRange'.lower()]),
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['maxRange'.lower()]),
+                StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: int(midi_cc['uuid'.lower()]) ,
             }))
         # Sort by assignment random ID and then for label. In this way the sorting will be always consistent
-        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][StateNames.SOUND_MIDI_CC_ASSIGNMENT_RANDOM_ID])
+        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])
         processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[0])
         assignment_labels = [label for label, _ in processed_sound_midi_cc_info_list_aux]
         added_labels_count = defaultdict(int)
@@ -248,23 +238,26 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             processed_sound_midi_cc_info[assignment_label] = assignment_data
 
         # Put all sound data together into a dict
+        source_sampler_sound = sound_info.find_all('SOUND_SAMPLE'.lower())[0]
         processed_sound_info = {
-            StateNames.SOUND_NAME: sound_info.get('soundname', '-'),
-            StateNames.SOUND_ID: sound_info.get('soundid', 0),
-            StateNames.SOUND_LICENSE: translate_cc_license_url(sound_info.get('soundlicense', '-')),
-            StateNames.SOUND_AUTHOR: sound_info.get('sounduser', '-'),
-            StateNames.SOUND_DURATION: float(sound_info.get('sounddurationinseconds', 0)),
-            StateNames.SOUND_OGG_URL: sound_info.get('soundoggurl', ''),
-            StateNames.SOUND_LOCAL_FILE_PATH: sound_info.get('soundlocalfilepath', ''),
-            StateNames.SOUND_TYPE: sound_info.get('soundtype', ''),
-            StateNames.SOUND_FILESIZE: int(sound_info.get('soundsize', 0)),
-            StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(int(sound_info.get('downloadprogress', 0))),
+            StateNames.SOUND_NAME: source_sampler_sound.get('name', '-'),
+            StateNames.SOUND_UUID: sound_uuid,
+            StateNames.SOUND_ID: source_sampler_sound.get('soundid', 0),
+            StateNames.SOUND_LICENSE: translate_cc_license_url(source_sampler_sound.get('license', '-')),
+            StateNames.SOUND_AUTHOR: source_sampler_sound.get('username', '-'),
+            StateNames.SOUND_DURATION: float(source_sampler_sound.get('duration', 0)),
+            StateNames.SOUND_OGG_URL: source_sampler_sound.get('previewURL', ''),
+            StateNames.SOUND_LOCAL_FILE_PATH: source_sampler_sound.get('filepath', ''),
+            StateNames.SOUND_TYPE: source_sampler_sound.get('format', ''),
+            StateNames.SOUND_FILESIZE: int(source_sampler_sound.get('filesize', 0)),
+            StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(float(source_sampler_sound.get('downloadprogress', 0))),
+            StateNames.SOUND_DOWNLOAD_COMPLETED: '{0}'.format(int(source_sampler_sound.get('downloadcompleted', 0))),
             StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,
-            StateNames.SOUND_ASSIGNED_NOTES: sampler_sound.get('midiNotes'.lower(), None),
+            StateNames.SOUND_ASSIGNED_NOTES: source_sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
-            StateNames.SOUND_LOADED_IN_SAMPLER: len(sound_parameters) > 0,
-            StateNames.SOUND_LOADED_PREVIEW_VERSION: sampler_sound.get('loadedPreviewVersion'.lower(), '1') == '1',
+            StateNames.SOUND_LOADED_IN_SAMPLER: sound_info.get('allSoundsLoaded'.lower(), False),
+            StateNames.SOUND_LOADED_PREVIEW_VERSION: source_sampler_sound.get('usesPreview'.lower(), '1') == '1',
         }
         processed_sounds_info.append(processed_sound_info)
 
@@ -274,7 +267,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
 
     source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
     source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
-    source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if int(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
+    source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if float(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
 
     return source_state
 
