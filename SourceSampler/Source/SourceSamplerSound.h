@@ -115,8 +115,7 @@ private:
 // or sounds sampled at different pitches.
 
 
-class SourceSound: public juce::URL::DownloadTask::Listener,
-                   public juce::Thread
+class SourceSound: public juce::URL::DownloadTask::Listener
 {
 public:
     SourceSound (const juce::ValueTree& _state,
@@ -165,19 +164,32 @@ public:
     void addSourceSamplerSoundsToSampler();
     void removeSourceSampleSoundsFromSampler();
     
+    void loadSounds();
     bool isSupportedAudioFileFormat(const String& extension);
     bool fileLocationIsSupportedAudioFileFormat(File location);
     File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
     bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState);
     bool fileAlreadyInDisk(File locationInDisk);
-    void triggerSoundDownloads();
     void downloadProgressUpdate(File targetFileLocation, float percentageCompleted);
     void downloadFinished(File targetFileLocation, bool taskSucceeded);
     
     void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength);
     void finished(URL::DownloadTask *task, bool success);
     
-    void run();
+    //==============================================================================
+    class SoundLoaderThread : public juce::Thread
+    {
+    public:
+        SoundLoaderThread(SourceSound& s) : juce::Thread ("SoundLoaderThread"), sound (s){}
+        
+        void run() override
+        {
+            sound.loadSounds();
+        }
+        SourceSound& sound;
+    };
+    SoundLoaderThread soundLoaderThread;
+    //==============================================================================
     
 private:
     // Sound properties

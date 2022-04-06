@@ -165,11 +165,13 @@ void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
 
 
 SourceSound::SourceSound (const juce::ValueTree& _state,
-             std::function<GlobalContextStruct()> globalContextGetter): Thread ("LoaderThread"), state(_state)
+             std::function<GlobalContextStruct()> globalContextGetter): state(_state), soundLoaderThread (*this)
 {
     getGlobalContext = globalContextGetter;
     bindState();
-    triggerSoundDownloads();
+    
+    // Trigger the loading of sounds in a separate thread
+    soundLoaderThread.startThread();
 }
 
 SourceSound::~SourceSound ()
@@ -521,54 +523,11 @@ void SourceSound::removeSourceSampleSoundsFromSampler()
     std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
 }
 
-bool SourceSound::isSupportedAudioFileFormat(const String& extension)
-{
-    return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
-}
+// ------------------------------------------------------------------------------------------------
 
-
-bool SourceSound::fileLocationIsSupportedAudioFileFormat(File location)
+void SourceSound::loadSounds()
 {
-    return isSupportedAudioFileFormat(location.getFileExtension());
-}
-
-File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
-{
-    juce::File locationInDisk;
-    juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
-    if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
-        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
-    } else {
-        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
-    }
-    return locationInDisk;
-}
-
-bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
-{
-    if (getGlobalContext().freesoundOauthAccessToken != ""){
-        if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
-            return true;
-        } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
-            // Only return true if sound has a filesize below the threshold
-            if ((int)sourceSamplerSoundState.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool SourceSound::fileAlreadyInDisk(File locationInDisk)
-{
-    // Check that file exists in disk and that it has at least half of the expected full size
-    int fileMinSize = 100; // Something smaller than 100 bytes will be considered corrupt file
-    return locationInDisk.existsAsFile() && locationInDisk.getSize() > fileMinSize;
-}
-
-void SourceSound::triggerSoundDownloads()
-{
-    // Trigger the downloading of all SourceSamplerSound(s) of SourceSound. This will normally be one single sound except for the
+    // Load all the  SourceSamplerSound(s) of SourceSound, triggering downloading if needed. This will normally be one single sound except for the
     // case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
     
     allSoundsLoaded = false;
@@ -664,6 +623,51 @@ void SourceSound::triggerSoundDownloads()
     }
 }
 
+bool SourceSound::isSupportedAudioFileFormat(const String& extension)
+{
+    return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
+}
+
+
+bool SourceSound::fileLocationIsSupportedAudioFileFormat(File location)
+{
+    return isSupportedAudioFileFormat(location.getFileExtension());
+}
+
+File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
+{
+    juce::File locationInDisk;
+    juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
+    if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
+        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
+    } else {
+        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
+    }
+    return locationInDisk;
+}
+
+bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
+{
+    if (getGlobalContext().freesoundOauthAccessToken != ""){
+        if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+            return true;
+        } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+            // Only return true if sound has a filesize below the threshold
+            if ((int)sourceSamplerSoundState.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool SourceSound::fileAlreadyInDisk(File locationInDisk)
+{
+    // Check that file exists in disk and that it has at least half of the expected full size
+    int fileMinSize = 100; // Something smaller than 100 bytes will be considered corrupt file
+    return locationInDisk.existsAsFile() && locationInDisk.getSize() > fileMinSize;
+}
+
 void SourceSound::downloadProgressUpdate(File targetFileLocation, float percentageCompleted)
 {
     for (int i=0; i<state.getNumChildren(); i++){
@@ -712,8 +716,4 @@ void SourceSound::progress (URL::DownloadTask *task, int64 bytesDownloaded, int6
 void SourceSound::finished(URL::DownloadTask *task, bool success)
 {
     downloadFinished(task->getTargetLocation(), success);
-}
- 
-void SourceSound::run(){
-    // TODO: use thread to download and load sounds (?)
 }

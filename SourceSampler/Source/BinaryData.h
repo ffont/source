@@ -11,6 +11,6 @@ namespace BinaryData
     const int           localhost_keySize = 1704;
 
     extern const char*  ui_plugin_html;
-    const int           ui_plugin_htmlSize = 292862;
+    const int           ui_plugin_htmlSize = 292853;
 
 }

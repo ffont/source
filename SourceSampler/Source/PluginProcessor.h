@@ -131,6 +131,7 @@ public:
         float maxSoundLength;
     };
     QueryMakerThread queryMakerThread;
+    //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void removeSound(const juce::String& soundUUID);
     void addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
