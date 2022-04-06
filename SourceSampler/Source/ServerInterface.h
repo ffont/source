@@ -160,6 +160,18 @@ void HTTPServer::run()
     httplib::Server server;
     #endif
     
+    // Some server configuration
+    // TODO: try if these parameters fix issues with server going down
+    //server.set_read_timeout(5, 0); // 5 seconds
+    //server.set_write_timeout(5, 0); // 5 seconds
+    //server.set_idle_interval(0, 100000); // 100 milliseconds
+    
+    File tmpFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
+    if (!ret) {
+        DBG("Can't serve sound files from directory as directory does not exist");
+    }
+    
     server.Get("/", [](const httplib::Request &, httplib::Response &res) {
         String contents = String::fromUTF8 (BinaryData::ui_plugin_html, BinaryData::ui_plugin_htmlSize);
         res.set_content(contents.toStdString(), "text/html");

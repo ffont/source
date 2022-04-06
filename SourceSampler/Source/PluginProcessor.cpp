@@ -89,6 +89,9 @@ SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
     // Remove listeners
     serverInterface.removeActionListener(this);
     sampler.removeActionListener(this);
+    
+    // Clean data in tmp directory
+    tmpFilesLocation.deleteRecursively();
 }
 
 void SourceSamplerAudioProcessor::bindState()

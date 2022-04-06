@@ -54,6 +54,11 @@
         input[type=range] {
             vertical-align: top;
         }
+        
+        canvas {
+            height: 50px;
+            width:100%;
+        }
 
         #logos {
             float: right;
@@ -210,6 +215,10 @@
     </style>
 
     <script>
+        
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+        let currentBuffer = null;
 
         var updateStateTimer;
         var lastReceivedStateText;
@@ -556,6 +565,7 @@
             var cardElementId = soundUUID + "_" + sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
             html = '<div class="controls_card" id="' + cardElementId + '">';
             html += '<div id="soundCardInfo_' + soundUUID + '"></div>';
+            html += '<div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
             html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
             html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
@@ -567,6 +577,8 @@
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
             var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
             var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
+            var sourceSamplerSoundUUID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('uuid');
+            drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
             var soundName = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             var licenseURL = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             if ((downloadProgress != 100) && (soundID != -1)){
@@ -818,6 +830,68 @@
             };
             xhr.open('GET', '/update_state_volatile', true);
             xhr.send();
+        }
+        
+        function drawSoundWaveform(sourceSamplerSoundUUID, canvasID){
+            // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
+            const drawAudio = url => {
+              fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => draw(normalizeData(filterData(audioBuffer))));
+            };
+            
+            const filterData = audioBuffer => {
+              const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
+              const samples = 100; // Number of samples we want to have in our final data set
+              const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
+              const filteredData = [];
+              for (let i = 0; i < samples; i++) {
+                let blockStart = blockSize * i; // the location of the first sample in the block
+                let sum = 0;
+                for (let j = 0; j < blockSize; j++) {
+                  sum = sum + Math.abs(rawData[blockStart + j]) // find the sum of all the samples in the block
+                }
+                filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
+              }
+              return filteredData;
+            }
+            
+            const normalizeData = filteredData => {
+              const multiplier = Math.pow(Math.max(...filteredData), -1);
+              return filteredData.map(n => n * multiplier);
+            }
+            
+            const draw = normalizedData => {
+              // Set up the canvas
+              const canvas = document.getElementById(canvasID);
+              canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
+              const padding = 0;
+              canvas.width = canvas.offsetWidth;
+              canvas.height = (canvas.offsetHeight + padding * 2);
+              const ctx = canvas.getContext("2d");
+              //ctx.translate(0, canvas.offsetHeight / 2 + padding); // Set Y = 0 to be in the middle of the canvas
+              
+              // Draw points
+              const width = canvas.offsetWidth / normalizedData.length;
+              for (let i = 0; i < normalizedData.length; i++) {
+                const x = width * i;
+                let height = normalizedData[i] * canvas.offsetHeight - padding;
+                ctx.lineWidth = 1; // how thick the line is
+                ctx.strokeStyle = "#fff"; // what color our line is
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.offsetHeight - padding);
+                ctx.lineTo(x, canvas.offsetHeight - padding - height);
+                ctx.stroke();
+              }
+            };
+            
+            const canvas = document.getElementById(canvasID);
+            if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
+                console.log("Drawing waveform")
+                let url = '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
+                drawAudio(url);
+            }
         }
         
     </script>

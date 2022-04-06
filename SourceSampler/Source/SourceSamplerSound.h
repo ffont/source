@@ -37,7 +37,6 @@ public:
     SourceSamplerSound (const juce::ValueTree& _state,
                         SourceSound* _sourceSoundPointer,
                         AudioFormatReader& source,
-                        bool _loadingPreviewVersion,
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
@@ -48,11 +47,11 @@ public:
     void bindState ();
     
     SourceSound* getSourceSound() { return sourceSoundPointer; };
-   
+    
     AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
+    void writeBufferToDisk();
     
     int getSoundId() { return soundId.get(); };
-    bool getLoadedPreviewVersion();
 
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;

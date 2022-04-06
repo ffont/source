@@ -14,12 +14,10 @@
 SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
                                         SourceSound* _sourceSoundPointer,
                                         AudioFormatReader& source,
-                                        bool _loadingPreviewVersion,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
     : state(_state),
-      loadedPreviewVersion (_loadingPreviewVersion),
       soundSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
       pluginBlockSize (_pluginBlockSize)
@@ -39,6 +37,10 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
     
     // Load calculated onsets (if any)
     loadOnsetTimesSamplesFromAnalysis();
+    
+    // Write PCM version of the audio to disk so it can be used in the UI for displaying waveforms
+    // (either by serving through the http server or directly loading from disk)
+    writeBufferToDisk();
 }
 
 SourceSamplerSound::~SourceSamplerSound()
@@ -53,9 +55,21 @@ void SourceSamplerSound::bindState ()
     midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
 }
 
-bool SourceSamplerSound::getLoadedPreviewVersion()
+void SourceSamplerSound::writeBufferToDisk()
 {
-    return loadedPreviewVersion;
+    juce::AudioBuffer<float>* buffer = getAudioData();
+    juce::WavAudioFormat format;
+    std::unique_ptr<AudioFormatWriter> writer;
+    
+    juce::File outputLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    writer.reset (format.createWriterFor (new FileOutputStream (outputLocation),
+                                          soundSampleRate,
+                                          1,  // Write mono files for visualization (will probably only take the first channel)
+                                          16,
+                                          {},
+                                          0));
+    if (writer != nullptr)
+        writer->writeFromAudioSampleBuffer (*buffer, 0, buffer->getNumSamples());
 }
 
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
@@ -458,7 +472,6 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
                 SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                           this,
                                                                           *reader,
-                                                                          true,
                                                                           MAX_SAMPLE_LENGTH,
                                                                           getGlobalContext().sampleRate,
                                                                           getGlobalContext().samplesPerBlock);

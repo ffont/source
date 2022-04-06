@@ -7,8 +7,6 @@ import traceback
 
 import numpy
 from scipy.io import wavfile
-import pyogg
-import aifc
 
 from freesound_api_key import FREESOUND_CLIENT_ID
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, \
@@ -25,7 +23,6 @@ except ModuleNotFoundError:
     N_LEDS = 9
 
 ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav', 'aiff', 'mp3', 'flac']
-ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR = ['ogg', 'wav', 'aiff']
 
 def get_local_audio_files_path():
     if sm is not None and sm.source_state:
@@ -2319,44 +2316,12 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         if self.sound_idx > -1:
             sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID, default=None)
             if sound_id is not None:
-                if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default=''):
-                    path = os.path.join(sm.source_state.get(StateNames.SOURCE_DATA_LOCATION, ''), sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)) 
-                else:
-                    ty = sm.gsp(self.sound_idx, StateNames.SOUND_TYPE, default='')
-                    if ty != '' and ty.lower() in ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR:
-                        # If sound has type property, try with original file path first
-                        original_filename = '{}-original.{}'.format(sound_id, ty)
-                        path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), original_filename)
-                        if not os.path.exists(path):
-                            # If original file does not exist, assign path to preview path
-                            filename = '{}.ogg'.format(sound_id)
-                            path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
-                    else:
-                        # If sound has no "type" property, try directly with preview path
-                        filename = '{}.ogg'.format(sound_id)
-                        path = os.path.join(sm.source_state.get(StateNames.SOUNDS_DATA_LOCATION, ''), filename)
-                try:
-                    extension = path.split('.')[-1]
-                except IndexError:
-                    extension = ''
-                if os.path.exists(path) and extension in ALLOWED_AUDIO_FILE_EXTENSIONS_IN_SLICE_EDITOR:
+                path = os.path.join(sm.source_state.get(StateNames.TMP_DATA_LOCATION, ''), sm.gsp(self.sound_idx, StateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav') 
+                if os.path.exists(path):
                     sm.show_global_message('Loading\nwaveform...', duration=10)
-                    if extension == 'ogg':                
-                        vorbis_file = pyogg.VorbisFile(path)
-                        self.sound_sr = vorbis_file.frequency
-                        self.sound_data_array = self.to_array(vorbis_file)[:, 0]  # Take 1 channel only
-                    elif extension == 'wav':
-                        self.sound_sr, self.sound_data_array = wavfile.read(path)    
-                        if len(self.sound_data_array.shape) > 1:
-                            self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
-                    elif extension == 'aiff':
-                        aiff_file = aifc.open(path)
-                        self.sound_sr = aiff_file.getframerate()
-                        self.sound_data_array = numpy.fromstring(aiff_file.readframes(aiff_file.getnframes()), numpy.short).byteswap()
-                        aiff_file.close()
-                        if len(self.sound_data_array.shape) > 1:
-                            self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
-
+                    self.sound_sr, self.sound_data_array = wavfile.read(path)    
+                    if len(self.sound_data_array.shape) > 1:
+                        self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
                     self.sound_data_array = self.sound_data_array / abs(max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
                     self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
                     self.sound_length = self.sound_data_array.shape[0]
@@ -2368,7 +2333,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                         self.scale = 10
                     sm.show_global_message('', duration=0)
                 else:
-                    sm.show_global_message('File not found\nor not supported')
+                    sm.show_global_message('File not found')
                         
     def draw_display_frame(self):
         self.frame_count += 1

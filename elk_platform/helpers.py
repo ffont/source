@@ -52,6 +52,7 @@ class StateNames(Enum):
     SOUNDS_INFO = auto()
     SOUND_NAME = auto()
     SOUND_UUID = auto()
+    SOURCE_SAMPLER_SOUND_UUID = auto()
     SOUND_ID = auto()
     SOUND_LICENSE = auto()
     SOUND_AUTHOR = auto()
@@ -154,7 +155,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     source_state[StateNames.SOURCE_DATA_LOCATION] = full_state.get('sourceDataLocation'.lower(), None)
     source_state[StateNames.SOUNDS_DATA_LOCATION] = full_state.get('soundsDataLocation'.lower(), None)
     source_state[StateNames.PRESETS_DATA_LOCATION] = full_state.get('presetsDataLocation'.lower(), None)
-    source_state[StateNames.TMP_DATA_LOCATION] = full_state.get('tmpDataLocation'.lower(), None)
+    source_state[StateNames.TMP_DATA_LOCATION] = full_state.get('tmpFilesLocation'.lower(), None)
 
     if source_state[StateNames.SOURCE_DATA_LOCATION] is not None:
         if recent_queries_and_filters is None:
@@ -242,6 +243,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
         processed_sound_info = {
             StateNames.SOUND_NAME: source_sampler_sound.get('name', '-'),
             StateNames.SOUND_UUID: sound_uuid,
+            StateNames.SOURCE_SAMPLER_SOUND_UUID: source_sampler_sound.get('uuid', '-'),  # Only supports the UUID of the first sound
             StateNames.SOUND_ID: source_sampler_sound.get('soundid', 0),
             StateNames.SOUND_LICENSE: translate_cc_license_url(source_sampler_sound.get('license', '-')),
             StateNames.SOUND_AUTHOR: source_sampler_sound.get('username', '-'),
