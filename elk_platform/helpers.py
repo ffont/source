@@ -38,7 +38,7 @@ class StateNames(Enum):
     METER_L = auto()
     METER_R = auto()
     
-    IS_QUERYING_AND_DOWNLOADING = auto()
+    IS_QUERYING = auto()
     
     LOADED_PRESET_NAME = auto()
     LOADED_PRESET_INDEX = auto()
@@ -97,7 +97,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
             return source_state
 
         # Is plugin currently querying and downloading?
-        source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
+        source_state[StateNames.IS_QUERYING] = volatile_state.get('isQuerying'.lower(), '') != "0"
 
         # More volatile state stuff
         source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element]
@@ -113,10 +113,10 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
 
     else:
         # Do it from string serialized version of the state
-        is_querying_and_downloading, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = plugin_state_string.split(';')
+        is_querying, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = plugin_state_string.split(';')
         
         # Is plugin currently querying and downloading?
-        source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = is_querying_and_downloading != "0"
+        source_state[StateNames.IS_QUERYING] = is_querying != "0"
 
         # More volatile state stuff
         source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
@@ -149,7 +149,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             
     # Get sub XML element to avoid repeating many queries
     full_state = plugin_state_xml.find_all("SOURCE_STATE".lower())[0]
-    preset_state2 = plugin_state_xml.find_all("PRESET".lower())[0]
+    preset_state = plugin_state_xml.find_all("PRESET".lower())[0]
 
     # File paths and other global settings
     source_state[StateNames.SOURCE_DATA_LOCATION] = full_state.get('sourceDataLocation'.lower(), None)
@@ -173,23 +173,23 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
 
     # Basic preset properties
-    source_state[StateNames.LOADED_PRESET_NAME] = preset_state2.get("name".lower(), "Noname")
+    source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("name".lower(), "Noname")
     source_state[StateNames.LOADED_PRESET_INDEX] = int(full_state.get("currentPresetIndex".lower(), "-1"))
-    source_state[StateNames.NUM_VOICES] = int(preset_state2.get("numVoices".lower(), "1"))
-    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state2.get("noteLayoutType".lower(), "1"))
+    source_state[StateNames.NUM_VOICES] = int(preset_state.get("numVoices".lower(), "1"))
+    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state.get("noteLayoutType".lower(), "1"))
 
     # Reverb settings
     source_state[StateNames.REVERB_SETTINGS] = [
-        float(preset_state2.get('reverbRoomSize'.lower(), 0.0)),
-        float(preset_state2.get('reverbDamping'.lower(), 0.0)),
-        float(preset_state2.get('reverbWetLevel'.lower(), 0.0)),
-        float(preset_state2.get('reverbDryLevel'.lower(), 0.0)),
-        float(preset_state2.get('reverbWidth'.lower(), 0.0)),
-        float(preset_state2.get('reverbFreezeMode'.lower(), 0.0)),
+        float(preset_state.get('reverbRoomSize'.lower(), 0.0)),
+        float(preset_state.get('reverbDamping'.lower(), 0.0)),
+        float(preset_state.get('reverbWetLevel'.lower(), 0.0)),
+        float(preset_state.get('reverbDryLevel'.lower(), 0.0)),
+        float(preset_state.get('reverbWidth'.lower(), 0.0)),
+        float(preset_state.get('reverbFreezeMode'.lower(), 0.0)),
     ]
     
     # Loaded sounds properties
-    sounds_info = preset_state2.find_all("SOUND".lower())
+    sounds_info = preset_state.find_all("SOUND".lower())
     source_state[StateNames.NUM_SOUNDS] = len(sounds_info)
     source_state[StateNames.NUM_SOUNDS_CHANGED] = current_state.get(StateNames.NUM_SOUNDS, len(sounds_info)) != len(sounds_info)
     processed_sounds_info = []

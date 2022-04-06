@@ -581,7 +581,9 @@
             var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
             var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
             var sourceSamplerSoundUUID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('uuid');
-            drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
+            if (sound.getAttribute("allSoundsLoaded") == "1"){
+                drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
+            }
             var soundName = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             var licenseURL = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             if ((downloadProgress != 100) && (soundID != -1)){
@@ -636,7 +638,6 @@
             return "-1"
         }
         
-        
         function syncUIWithVolatileState(xmlState){
             var VolatileState = xmlState.getElementsByTagName('VOLATILE_STATE')[0];
             
@@ -645,7 +646,19 @@
             for (var i=0; i<logMessages.length; i++){
                 document.getElementById("log").innerHTML += logMessages[i] + '<br>';
             }
-
+            
+            var isQuerying = VolatileState.getAttribute('isQuerying') != "0";
+            var queryButton = document.getElementById('makeQueryButton');
+            if (isQuerying){
+                if (queryButton.innerHTML !== "Querying...") {
+                    queryButton.innerHTML = "Querying...";
+                }
+            } else {
+                if (queryButton.innerHTML !== "Search...") {
+                    queryButton.innerHTML = "Search...";
+                }
+            }
+            
             var voicesStateElement = document.getElementById('voicesState');
             var html = '<div class="voices">';
             if (VolatileState !== undefined){
@@ -908,7 +921,6 @@
             
             const canvas = document.getElementById(canvasID);
             if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
-                console.log("Drawing waveform")
                 let url = '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
                 drawAudio(url);
             }
@@ -957,7 +969,7 @@
             <option value="0">&nbsp;&nbsp;contiguous&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
             <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
         </select><br>
-        <button onclick="makeQuery()">Search...</button>
+        <button id="makeQueryButton" onclick="makeQuery()">Search...</button>
     </div>
 
 

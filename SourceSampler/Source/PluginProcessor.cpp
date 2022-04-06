@@ -102,7 +102,7 @@ void SourceSamplerAudioProcessor::bindState()
     state.setProperty(IDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
     state.setProperty(IDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
     state.setProperty(IDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);
+    state.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);    
     
     currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr, Defaults::currentPresetIndex);
     globalMidiInChannel.referTo(state, IDs::globalMidiInChannel, nullptr, Defaults::globalMidiInChannel);
@@ -521,6 +521,7 @@ File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 
 ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     ValueTree state = ValueTree(IDs::VOLATILE_STATE);
+    state.setProperty(IDs::isQuerying, isQuerying, nullptr);
     state.setProperty(IDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
     midiMessagesPresentInLastStateReport = false;
     state.setProperty(IDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
@@ -564,7 +565,7 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     
     StringArray stateAsStringParts = {};
     
-    stateAsStringParts.add("-1");  // Deprecated
+    stateAsStringParts.add(isQuerying ? "1": "0");
     stateAsStringParts.add(midiMessagesPresentInLastStateReport ? "1" : "0");
     midiMessagesPresentInLastStateReport = false;
     stateAsStringParts.add((String)lastReceivedMIDIControllerNumber);
@@ -682,12 +683,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         float maxSoundLength = parameters[3].getFloatValue();
         int noteMappingType = parameters[4].getFloatValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
-        #if MAKE_QUERY_IN_THREAD
-            queryMakerThread.setQueryParameters(query, numSounds, minSoundLength, maxSoundLength);
-            queryMakerThread.run();
-        #else
-            makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
-        #endif
+        
+        // Trigger query in a separate thread so that we don't block UI
+        queryMakerThread.setQueryParameters(query, numSounds, minSoundLength, maxSoundLength);
+        queryMakerThread.startThread(0);  // Lowest thread priority
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
         juce::String soundUUID = parameters[0];  // "" means all sounds
@@ -917,10 +916,18 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 
 void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
+    if (isQuerying){
+        // If already querying, don't run another query
+        logToState("Skip query as already querying...");
+        return;
+    }
+    
     FreesoundClient client(FREESOUND_API_KEY);
+    isQuerying = true;
     logToState("Querying new sounds for: " + textQuery);
     auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
     SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 80, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    isQuerying = false;
     if (list.getCount() > 0){
         
         // Randmomize results and prepare for iteration

@@ -108,10 +108,10 @@ public:
     void updateReverbParameters();
     
     //==============================================================================
-    class QueryMakerThread : private Thread
+    class QueryMakerThread : public juce::Thread
     {
     public:
-        QueryMakerThread(SourceSamplerAudioProcessor& p) : Thread ("QueryMakerThread"), processor (p){}
+        QueryMakerThread(SourceSamplerAudioProcessor& p) : juce::Thread ("QueryMakerThread"), processor (p){}
         
         void setQueryParameters(const String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
             query = _query;
@@ -125,7 +125,7 @@ public:
             processor.makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
         }
         SourceSamplerAudioProcessor& processor;
-        String query;
+        juce::String query;
         int numSounds;
         float minSoundLength;
         float maxSoundLength;
@@ -150,9 +150,7 @@ public:
                                                    BigInteger midiNotes,
                                                    int midiRootNote);
     void reapplyNoteLayout(int newNoteLayoutType);
-    
     void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);
-
     double getStartTime();
     
     void timerCallback() override;
@@ -161,7 +159,6 @@ public:
     void previewFile(const String& path);
     void stopPreviewingFile();
     String currentlyLoadedPreviewFilePath = "";
-
     
 protected:
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
@@ -195,6 +192,7 @@ private:
     juce::CachedValue<float> reverbFreezeMode;
     
     // Other volatile properties
+    bool isQuerying = false;
     bool oscSenderIsConnected = false;
     MidiBuffer midiFromEditor;
     int lastReceivedMIDIControllerNumber = -1;

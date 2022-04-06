@@ -429,7 +429,7 @@ class State(object):
         indicators = "{}{}{}{}".format(
             "M" if sm.source_state.get(StateNames.MIDI_RECEIVED, False) else "",
             "!" if not sm.source_state[StateNames.NETWORK_IS_CONNECTED] else "", 
-            "W" if sm.source_state.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False) else "", 
+            "Q" if sm.source_state.get(StateNames.IS_QUERYING, False) else "", 
             #"*" if sm.source_state[StateNames.STATE_UPDATED_RECENTLY] else "", 
             ["|", "/", "-", "\\"][sm.frame_counter % 4]
         )

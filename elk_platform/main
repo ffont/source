@@ -64,7 +64,7 @@ plugin_state = "No sate"
 plugin_state_dict = {}
 time_post_state_received = None
 connection_with_plugin_ok = False
-last_is_querying_and_downloading_sounds_state = False
+last_is_querying_sounds_state = False
 PLUGIN_DISCONNECTED_THRESHOLD = 8
 
 
@@ -690,7 +690,7 @@ def process_state_from_plugin(received_plugin_state):
     global time_post_state_received
     global connection_with_plugin_ok
     global elk_bridge
-    global last_is_querying_and_downloading_sounds_state
+    global last_is_querying_sounds_state
     time_post_state_received = time.time()
 
     if str(received_plugin_state).startswith("b'<?xml version"):
@@ -712,13 +712,13 @@ def process_state_from_plugin(received_plugin_state):
         volatile_state = process_xml_volatile_state_from_plugin(None, str(received_plugin_state)[2:-1])
         plugin_state_dict.update(volatile_state)
 
-    if not last_is_querying_and_downloading_sounds_state and plugin_state_dict.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False):
-        # Stop showing "making query" message because it will be shown in menu bar with "W"
+    if not last_is_querying_sounds_state and plugin_state_dict.get(StateNames.IS_QUERYING, False):
+        # Stop showing "making query" message because it will be shown in menu bar with "Q"
         state_manager.show_global_message("", duration=0)
-        last_is_querying_and_downloading_sounds_state = True
-    elif last_is_querying_and_downloading_sounds_state and not plugin_state_dict.get(StateNames.IS_QUERYING_AND_DOWNLOADING, False):
+        last_is_querying_sounds_state = True
+    elif last_is_querying_sounds_state and not plugin_state_dict.get(StateNames.IS_QUERYING, False):
         # Finished doing the work
-        last_is_querying_and_downloading_sounds_state = False
+        last_is_querying_sounds_state = False
 
     connection_with_plugin_ok = True
     #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
