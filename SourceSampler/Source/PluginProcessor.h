@@ -134,6 +134,7 @@ public:
     //==============================================================================
     void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void removeSound(const juce::String& soundUUID);
+    void removeAllSounds();
     void addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
                                                    int soundID,
                                                    const String& soundName,

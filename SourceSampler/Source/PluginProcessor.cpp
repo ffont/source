@@ -63,8 +63,8 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     serverInterface.addActionListener(this);
     sampler.addActionListener(this);
     
-    // Start timer to collect state and pass it to the UI
-    startTimerHz(STATE_UPDATE_HZ);
+    // Start timer to pass state to the UI and run other periodic tasks like deleting sounds that are waiting to be deleted
+    startTimerHz(MAIN_TIMER_HZ);
     
     // Load empty session to state
     state = Helpers::createDefaultEmptyState();
@@ -421,7 +421,7 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _sta
     // This will trigger the deletion of SampleSound and SourceSamplerSound objects
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
     if (presetState.isValid()){
-        presetState.removeAllChildren(nullptr);
+        removeAllSounds();
     }
     
     // Load new state informaiton to the state
@@ -851,10 +851,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_CLEAR_ALL_SOUNDS){
-        juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
-        if (presetState.isValid()){
-            presetState.removeAllChildren(nullptr);
-        }
+        removeAllSounds();
         
     } else if (actionName == ACTION_GET_STATE){
         String stateType = parameters[0];
@@ -942,7 +939,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
         
         // Clear all loaded sounds
-        presetState.removeAllChildren(nullptr);
+        removeAllSounds();
         
         // Load the first nSounds from the found ones
         int nNotesPerSound = 128 / nSounds;
@@ -977,7 +974,18 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
 
 void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
 {
-    sounds->removeSoundWithUUID(soundUUID);
+    // Trigger the deletion of the sound by disabling it
+    // Once disabled, all playing notes will be stopped and the sound removed a while after that
+    sounds->getSoundWithUUID(soundUUID)->disableSound();
+}
+
+void SourceSamplerAudioProcessor::removeAllSounds()
+{
+    // Trigger the deletion of the sounds by disabling them
+    // Once disabled, all playing notes will be stopped and the sounds removed a while after that
+    for (auto* sound: sounds->objects){
+        sound->disableSound();
+    }
 }
 
 void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
@@ -1104,6 +1112,13 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
+    // Delete sounds that should be deleted
+    for (auto* sound: sounds->objects){
+        if (sound->shouldBeDeleted()){
+            sounds->removeSoundWithUUID(sound->getUUID());
+        }
+    }
+    
     // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server    
     #if ENABLE_EMBEDDED_HTTP_SERVER
     //fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);

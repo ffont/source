@@ -130,6 +130,8 @@ public:
     juce::String getName();
     juce::String getUUID();
     bool isEnabled();
+    void disableSound();
+    bool shouldBeDeleted();
     
     std::function<GlobalContextStruct()> getGlobalContext;
     
@@ -238,9 +240,10 @@ private:
     juce::CachedValue<int> midiChannel;
     // --> End auto-generated code A
     
-    // Sound downloading
+    // Other
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
+    double disabledTime = 0.0;
     
     JUCE_LEAK_DETECTOR (SourceSound)
 };

@@ -12,13 +12,11 @@
 
 #if ELK_BUILD
     #define USE_EXTERNAL_HTTP_SERVER 1  // In ELK we don't use the embedded HTTP server but use the external one which runs in a separate process
-    #define ENABLE_EMBEDDED_HTTP_SERVER 0
-    #define STATE_UPDATE_HZ 0  // In ELK we don't send state updates with a timer, but only send state updates in response to requests from external HTTP server app
+    #define ENABLE_EMBEDDED_HTTP_SERVER 0 // Don't use the embedded http server because we use the python one
     #define ENABLE_OSC_SERVER 1  // In ELK we enable OSC interface as this is the way the external UI controls the plugin
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
 #else
     #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
-    #define STATE_UPDATE_HZ 15  // Send state updates to the embedded http server
     #if JUCE_DEBUG
         #define ENABLE_OSC_SERVER 1 // In debug enable OSC server for testing purposes
         #define USE_EXTERNAL_HTTP_SERVER 1  // ...and also enable external HTTP server so we can test with the ELK blackboard simulator
@@ -30,6 +28,7 @@
     #endif
 #endif
 
+#define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sound that need to be removed, setting state updates in non-elk and possibly other tasks)
 
 #define ENABLE_DEBUG_BUFFER 0
 
@@ -50,11 +49,13 @@
 #define ACONNECT_MIDI_INTERFACE_ID 16
 #define ACONNECT_SUSHI_ID 128
 
-#define FREESOUND_API_REQUEST_TIMEOUT 10000
+#define FREESOUND_API_REQUEST_TIMEOUT 20000
 #define MAX_DOWNLOAD_WAITING_TIME_MS 20000
-#define MAX_QUERY_AND_DOWNLOADING_BUSY_TIME 40000
 
 #define MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD 1024 * 1024 * 15  // 15 MB
+
+#define SAFE_SOUND_DELETION_TIME_MS 200
+
 
 
 // Setters for preset/global parameters
