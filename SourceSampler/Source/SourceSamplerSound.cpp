@@ -77,9 +77,17 @@ bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
     return getMappedMidiNotes()[midiNoteNumber];
 }
 
-bool SourceSamplerSound::appliesToChannel (int /*midiChannel*/)
+bool SourceSamplerSound::appliesToChannel (int midiChannel)
 {
-    return true;
+    int soundMidiChannel = getParameterInt(IDs::midiChannel);
+    if (soundMidiChannel == 0){
+        // use global channel
+        int globalMidiChannel = sourceSoundPointer->getGlobalContext().midiInChannel;
+        return globalMidiChannel == 0 || globalMidiChannel == midiChannel;
+    } else {
+        // use the sound channel
+        return soundMidiChannel == midiChannel;
+    }
 }
 
 float SourceSamplerSound::getParameterFloat(juce::Identifier identifier){
@@ -213,6 +221,7 @@ void SourceSound::bindState ()
         mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
         vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
         vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
+        midiChannel.referTo(state, IDs::midiChannel, nullptr, Defaults::midiChannel);
         // --> End auto-generated code C
     
     midiCCmappings = std::make_unique<MidiCCMappingList>(state);
@@ -262,6 +271,7 @@ int SourceSound::getParameterInt(juce::Identifier identifier){
         else if (identifier == IDs::reverse) { return reverse.get(); }
         else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
         else if (identifier == IDs::numSlices) { return numSlices.get(); }
+        else if (identifier == IDs::midiChannel) { return midiChannel.get(); }
         // --> End auto-generated code E
     throw std::runtime_error("No int parameter with this name");
 }
@@ -358,6 +368,7 @@ void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
         else if (identifier == IDs::reverse) { reverse = jlimit(0, 1, value); }
         else if (identifier == IDs::noteMappingMode) { noteMappingMode = jlimit(0, 3, value); }
         else if (identifier == IDs::numSlices) { numSlices = jlimit(0, 100, value); }
+        else if (identifier == IDs::midiChannel) { midiChannel = jlimit(0, 16, value); }
         // --> End auto-generated code D
     else { throw std::runtime_error("No int parameter with this name"); }
 }

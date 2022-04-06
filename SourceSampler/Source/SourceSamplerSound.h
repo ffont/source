@@ -51,6 +51,7 @@ public:
     AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     void writeBufferToDisk();
     
+    juce::String getUUID() { return state.getProperty(IDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
 
     //==============================================================================
@@ -130,6 +131,8 @@ public:
     juce::String getName();
     juce::String getUUID();
     bool isEnabled();
+    
+    std::function<GlobalContextStruct()> getGlobalContext;
     
     // --------------------------------------------------------------------------------------------
     
@@ -220,14 +223,12 @@ private:
     juce::CachedValue<float> mod2PlayheadPos;
     juce::CachedValue<float> vel2CutoffAmt;
     juce::CachedValue<float> vel2GainAmt;
+    juce::CachedValue<int> midiChannel;
     // --> End auto-generated code A
     
     // Sound downloading
     std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
-    
-    // Other
-    std::function<GlobalContextStruct()> getGlobalContext;
     
     JUCE_LEAK_DETECTOR (SourceSound)
 };

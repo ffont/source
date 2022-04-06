@@ -100,7 +100,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
         source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = volatile_state.get('isQueryingAndDownloadingSounds'.lower(), '') != "0"
 
         # More volatile state stuff
-        source_state[StateNames.VOICE_SOUND_IDXS] = [int(element) for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element]
+        source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element]
         source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
         source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
         source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
@@ -119,7 +119,7 @@ def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_s
         source_state[StateNames.IS_QUERYING_AND_DOWNLOADING] = is_querying_and_downloading != "0"
 
         # More volatile state stuff
-        source_state[StateNames.VOICE_SOUND_IDXS] = [int(element) for element in voice_sound_idxs.split(',') if element]
+        source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
         source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
         source_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
         source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)

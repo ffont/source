@@ -20,6 +20,7 @@
 struct GlobalContextStruct {
     double sampleRate = 0.0;
     int samplesPerBlock = 0;
+    int midiInChannel = 0;
     juce::Synthesiser* sampler = nullptr;
     juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
     File sourceDataLocation;
@@ -149,6 +150,7 @@ namespace Helpers
         sound.setProperty (IDs::mod2PlayheadPos, 0.0f, nullptr);
         sound.setProperty (IDs::vel2CutoffAmt, 0.0f, nullptr);
         sound.setProperty (IDs::vel2GainAmt, 0.5f, nullptr);
+        sound.setProperty (IDs::midiChannel, 0, nullptr);
         // --> End auto-generated code A
         return sound;
     }

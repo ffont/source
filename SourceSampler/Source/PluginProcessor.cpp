@@ -135,6 +135,7 @@ GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
     context.presetFilesLocation = presetFilesLocation;
     context.tmpFilesLocation = tmpFilesLocation;
     context.freesoundOauthAccessToken = ""; // TODO: implement support for obtaining an access token and enable downloading original quality files
+    context.midiInChannel = globalMidiInChannel.get();
     return context;
 }
 
@@ -316,7 +317,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     // Also get timestamp of the last received message
     for (const MidiMessageMetadata metadata : midiMessages){
         MidiMessage message = metadata.getMessage();
-        if ((sampler.getMidiInChannel() == 0) || (message.getChannel() == sampler.getMidiInChannel())){
+        if ((globalMidiInChannel == 0) || (message.getChannel() == globalMidiInChannel)){
             midiMessagesPresentInLastStateReport = true;
             if (message.isController()){
                 lastReceivedMIDIControllerNumber = message.getControllerNumber();
@@ -485,7 +486,7 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
         if (xmlState.get() != nullptr){
             ValueTree settings = ValueTree::fromXml(*xmlState.get());
             if (settings.hasProperty(IDs::globalMidiInChannel)){
-                sampler.setMidiInChannel((int)settings.getProperty(IDs::globalMidiInChannel));
+                globalMidiInChannel = (int)settings.getProperty(IDs::globalMidiInChannel);
             }
             if (settings.hasProperty(IDs::midiOutForwardsMidiIn)){
                 midiOutForwardsMidiIn = (bool)settings.getProperty(IDs::midiOutForwardsMidiIn);
@@ -535,7 +536,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getSoundId() + ",";
+                voiceSoundIdxs += playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -579,7 +580,7 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getSoundId() + ",";
+                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
@@ -902,7 +903,6 @@ void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
         channel = 16;
     }
     globalMidiInChannel = channel;
-    sampler.setMidiInChannel(globalMidiInChannel);
     saveGlobalPersistentStateToFile();
 }
 
@@ -1074,9 +1074,13 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID,
         if (midiNoteForNormalPitch < 0){
             // If for some reason no note was found, don't play anything
         } else {
-            int midiChannel = sampler.getMidiInChannel();
+            int midiChannel = sound->getParameterInt(IDs::midiChannel);
             if (midiChannel == 0){
-                midiChannel = 1; // If midi in is expected in all channels, set it to channel 1
+                if (globalMidiInChannel > 0){
+                    midiChannel = globalMidiInChannel;
+                } else {
+                    midiChannel = 1;
+                }
             }
             MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
             if (doNoteOff){

@@ -266,6 +266,8 @@
                     labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
                 } else if (labelElement.id.indexOf("soundType") > -1){
                     labelElement.innerHTML = ["single-sample", "multi-sample"][sliderElement.value];
+                } else if (labelElement.id.indexOf("midiChannel") > -1){
+                    labelElement.innerHTML = ["global", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"][sliderElement.value];
                 } else if (labelElement.id.indexOf("numSlices") > -1){
                     var names =  ["auto (onsets)", "auto (n notes)"]
                     for (var i=2; i<=128; i++){
@@ -472,14 +474,14 @@
         
         function getAllSoundParameterNames(){
             // --> Start auto-generated code C
-            parameterNames = ["soundType", "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt"]
+            parameterNames = ["soundType", "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
             // --> End auto-generated code C
             return parameterNames;
         }
         
         function getAllSoundParameterTypes(){
             // --> Start auto-generated code D
-            parameterTypes = ["int", "int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"]
+            parameterTypes = ["int", "int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
             // --> End auto-generated code D
             return parameterTypes;
         }
@@ -547,6 +549,7 @@
             html += '<input type="range" id="' + soundUUID + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2PlayheadPos: <span id="' + soundUUID + '_mod2PlayheadPosLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2CutoffAmt: <span id="' + soundUUID + '_vel2CutoffAmtLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2GainAmt: <span id="' + soundUUID + '_vel2GainAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_midiChannel" name="midiChannel" min="0" max="16" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > midiChannel: <span id="' + soundUUID + '_midiChannelLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
@@ -617,6 +620,23 @@
             }
         }
         
+        function findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){
+            var State = lastReceivedStateXml.getElementsByTagName('PRESET')[0];
+            
+            var sounds = State.getElementsByTagName('SOUND');
+            for (i=0; i<sounds.length; i++) {
+                var samplerSounds = sounds[i].getElementsByTagName('SOUND_SAMPLE');
+                for (j=0; j<samplerSounds.length; j++) {
+                    var samplerSound = samplerSounds[j];
+                    if (samplerSound.getAttribute("uuid") == samplerSoundUUID){
+                        return (i + 1).toString();
+                    }
+                }
+            }
+            return "-1"
+        }
+        
+        
         function syncUIWithVolatileState(xmlState){
             var VolatileState = xmlState.getElementsByTagName('VOLATILE_STATE')[0];
             
@@ -638,7 +658,7 @@
                         // Draw empty square
                         html += '<div class="voice"><div class="voice_progress" style="width:0%;">&nbsp;</div></div>'
                     } else {
-                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + (parseInt(voiceSoundIdxs[i], 10) + 1) + '</div></div>'
+                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + findSoundIdxFromSourceSamplerSoundUUID(voiceSoundIdxs[i]) + '</div></div>'
                     }
                 }
             }

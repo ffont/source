@@ -247,6 +247,9 @@ class ElkBridge(object):
         self.compute_display_frame(0)
 
     def set_midi_input_filter_channel(self, midi_channel):
+        # NOTE: we do channel filtering in the plugin itself, set to 0 (all channels) here regardless
+        # of the parameter value. All references to setting midi channels here should probably be deleted
+        midi_channel = 0
         if self.midic is not None and midi_channel != self.current_midi_in_channel:
             raw_midi = True
             track_identifier = 0  # Source track ID

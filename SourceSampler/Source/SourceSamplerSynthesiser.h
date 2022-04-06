@@ -35,8 +35,6 @@ public:
     void handleMidiEvent (const MidiMessage& m) override;
     
     //==============================================================================
-    int getMidiInChannel();
-    void setMidiInChannel(int newMidiInChannel);
     void setReverbParameters (Reverb::Parameters params);
     
 private:
@@ -46,7 +44,6 @@ private:
     {
         reverbIndex
     };
-    int midiInChannel = 0; // 0 all channels, 1=channel 1, 2=channel 2 etc
     int lastModWheelValue = 0;
     int currentNumChannels = 0;
     int currentBlockSize = 0;

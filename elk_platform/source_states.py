@@ -96,8 +96,8 @@ sound_parameters_info_dict = {
     "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
     "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
     "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
-    #"midiRootNote": (lambda x: int(round(x * 127)), lambda x: int(x), "Root note", "{0}", "/set_sound_parameter_int"),
     "loopXFadeNSamples": (lambda x: 10 + int(round(lin_to_exp(x) * (100000 - 10))), lambda x: int(x), "Loop X fade len", "{0}", "/set_sound_parameter_int"),  
+    "midiChannel": (lambda x: int(round(16 * x)), lambda x: ['Global', "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"][int(x)], "MIDI channel", "{0}", "/set_sound_parameter_int"),
 }
 
 EXTRA_PAGE_1_NAME = "extra1"
@@ -146,7 +146,7 @@ sound_parameter_pages = [
     ], [
         "pan",
         "loopXFadeNSamples",
-        None,
+        "midiChannel",
         None
     ]
 ]
@@ -362,6 +362,12 @@ class StateManager(object):
     def process_data_from_web(self, data):
         if self.is_waiting_for_data_from_web():
             self.current_state.on_data_received(data)
+
+    def get_source_sound_idx_from_source_sampler_sound_uuid(self, source_sampler_sound_uuid):
+        for i, sound in enumerate(self.source_state.get(StateNames.SOUNDS_INFO, [])):
+            if sound.get(StateNames.SOURCE_SAMPLER_SOUND_UUID, "") == source_sampler_sound_uuid:
+                return i
+        return -1
 
     @property
     def current_state(self):
@@ -927,7 +933,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         if self.current_page_data == EXTRA_PAGE_2_NAME:
             frame = add_meter_to_frame(frame, y_offset_lines=3, value=sm.source_state.get(StateNames.METER_R, 0))
             frame = add_meter_to_frame(frame, y_offset_lines=2, value=sm.source_state.get(StateNames.METER_L, 0))
-            voice_sound_idxs = sm.source_state.get(StateNames.VOICE_SOUND_IDXS, [])
+            voice_sound_idxs = [sm.get_source_sound_idx_from_source_sampler_sound_uuid(source_sampler_sound_uuid) for source_sampler_sound_uuid in sm.source_state.get(StateNames.VOICE_SOUND_IDXS, [])]
             if voice_sound_idxs:
                 frame = add_voice_grid_to_frame(frame, voice_activations=voice_sound_idxs)
             return frame  # Return before adding scrollbar if we're in first page

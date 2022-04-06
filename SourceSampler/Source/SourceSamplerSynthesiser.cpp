@@ -95,11 +95,6 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
 {
     const int channel = m.getChannel();
     
-    if ((midiInChannel > 0) && (channel != midiInChannel)){
-        // If there is midi channel filter and it is not matched, return
-        return;
-    }
-    
     if (m.isNoteOn())
     {
         noteOn (channel, m.getNoteNumber(), m.getFloatVelocity());
@@ -131,7 +126,6 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
         int number = m.getControllerNumber();
         int value = m.getControllerValue();
         
-        
         // Store last value for mod wheel (used when triggering new notes)
         if (number == 1){
             lastModWheelValue = value;
@@ -144,11 +138,23 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
         for (auto* s : sounds)
         {
             if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
-                std::vector<MidiCCMapping*> mappings = sound->getSourceSound()->getMidiMappingsForCcNumber(number);
-                for (int i=0; i<mappings.size(); i++){
-                    float normInputValue = (float)value/127.0;  // This goes from 0 to 1
-                    float value = jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
-                    sound->getSourceSound()->setParameterByNameFloat(mappings[i]->parameterName.get(), value, true);
+                int globalMidiChannel = sound->getSourceSound()->getGlobalContext().midiInChannel;
+                int soundMidiChannel = sound->getParameterInt(IDs::midiChannel);
+                bool appliesToChannel = false;
+                if (soundMidiChannel == 0){
+                    // Check with global
+                    appliesToChannel = (globalMidiChannel == 0) || (globalMidiChannel == channel);
+                } else {
+                    // Check with sound channel
+                    appliesToChannel = soundMidiChannel == channel;
+                }
+                if (appliesToChannel){
+                    std::vector<MidiCCMapping*> mappings = sound->getSourceSound()->getMidiMappingsForCcNumber(number);
+                    for (int i=0; i<mappings.size(); i++){
+                        float normInputValue = (float)value/127.0;  // This goes from 0 to 1
+                        float value = jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
+                        sound->getSourceSound()->setParameterByNameFloat(mappings[i]->parameterName.get(), value, true);
+                    }
                 }
             }
         }
@@ -171,14 +177,6 @@ void SourceSamplerSynthesiser::renderVoices (AudioBuffer< float > &outputAudio, 
 }
 
 //==============================================================================
-
-int SourceSamplerSynthesiser::getMidiInChannel(){
-    return midiInChannel;
-}
-
-void SourceSamplerSynthesiser::setMidiInChannel(int newMidiInChannel){
-    midiInChannel = newMidiInChannel;
-}
 
 void SourceSamplerSynthesiser::setReverbParameters (Reverb::Parameters params) {
     auto& reverb = fxChain.get<reverbIndex>();

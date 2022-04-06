@@ -168,6 +168,7 @@ inline float  mod2PitchAmt = 0.0f;
 inline float  mod2PlayheadPos = 0.0f;
 inline float  vel2CutoffAmt = 0.0f;
 inline float  vel2GainAmt = 0.5f;
+inline int midiChannel = 0;
 // --> End auto-generated code A
 
 inline float reverbRoomSize = 0.5f;
@@ -284,6 +285,7 @@ DECLARE_ID (mod2PitchAmt)
 DECLARE_ID (mod2PlayheadPos)
 DECLARE_ID (vel2CutoffAmt)
 DECLARE_ID (vel2GainAmt)
+DECLARE_ID (midiChannel)
 // --> End auto-generated code B
 
 // Volatile state
