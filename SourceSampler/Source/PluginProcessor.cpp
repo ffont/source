@@ -873,6 +873,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             
         } else if (stateType == "full"){
             sendStateToExternalServer(state, "");
+            
+        } else if (stateType == "oscFull"){
+            if (!oscSenderIsConnected){
+                if (oscSender.connect ("127.0.0.1", 9002)){
+                    oscSenderIsConnected = true;
+                }
+            }
+            if (oscSenderIsConnected){
+                DBG("Sending full state via OSC");
+                oscSender.send ("/full_state", state.toXmlString());
+            }
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         String soundPath = parameters[0];
