@@ -316,6 +316,9 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
     }
     
     void removeSoundWithUUID(const juce::String& uuid){
-        parent.removeChild(parent.getChildWithProperty(IDs::uuid, uuid), nullptr);
+        juce::ValueTree child = parent.getChildWithProperty(IDs::uuid, uuid);
+        if (child.isValid()){
+            parent.removeChild(child, nullptr);
+        }
     }
 };

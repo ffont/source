@@ -15,16 +15,19 @@
     #define ENABLE_EMBEDDED_HTTP_SERVER 0 // Don't use the embedded http server because we use the python one
     #define ENABLE_OSC_SERVER 1  // In ELK we enable OSC interface as this is the way the external UI controls the plugin
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
+    #define SYNC_STATE_WITH_OSC 1
 #else
     #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
     #if JUCE_DEBUG
         #define ENABLE_OSC_SERVER 1 // In debug enable OSC server for testing purposes
         #define USE_EXTERNAL_HTTP_SERVER 1  // ...and also enable external HTTP server so we can test with the ELK blackboard simulator
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Use the external HTTP server for downloads, as if we were in ELK platform
+        #define SYNC_STATE_WITH_OSC 1
     #else
         #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
         #define USE_EXTERNAL_HTTP_SERVER 0  // Don't use external server, we only use the embedded one
         #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Also don't use external server for downloads, we use built-in download functionality
+        #define SYNC_STATE_WITH_OSC 0
     #endif
 #endif
 

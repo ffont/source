@@ -175,7 +175,6 @@ private:
     SourceSamplerSynthesiser sampler;
     ServerInterface serverInterface;
     foleys::LevelMeterSource lms;  // Object to measure audio output levels
-    juce::OSCSender oscSender;  // Used to send state updates to glue app
     
     // Properties binded to state
     juce::CachedValue<int> globalMidiInChannel;
@@ -193,21 +192,27 @@ private:
     juce::CachedValue<float> reverbWidth;
     juce::CachedValue<float> reverbFreezeMode;
     
-    // Other volatile properties
+    // Other "volatile" properties
     bool isQuerying = false;
-    bool oscSenderIsConnected = false;
     MidiBuffer midiFromEditor;
     int lastReceivedMIDIControllerNumber = -1;
     int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;
     double startTime;
     bool aconnectWasRun = false;
-    ValueTree loadedSoundsInfo;
+    
+    // State sync stuff
+    bool oscSenderIsConnected = false;
+    int stateUpdateID = 0;
+    juce::OSCSender oscSender;  // Used to send state updates to glue app
+    void sendOSCMessage(const OSCMessage& message);
     
     // The next two objects are to preview sounds independently of the sampler
     std::unique_ptr<AudioFormatReaderSource> readerSource;
     AudioTransportSource transportSource;
     
+    // Other
+    juce::CriticalSection soundDeleteLock;
     void logToState(const String& message);
     std::vector<String> recentLogMessages = {};
     String recentLogMessagesSerialized = "";

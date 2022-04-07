@@ -79,6 +79,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if ELK_BUILD
     setCurrentProgram(latestLoadedPreset);
     #endif
+    
+    // Notify that plugin is running
+    #if SYNC_STATE_WITH_OSC
+    sendOSCMessage(juce::OSCMessage("/plugin_started"));
+    #endif
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -769,6 +774,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         juce::String parameterName = parameters[3];
         float minRange = parameters[4].getFloatValue();
         float maxRange = parameters[5].getFloatValue();
+        DBG(soundUUID);
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
@@ -777,7 +783,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
         juce::String soundUUID = parameters[0];
         String uuid = parameters[1];
-        auto* sound = sounds->getSoundWithUUID(soundUUID);  // This index is provided by the UI and corresponds to the position in loadedSoundsInfo, which matches idx property of SourceSamplerSound
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->removeMidiMapping(uuid);
         }
@@ -859,14 +865,9 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sendStateToExternalServer(collectVolatileStateInformation(), "");
         } else if (stateType == "volatileString"){
             #if SEND_VOLATILE_STATE_OVER_OSC
-            if (!oscSenderIsConnected){
-                if (oscSender.connect ("127.0.0.1", 9002)){
-                    oscSenderIsConnected = true;
-                }
-            }
-            if (oscSenderIsConnected){
-                oscSender.send ("/volatile_state_osc", collectVolatileStateInformationAsString());
-            }
+            juce::OSCMessage message = juce::OSCMessage("/volatile_state_osc");
+            message.addString(collectVolatileStateInformationAsString());
+            sendOSCMessage(message);
             #else
             sendStateToExternalServer(ValueTree(), collectVolatileStateInformationAsString());
             #endif
@@ -875,15 +876,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sendStateToExternalServer(state, "");
             
         } else if (stateType == "oscFull"){
-            if (!oscSenderIsConnected){
-                if (oscSender.connect ("127.0.0.1", 9002)){
-                    oscSenderIsConnected = true;
-                }
-            }
-            if (oscSenderIsConnected){
-                DBG("Sending full state via OSC");
-                oscSender.send ("/full_state", state.toXmlString());
-            }
+            juce::OSCMessage message = juce::OSCMessage("/full_state");
+            message.addInt32(stateUpdateID);
+            message.addString(state.toXmlString());
+            sendOSCMessage(message);
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         String soundPath = parameters[0];
@@ -951,7 +947,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
         
         // Clear all loaded sounds
         removeAllSounds();
-        
+
         // Load the first nSounds from the found ones
         int nNotesPerSound = 128 / nSounds;
         for (int i=0; i<nSounds; i++){
@@ -987,6 +983,7 @@ void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
 {
     // Trigger the deletion of the sound by disabling it
     // Once disabled, all playing notes will be stopped and the sound removed a while after that
+    const ScopedLock sl (soundDeleteLock);
     sounds->getSoundWithUUID(soundUUID)->disableSound();
 }
 
@@ -994,6 +991,7 @@ void SourceSamplerAudioProcessor::removeAllSounds()
 {
     // Trigger the deletion of the sounds by disabling them
     // Once disabled, all playing notes will be stopped and the sounds removed a while after that
+    const ScopedLock sl (soundDeleteLock);
     for (auto* sound: sounds->objects){
         sound->disableSound();
     }
@@ -1124,7 +1122,9 @@ double SourceSamplerAudioProcessor::getStartTime(){
 void SourceSamplerAudioProcessor::timerCallback()
 {
     // Delete sounds that should be deleted
-    for (auto* sound: sounds->objects){
+    //const ScopedLock sl (soundDeleteLock);
+    for (int i=sounds->objects.size() - 1; i>=0 ; i--){
+        auto* sound = sounds->objects[i];
         if (sound->shouldBeDeleted()){
             sounds->removeSoundWithUUID(sound->getUUID());
         }
@@ -1226,12 +1226,38 @@ void SourceSamplerAudioProcessor::stopPreviewingFile(){
 
 //==============================================================================
 
+void SourceSamplerAudioProcessor::sendOSCMessage(const OSCMessage& message)
+{
+    if (!oscSenderIsConnected){
+        if (oscSender.connect ("127.0.0.1", OSC_TO_SEND_PORT)){
+            oscSenderIsConnected = true;
+        }
+    }
+    if (oscSenderIsConnected){
+        oscSender.send (message);
+    }
+}
+
+
+//==============================================================================
+
 void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
 {
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
+    #if SYNC_STATE_WITH_OSC
+    juce::OSCMessage message = juce::OSCMessage("/state_update");
+    message.addString("propertyChanged");
+    message.addInt32(stateUpdateID);
+    message.addString(treeWhosePropertyHasChanged[IDs::uuid].toString());
+    message.addString(treeWhosePropertyHasChanged.getType().toString());
+    message.addString(property.toString());
+    message.addString(treeWhosePropertyHasChanged[property].toString());
+    sendOSCMessage(message);
+    stateUpdateID += 1;
+    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
@@ -1240,6 +1266,17 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Added VT child " << childWhichHasBeenAdded.getType());
+    #if SYNC_STATE_WITH_OSC
+    juce::OSCMessage message = juce::OSCMessage("/state_update");
+    message.addString("addedChild");
+    message.addInt32(stateUpdateID);
+    message.addString(parentTree[IDs::uuid].toString());
+    message.addString(parentTree.getType().toString());
+    message.addString(childWhichHasBeenAdded.toXmlString());
+    message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
+    sendOSCMessage(message);
+    stateUpdateID += 1;
+    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
@@ -1248,6 +1285,15 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Removed VT child " << childWhichHasBeenRemoved.getType());
+    #if SYNC_STATE_WITH_OSC
+    juce::OSCMessage message = juce::OSCMessage("/state_update");
+    message.addString("removedChild");
+    message.addInt32(stateUpdateID);
+    message.addString(childWhichHasBeenRemoved[IDs::uuid].toString());
+    message.addString(childWhichHasBeenRemoved.getType().toString());
+    sendOSCMessage(message);
+    stateUpdateID += 1;
+    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildOrderChanged (juce::ValueTree& parentTree, int oldIndex, int newIndex)

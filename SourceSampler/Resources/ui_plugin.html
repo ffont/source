@@ -353,6 +353,10 @@
             var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
             sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
         }
+                                       
+        function clearAllSounds(){
+            sendOsc('/clear_all_sounds', [], '')
+        }
 
         function setMidiInChannel() {
             var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
@@ -979,6 +983,7 @@
             <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
         </select><br>
         <button id="makeQueryButton" onclick="makeQuery()">Search...</button>
+        <button id="clearAllSoundsButton" onclick="clearAllSounds()">Clear all sounds</button>
     </div>
 
 
