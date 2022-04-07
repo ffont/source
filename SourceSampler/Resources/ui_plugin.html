@@ -868,10 +868,19 @@
         function drawSoundWaveform(sourceSamplerSoundUUID, canvasID){
             // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
             const drawAudio = url => {
-              fetch(url)
-                .then(response => response.arrayBuffer())
-                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                .then(audioBuffer => draw(normalizeData(filterData(audioBuffer))));
+              const request = new XMLHttpRequest();
+              request.open("GET", url);
+              request.responseType = "arraybuffer";
+              request.onload = function() {
+                let undecodedAudio = request.response;
+                audioContext.decodeAudioData(undecodedAudio, (data) => draw(normalizeData(filterData(data))), (error) => console.log(error));
+              };
+              request.send();
+              // NOTE: we used to use the syntax below but it does not seem to work in all computers...
+              //fetch(url)
+              //  .then(response => response.arrayBuffer())
+              //  .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+              //  .then(audioBuffer => draw(normalizeData(filterData(audioBuffer))));
             };
             
             const filterData = audioBuffer => {
@@ -898,7 +907,6 @@
             const draw = normalizedData => {
               // Set up the canvas
               const canvas = document.getElementById(canvasID);
-              canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
               const padding = 0;
               canvas.width = canvas.offsetWidth;
               canvas.height = (canvas.offsetHeight + padding * 2);
@@ -921,6 +929,7 @@
             
             const canvas = document.getElementById(canvasID);
             if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
+                canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
                 let url = '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
                 drawAudio(url);
             }
