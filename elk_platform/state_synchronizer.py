@@ -2,26 +2,70 @@ from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
 import threading
 import asyncio
-import argparse
 from bs4 import BeautifulSoup
-import sys
 import time
+import sys
 
-sm = None
+
+sss_instance = None
 
 
-class StateManager(object):
+def state_update_handler(*values):
+    update_type = values[0].decode("utf-8")
+    update_id = values[1]
+    update_data = values[2:]
+    if sss_instance is not None:
+        sss_instance.apply_update(update_id, update_type, update_data)
+    
+
+def full_state_handler(*values):
+    update_id = values[0]
+    new_state_raw = values[1]
+    if sss_instance is not None:
+        sss_instance.set_full_state(update_id, new_state_raw)
+
+
+class OSCReceiverThread(threading.Thread):
+
+    def __init__(self, port, source_state_synchronizer, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.port = port
+        self.source_state_synchronizer = source_state_synchronizer
+
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        osc = OSCThreadServer()
+        osc.listen(address='0.0.0.0', port=self.port, default=True)
+        osc.bind(b'/plugin_started', lambda: sss_instance.plugin_has_started())
+        osc.bind(b'/state_update', state_update_handler)
+        osc.bind(b'/full_state', full_state_handler)
+        print('* Listening OSC messages in port {}'.format(self.port))
+
+
+class SourceStateSynchronizer(object):
 
     osc_client = None
     last_update_id = -1
     shoud_request_full_state = False
     full_state_requested = False
     state_soup = None
+    verbose = False
+    osc_receiver_thread = None
 
-    def __init__(self, osc_ip, osc_port_send):
+    def __init__(self, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, verbose=True):
+        global sss_instance
+        sss_instance = self
+        
+        # Start OSC receiver to receive OSC messages from the plugin
+        self.osc_receiver_thread = OSCReceiverThread(osc_port_receive, self).start()
+
         # Start OSC client to send OSC messages to plugin
+        self.verbose = verbose
         self.osc_client = OSCClient(osc_ip, osc_port_send, encoding='utf8')
         print('* Sending OSC messages in port {}'.format(osc_port_send))
+
+        time.sleep(0.25)
+        self.request_full_state()
 
     def plugin_has_started(self):
         self.last_update_id = -1
@@ -34,15 +78,16 @@ class StateManager(object):
         self.shoud_request_full_state = False
 
     def set_full_state(self, update_id, full_state_raw):
-        print("Receiving full state with update id {}".format(update_id))
+        if self.verbose:
+            print("Receiving full state with update id {}".format(update_id))
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
 
     def apply_update(self, update_id, update_type, update_data):
-        if sm.state_soup is not None:
-            print("Applying state update {} - {}".format(update_id, update_type))
+        if self.state_soup is not None:
+            if self.verbose:
+                print("Applying state update {} - {}".format(update_id, update_type))
 
-            # Apply change
             if update_type == "propertyChanged":
                 tree_uuid = update_data[0].decode("utf-8")
                 tree_type = update_data[1].decode("utf-8").lower()
@@ -56,7 +101,8 @@ class StateManager(object):
                     results[0][property_name] = new_value
                 else:
                     # Should never return more than one, request a full state as there will be sync issues
-                    print('Unexpected number of results ({})'.format(len(results)))
+                    if self.verbose:
+                        print('Unexpected number of results ({})'.format(len(results)))
                     if not self.full_state_requested:
                         self.request_full_state()
             
@@ -78,7 +124,8 @@ class StateManager(object):
                     
                 else:
                     # Should never return more than one, request a full state as there will be sync issues
-                    print('Unexpected number of results ({})'.format(len(results)))
+                    if self.verbose:
+                        print('Unexpected number of results ({})'.format(len(results)))
                     if not self.full_state_requested:
                         self.request_full_state()
             
@@ -93,7 +140,8 @@ class StateManager(object):
                     results[0].decompose()
                 else:
                     # Should never return more than one, request a full state as there will be sync issues
-                    print('Unexpected number of results ({})'.format(len(results)))
+                    if self.verbose:
+                        print('Unexpected number of results ({})'.format(len(results)))
                     if not self.full_state_requested:
                         self.request_full_state()
             
@@ -104,52 +152,3 @@ class StateManager(object):
                     self.shoud_request_full_state = True
                     self.request_full_state()
             self.last_update_id = update_id
-        
-        
-def state_update_handler(*values):
-    update_type = values[0].decode("utf-8")
-    update_id = values[1]
-    update_data = values[2:]
-    sm.apply_update(update_id, update_type, update_data)
-    
-
-def full_state_handler(*values):
-    update_id = values[0]
-    new_state_raw = values[1]
-    sm.set_full_state(update_id, new_state_raw)
-
-
-class OSCReceiverThread(threading.Thread):
-
-    def __init__(self, port, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.port = port
-
-    def run(self):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        osc = OSCThreadServer()
-        sock = osc.listen(address='0.0.0.0', port=self.port, default=True)
-        osc.bind(b'/plugin_started', lambda: sm.plugin_has_started())
-        osc.bind(b'/state_update', state_update_handler)
-        osc.bind(b'/full_state', full_state_handler)
-        print('* Listening OSC messages in port {}'.format(self.port))
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--osc_ip", default="127.0.0.1", help="The IP to send OSC to")
-    parser.add_argument("--osc_port_send", type=int, default=9001, help="The port to send OSC messages to")
-    parser.add_argument("--osc_port_receive", type=int, default=9002, help="The port to send OSC messages to")
-    args = parser.parse_args()
-
-    # Start OSC receiver to receive OSC messages from the plugin
-    OSCReceiverThread(args.osc_port_receive).start()
-
-     # Initialize state manager
-    sm = StateManager(args.osc_ip, args.osc_port_send)
-
-    time.sleep(0.25)
-    sm.request_full_state()
-
-    while True:
-        time.sleep(5)

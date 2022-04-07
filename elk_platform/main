@@ -57,6 +57,8 @@ system_stats_refresh_fps = 1
 full_state_refresh_fps = 1
 volatile_state_refresh_fps = 15
 
+from state_synchronizer import SourceStateSynchronizer
+
 current_frame = None
 current_frame_directory = 'static/frame/'
 
@@ -73,6 +75,7 @@ system_stats = {}
 system_stats_thread = None
 elk_bridge_thread = None
 
+sss = None
 http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else 'html/')
 osc_client = None
 elk_bridge = None
@@ -167,8 +170,12 @@ def run_collect_full_state_loop():
     print('* Starting collect full stats loop')
     while True:
         time.sleep(1.0/full_state_refresh_fps)
-        if osc_client is not None:
-            osc_client.send_message('/get_state', ["full"])
+        global plugin_state_dict
+        if sss is not None and sss.state_soup is not None:
+            full_state = process_xml_state_from_plugin(sss.state_soup, sound_parameters_info_dict, current_state=plugin_state_dict)
+            plugin_state_dict.update(full_state)
+        #if osc_client is not None:
+        #    osc_client.send_message('/get_state', ["full"])
 
 
 # --- ELK Bridge ------------------------------------------------------------------------
@@ -805,8 +812,11 @@ if __name__ == "__main__":
     state_manager.set_osc_client(osc_client)
 
     # Start OSC receiver to receive OSC messages from the plugin
-    print('* Starting OSCReceiverThread')
-    OSCReceiverThread().start()
+    #print('* Starting OSCReceiverThread')
+    #OSCReceiverThread().start()
+
+    print('* Starting SourceStateSynchronizer')
+    sss = SourceStateSynchronizer(verbose=False)
 
     print('* Running aconnect')
     get_status_output("aconnect 16 128")

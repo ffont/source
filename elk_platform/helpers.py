@@ -148,7 +148,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
     clear_old_items_in_sp_cache()  
             
     # Get sub XML element to avoid repeating many queries
-    full_state = plugin_state_xml.find_all("SOURCE_STATE".lower())[0]
+    full_state = plugin_state_xml #.find_all("SOURCE_STATE".lower())[0]
     preset_state = plugin_state_xml.find_all("PRESET".lower())[0]
 
     # File paths and other global settings
