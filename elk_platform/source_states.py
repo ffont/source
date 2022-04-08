@@ -456,23 +456,7 @@ class StateManager(object):
                 ]
  
         elif hierarchy_location == 'volatile':
-            # TODO: implement this
-            if property_name == StateNames.METER_L:
-                return 0.0
-            elif property_name == StateNames.METER_R:
-                return 0.0
-            elif property_name == StateNames.IS_QUERYING:
-                return False
-            elif property_name == StateNames.VOICE_SOUND_IDXS:
-                return ["","","","","","","",""]
-            elif property_name == StateNames.NUM_ACTIVE_VOICES:
-                return 8
-            elif property_name == StateNames.MIDI_RECEIVED:
-                return False
-            elif property_name == StateNames.LAST_CC_MIDI_RECEIVED:
-                return 20
-            elif property_name == StateNames.LAST_NOTE_MIDI_RECEIVED:
-                return 64
+            return sss.volatile_state.get(property_name, default)
         
 
     def get_num_loaded_sounds(self):

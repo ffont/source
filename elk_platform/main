@@ -54,8 +54,6 @@ if disable_flask_logging:
 
 elk_bridge_refresh_fps = 20
 system_stats_refresh_fps = 1
-full_state_refresh_fps = 1
-volatile_state_refresh_fps = 15
 
 current_frame = None
 current_frame_directory = 'static/frame/'
@@ -153,22 +151,6 @@ def run_collect_system_stats_loop():
     while True:
         time.sleep(1.0/system_stats_refresh_fps)
         collect_system_stats()
-
-
-def run_collect_volatile_state_loop():
-    print('* Starting collect volatile stats loop')
-    while True:
-        time.sleep(1.0/volatile_state_refresh_fps)
-        if osc_client is not None:
-            osc_client.send_message('/get_state', ["volatileString"])
-
-
-def run_collect_full_state_loop():
-    print('* Starting collect full stats loop')
-    while True:
-        time.sleep(1.0/full_state_refresh_fps)
-        if osc_client is not None:
-            osc_client.send_message('/get_state', ["full"])
 
 
 # --- ELK Bridge ------------------------------------------------------------------------
@@ -741,18 +723,6 @@ class CollectSystemStatsThread(threading.Thread):
         run_collect_system_stats_loop()
 
 
-class RequestVolatileStateThread(threading.Thread):
-    def run(self):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        run_collect_volatile_state_loop()
-
-
-class RequestFullStateThread(threading.Thread):
-    def run(self):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        run_collect_full_state_loop()
-
-
 def volatile_state_osc_handler(values):
     process_state_from_plugin(values)
 
@@ -780,16 +750,6 @@ if __name__ == "__main__":
     if system_stats_refresh_fps:
         collect_system_stats()
         CollectSystemStatsThread().start()
-
-    # Start the thread that will collect and update the plugin state periodically
-    # Use different framerates for full state and volatile state
-    # Note that plugin SHOULD NOT be sending the state with a timer, but just
-    # send it when requested
-    if volatile_state_refresh_fps:
-        RequestVolatileStateThread().start()
-
-    if full_state_refresh_fps:
-        RequestFullStateThread().start()
 
     # Start OSC client to send OSC messages to plugin
     print('* Starting OSCClient')

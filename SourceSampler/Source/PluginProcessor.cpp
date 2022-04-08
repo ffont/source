@@ -880,6 +880,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             message.addInt32(stateUpdateID);
             message.addString(state.toXmlString());
             sendOSCMessage(message);
+            
+        } else if (stateType == "oscVolatileString"){
+            juce::OSCMessage message = juce::OSCMessage("/volatile_state_string");
+            message.addString(collectVolatileStateInformationAsString());
+            sendOSCMessage(message);
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         String soundPath = parameters[0];

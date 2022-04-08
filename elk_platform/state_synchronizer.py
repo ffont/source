@@ -1,5 +1,6 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
+from helpers import StateNames
 import threading
 import asyncio
 from bs4 import BeautifulSoup
@@ -8,6 +9,7 @@ import sys
 
 
 sss_instance = None
+volatile_state_refresh_fps = 15
 
 
 def state_update_handler(*values):
@@ -24,6 +26,11 @@ def full_state_handler(*values):
     if sss_instance is not None:
         sss_instance.set_full_state(update_id, new_state_raw)
 
+def volatile_state_string_handler(*values):
+    volatile_state_string = values[0]
+    if sss_instance is not None:
+        sss_instance.set_volatile_state_from_string(volatile_state_string)
+
 
 class OSCReceiverThread(threading.Thread):
 
@@ -39,7 +46,21 @@ class OSCReceiverThread(threading.Thread):
         osc.bind(b'/plugin_started', lambda: sss_instance.plugin_has_started())
         osc.bind(b'/state_update', state_update_handler)
         osc.bind(b'/full_state', full_state_handler)
+        osc.bind(b'/volatile_state_string', volatile_state_string_handler)
         print('* Listening OSC messages in port {}'.format(self.port))
+
+
+class RequestVolatileStateThread(threading.Thread):
+
+    def __init__(self, source_state_synchronizer, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source_state_synchronizer = source_state_synchronizer
+
+    def run(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        while True:
+            time.sleep(1.0/volatile_state_refresh_fps)
+            self.source_state_synchronizer.request_volatile_state()
 
 
 class SourceStateSynchronizer(object):
@@ -50,14 +71,17 @@ class SourceStateSynchronizer(object):
     full_state_requested = False
     state_soup = None
     verbose = False
-    osc_receiver_thread = None
+    volatile_state = {}
 
     def __init__(self, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, verbose=True):
         global sss_instance
         sss_instance = self
         
         # Start OSC receiver to receive OSC messages from the plugin
-        self.osc_receiver_thread = OSCReceiverThread(osc_port_receive, self).start()
+        OSCReceiverThread(osc_port_receive, self).start()
+
+        # Start Thread to request volatile state to plugin
+        RequestVolatileStateThread(self).start()
 
         # Start OSC client to send OSC messages to plugin
         self.verbose = verbose
@@ -77,11 +101,33 @@ class SourceStateSynchronizer(object):
         self.full_state_requested = True
         self.shoud_request_full_state = False
 
+    def request_volatile_state(self):
+        self.osc_client.send_message('/get_state', ["oscVolatileString"])
+
     def set_full_state(self, update_id, full_state_raw):
         if self.verbose:
             print("Receiving full state with update id {}".format(update_id))
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
+
+    def set_volatile_state_from_string(self, volatile_state_string):
+        # Do it from string serialized version of the state
+        is_querying, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = volatile_state_string.decode("utf-8").split(';')
+        
+        # Is plugin currently querying and downloading?
+        self.volatile_state[StateNames.IS_QUERYING] = is_querying != "0"
+
+        # More volatile state stuff
+        self.volatile_state[StateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
+        self.volatile_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
+        self.volatile_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
+        self.volatile_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
+        self.volatile_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(last_note_received)
+
+        # Audio meters
+        audio_levels = audio_levels.split(',') 
+        self.volatile_state[StateNames.METER_L] = float(audio_levels[0])
+        self.volatile_state[StateNames.METER_R] = float(audio_levels[1])
 
     def apply_update(self, update_id, update_type, update_data):
         if self.state_soup is not None:
