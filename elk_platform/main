@@ -30,7 +30,7 @@ try:
 except ModuleNotFoundError:
     N_LEDS = 9
 
-from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, process_xml_state_from_plugin, process_xml_volatile_state_from_plugin, get_all_sound_usage_logs, sizeof_fmt
+from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, get_all_sound_usage_logs, sizeof_fmt
 
 from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
 
@@ -656,57 +656,6 @@ def send_osc():
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
     osc_client.send_message(address, values)
     return 'OSC sent'
-
-
-def process_state_from_plugin(received_plugin_state):
-    global plugin_state
-    global plugin_state_dict
-    global time_post_state_received
-    global connection_with_plugin_ok
-    global elk_bridge
-    global last_is_querying_sounds_state
-    time_post_state_received = time.time()
-
-    if str(received_plugin_state).startswith("b'<?xml version"):
-        # State is in XML format, parse it
-        used_parser = "lxml"
-        plugin_state_xml = BeautifulSoup(received_plugin_state, "lxml")
-
-        if len(plugin_state_xml.find_all("SOURCE_STATE".lower())) == 0:
-            # Plugin has sent volatile state information only
-            volatile_state = process_xml_volatile_state_from_plugin(plugin_state_xml)
-            plugin_state_dict.update(volatile_state)
-        else:
-            # Plugin has sent full state update
-            plugin_state = received_plugin_state  # Only in this case assign global plugin_state variable
-            full_state = process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state=plugin_state_dict)
-            plugin_state_dict.update(full_state)
-    else:
-        # State is sent as a serialized string only (this is the volatile state)
-        volatile_state = process_xml_volatile_state_from_plugin(None, str(received_plugin_state)[2:-1])
-        plugin_state_dict.update(volatile_state)
-
-    if not last_is_querying_sounds_state and plugin_state_dict.get(StateNames.IS_QUERYING, False):
-        # Stop showing "making query" message because it will be shown in menu bar with "Q"
-        state_manager.show_global_message("", duration=0)
-        last_is_querying_sounds_state = True
-    elif last_is_querying_sounds_state and not plugin_state_dict.get(StateNames.IS_QUERYING, False):
-        # Finished doing the work
-        last_is_querying_sounds_state = False
-
-    connection_with_plugin_ok = True
-    #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
-
-    # Check if MIDI_IN_CHANNEL settings have changed and update if necessary
-    midi_in_channel = state_manager.get_source_state_property(StateNames.MIDI_IN_CHANNEL, -1)
-    if midi_in_channel > -1:
-        elk_bridge.set_midi_input_filter_channel(midi_in_channel)
-
-
-@http_server.route('/state_from_plugin', methods=['POST'])  # Receives a state update from the plugin and saves the contents
-def state_from_plugin():
-    process_state_from_plugin(request.data)
-    return 'State received'
 
 
 # --- Main ------------------------------------------------------------------------

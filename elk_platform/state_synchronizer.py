@@ -1,6 +1,6 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
-from helpers import StateNames
+from helpers import StateNames, configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state
 import threading
 import asyncio
 from bs4 import BeautifulSoup
@@ -109,6 +109,9 @@ class SourceStateSynchronizer(object):
             print("Receiving full state with update id {}".format(update_id))
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
+
+        # Configure some stuff that requires the data paths to be known
+        configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'], self.state_soup['tmpFilesLocation'])
 
     def set_volatile_state_from_string(self, volatile_state_string):
         # Do it from string serialized version of the state

@@ -151,135 +151,8 @@ state_names_source_state_hierarchy_map = {
 }
 
 
-
-
-def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_string=""):
-    source_state = {}
-
-    if plugin_state_xml is not None:
-        # Do it from XML version of the state
-        try:
-            volatile_state = plugin_state_xml.find_all("VolatileState".lower())[0]
-        except IndexError:
-            # No volatile state present in state
-            return source_state
-
-        # Is plugin currently querying and downloading?
-        source_state[StateNames.IS_QUERYING] = volatile_state.get('isQuerying'.lower(), '') != "0"
-
-        # More volatile state stuff
-        source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in volatile_state.get('voiceSoundIdxs'.lower(), '').split(',') if element]
-        source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in volatile_state.get('voiceActivations'.lower(), '').split(',') if element])
-        source_state[StateNames.MIDI_RECEIVED] = "1" == volatile_state.get('midiInLastStateReportBlock'.lower(), "0")
-        source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(volatile_state.get('lastMIDICCNumber'.lower(), -1))
-        source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(volatile_state.get('lastMIDINoteNumber'.lower(), -1))
-
-        # Audio meters
-        audio_levels = volatile_state.get('audioLevels'.lower(), "-1,-1").split(',') 
-        source_state[StateNames.METER_L] = float(audio_levels[1])
-        source_state[StateNames.METER_R] = float(audio_levels[0])
-
-    else:
-        # Do it from string serialized version of the state
-        is_querying, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = plugin_state_string.split(';')
-        
-        # Is plugin currently querying and downloading?
-        source_state[StateNames.IS_QUERYING] = is_querying != "0"
-
-        # More volatile state stuff
-        source_state[StateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
-        source_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
-        source_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
-        source_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
-        source_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(last_note_received)
-
-        # Audio meters
-        audio_levels = audio_levels.split(',') 
-        source_state[StateNames.METER_L] = float(audio_levels[0])
-        source_state[StateNames.METER_R] = float(audio_levels[1])
-
-    return source_state
-
-
-def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, current_state={}):
-    global recent_queries_and_filters
-    global sound_usage_log_manager
-    global tmp_base_path
-
-    source_state = {}
-    
-    # Remove old entries in the sound parameter cache
-    # This might not be necessary because when receiving state all the parameters will be updated and
-    # cache would not be needed (so we could delete it instead of only clearing old items), however just 
-    # in case the received state contains a parameter value which is not yet up to date, it is good to 
-    # use the cache strategy with an expiry time
-    clear_old_items_in_sp_cache()  
-            
-    # Get sub XML element to avoid repeating many queries
-    full_state = plugin_state_xml #.find_all("SOURCE_STATE".lower())[0]
-    preset_state = plugin_state_xml.find_all("PRESET".lower())[0]
-
-    # File paths and other global settings
-    source_state[StateNames.SOURCE_DATA_LOCATION] = full_state.get('sourceDataLocation'.lower(), None)
-    source_state[StateNames.SOUNDS_DATA_LOCATION] = full_state.get('soundsDataLocation'.lower(), None)
-    source_state[StateNames.PRESETS_DATA_LOCATION] = full_state.get('presetsDataLocation'.lower(), None)
-    source_state[StateNames.TMP_DATA_LOCATION] = full_state.get('tmpFilesLocation'.lower(), None)
-
-    if source_state[StateNames.SOURCE_DATA_LOCATION] is not None:
-        if recent_queries_and_filters is None:
-            recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_state[StateNames.SOURCE_DATA_LOCATION])
-        if sound_usage_log_manager is None:
-            sound_usage_log_manager = SoundUsageLogManager(source_state[StateNames.SOURCE_DATA_LOCATION])
-        if tmp_base_path is None:
-            tmp_base_path = source_state.get(StateNames.TMP_DATA_LOCATION, None)
-
-    source_state[StateNames.USE_ORIGINAL_FILES_PREFERENCE] = full_state.get('useOriginalFilesPreference'.lower(), 'never')
-    source_state[StateNames.MIDI_IN_CHANNEL] = int(full_state.get('globalMidiInChannel'.lower(), -1))
-    source_state[StateNames.PLUGIN_VERSION] = full_state.get('pluginVersion'.lower(), '0.0')
-    
-    # Get properties from the volatile state
-    source_state.update(process_xml_volatile_state_from_plugin(plugin_state_xml))
-
-    # Basic preset properties
-    source_state[StateNames.LOADED_PRESET_NAME] = preset_state.get("name".lower(), "Noname")
-    source_state[StateNames.LOADED_PRESET_INDEX] = int(full_state.get("currentPresetIndex".lower(), "-1"))
-    source_state[StateNames.NUM_VOICES] = int(preset_state.get("numVoices".lower(), "1"))
-    source_state[StateNames.NOTE_LAYOUT_TYPE] = int(preset_state.get("noteLayoutType".lower(), "1"))
-
-    # Reverb settings
-    source_state[StateNames.REVERB_SETTINGS] = [
-        float(preset_state.get('reverbRoomSize'.lower(), 0.0)),
-        float(preset_state.get('reverbDamping'.lower(), 0.0)),
-        float(preset_state.get('reverbWetLevel'.lower(), 0.0)),
-        float(preset_state.get('reverbDryLevel'.lower(), 0.0)),
-        float(preset_state.get('reverbWidth'.lower(), 0.0)),
-        float(preset_state.get('reverbFreezeMode'.lower(), 0.0)),
-    ]
-    
-    # Loaded sounds properties
-    sounds_info = preset_state.find_all("SOUND".lower())
-    source_state[StateNames.NUM_SOUNDS] = len(sounds_info)
-    source_state[StateNames.NUM_SOUNDS_CHANGED] = current_state.get(StateNames.NUM_SOUNDS, len(sounds_info)) != len(sounds_info)
-    processed_sounds_info = []
-    for _, sound_info in enumerate(sounds_info):
-        sound_uuid = sound_info['uuid']
-
-        # Consolidate sound slices into a list
-        slices = []
-        try:
-            analysis_onsets = sound_info.find_all("ANALYSIS".lower())[0].find_all("onsets".lower())[0]
-            for onset in analysis_onsets.find_all('onset'):
-                slices.append(float(onset['onsettime']))
-        except IndexError:
-            pass
-
-        # Consolidate all sound parameter values into a dict
-        processed_sound_parameters_info = {}
-        for parameter_name in sound_parameters_info_dict:
-            val = sound_info[parameter_name.lower()]
-            processed_sound_parameters_info[parameter_name] = val
-
-        # Concoslidate MIDI CC mapping data into a dict
+'''
+    # Concoslidate MIDI CC mapping data into a dict
         # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
         processed_sound_midi_cc_info = {}
         processed_sound_midi_cc_info_list_aux = []
@@ -305,41 +178,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             if added_labels_count[assignment_label] > 1:
                 assignment_label = '{0} ({1})'.format(assignment_label, added_labels_count[assignment_label])
             processed_sound_midi_cc_info[assignment_label] = assignment_data
-
-        # Put all sound data together into a dict
-        source_sampler_sound = sound_info.find_all('SOUND_SAMPLE'.lower())[0]
-        processed_sound_info = {
-            StateNames.SOUND_NAME: source_sampler_sound.get('name', '-'),
-            StateNames.SOUND_UUID: sound_uuid,
-            StateNames.SOURCE_SAMPLER_SOUND_UUID: source_sampler_sound.get('uuid', '-'),  # Only supports the UUID of the first sound
-            StateNames.SOUND_ID: source_sampler_sound.get('soundid', 0),
-            StateNames.SOUND_LICENSE: translate_cc_license_url(source_sampler_sound.get('license', '-')),
-            StateNames.SOUND_AUTHOR: source_sampler_sound.get('username', '-'),
-            StateNames.SOUND_DURATION: float(source_sampler_sound.get('duration', 0)),
-            StateNames.SOUND_OGG_URL: source_sampler_sound.get('previewURL', ''),
-            StateNames.SOUND_LOCAL_FILE_PATH: source_sampler_sound.get('filepath', ''),
-            StateNames.SOUND_TYPE: source_sampler_sound.get('format', ''),
-            StateNames.SOUND_FILESIZE: int(source_sampler_sound.get('filesize', 0)),
-            StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(float(source_sampler_sound.get('downloadprogress', 0))),
-            StateNames.SOUND_DOWNLOAD_COMPLETED: '{0}'.format(int(source_sampler_sound.get('downloadcompleted', 0))),
-            #StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
-            StateNames.SOUND_SLICES: slices,
-            StateNames.SOUND_ASSIGNED_NOTES: source_sampler_sound.get('midiNotes'.lower(), None),
-            StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
-            StateNames.SOUND_LOADED_IN_SAMPLER: sound_info.get('allSoundsLoaded'.lower(), False),
-            StateNames.SOUND_LOADED_PREVIEW_VERSION: source_sampler_sound.get('usesPreview'.lower(), '1') == '1',
-        }
-        processed_sounds_info.append(processed_sound_info)
-
-        # Log that this sound was used (the log_sound_used will avoid duplicates)
-        log_sound_used(processed_sound_info)
-
-
-    #source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
-    source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
-    source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if float(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
-
-    return source_state
+    '''
 
 
 # -- UI helpers
@@ -934,11 +773,6 @@ def get_sp_cache_key(sound_idx, parameter_name):
 def add_to_sp_cache(sound_idx, parameter_name, value):
     sound_parameter_values_cache[get_sp_cache_key(sound_idx, parameter_name)] = (time.time(), value)
 
-def clear_old_items_in_sp_cache(older_than_seconds=1):
-    global sound_parameter_values_cache
-    now = time.time()
-    sound_parameter_values_cache = {key: value for key, value in sound_parameter_values_cache.items() if now - value[0] < older_than_seconds}
-
 def get_sp_parameter_value_from_cache(sound_idx, parameter_name):
     # Check if parameter is cached for all sounds globally (sound_idx=-1)
     # Otherwise check if it is cached for that specific sound
@@ -1036,3 +870,14 @@ class DownloadFileThread(threading.Thread):
                 print('- Downloading tmp file: ' + self.url + ' to ' + outfile)
                 sys.stdout.flush()
                 urllib.request.urlretrieve(self.url, outfile)
+
+
+
+def configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state(source_data_location, tmp_data_location):
+     # When full state is received, setup some objects
+    if recent_queries_and_filters is None:
+        recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_data_location)
+    if sound_usage_log_manager is None:
+        sound_usage_log_manager = SoundUsageLogManager(source_data_location)
+    if tmp_base_path is None:
+        tmp_base_path = tmp_data_location
