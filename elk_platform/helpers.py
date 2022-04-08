@@ -20,54 +20,52 @@ from PIL import ImageFont, Image, ImageDraw
 class StateNames(Enum):
 
     SYSTEM_STATS = auto()
-
-    SOURCE_DATA_LOCATION = auto()
-    SOUNDS_DATA_LOCATION = auto()
-    PRESETS_DATA_LOCATION = auto()
-    TMP_DATA_LOCATION = auto()
-
-    PLUGIN_VERSION = auto()
-
-    USE_ORIGINAL_FILES_PREFERENCE = auto()
-    MIDI_IN_CHANNEL = auto()
-
-    STATE_UPDATED_RECENTLY = auto()
     CONNECTION_WITH_PLUGIN_OK = auto()
     NETWORK_IS_CONNECTED = auto()
 
-    METER_L = auto()
-    METER_R = auto()
-    
-    IS_QUERYING = auto()
-    
-    LOADED_PRESET_NAME = auto()
-    LOADED_PRESET_INDEX = auto()
-    NUM_VOICES = auto()
-    NOTE_LAYOUT_TYPE = auto()
+    SOURCE_DATA_LOCATION = 'sourceDataLocation'
+    SOUNDS_DATA_LOCATION = 'soundsDownloadLocation'
+    PRESETS_DATA_LOCATION = 'presetFilesLocation'
+    TMP_DATA_LOCATION = 'tmpFilesLocation'
+
+    PLUGIN_VERSION = 'pluginVersion'
+
+    USE_ORIGINAL_FILES_PREFERENCE = 'useOriginalFilesPreference'
+    MIDI_IN_CHANNEL = 'globalMidiInChannel'
+
+    LOADED_PRESET_NAME = 'name_preset'
+
+    LOADED_PRESET_INDEX = 'currentPresetIndex'
+    NUM_VOICES = 'numVoices'
+    NOTE_LAYOUT_TYPE = 'noteLayoutType'
     
     NUM_SOUNDS = auto()
     NUM_SOUNDS_CHANGED = auto()
     NUM_SOUNDS_DOWNLOADING = auto()
     NUM_SOUNDS_LOADED_IN_SAMPLER = auto()
-    SOUNDS_INFO = auto()
-    SOUND_NAME = auto()
-    SOUND_UUID = auto()
-    SOURCE_SAMPLER_SOUND_UUID = auto()
-    SOUND_ID = auto()
-    SOUND_LICENSE = auto()
-    SOUND_AUTHOR = auto()
-    SOUND_DURATION = auto()
-    SOUND_DOWNLOAD_PROGRESS = auto()
-    SOUND_DOWNLOAD_COMPLETED = auto()
-    SOUND_PARAMETERS = auto()
-    SOUND_OGG_URL = auto()
-    SOUND_LOCAL_FILE_PATH = auto()
-    SOUND_TYPE = auto()
-    SOUND_FILESIZE = auto()
+
+    NAME = 'name'
+    UUID = 'uuid'
+    
+    SOUND_NAME = 'name_sound'
+    SOUND_UUID = 'uuid_sound'
+    
+    SOURCE_SAMPLER_SOUND_UUID = 'uuid_source_sampler_sound'
+    SOUND_ID = 'soundId'
+    SOUND_LICENSE = 'license'
+    SOUND_AUTHOR = 'username'
+    SOUND_DURATION = 'duration'
+    SOUND_DOWNLOAD_PROGRESS = 'downloadProgress'
+    SOUND_DOWNLOAD_COMPLETED = 'downloadCompleted'
+    SOUND_OGG_URL = 'previewURL'
+    SOUND_LOCAL_FILE_PATH = 'filePath'
+    SOUND_TYPE = 'format'
+    SOUND_FILESIZE = 'filesize'
+    SOUND_LOADED_PREVIEW_VERSION = 'usesPreview'
     SOUND_SLICES = auto()
-    SOUND_ASSIGNED_NOTES = auto()
-    SOUND_LOADED_IN_SAMPLER = auto()
-    SOUND_LOADED_PREVIEW_VERSION = auto()
+    SOUND_ASSIGNED_NOTES = 'midiNotes'
+    SOUND_LOADED_IN_SAMPLER = 'allSoundsLoaded'
+    
 
     SOUND_MIDI_CC_ASSIGNMENTS = auto()
     SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
@@ -78,11 +76,81 @@ class StateNames(Enum):
 
     REVERB_SETTINGS = auto()
 
+    METER_L = auto()
+    METER_R = auto()
+    IS_QUERYING = auto()
     VOICE_SOUND_IDXS = auto()
     NUM_ACTIVE_VOICES = auto()
     MIDI_RECEIVED = auto()
     LAST_CC_MIDI_RECEIVED = auto()
     LAST_NOTE_MIDI_RECEIVED = auto()
+
+
+state_names_source_state_hierarchy_map = {
+    StateNames.SYSTEM_STATS: 'extra_state',
+    StateNames.CONNECTION_WITH_PLUGIN_OK: 'extra_state',
+    StateNames.NETWORK_IS_CONNECTED: 'extra_state',
+
+    StateNames.SOURCE_DATA_LOCATION: 'source_state',
+    StateNames.SOUNDS_DATA_LOCATION: 'source_state',
+    StateNames.PRESETS_DATA_LOCATION: 'source_state',
+    StateNames.TMP_DATA_LOCATION: 'source_state',
+
+    StateNames.PLUGIN_VERSION: 'source_state',
+    StateNames.USE_ORIGINAL_FILES_PREFERENCE: 'source_state',
+    StateNames.MIDI_IN_CHANNEL: 'source_state',
+
+    StateNames.LOADED_PRESET_NAME: 'preset',
+    StateNames.LOADED_PRESET_INDEX: 'source_state',
+    StateNames.NUM_VOICES: 'preset',
+    StateNames.NOTE_LAYOUT_TYPE: 'preset',
+    
+    StateNames.NUM_SOUNDS: 'computed',
+    StateNames.NUM_SOUNDS_CHANGED: 'computed',
+    StateNames.NUM_SOUNDS_DOWNLOADING: 'computed',
+    StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER: 'computed',
+    
+    StateNames.SOUND_NAME: 'sound',
+    StateNames.SOUND_UUID: 'sound',
+    
+    StateNames.SOURCE_SAMPLER_SOUND_UUID: 'sound_sample', 
+    StateNames.SOUND_ID: 'sound_sample',
+    StateNames.SOUND_LICENSE: 'sound_sample',
+    StateNames.SOUND_AUTHOR: 'sound_sample',
+    StateNames.SOUND_DURATION: 'sound_sample',
+    StateNames.SOUND_DOWNLOAD_PROGRESS: 'sound_sample',
+    StateNames.SOUND_DOWNLOAD_COMPLETED: 'sound_sample',
+    StateNames.SOUND_OGG_URL: 'sound_sample',
+    StateNames.SOUND_LOCAL_FILE_PATH: 'sound_sample',
+    StateNames.SOUND_TYPE: 'sound_sample',
+    StateNames.SOUND_FILESIZE: 'sound_sample',
+    StateNames.SOUND_LOADED_PREVIEW_VERSION: 'sound_sample',
+
+    StateNames.SOUND_SLICES: 'computed',
+    StateNames.SOUND_ASSIGNED_NOTES: 'sound_sample',
+    StateNames.SOUND_LOADED_IN_SAMPLER: 'sound',
+    
+    # TODO
+    StateNames.SOUND_MIDI_CC_ASSIGNMENTS: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: None,
+
+    StateNames.REVERB_SETTINGS: 'computed',
+
+    StateNames.METER_L: 'volatile',
+    StateNames.METER_R: 'volatile',   
+    StateNames.IS_QUERYING: 'volatile',
+    StateNames.VOICE_SOUND_IDXS: 'volatile',
+    StateNames.NUM_ACTIVE_VOICES: 'volatile',
+    StateNames.MIDI_RECEIVED: 'volatile',
+    StateNames.LAST_CC_MIDI_RECEIVED: 'volatile',
+    StateNames.LAST_NOTE_MIDI_RECEIVED: 'volatile',
+}
+
+
 
 
 def process_xml_volatile_state_from_plugin(plugin_state_xml=None, plugin_state_string=""):
@@ -254,7 +322,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
             StateNames.SOUND_FILESIZE: int(source_sampler_sound.get('filesize', 0)),
             StateNames.SOUND_DOWNLOAD_PROGRESS: '{0}'.format(float(source_sampler_sound.get('downloadprogress', 0))),
             StateNames.SOUND_DOWNLOAD_COMPLETED: '{0}'.format(int(source_sampler_sound.get('downloadcompleted', 0))),
-            StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
+            #StateNames.SOUND_PARAMETERS: processed_sound_parameters_info,
             StateNames.SOUND_SLICES: slices,
             StateNames.SOUND_ASSIGNED_NOTES: source_sampler_sound.get('midiNotes'.lower(), None),
             StateNames.SOUND_MIDI_CC_ASSIGNMENTS: processed_sound_midi_cc_info,
@@ -267,7 +335,7 @@ def process_xml_state_from_plugin(plugin_state_xml, sound_parameters_info_dict, 
         log_sound_used(processed_sound_info)
 
 
-    source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
+    #source_state[StateNames.SOUNDS_INFO] = processed_sounds_info
     source_state[StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER] = len([s for s in processed_sounds_info if s[StateNames.SOUND_LOADED_IN_SAMPLER]])
     source_state[StateNames.NUM_SOUNDS_DOWNLOADING] = len([s for s in processed_sounds_info if float(s[StateNames.SOUND_DOWNLOAD_PROGRESS]) < 100])
 

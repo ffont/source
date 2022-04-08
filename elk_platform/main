@@ -57,8 +57,6 @@ system_stats_refresh_fps = 1
 full_state_refresh_fps = 1
 volatile_state_refresh_fps = 15
 
-from state_synchronizer import SourceStateSynchronizer
-
 current_frame = None
 current_frame_directory = 'static/frame/'
 
@@ -75,7 +73,6 @@ system_stats = {}
 system_stats_thread = None
 elk_bridge_thread = None
 
-sss = None
 http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else 'html/')
 osc_client = None
 elk_bridge = None
@@ -170,12 +167,8 @@ def run_collect_full_state_loop():
     print('* Starting collect full stats loop')
     while True:
         time.sleep(1.0/full_state_refresh_fps)
-        global plugin_state_dict
-        if sss is not None and sss.state_soup is not None:
-            full_state = process_xml_state_from_plugin(sss.state_soup, sound_parameters_info_dict, current_state=plugin_state_dict)
-            plugin_state_dict.update(full_state)
-        #if osc_client is not None:
-        #    osc_client.send_message('/get_state', ["full"])
+        if osc_client is not None:
+            osc_client.send_message('/get_state', ["full"])
 
 
 # --- ELK Bridge ------------------------------------------------------------------------
@@ -437,32 +430,24 @@ class ElkBridge(object):
         global plugin_state_dict
 
         # Process plugin state information and send it to state manager
-        source_state = {}
+        source_extra_state = {}
 
         # Check plugin connection status
-        if time_post_state_received is not None and time.time() - time_post_state_received < 0.5:
-            should_show_state_received_mark = True
-        else:
-            should_show_state_received_mark = None
         if time_post_state_received is not None and time.time() - time_post_state_received > PLUGIN_DISCONNECTED_THRESHOLD:
             if connection_with_plugin_ok == True:
                 connection_with_plugin_ok = False
                 plugin_state_dict = {}
                 state_manager.show_global_message("Pl. disconnected :(")
-        source_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = connection_with_plugin_ok
-        source_state[StateNames.STATE_UPDATED_RECENTLY] = should_show_state_received_mark
+        source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = connection_with_plugin_ok
 
         # Check network connection status
-        source_state[StateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
+        source_extra_state[StateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
 
         # Add other system stats
-        source_state[StateNames.SYSTEM_STATS] = system_stats
-
-        # Add plugin-specifc state variables
-        source_state.update(plugin_state_dict)
+        source_extra_state[StateNames.SYSTEM_STATS] = system_stats
 
         # Send processed state to state manager
-        state_manager.update_source_state(source_state)
+        state_manager.update_source_extra_state(source_extra_state)
 
         # Generate new frame
         frame = state_manager.draw_display_frame()
@@ -731,7 +716,7 @@ def process_state_from_plugin(received_plugin_state):
     #print('Time loading and parsing XML: {0} ({1})'.format(time.time() - time_post_state_received, used_parser))
 
     # Check if MIDI_IN_CHANNEL settings have changed and update if necessary
-    midi_in_channel = state_manager.source_state.get(StateNames.MIDI_IN_CHANNEL, -1)
+    midi_in_channel = state_manager.get_source_state_property(StateNames.MIDI_IN_CHANNEL, -1)
     if midi_in_channel > -1:
         elk_bridge.set_midi_input_filter_channel(midi_in_channel)
 
@@ -814,9 +799,6 @@ if __name__ == "__main__":
     # Start OSC receiver to receive OSC messages from the plugin
     #print('* Starting OSCReceiverThread')
     #OSCReceiverThread().start()
-
-    print('* Starting SourceStateSynchronizer')
-    sss = SourceStateSynchronizer(verbose=False)
 
     print('* Running aconnect')
     get_status_output("aconnect 16 128")
