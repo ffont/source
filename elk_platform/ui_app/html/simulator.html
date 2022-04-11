@@ -153,7 +153,6 @@
                     var data = JSON.parse(this.responseText);
                     document.getElementById('stateTimestamp').innerHtml = data.lastStateTimeReceiced;
                     document.getElementById('pluginState').value = data.pluginState;
-                    document.getElementById('sourceState').value = data.sourceState;
                 }
             };
             xhr.open('GET', '/get_source_state', true);
@@ -204,8 +203,7 @@
 
     <h3>State monitor</h3>
     <button onclick="getSourceState();">Get state now</button><button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button><span id="stateTimestamp"></span>
-    <textarea id="pluginState" style="width:90%;height:250px;"></textarea>
-    <textarea id="sourceState" style="width:90%;height:250px;"></textarea>
+    <textarea id="pluginState" style="width:90%;height:500px;"></textarea>
 
 
 </body>

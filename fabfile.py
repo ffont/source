@@ -59,28 +59,28 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
         c.run('mkdir -p {}'.format(remote_dir))
         c.run('mkdir -p {}'.format(remote_vst3_so_dir))
 
-        os.system('git log -1 --pretty=format:"%h %ci" > elk_platform/last_commit_info')
+        os.system('git log -1 --pretty=format:"%h %ci" > elk_platform/ui_app/last_commit_info')
 
         config_files = [
-            ("elk_platform/source_sushi_config.json", remote_dir),
-            ("elk_platform/source_sensei_config.json", remote_dir),
-            ("elk_platform/html/index.html", remote_dir),
-            ("elk_platform/html/sound_usage_log.html", remote_dir),
-            ("elk_platform/html/simulator.html", remote_dir),
-            ("elk_platform/requirements.txt", remote_dir),
-            ("elk_platform/main", remote_dir),
-            ("elk_platform/elk_ui_custom.py", remote_dir),
-            ("elk_platform/source_states.py", remote_dir),
-            ("elk_platform/helpers.py", remote_dir),
-            ("elk_platform/freesound_interface.py", remote_dir),
-            ("elk_platform/freesound_api_key.py", remote_dir),
-            ("elk_platform/LiberationMono-Regular.ttf", remote_dir),
-            ("elk_platform/FuturaHeavyfont.ttf", remote_dir),
-            ("elk_platform/logo_oled_upf.png", remote_dir),
-            ("elk_platform/logo_oled_ra.png", remote_dir),
-            ("elk_platform/logo_oled_ra_b.png", remote_dir),
-            ("elk_platform/logo_oled_fs.png", remote_dir),
-            ("elk_platform/last_commit_info", remote_dir),
+            ("elk_platform/config/source_sushi_config.json", remote_dir),
+            ("elk_platform/config/source_sensei_config.json", remote_dir),
+            ("elk_platform/ui_app/html/index.html", remote_dir),
+            ("elk_platform/ui_app/html/sound_usage_log.html", remote_dir),
+            ("elk_platform/ui_app/html/simulator.html", remote_dir),
+            ("elk_platform/ui_app/requirements.txt", remote_dir),
+            ("elk_platform/ui_app/main", remote_dir),
+            ("elk_platform/ui_app/elk_ui_custom.py", remote_dir),
+            ("elk_platform/ui_app/source_states.py", remote_dir),
+            ("elk_platform/ui_app/helpers.py", remote_dir),
+            ("elk_platform/ui_app/freesound_interface.py", remote_dir),
+            ("elk_platform/ui_app/freesound_api_key.py", remote_dir),
+            ("elk_platform/ui_app/resources/LiberationMono-Regular.ttf", remote_dir),
+            ("elk_platform/ui_app/resources/FuturaHeavyfont.ttf", remote_dir),
+            ("elk_platform/ui_app/resources/logo_oled_upf.png", remote_dir),
+            ("elk_platform/ui_app/resources/logo_oled_ra.png", remote_dir),
+            ("elk_platform/ui_app/resources/logo_oled_ra_b.png", remote_dir),
+            ("elk_platform/ui_app/resources/logo_oled_fs.png", remote_dir),
+            ("elk_platform/ui_app/last_commit_info", remote_dir),
         ]
 
         plugin_files = [            
@@ -102,9 +102,9 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
         # Copy systemd files
         if include_systemd_files:
             print('- Sending systemd config files and reloading systemd daemon')
-            sudo_install(c, "elk_platform/systemd_config_files/sensei.service", "/lib/systemd/system/sensei.service", mode='0644')
-            sudo_install(c, "elk_platform/systemd_config_files/sushi.service", "/lib/systemd/system/sushi.service", mode='0644')
-            sudo_install(c, "elk_platform/systemd_config_files/source.service", "/lib/systemd/system/source.service", mode='0644')
+            sudo_install(c, "elk_platform/config/sensei.service", "/lib/systemd/system/sensei.service", mode='0644')
+            sudo_install(c, "elk_platform/config/sushi.service", "/lib/systemd/system/sushi.service", mode='0644')
+            sudo_install(c, "elk_platform/config/source.service", "/lib/systemd/system/source.service", mode='0644')
             c.run('sudo systemctl daemon-reload')    
 
         print('Now restarting "sensei", "sushi" and "source" services in board...')
@@ -196,7 +196,7 @@ def compile_elk(ctx, configuration='Release'):
     # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
     print('\n* Cross-compiling')
     os.system("find SourceSampler/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ' + PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/SourceSampler/Builds/ELKAudioOS crops/extsdk-container')
+    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/Builds/ELKAudioOS/build/copied_vst3:/home/sdkuser/.vst3 -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ' + PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/build_system/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/SourceSampler/Builds/ELKAudioOS crops/extsdk-container')
 
     # Undo file replacements
     print('\n* Restoring build files')
@@ -239,7 +239,7 @@ def compile_metronome_elk(ctx, configuration='Release'):
     print('\n* Cross-compiling')
     os.system("find elk_platform/metronome_plugin/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
     os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/elk_platform/metronome_plugin/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ' +
-              PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/elk_platform/metronome_plugin/Builds/ELKAudioOS crops/extsdk-container')
+              PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/build_system/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/elk_platform/metronome_plugin/Builds/ELKAudioOS crops/extsdk-container')
 
     print('\nAll done!')
 

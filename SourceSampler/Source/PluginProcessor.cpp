@@ -1135,6 +1135,16 @@ void SourceSamplerAudioProcessor::timerCallback()
         }
     }
     
+    #if SYNC_STATE_WITH_OSC
+    if ((juce::Time::getMillisecondCounterHiRes() - lastTimeIsAliveWasSent) > 1000.0){
+        // Every second send "alive" message
+        juce::OSCMessage message = juce::OSCMessage("/plugin_alive");
+        sendOSCMessage(message);
+        lastTimeIsAliveWasSent = juce::Time::getMillisecondCounterHiRes();
+    }
+        
+    #endif
+    
     // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server    
     #if ENABLE_EMBEDDED_HTTP_SERVER
     //fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);

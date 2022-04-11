@@ -199,6 +199,7 @@ private:
     int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;
     double startTime;
+    double lastTimeIsAliveWasSent = 0;
     bool aconnectWasRun = false;
     
     // State sync stuff

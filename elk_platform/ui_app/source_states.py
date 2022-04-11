@@ -8,15 +8,16 @@ import traceback
 import numpy
 from scipy.io import wavfile
 
+from source_plugin_interface import SourcePluginInterface
+
 from freesound_api_key import FREESOUND_CLIENT_ID
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, \
     is_logged_in, get_crurrently_logged_in_user, get_user_bookmarks, bookmark_sound
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
-    add_to_sp_cache, get_sp_parameter_value_from_cache, add_recent_query, add_recent_query_filter, get_recent_queries, \
-    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt, \
-    state_names_source_state_hierarchy_map
+    add_recent_query, add_recent_query_filter, get_recent_queries, \
+    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt
 
 try:
     from elk_ui_custom import N_LEDS, N_FADERS
@@ -26,8 +27,8 @@ except ModuleNotFoundError:
 ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav', 'aiff', 'mp3', 'flac']
 
 def get_local_audio_files_path():
-    if sm is not None and sm.has_source_state():
-        base_path = sm.get_source_state_property(StateNames.SOURCE_DATA_LOCATION, None)
+    if sm is not None and spi.has_state():
+        base_path = spi.get_property(StateNames.SOURCE_DATA_LOCATION, None)
         if base_path is not None:
             base_path = os.path.join(base_path, 'local_files')
             if not os.path.exists(base_path):
@@ -36,8 +37,8 @@ def get_local_audio_files_path():
     return None
 
 def get_sound_audio_files_path():
-    if sm is not None and sm.has_source_state():
-        base_path = sm.get_source_state_property(StateNames.SOUNDS_DATA_LOCATION, None)
+    if sm is not None and spi.has_state():
+        base_path = spi.get_property(StateNames.SOUNDS_DATA_LOCATION, None)
         if base_path is not None:
             if not os.path.exists(base_path):
                 os.makedirs(base_path)
@@ -45,8 +46,8 @@ def get_sound_audio_files_path():
     return None
 
 def get_preset_files_path():
-    if sm is not None and sm.has_source_state():
-        base_path = sm.get_source_state_property(StateNames.PRESETS_DATA_LOCATION, None)
+    if sm is not None and spi.has_state():
+        base_path = spi.get_property(StateNames.PRESETS_DATA_LOCATION, None)
         if base_path is not None:
             if not os.path.exists(base_path):
                 os.makedirs(base_path)
@@ -226,16 +227,12 @@ class StateManager(object):
 
     state_stack = []
     global_message = ('', 0, 0)  # (text, starttime, duration)
-    osc_client = None
     ui_client = None
     frame_counter = 0
     open_url_in_browser = None
     should_show_start_animation = True
     block_ui_input = False
     waiting_to_go_to_last_loaded_sound = False
-
-    def set_osc_client(self, osc_client):
-        self.osc_client = osc_client
 
     def set_ui_client(self, ui_client):
         self.ui_client = ui_client
@@ -277,14 +274,6 @@ class StateManager(object):
         if self.ui_client is not None:
             for fader_idx in range(0, N_FADERS):
                 self.ui_client.set_fader_led(fader_idx, 1)
-
-    def send_osc_to_plugin(self, address, values):
-        if self.osc_client is not None:
-            if address in ['/set_sound_parameter', '/set_sound_parameter_int']:
-                # If we're setting a parameter, cache its value so we can use the cached value to display in UI
-                # before the plugin reports an updated state
-                add_to_sp_cache(*values)
-            self.osc_client.send_message(address, values)
 
     def draw_display_frame(self):
         self.frame_counter += 1
@@ -334,135 +323,6 @@ class StateManager(object):
     @property
     def current_state(self):
         return self.state_stack[-1]
-
-    # --- plugin state methods
-
-    source_state = {}
-
-    def update_source_state(self, source_state):
-        self.source_state = source_state
-        self.current_state.on_source_state_update()
-
-        if self.waiting_to_go_to_last_loaded_sound and self.get_preset_state_property(StateNames.NUM_SOUNDS_CHANGED, False):
-            self.move_to(SoundSelectedState(sound_idx=999))  # If num sounds have changed and we were waiting for this change, move to last sound
-            self.waiting_to_go_to_last_loaded_sound = False
-
-    extra_source_state = {}
-    def update_source_extra_state(self, extra_state):
-        self.extra_source_state.update(extra_state)
-
-    def has_state(self):
-        return sss.state_soup is not None
-
-    def get_source_sound_idx_from_source_sampler_sound_uuid(self, source_sampler_sound_uuid):
-        preset_state = sss.state_soup.find_all("PRESET".lower())[0]
-        for sound_idx, sound in enumerate(preset_state.find_all("SOUND".lower())):
-            if sound.get(StateNames.SOURCE_SAMPLER_SOUND_UUID.value.split('_')[0], "") == source_sampler_sound_uuid:
-                return sound_idx
-        return -1
-
-    def get_source_state_selected_sound_property(self, sound_idx, property_name, default="-"):
-        return self.get_source_state_property(property_name, sound_idx=sound_idx, default=default)
-
-    def gsp(self, sound_idx, property_name, default=None):
-        # Shorthand for get_source_state_selected_sound_property
-        return self.get_source_state_selected_sound_property(sound_idx, property_name, default=default)
-
-    '''
-    def get_source_state_selected_sound_sound_parameter(self, sound_idx, parameter_name, default="-"):
-        sound_parameters = self.gsp(sound_idx, StateNames.SOUND_PARAMETERS, default={})
-        if sound_parameters:
-            # Check if there's a cached version of the value, otherwise return the one on state
-            cached_val = get_sp_parameter_value_from_cache(sound_idx, parameter_name)
-            if cached_val is not None:
-                return cached_val
-            else:
-                return sound_parameters.get(parameter_name, default)
-        return default
-    '''
-
-    def gsparam(self, sound_idx, parameter_name, default="-"):
-        return self.gsp(sound_idx, property_name, default=default)
-        #return self.get_source_state_selected_sound_sound_parameter(sound_idx, parameter_name, default=default)
-
-    def get_source_state_property(self, property_name, default=None, sound_idx=None):
-        if not self.has_state():
-            return default
-        
-        hierarchy_location = state_names_source_state_hierarchy_map[property_name]
-
-        if type(property_name.value) != int and 'name_' in property_name.value:
-            property_name = StateNames.NAME
-
-        if type(property_name.value) != int and 'uuid_' in property_name.value:
-            property_name = StateNames.UUID
-
-        source_state = sss.state_soup
-        preset_state = source_state.find_all("PRESET".lower())[0]
-        sounds_state = preset_state.find_all("SOUND".lower())
-
-        if sound_idx is not None and sound_idx >= len(sounds_state):
-            return default
-
-        sound_state = None
-        sound_sample_state = None
-        if sound_idx is not None:
-            sounds_state = preset_state.find_all("SOUND".lower())
-            sound_state = sounds_state[sound_idx]
-            sound_sample_state = sound_state.find_all("SOUND_SAMPLE".lower())[0]
-
-        if hierarchy_location == 'extra_state':
-            return self.extra_source_state.get(property_name.value, default)
-        elif hierarchy_location == 'source_state':
-            return source_state.get(property_name.value, default)
-        elif hierarchy_location == 'preset':
-            return preset_state.get(property_name.value, default)
-        elif hierarchy_location == 'sound':
-            return sound_state.get(property_name.value, default)
-        elif hierarchy_location == 'sound_sample':
-            return sound_sample_state.get(property_name.value, default)
-        elif hierarchy_location == 'computed':
-            if property_name == StateNames.NUM_SOUNDS:
-                return len(sounds_state)
-            elif property_name == StateNames.NUM_SOUNDS_CHANGED:
-                # TODO: implement this properly
-                # current_state.get(StateNames.NUM_SOUNDS, len(sounds_info)) != len(sounds_info)
-                return False
-            elif property_name == StateNames.NUM_SOUNDS_DOWNLOADING:
-                return len([sound for sound in sounds_state if sound.find_all("SOUND_SAMPLE".lower())[0].get(StateNames.SOUND_DOWNLOAD_PROGRESS.value, 100) < 100])
-            elif property_name == StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER:
-                return len([sound for sound in sounds_state if sound.get(StateNames.SOUND_LOADED_IN_SAMPLER.value, '1') == '1'])
-            elif property_name == StateNames.SOUND_SLICES:
-                # TODO: implemrnt this
-                '''
-                slices = []
-                try:
-                    analysis_onsets = sound_info.find_all("ANALYSIS".lower())[0].find_all("onsets".lower())[0]
-                    for onset in analysis_onsets.find_all('onset'):
-                        slices.append(float(onset['onsettime']))
-                except IndexError:
-                    pass
-                '''
-                return []
-
-            elif property_name == StateNames.REVERB_SETTINGS:
-                return [
-                    float(preset_state.get('reverbRoomSize'.lower(), 0.0)),
-                    float(preset_state.get('reverbDamping'.lower(), 0.0)),
-                    float(preset_state.get('reverbWetLevel'.lower(), 0.0)),
-                    float(preset_state.get('reverbDryLevel'.lower(), 0.0)),
-                    float(preset_state.get('reverbWidth'.lower(), 0.0)),
-                    float(preset_state.get('reverbFreezeMode'.lower(), 0.0)),
-                ]
- 
-        elif hierarchy_location == 'volatile':
-            return sss.volatile_state.get(property_name, default)
-        
-
-    def get_num_loaded_sounds(self):
-        preset_state = source_state.find_all("PRESET".lower())[0]
-        sounds_state = preset_state.find_all("SOUND".lower())
-        return len(sounds_state)
 
 
 class State(object):
@@ -518,16 +378,16 @@ class State(object):
 
     def get_default_header_line(self):
         indicators = "{}{}{}{}".format(
-            "M" if sm.get_source_state_property(StateNames.MIDI_RECEIVED, False) else "",
-            "!" if not sm.get_source_state_property(StateNames.NETWORK_IS_CONNECTED) else "", 
-            "Q" if sm.get_source_state_property(StateNames.IS_QUERYING, False) else "", 
+            "M" if spi.get_property(StateNames.MIDI_RECEIVED, False) else "",
+            "!" if not spi.get_property(StateNames.NETWORK_IS_CONNECTED) else "", 
+            "Q" if spi.get_property(StateNames.IS_QUERYING, False) else "", 
             ["|", "/", "-", "\\"][sm.frame_counter % 4]
         )
         return {
             "invert": True, 
             "text": justify_text("{0}:{1}".format(
-                sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, -1), 
-                sm.get_source_state_property(StateNames.LOADED_PRESET_NAME, 'NoName')), 
+                spi.get_property(StateNames.LOADED_PRESET_INDEX, -1), 
+                spi.get_property(StateNames.LOADED_PRESET_NAME, 'NoName')), 
                 indicators)
         }
 
@@ -538,7 +398,7 @@ class State(object):
             if shift:  # if "shift" button is pressed, sound index is form 8-15
                 sound_idx += 8
     
-            num_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
+            num_sounds = spi.get_property(StateNames.NUM_SOUNDS, 0)
             if sound_idx < num_sounds:
                 return sound_idx
             else:
@@ -546,15 +406,15 @@ class State(object):
         return sound_idx
 
     def save_current_preset(self):
-        current_preset_name = sm.get_source_state_property(StateNames.LOADED_PRESET_NAME, 'NoName')
-        current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, -1)
+        current_preset_name = spi.get_property(StateNames.LOADED_PRESET_NAME, 'NoName')
+        current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, -1)
         if current_preset_index > -1:
-            sm.send_osc_to_plugin("/save_preset", [current_preset_name, int(current_preset_index)])
+            spi.send_osc_to_plugin("/save_preset", [current_preset_name, int(current_preset_index)])
             sm.show_global_message("Saving {}\n{}...".format(current_preset_index, current_preset_name))
 
     def save_current_preset_to(self, query="", preset_idx=-1):
         preset_name = query  # NOTE: the parameter is called "query" because it reuses some classes used for entering queries. We might want to change that to "name"
-        sm.send_osc_to_plugin("/save_preset", [preset_name, int(preset_idx)])
+        spi.send_osc_to_plugin("/save_preset", [preset_name, int(preset_idx)])
         sm.show_global_message("Saving {}\n{}...".format(preset_idx, preset_name))
 
     def load_preset(self, preset_idx):
@@ -562,31 +422,31 @@ class State(object):
         if ':' in preset_idx:
             preset_name = preset_idx.split(':')[1]
             preset_idx = int(preset_idx.split(':')[0])  # This is because we're passing preset_idx:preset_name format (some callbacks might use it)
-        sm.send_osc_to_plugin("/load_preset", [int(preset_idx)])
+        spi.send_osc_to_plugin("/load_preset", [int(preset_idx)])
         if preset_name:
             sm.show_global_message("Loading {}\n{}...".format(preset_idx, preset_name), duration=5)
         else:
             sm.show_global_message("Loading {}...".format(preset_idx), duration=5)
 
     def reload_current_preset(self):
-        current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, -1)
-        current_preset_name = sm.get_source_state_property(StateNames.LOADED_PRESET_NAME, "unnamed")
+        current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, -1)
+        current_preset_name = spi.get_property(StateNames.LOADED_PRESET_NAME, "unnamed")
         if current_preset_index > -1:
-            sm.send_osc_to_plugin("/load_preset", [int(current_preset_index)])
+            spi.send_osc_to_plugin("/load_preset", [int(current_preset_index)])
             sm.show_global_message("Loading {}\n{}...".format(current_preset_index, current_preset_name), duration=5)
 
     def reapply_note_layout(self, layout_type):
-        sm.send_osc_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
+        spi.send_osc_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
         sm.show_global_message("Updated layout")
 
     def set_num_voices(self, num_voices):
-        sm.send_osc_to_plugin("/set_polyphony", [num_voices])
+        spi.send_osc_to_plugin("/set_polyphony", [num_voices])
 
     def set_midi_in_chhannel(self, midi_channel):
-        sm.send_osc_to_plugin("/set_midi_in_channel", [midi_channel])
+        spi.send_osc_to_plugin("/set_midi_in_channel", [midi_channel])
 
     def set_download_original_files(self, preference):
-        sm.send_osc_to_plugin("/set_use_original_files", [{
+        spi.send_osc_to_plugin("/set_use_original_files", [{
             'Never': 'never',
             'Only small': 'onlyShort',
             'Always': 'always',
@@ -605,7 +465,7 @@ class State(object):
         # Sending too many onsets might render the UPD OSC message too long
         sound_onsets_list = sound_onsets_list[:128]  
 
-        sm.send_osc_to_plugin("/add_or_replace_sound", [
+        spi.send_osc_to_plugin("/add_or_replace_sound", [
             sound_uuid, 
             new_sound['id'], 
             new_sound['name'], 
@@ -624,7 +484,7 @@ class State(object):
             sm.set_waiting_to_go_to_last_loaded_sound()
 
     def load_query_results(self, new_sounds, note_mapping_type=1, assigned_notes_per_sound_list=[]):
-        sm.send_osc_to_plugin('/clear_all_sounds', [])
+        spi.send_osc_to_plugin('/clear_all_sounds', [])
         time.sleep(0.2)
         n_sounds = len(new_sounds)
         n_notes_per_sound = 128 // n_sounds
@@ -761,9 +621,9 @@ class State(object):
         try:
             new_sounds = []
             existing_sounds_assigned_notes = []
-            for sound_idx in range(0, sm.get_num_loaded_sounds()):
-                existing_sounds_assigned_notes.append(sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES))
-                sound_id = sm.gsp(sound_idx, StateNames.SOUND_ID)
+            for sound_idx in range(0, spi.get_num_loaded_sounds()):
+                existing_sounds_assigned_notes.append(spi.get_sound_property(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES))
+                sound_id = spi.get_sound_property(sound_idx, StateNames.SOUND_ID)
                 if sound_id != 0:
                     new_sound = find_sound_by_similarity(sound_id)
                     if new_sound is not None:
@@ -783,12 +643,12 @@ class State(object):
 
     def set_slices_for_sound(self, sound_uuid, slices):
         if sound_uuid != "":
-            sm.send_osc_to_plugin('/set_slices', [sound_uuid, ','.join([str(s) for s in slices])])
+            spi.send_osc_to_plugin('/set_slices', [sound_uuid, ','.join([str(s) for s in slices])])
 
     def get_sound_idx_from_note(self, midi_note):
         # Iterate over sounds to find the first one that has that note assigned
-        for sound_idx in range(0, sm.get_num_loaded_sounds()):
-            raw_assigned_notes = sm.gsp(sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
+        for sound_idx in range(0, spi.get_num_loaded_sounds()):
+            raw_assigned_notes = spi.get_sound_property(sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
             if raw_assigned_notes is not None:
                 if midi_note in raw_assigned_notes_to_midi_assigned_notes(raw_assigned_notes):
                     return sound_idx
@@ -807,10 +667,10 @@ class State(object):
             for note in assinged_notes:
                 assinged_notes_aux[note] = '1'
             midi_notes = hex(int("".join(reversed(''.join(assinged_notes_aux))), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
-            sm.send_osc_to_plugin('/set_assigned_notes', [sound_uuid, midi_notes, root_note])
+            spi.send_osc_to_plugin('/set_assigned_notes', [sound_uuid, midi_notes, root_note])
 
     def remove_sound(self, sound_uuid):
-        sm.send_osc_to_plugin('/remove_sound', [sound_uuid])
+        spi.send_osc_to_plugin('/remove_sound', [sound_uuid])
         sm.show_global_message("Sound removed!")
 
     def on_activating_state(self):
@@ -950,12 +810,12 @@ class ChangePresetOnEncoderShiftRotatedStateMixin(object):
     def on_encoder_rotated(self, direction, shift=False):
         if shift:
             # Change current loaded preset
-            current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, -1)
+            current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, -1)
             if current_preset_index > -1:
                 current_preset_index += direction
                 if current_preset_index < 0:
                     current_preset_index = 0
-                sm.send_osc_to_plugin("/load_preset", [current_preset_index])
+                spi.send_osc_to_plugin("/load_preset", [current_preset_index])
         else:
             super().on_encoder_rotated(direction, shift=True)
 
@@ -965,9 +825,9 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
     pages = [EXTRA_PAGE_2_NAME] + sound_parameter_pages + [EXTRA_PAGE_1_NAME]
 
     def draw_display_frame(self):
-        n_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
-        n_sounds_downloading = sm.get_source_state_property(StateNames.NUM_SOUNDS_DOWNLOADING, 0)
-        n_sounds_loaded_in_sampler = sm.get_source_state_property(StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER, 0)
+        n_sounds = spi.get_num_loaded_sounds()
+        n_sounds_downloading = spi.get_property(StateNames.NUM_SOUNDS_DOWNLOADING, 0)
+        n_sounds_loaded_in_sampler = spi.get_property(StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER, 0)
         
         text = "{0} sounds".format(n_sounds)
         if n_sounds_loaded_in_sampler < n_sounds:
@@ -980,11 +840,11 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             # Show some sound information
             lines += [
-                justify_text('Temp:', '{0}ºC'.format(sm.get_source_state_property(StateNames.SYSTEM_STATS).get("temp", ""))),
-                justify_text('Memory:', '{0}%'.format(sm.get_source_state_property(StateNames.SYSTEM_STATS).get("mem", ""))),
-                justify_text('CPU:', '{0}% | {1:.1f}%'.format(sm.get_source_state_property(StateNames.SYSTEM_STATS).get("cpu", ""), 
-                                                              sm.get_source_state_property(StateNames.SYSTEM_STATS).get("xenomai_cpu", 0.0))), 
-                justify_text('Network:', '{0}'.format(sm.get_source_state_property(StateNames.SYSTEM_STATS).get("network_ssid", "-")))
+                justify_text('Temp:', '{0}ºC'.format(spi.get_property(StateNames.SYSTEM_STATS).get("temp", ""))),
+                justify_text('Memory:', '{0}%'.format(spi.get_property(StateNames.SYSTEM_STATS).get("mem", ""))),
+                justify_text('CPU:', '{0}% | {1:.1f}%'.format(spi.get_property(StateNames.SYSTEM_STATS).get("cpu", ""), 
+                                                              spi.get_property(StateNames.SYSTEM_STATS).get("xenomai_cpu", 0.0))), 
+                justify_text('Network:', '{0}'.format(spi.get_property(StateNames.SYSTEM_STATS).get("network_ssid", "-")))
             ]
         elif self.current_page_data == EXTRA_PAGE_2_NAME:
             # Show some volatile state informaion (meters and voice activations)
@@ -998,8 +858,8 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                     # Check if all loaded sounds have the same value for that parameter. If that is the case, show the value, otherwise don't show any value
                     all_sounds_values = []
                     last_value = None
-                    for sound_idx in range(0, sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)):
-                        raw_value = sm.gsparam(sound_idx, parameter_name)
+                    for sound_idx in range(0, spi.get_property(StateNames.NUM_SOUNDS, 0)):
+                        raw_value = spi.get_sound_property(sound_idx, parameter_name)
                         if raw_value is not None:
                             processed_val = get_func(raw_value)
                             all_sounds_values.append(processed_val)
@@ -1020,9 +880,9 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         if self.current_page_data == EXTRA_PAGE_2_NAME:
-            frame = add_meter_to_frame(frame, y_offset_lines=3, value=sm.get_source_state_property(StateNames.METER_R, 0))
-            frame = add_meter_to_frame(frame, y_offset_lines=2, value=sm.get_source_state_property(StateNames.METER_L, 0))
-            voice_sound_idxs = [sm.get_source_sound_idx_from_source_sampler_sound_uuid(source_sampler_sound_uuid) for source_sampler_sound_uuid in sm.get_source_state_property(StateNames.VOICE_SOUND_IDXS, [])]
+            frame = add_meter_to_frame(frame, y_offset_lines=3, value=spi.get_property(StateNames.METER_R, 0))
+            frame = add_meter_to_frame(frame, y_offset_lines=2, value=spi.get_property(StateNames.METER_L, 0))
+            voice_sound_idxs = [spi.get_source_sound_idx_from_source_sampler_sound_uuid(source_sampler_sound_uuid) for source_sampler_sound_uuid in spi.get_property(StateNames.VOICE_SOUND_IDXS, [])]
             if voice_sound_idxs:
                 frame = add_voice_grid_to_frame(frame, voice_activations=voice_sound_idxs)
             return frame  # Return before adding scrollbar if we're in first page
@@ -1059,7 +919,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain" or shift and parameter_name == "mod2PitchAmt":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                sm.send_osc_to_plugin(osc_address, ["", parameter_name, send_value])
+                spi.send_osc_to_plugin(osc_address, ["", parameter_name, send_value])
 
 
 class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
@@ -1069,7 +929,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     selected_sound_is_playing = False
 
     def __init__(self, sound_idx, *args, **kwargs):
-        num_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
+        num_sounds = spi.get_property(StateNames.NUM_SOUNDS, 0)
         if sound_idx < 0:
             self.sound_idx = 0
         elif sound_idx >= num_sounds - 1:
@@ -1082,15 +942,15 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
         super().__init__(*args, **kwargs)
 
     def sound_is_downloading(self):
-        if sm.gsp(self.sound_idx, StateNames.SOUND_OGG_URL, default=''):
-            return sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default='0') != '100'
+        if spi.get_sound_property(self.sound_idx, StateNames.SOUND_OGG_URL, default=''):
+            return spi.get_sound_property(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default='0') != '100'
         else:
             # If sound does not have property SOUND_OGG_URL, then it is not a Freesound sound that
             # should be downloaded but a localfile, therefore it should be already in disk
             return False
 
     def sound_is_loaded_in_sampler(self):
-        return sm.gsp(self.sound_idx, StateNames.SOUND_LOADED_IN_SAMPLER, default=False)
+        return spi.get_sound_property(self.sound_idx, StateNames.SOUND_LOADED_IN_SAMPLER, default=False)
 
     def get_properties(self):
         properties = super().get_properties().copy()
@@ -1103,21 +963,21 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
         lines = [{
             "underline": True, 
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, spi.get_sound_property(self.sound_idx, StateNames.SOUND_NAME))
         }]
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             # Show some sound information
-            sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             lines += [
                 justify_text('ID:', '{0}'.format(sound_id) if sound_id != "-1" else "-"),
-                justify_text('User:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_AUTHOR))),
-                justify_text('License:', '{0}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_LICENSE)))
+                justify_text('User:', '{0}'.format(spi.get_sound_property(self.sound_idx, StateNames.SOUND_AUTHOR))),
+                justify_text('License:', '{0}'.format(spi.get_sound_property(self.sound_idx, StateNames.SOUND_LICENSE)))
             ]
             if self.sound_is_loaded_in_sampler():
-                lines += [justify_text('Duration:', '{0:.2f}s'.format(sm.gsp(self.sound_idx, StateNames.SOUND_DURATION)))]
+                lines += [justify_text('Duration:', '{0:.2f}s'.format(spi.get_sound_property(self.sound_idx, StateNames.SOUND_DURATION)))]
             else:
-                sound_download_progress = int(sm.gsp(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default=0))
+                sound_download_progress = int(spi.get_sound_property(self.sound_idx, StateNames.SOUND_DOWNLOAD_PROGRESS, default=0))
                 if self.sound_is_downloading():
                     if sound_download_progress < 95:
                         lines += [justify_text('Downloading...', '{0}%'.format(sound_download_progress))]
@@ -1127,7 +987,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                     # If sound is not loaded in sampler and is not downloading it can be that:
                     # 1) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and is being loaded right now
                     # 2) sound comes from a local file (not from a Freesound download, even if it was previosuly downloaded) and it can't be found on disk (or there were errors loading)
-                    if sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default='') and not os.path.exists(sm.gsp(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)):
+                    if spi.get_sound_property(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH, default='') and not os.path.exists(spi.get_sound_property(self.sound_idx, StateNames.SOUND_LOCAL_FILE_PATH)):
                         lines += ['Local file not found...']
                     else:
                         # If there are errors loading, this will always show 'Loading in sampler...'
@@ -1136,17 +996,17 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
         elif self.current_page_data == EXTRA_PAGE_2_NAME:
             # Show other sound information
-            using_preview_marker = '*' if sm.gsp(self.sound_idx, StateNames.SOUND_LOADED_PREVIEW_VERSION, default=True) and self.sound_is_loaded_in_sampler() else ''
+            using_preview_marker = '*' if spi.get_sound_property(self.sound_idx, StateNames.SOUND_LOADED_PREVIEW_VERSION, default=True) and self.sound_is_loaded_in_sampler() else ''
             lines += [
-                justify_text('Type:', '{}{}'.format(sm.gsp(self.sound_idx, StateNames.SOUND_TYPE, default='-').upper(), using_preview_marker)),
-                justify_text('Size:', '{}{}'.format(sizeof_fmt(sm.gsp(self.sound_idx, StateNames.SOUND_FILESIZE, default=0)), using_preview_marker))
+                justify_text('Type:', '{}{}'.format(spi.get_sound_property(self.sound_idx, StateNames.SOUND_TYPE, default='-').upper(), using_preview_marker)),
+                justify_text('Size:', '{}{}'.format(sizeof_fmt(spi.get_sound_property(self.sound_idx, StateNames.SOUND_FILESIZE, default=0)), using_preview_marker))
             ]
         else:
             # Show page parameter values
             for parameter_name in self.current_page_data:
                 if parameter_name is not None:
                     _, get_func, parameter_label, value_label_template, _ = sound_parameters_info_dict[parameter_name]
-                    raw_value = sm.gsparam(self.sound_idx, parameter_name)
+                    raw_value = spi.get_sound_property(self.sound_idx, parameter_name)
                     if raw_value is not None:
                         parameter_value_label = value_label_template.format(get_func(raw_value))
                     else:
@@ -1165,12 +1025,12 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def play_selected_sound(self):
         if self.selected_sound_is_playing:
             self.stop_selected_sound()
-        sm.send_osc_to_plugin("/play_sound", [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-')])
+        spi.send_osc_to_plugin("/play_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
         self.selected_sound_is_playing = True
 
     def stop_selected_sound(self):
         if self.selected_sound_is_playing:
-            sm.send_osc_to_plugin("/stop_sound", [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-')])
+            spi.send_osc_to_plugin("/stop_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
             self.selected_sound_is_playing = False
 
     def on_activating_state(self):
@@ -1181,7 +1041,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
     def on_source_state_update(self):
         # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
-        num_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
+        num_sounds = spi.get_property(StateNames.NUM_SOUNDS, 0)
         if num_sounds == 0:
             sm.go_back()
         else:
@@ -1214,7 +1074,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
             self.stop_selected_sound()
             
             # Select another sound
-            num_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
+            num_sounds = spi.get_property(StateNames.NUM_SOUNDS, 0)
             if num_sounds:
                 sound_idx = self.sound_idx + direction
                 if sound_idx < 0:
@@ -1252,7 +1112,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                sm.send_osc_to_plugin(osc_address, [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), parameter_name, send_value])
+                spi.send_osc_to_plugin(osc_address, [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), parameter_name, send_value])
 
 
 class MenuState(State):
@@ -1400,7 +1260,7 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
         for parameter_name in self.current_page_data:
             if parameter_name is not None:
                 parameter_position, parameter_label = reverb_parameters_info_dict[parameter_name]
-                reverb_params = sm.get_source_state_property(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+                reverb_params = spi.get_property(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
                 lines.append(justify_text(
                     parameter_label + ":", 
                     '{0:.2f}'.format(reverb_params[parameter_position])
@@ -1418,9 +1278,9 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
         parameter_name = self.current_page_data[fader_idx]
         if parameter_name is not None:
             param_position, _ = reverb_parameters_info_dict[parameter_name]
-            reverb_params = sm.get_source_state_property(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            reverb_params = spi.get_property(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             reverb_params[param_position] = value
-            sm.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
+            spi.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
 
 
 class EnterQuerySettingsState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
@@ -1555,7 +1415,7 @@ class NewPresetOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 callback=lambda query_settings: (self.new_preset_by_random_sounds(**query_settings), sm.go_back(n_times=3))  
             ))
         elif action_name == self.OPTION_BY_SIMILARITY:
-            current_note_mapping_type = sm.get_source_state_property(StateNames.NOTE_LAYOUT_TYPE, 1)
+            current_note_mapping_type = spi.get_property(StateNames.NOTE_LAYOUT_TYPE, 1)
             self.new_preset_by_similar_sounds(note_mapping_type=current_note_mapping_type)
             sm.go_back(n_times=3)
         else:
@@ -1694,7 +1554,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         # Scan existing .xml files to know preset names
         # TODO: the presetting system should be imporved so we don't need to scan the presets folder every time
         preset_names = {}
-        presets_folder = sm.get_source_state_property(StateNames.PRESETS_DATA_LOCATION)
+        presets_folder = spi.get_property(StateNames.PRESETS_DATA_LOCATION)
         if presets_folder is not None:
             for filename in os.listdir(presets_folder):
                 if filename.endswith('.xml'):
@@ -1710,7 +1570,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     def move_to_choose_preset_name_state(self, preset_idx_name):
         preset_idx = int(preset_idx_name.split(':')[0])
-        current_preset_name = current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_NAME, "") # preset_idx_name.split(':')[1]
+        current_preset_name = current_preset_index = spi.get_property(StateNames.LOADED_PRESET_NAME, "") # preset_idx_name.split(':')[1]
         sm.move_to(EnterTextViaHWOrWebInterfaceState(
                 title="Preset name", 
                 web_form_id="enterName", 
@@ -1728,7 +1588,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.go_back()
         elif action_name == self.OPTION_SAVE_AS:
             preset_names = self.get_exising_presets_list()
-            current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, 0)
+            current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, 0)
             if not preset_names:
                 sm.show_global_message('Some error\noccurred...')
                 sm.go_back()
@@ -1748,11 +1608,11 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             # see NOTE_MAPPING_TYPE_CONTIGUOUS in defines.h, contiguous and interleaved indexes must match with those in that file (0 and 1)
             sm.move_to(MenuCallbackState(items=note_layout_types, selected_item=0, title1="Apply note layout...", callback=self.reapply_note_layout, go_back_n_times=2))
         elif action_name == self.OPTION_NUM_VOICES:
-            current_num_voices = sm.get_source_state_property(StateNames.NUM_VOICES, 1)
+            current_num_voices = spi.get_property(StateNames.NUM_VOICES, 1)
             sm.move_to(EnterNumberState(initial=current_num_voices, minimum=1, maximum=32, title1="Number of voices", callback=self.set_num_voices, go_back_n_times=2))
         elif action_name == self.OPTION_LOAD_PRESET:
             preset_names = self.get_exising_presets_list()
-            current_preset_index = sm.get_source_state_property(StateNames.LOADED_PRESET_INDEX, 0)
+            current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, 0)
             if not preset_names:
                 sm.move_to(EnterNumberState(initial=current_preset_index, minimum=0, maximum=127, title1="Load preset...", callback=self.load_preset, go_back_n_times=2))
             else:
@@ -1781,10 +1641,10 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             sm.show_global_message('Logged out\nfrom Freesound')
             sm.go_back()
         elif action_name == self.OPTION_DOWNLOAD_ORIGINAL:
-            selected_item = ['never', 'onlyShort', 'always'].index(sm.get_source_state_property(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never'))
+            selected_item = ['never', 'onlyShort', 'always'].index(spi.get_property(StateNames.USE_ORIGINAL_FILES_PREFERENCE, 'never'))
             sm.move_to(MenuCallbackState(items=['Never', 'Only small', 'Always'], selected_item=selected_item, title1="Use original files...", callback=lambda x: self.set_download_original_files(x), go_back_n_times=2))
         elif action_name == self.OPTION_MIDI_IN_CHANNEL:
-            current_midi_in = sm.get_source_state_property(StateNames.MIDI_IN_CHANNEL, 0)
+            current_midi_in = spi.get_property(StateNames.MIDI_IN_CHANNEL, 0)
             sm.move_to(EnterNumberState(initial=current_midi_in, minimum=0, maximum=16, title1="Midi in channel", callback=self.set_midi_in_chhannel, go_back_n_times=2))
         elif action_name == self.OPTION_ABOUT:
             try:
@@ -1794,7 +1654,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             except:
                 commit_hash = '-'
                 commit_date = '-'
-            plugin_version = sm.get_source_state_property(StateNames.PLUGIN_VERSION, '0.0')
+            plugin_version = spi.get_property(StateNames.PLUGIN_VERSION, '0.0')
             sm.move_to(InfoPanelState(title='About', lines=[
                 justify_text('Plugin version:', '{}'.format(plugin_version)),
                 justify_text('Commit:', '{}'.format(commit_hash)),
@@ -1836,7 +1696,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
         lines = [{
             "underline": True, 
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, spi.get_sound_property(self.sound_idx, StateNames.SOUND_NAME))
         }, {
             "underline": True, 
             "text": "Replace by..."
@@ -1852,7 +1712,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                         title="Enter query",
                         web_form_id="enterQuery", 
                         callback=self.add_or_replace_sound_by_query, 
-                        extra_data_for_callback=merge_dicts(query_settings, {'sound_uuid': sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-')}),
+                        extra_data_for_callback=merge_dicts(query_settings, {'sound_uuid': spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')}),
                         go_back_n_times=4
                     )),
                 num_sounds=1,
@@ -1860,13 +1720,13 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                 allow_change_layout=False
             ))
         elif action_name == self.OPTION_BY_SIMILARITY:
-            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            selected_sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
-                self.replace_sound_by_similarity(sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), selected_sound_id)
+                self.replace_sound_by_similarity(spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), selected_sound_id)
                 sm.go_back(n_times=2)  # Go back 2 times because option is 2-levels deep in menu hierarchy
         elif action_name == self.OPTION_BY_RANDOM:
             sm.move_to(EnterQuerySettingsState(
-                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'sound_uuid': sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-')})), sm.go_back(n_times=3)),
+                callback=lambda query_settings: (self.add_or_replace_sound_random(**merge_dicts(query_settings, {'sound_uuid': spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')})), sm.go_back(n_times=3)),
                 num_sounds=1,
                 allow_change_num_sounds=False,
                 allow_change_layout=False
@@ -1883,7 +1743,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     title1="Select a file...",
                     go_back_n_times=3,
                     callback=lambda file_path: (self.send_add_or_replace_sound_to_plugin(
-                        sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), 
+                        spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), 
                         {
                             'id': -1, 
                             'name': file_path.split('/')[-1], 
@@ -1907,7 +1767,7 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                     title1="Select a sound...",
                     go_back_n_times=3,
                     callback=lambda sound_name: (self.send_add_or_replace_sound_to_plugin(
-                        sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'),
+                        spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'),
                         sounds_data[sound_name]
                     ), sm.show_global_message('Loading file\n{}...'.format(sound_name))),
                 ))
@@ -1953,7 +1813,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
 
     def on_source_state_update(self):
         # Check that self.sound_idx is in range with the new state, otherwise change the state to a new state with valid self.sound_idx
-        num_sounds = sm.get_source_state_property(StateNames.NUM_SOUNDS, 0)
+        num_sounds = spi.get_property(StateNames.NUM_SOUNDS, 0)
         if self.sound_idx >= num_sounds:
             sm.move_to(SoundSelectedContextualMenuState(num_sounds -1), replace_current=True)
         elif self.sound_idx < 0 and num_sounds > 0:
@@ -1968,7 +1828,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
         lines = [{
             "underline": True, 
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, spi.get_sound_property(self.sound_idx, StateNames.SOUND_NAME))
         }]
         lines += self.get_menu_item_lines()
         return frame_from_lines([self.get_default_header_line()] + lines)
@@ -1977,11 +1837,11 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
         if action_name == self.OPTION_REPLACE:
             sm.move_to(ReplaceByOptionsMenuState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_DELETE:
-            self.remove_sound(sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'))
+            self.remove_sound(spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'))
             sm.go_back()
         elif action_name == self.OPTION_OPEN_IN_FREESOUND:
             sm.show_global_message('Sound opened\nin browser')
-            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            selected_sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
                 sm.open_url_in_browser = 'https://freesound.org/s/{}'.format(selected_sound_id)
             sm.go_back()
@@ -2007,7 +1867,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 callback=lambda note: (sm.go_back(n_times=3), sm.move_to(SoundSelectedState(self.get_sound_idx_from_note(note)))),
             ))
         elif action_name == self.OPTION_BOOKMARK:
-            selected_sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            selected_sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             if selected_sound_id != '-':
                 result = bookmark_sound(selected_sound_id)
                 if result:
@@ -2021,14 +1881,14 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
             sm.show_global_message('Not implemented...')
 
     def get_midi_cc_items_for_midi_cc_assignments_menu(self):
-        return [label for label in sorted(sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).keys())] + [self.MIDI_CC_ADD_NEW_TEXT]   
+        return [label for label in sorted(spi.get_sound_property(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).keys())] + [self.MIDI_CC_ADD_NEW_TEXT]   
 
     def handle_select_midi_cc_assignment(self, midi_cc_assignment_label):
         if midi_cc_assignment_label == self.MIDI_CC_ADD_NEW_TEXT:
             # Show "new assignment" menu
             sm.move_to(EditMIDICCAssignmentState(sound_idx=self.sound_idx))
         else:
-            midi_cc_assignment = sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
+            midi_cc_assignment = spi.get_sound_property(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
             if midi_cc_assignment is not None:
                 # Show "edit assignment" menu
                 sm.move_to(EditMIDICCAssignmentState(
@@ -2041,9 +1901,9 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
                 ))
 
     def handle_delete_midi_cc_assignment(self, midi_cc_assignment_label):
-        midi_cc_assignment = sm.gsp(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
+        midi_cc_assignment = spi.get_sound_property(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
         if midi_cc_assignment is not None:
-            sm.send_osc_to_plugin('/remove_cc_mapping', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
+            spi.send_osc_to_plugin('/remove_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
             sm.show_global_message('Removing MIDI\nmapping...')
 
 class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
@@ -2069,7 +1929,7 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
         if self.cc_number > -1:
             cc_number = str(self.cc_number)
         else:
-            last_cc_received = int(sm.get_source_state_property(StateNames.LAST_CC_MIDI_RECEIVED, 0))
+            last_cc_received = int(spi.get_property(StateNames.LAST_CC_MIDI_RECEIVED, 0))
             if last_cc_received < 0:
                 last_cc_received = 0
             cc_number = 'MIDI Learn ({0})'.format(last_cc_received)
@@ -2097,11 +1957,11 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
         if self.cc_number > -1:
             cc_number = self.cc_number
         else:
-            last_cc_received = int(sm.get_source_state_property(StateNames.LAST_CC_MIDI_RECEIVED, 0))
+            last_cc_received = int(spi.get_property(StateNames.LAST_CC_MIDI_RECEIVED, 0))
             if last_cc_received < 0:
                 last_cc_received = 0
             cc_number = last_cc_received
-        sm.send_osc_to_plugin('/add_or_update_cc_mapping', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), int(self.uuid), cc_number, self.parameter_name, self.min_range, self.max_range])
+        spi.send_osc_to_plugin('/add_or_update_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(self.uuid), cc_number, self.parameter_name, self.min_range, self.max_range])
         sm.show_global_message('Adding MIDI\nmapping...')
         sm.go_back()
 
@@ -2185,8 +2045,8 @@ class EnterNoteState(GoBackOnEncoderLongPressedStateMixin, State):
 
     def draw_display_frame(self):
 
-        if sm.get_source_state_property(StateNames.MIDI_RECEIVED, False):
-            last_note_received = sm.get_source_state_property(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+        if spi.get_property(StateNames.MIDI_RECEIVED, False):
+            last_note_received = spi.get_property(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
         else:
             last_note_received = -1
 
@@ -2409,16 +2269,16 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         super().__init__(*args, **kwargs)
         self.sound_idx = kwargs.get('sound_idx', -1)
         if self.sound_idx > -1:
-            sound_id = sm.gsp(self.sound_idx, StateNames.SOUND_ID)
+            sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             if sound_id is not None:
-                path = os.path.join(sm.get_source_state_property(StateNames.TMP_DATA_LOCATION, ''), sm.gsp(self.sound_idx, StateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav') 
+                path = os.path.join(spi.get_property(StateNames.TMP_DATA_LOCATION, ''), spi.get_sound_property(self.sound_idx, StateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav') 
                 if os.path.exists(path):
                     sm.show_global_message('Loading\nwaveform...', duration=10)
                     self.sound_sr, self.sound_data_array = wavfile.read(path)    
                     if len(self.sound_data_array.shape) > 1:
                         self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
                     self.sound_data_array = self.sound_data_array / abs(max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
-                    self.slices = [int(s * self.sound_sr) for s in sm.gsp(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
+                    self.slices = [int(s * self.sound_sr) for s in spi.get_sound_property(self.sound_idx, StateNames.SOUND_SLICES, default=[])]
                     self.sound_length = self.sound_data_array.shape[0]
                     self.min_zoom = (self.sound_length // self.display_width) + 1
                     self.current_zoom = self.min_zoom
@@ -2435,7 +2295,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         lines = [{
             "underline": True, 
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, spi.get_sound_property(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         if self.sound_data_array is not None:
@@ -2454,10 +2314,10 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
                 # Normal case in which we're not in sound edges
                 pass
 
-            start_position = int(float(sm.gsparam(self.sound_idx, 'startPosition', default=0.0)) * self.sound_length)
-            end_position = int(float(sm.gsparam(self.sound_idx, 'endPosition', default=1.0)) * self.sound_length)
-            loop_start_position = int(float(sm.gsparam(self.sound_idx, 'loopStartPosition', default=0.0)) * self.sound_length)
-            loop_end_position = int(float(sm.gsparam(self.sound_idx, 'loopEndPosition', default=1.0)) * self.sound_length)
+            start_position = int(float(spi.get_sound_property(self.sound_idx, 'startPosition', default=0.0)) * self.sound_length)
+            end_position = int(float(spi.get_sound_property(self.sound_idx, 'endPosition', default=1.0)) * self.sound_length)
+            loop_start_position = int(float(spi.get_sound_property(self.sound_idx, 'loopStartPosition', default=0.0)) * self.sound_length)
+            loop_end_position = int(float(spi.get_sound_property(self.sound_idx, 'loopEndPosition', default=1.0)) * self.sound_length)
 
             if self.current_zoom < 10:
                 current_time_label = '{:.4f}s'.format(self.cursor_position / self.sound_sr)
@@ -2491,7 +2351,7 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
     def on_encoder_pressed(self, shift):
         # Save slices
         time_slices = [s * 1.0 / self.sound_sr for s in self.slices]
-        self.set_slices_for_sound(sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), time_slices)
+        self.set_slices_for_sound(spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), time_slices)
         sm.show_global_message('Updated {} slices'.format(len(time_slices)))
         if not shift:
             # If shift is not pressed, go back to sound selected state
@@ -2500,16 +2360,16 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
             # Set start position
-            sm.send_osc_to_plugin('/set_sound_parameter', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), "startPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "startPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 2:
             # Set loop start position
-            sm.send_osc_to_plugin('/set_sound_parameter', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 3:
             # Set loop end position
-            sm.send_osc_to_plugin('/set_sound_parameter', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 4:
             # Set end position
-            sm.send_osc_to_plugin('/set_sound_parameter', [sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), "endPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "endPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 5:
             # Add slice
             if self.cursor_position not in self.slices:
@@ -2575,9 +2435,9 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         super().__init__(*args, **kwargs)
         self.sound_idx = kwargs.get('sound_idx', -1)
         if self.sound_idx > -1:
-            sound_assigned_notes = sm.gsp(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
+            sound_assigned_notes = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
             if sound_assigned_notes is not None:
-                self.root_note = int(sm.gsparam(self.sound_idx, "midiRootNote", default=-1))
+                self.root_note = int(spi.get_sound_property(self.sound_idx, "midiRootNote", default=-1))
                 self.assigned_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
                 if self.assigned_notes:
                     if self.root_note > -1:
@@ -2586,18 +2446,18 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
                         self.cursor_position = self.assigned_notes[0]
 
     def save_assigned_notes(self, unassign_from_others=False):
-        self.set_assigned_notes_for_sound(sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'), self.assigned_notes, root_note=self.root_note)
+        self.set_assigned_notes_for_sound(spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), self.assigned_notes, root_note=self.root_note)
         if unassign_from_others:
             # Iterate over all sounds and make sure the notes for the current sound are not assinged
             # to any other sound
             for sound_idx in range(0, sm.get_num_loaded_sounds()):
-                if sm.gsp(sound_idx, StateNames.SOUND_UUID) != sm.gsp(self.sound_idx, StateNames.SOUND_UUID, '-'): 
-                    sound_assigned_notes = sm.gsp(sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
+                if spi.get_sound_property(sound_idx, StateNames.SOUND_UUID) != spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'): 
+                    sound_assigned_notes = spi.get_sound_property(sound_idx, StateNames.SOUND_ASSIGNED_NOTES)
                     if sound_assigned_notes is not None:
                         midi_notes = raw_assigned_notes_to_midi_assigned_notes(sound_assigned_notes)
                         new_midi_notes = [note for note in midi_notes if note not in self.assigned_notes]
                         if len(midi_notes) != len(new_midi_notes):
-                            self.set_assigned_notes_for_sound(sound[StateNames.SOUND_UUID], new_midi_notes, root_note=int(sm.gsparam(sound_idx, "midiRootNote", default=-1)))
+                            self.set_assigned_notes_for_sound(sound[StateNames.SOUND_UUID], new_midi_notes, root_note=int(spi.get_sound_property(sound_idx, "midiRootNote", default=-1)))
 
         sm.show_global_message('Updated {}\n assigned notes{}'.format(len(self.assigned_notes), ' (U)' if unassign_from_others else ''))
                     
@@ -2605,7 +2465,7 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         lines = [{
             "underline": True, 
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, sm.gsp(self.sound_idx, StateNames.SOUND_NAME))
+            "text": "S{0}:{1}".format(self.sound_idx + 1, spi.get_sound_property(self.sound_idx, StateNames.SOUND_NAME))
         }]
         frame = frame_from_lines([self.get_default_header_line()] + lines)
         self.frame_count += 1
@@ -2614,8 +2474,8 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
         else:
             currently_selected_range = []
 
-        current_last_note_from_state = sm.get_source_state_property(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
-        if current_last_note_from_state != self.last_note_from_state or sm.get_source_state_property(StateNames.MIDI_RECEIVED, False):
+        current_last_note_from_state = spi.get_property(StateNames.LAST_NOTE_MIDI_RECEIVED, -1)
+        if current_last_note_from_state != self.last_note_from_state or spi.get_property(StateNames.MIDI_RECEIVED, False):
             # A new note was triggered
             self.last_note_from_state = current_last_note_from_state
             self.last_note_updated_time = time.time()
@@ -2718,7 +2578,7 @@ class FileChooserState(MenuCallbackState):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base_path = kwargs.get('base_path', '')
-        self.shift_callback=lambda file_path: sm.send_osc_to_plugin('/play_sound_from_path', [file_path])  # Send preview sound OSC on shift+encoder
+        self.shift_callback=lambda file_path: spi.send_osc_to_plugin('/play_sound_from_path', [file_path])  # Send preview sound OSC on shift+encoder
         self.go_back_n_times_shift_callback = 0
     
     def get_menu_item_lines(self):
@@ -2744,11 +2604,11 @@ class FileChooserState(MenuCallbackState):
     def on_encoder_rotated(self, direction, shift=False):
         super().on_encoder_rotated(direction, shift=shift)
         clear_moving_text_cache()
-        sm.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+        spi.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
 
     def on_deactivating_state(self):
         super().on_deactivating_state()
-        sm.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+        spi.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
 
 
 class SoundChooserState(FileChooserState):
@@ -2759,7 +2619,7 @@ class SoundChooserState(FileChooserState):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sounds_data = kwargs.get('sounds_data', '')
-        self.shift_callback=lambda sound_name: sm.send_osc_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
+        self.shift_callback=lambda sound_name: spi.send_osc_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
 
 
 class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
@@ -2777,9 +2637,9 @@ class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
         return frame_from_lines([self.get_default_header_line()] + lines)
 
 
-from state_synchronizer import SourceStateSynchronizer
-sss = SourceStateSynchronizer(verbose=False)
 
+source_plugin_interface = SourcePluginInterface()
+spi = source_plugin_interface
 state_manager = StateManager()
 sm = state_manager
 state_manager.move_to(HomeState())

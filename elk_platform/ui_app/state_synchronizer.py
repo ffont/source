@@ -1,6 +1,6 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
-from helpers import StateNames, configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state
+from helpers import StateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state
 import threading
 import asyncio
 from bs4 import BeautifulSoup
@@ -26,6 +26,7 @@ def full_state_handler(*values):
     if sss_instance is not None:
         sss_instance.set_full_state(update_id, new_state_raw)
 
+
 def volatile_state_string_handler(*values):
     volatile_state_string = values[0]
     if sss_instance is not None:
@@ -44,6 +45,7 @@ class OSCReceiverThread(threading.Thread):
         osc = OSCThreadServer()
         osc.listen(address='0.0.0.0', port=self.port, default=True)
         osc.bind(b'/plugin_started', lambda: sss_instance.plugin_has_started())
+        osc.bind(b'/plugin_alive', lambda: sss_instance.plugin_is_alive())
         osc.bind(b'/state_update', state_update_handler)
         osc.bind(b'/full_state', full_state_handler)
         osc.bind(b'/volatile_state_string', volatile_state_string_handler)
@@ -71,6 +73,7 @@ class SourceStateSynchronizer(object):
     full_state_requested = False
     state_soup = None
     verbose = False
+    last_time_plugin_alive = 0
     volatile_state = {}
 
     def __init__(self, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, verbose=True):
@@ -96,6 +99,12 @@ class SourceStateSynchronizer(object):
         self.state_soup = None
         self.request_full_state()
 
+    def plugin_is_alive(self):
+        self.last_time_plugin_alive = time.time()
+
+    def plugin_may_be_down(self):
+        return time.time() - self.last_time_plugin_alive > 5.0  # Consider plugin maybe down if no alive message in 5 seconds
+
     def request_full_state(self):
         self.osc_client.send_message('/get_state', ["oscFull"])
         self.full_state_requested = True
@@ -111,7 +120,7 @@ class SourceStateSynchronizer(object):
         self.full_state_requested = False
 
         # Configure some stuff that requires the data paths to be known
-        configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'], self.state_soup['tmpFilesLocation'])
+        configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
 
     def set_volatile_state_from_string(self, volatile_state_string):
         # Do it from string serialized version of the state

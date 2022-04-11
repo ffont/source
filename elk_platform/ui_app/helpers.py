@@ -184,15 +184,15 @@ state_names_source_state_hierarchy_map = {
 # -- UI helpers
 
 DISPLAY_SIZE = (128, 64)
-FONT_PATH = 'LiberationMono-Regular.ttf'
+FONT_PATH = 'resources/LiberationMono-Regular.ttf'
 FONT_SIZE = 10
 FONT_SIZE_BIG = 25
-FONT_PATH_TITLE = 'FuturaHeavyfont.ttf'
+FONT_PATH_TITLE = 'resources/FuturaHeavyfont.ttf'
 FONT_SIZE_TITLE = 64 - 10
-RA_LOGO_PATH = 'logo_oled_ra.png'
-RA_LOGO_B_PATH = 'logo_oled_ra_b.png'
-FS_LOGO_PATH = 'logo_oled_fs.png'
-UPF_LOGO_PATH = 'logo_oled_upf.png'
+RA_LOGO_PATH = 'resources/logo_oled_ra.png'
+RA_LOGO_B_PATH = 'resources/logo_oled_ra_b.png'
+FS_LOGO_PATH = 'resources/logo_oled_fs.png'
+UPF_LOGO_PATH = 'resources/logo_oled_upf.png'
 #TITLE_TEXT = '                             SOURCE, by Rita & Aurora
 TITLE_TEXT = '                                                 SOURCE                            ' 
 START_ANIMATION_DURATION = 8
@@ -763,25 +763,6 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
-# -- Cache for sound parameters
-
-sound_parameter_values_cache = {}
-
-def get_sp_cache_key(sound_idx, parameter_name):
-    return '{}-{}'.format(sound_idx, parameter_name)
-
-def add_to_sp_cache(sound_idx, parameter_name, value):
-    sound_parameter_values_cache[get_sp_cache_key(sound_idx, parameter_name)] = (time.time(), value)
-
-def get_sp_parameter_value_from_cache(sound_idx, parameter_name):
-    # Check if parameter is cached for all sounds globally (sound_idx=-1)
-    # Otherwise check if it is cached for that specific sound
-    global_cached = sound_parameter_values_cache.get(get_sp_cache_key(-1, parameter_name), (None, None))[1]
-    if global_cached:
-        return global_cached
-    else:
-        return sound_parameter_values_cache.get(get_sp_cache_key(sound_idx, parameter_name), (None, None))[1]
-
 
 # -- Recent queries and query filters
 
@@ -846,7 +827,6 @@ def get_recent_query_filters():
         return []
 
 
-
 tmp_base_path = None
 # File downloader for general purpose threaded downloads
 class DownloadFileThread(threading.Thread):
@@ -872,8 +852,9 @@ class DownloadFileThread(threading.Thread):
                 urllib.request.urlretrieve(self.url, outfile)
 
 
+def configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(source_data_location, tmp_data_location):
+    global recent_queries_and_filters, sound_usage_log_manager, tmp_base_path
 
-def configure_recent_queries_sound_usage_logf_tmp_base_path_from_source_state(source_data_location, tmp_data_location):
      # When full state is received, setup some objects
     if recent_queries_and_filters is None:
         recent_queries_and_filters = RecetQueriesAndQueryFiltersManager(source_data_location)

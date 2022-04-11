@@ -32,7 +32,7 @@ except ModuleNotFoundError:
 
 from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, get_all_sound_usage_logs, sizeof_fmt
 
-from source_states import state_manager, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
+from source_states import state_manager, source_plugin_interface, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
 
 from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user, is_logged_in, get_stored_access_token, RefreshAccessTokenInThread
 
@@ -58,23 +58,13 @@ system_stats_refresh_fps = 1
 current_frame = None
 current_frame_directory = 'static/frame/'
 
-plugin_state = "No sate"
-plugin_state_dict = {}
-time_post_state_received = None
-connection_with_plugin_ok = False
-last_is_querying_sounds_state = False
-PLUGIN_DISCONNECTED_THRESHOLD = 8
-
-
 system_stats = {}
-
 system_stats_thread = None
+
+elk_bridge = None
 elk_bridge_thread = None
 
 http_server = Flask(__name__, template_folder='/udata/source/app/' if platform == "ELK" else 'html/')
-osc_client = None
-elk_bridge = None
-osc_server = None
 
 BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
@@ -407,20 +397,14 @@ class ElkBridge(object):
                 self.uic.refresh()
 
     def compute_display_frame(self, counter):
-        global connection_with_plugin_ok
-        global time_post_state_received
-        global plugin_state_dict
 
         # Process plugin state information and send it to state manager
         source_extra_state = {}
 
         # Check plugin connection status
-        if time_post_state_received is not None and time.time() - time_post_state_received > PLUGIN_DISCONNECTED_THRESHOLD:
-            if connection_with_plugin_ok == True:
-                connection_with_plugin_ok = False
-                plugin_state_dict = {}
-                state_manager.show_global_message("Pl. disconnected :(")
-        source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = connection_with_plugin_ok
+        source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = not source_plugin_interface.sss.plugin_may_be_down()
+        if not source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK]:
+            state_manager.show_global_message("Pl. disconnected :(")
 
         # Check network connection status
         source_extra_state[StateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
@@ -429,7 +413,7 @@ class ElkBridge(object):
         source_extra_state[StateNames.SYSTEM_STATS] = system_stats
 
         # Send processed state to state manager
-        state_manager.update_source_extra_state(source_extra_state)
+        source_plugin_interface.update_source_extra_state(source_extra_state)
 
         # Generate new frame
         frame = state_manager.draw_display_frame()
@@ -458,10 +442,10 @@ class SoundDownloaderProgress:
         percent = count * blockSize * 100 / totalSize
         if percent > self.old_percent:
             self.old_percent = percent
-            osc_client.send_message('/downloading_sound_progress', [self.sound_uuid, self.outfile, percent])
+            source_plugin_interface.send_osc_to_plugin('/downloading_sound_progress', [self.sound_uuid, self.outfile, percent])
         if percent >= 100:
             os.rename(self.outfile + '.tmp', self.outfile)
-            osc_client.send_message('/finished_downloading_sound', [self.sound_uuid, self.outfile, True])
+            source_plugin_interface.send_osc_to_plugin('/finished_downloading_sound', [self.sound_uuid, self.outfile, True])
             n_seconds = time.time() - self.time_started
             kbytes_per_second = count * blockSize / n_seconds / 1000
             print('- Finished downloading {} ({} at {:.0f}kbps)'.format(self.url, sizeof_fmt(totalSize), kbytes_per_second))
@@ -478,6 +462,7 @@ def download_sound(url, outfile, sound_uuid, use_header):
     except urllib.error.ContentTooShortError as e:
         print('ERROR DOWNLOADING AFTER {:.2f} seconds: {}'.format(time.time()-progress.time_started, progress.url))
         print(e)
+
 
 class DownloadSoundsThread(threading.Thread):
 
@@ -629,17 +614,17 @@ def simulator_user_action():
             elk_bridge.handle_encoder_button(0.0)
     return 'Action received'
 
-
-@http_server.route('/get_source_state', methods=['GET'])  # Gets the internal XML state of the plugin and the processed JSON version
+@http_server.route('/get_source_state', methods=['GET'])  # Gets the internal XML state of the plugin and the processed JSON version, used by the simulator
 def get_source_state():
-
-    data = {
-        'pluginState': BeautifulSoup(plugin_state, "lxml").prettify(),
-        'sourceState': pprint.pformat(state_manager.source_state),
-        'lastStateTimeReceiced': str(time_post_state_received),
-    }
+    if source_plugin_interface.sss.state_soup is not None:
+        data = {
+            'pluginState': source_plugin_interface.sss.state_soup.prettify(),
+        }
+    else:
+        data = {
+            'pluginState': 'No state',
+        }
     return jsonify(data)
-
 
 @http_server.route('/receive_data_from_web', methods=['GET'])  # Endpoint used to recieve data form the web interface (for UI options that require web interface for example)
 def receive_data_from_web():
@@ -654,7 +639,7 @@ def receive_data_from_web():
 def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    osc_client.send_message(address, values)
+    source_plugin_interface.send_osc_to_plugin(address, values)
     return 'OSC sent'
 
 
@@ -672,22 +657,8 @@ class CollectSystemStatsThread(threading.Thread):
         run_collect_system_stats_loop()
 
 
-def volatile_state_osc_handler(values):
-    process_state_from_plugin(values)
-
-
-class OSCReceiverThread(threading.Thread):
-    def run(self):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        osc = OSCThreadServer()
-        sock = osc.listen(address='0.0.0.0', port=9002, default=True)
-        osc.bind(b'/volatile_state_osc', volatile_state_osc_handler)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--osc_ip", default="127.0.0.1", help="The IP to send OSC to")
-    parser.add_argument("--osc_port", type=int, default=9001, help="The port to send OSC messages to")
     parser.add_argument("--http_port", type=int, default=8123, help="The port the web server should listen at")
     args = parser.parse_args()
 
@@ -699,15 +670,6 @@ if __name__ == "__main__":
     if system_stats_refresh_fps:
         collect_system_stats()
         CollectSystemStatsThread().start()
-
-    # Start OSC client to send OSC messages to plugin
-    print('* Starting OSCClient')
-    osc_client = OSCClient(args.osc_ip, args.osc_port, encoding='utf8')
-    state_manager.set_osc_client(osc_client)
-
-    # Start OSC receiver to receive OSC messages from the plugin
-    #print('* Starting OSCReceiverThread')
-    #OSCReceiverThread().start()
 
     print('* Running aconnect')
     get_status_output("aconnect 16 128")
