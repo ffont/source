@@ -70,8 +70,6 @@ BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
 
 SOURCE_TRACK_ID = 0
-METRONOME_TRACK_ID = 2
-METRONOME_MIDI_CHANNEL = 16
 
 
 # --- Utils ------------------------------------------------------------------------
@@ -163,8 +161,6 @@ class ElkBridge(object):
     sushic = None
     midic = None
 
-    current_midi_in_channel = -1
-
     def __init__(self):
         while self.sushic is None:
             try:
@@ -192,6 +188,7 @@ class ElkBridge(object):
                 self.midic = mc.MidiController()
                 midic_initialized = True
                 print("Initialized MidiController")
+                self.connect_midi_channels_to_source()
             except Exception as e:
                 print('ERROR initializing MidiController: {0}'.format(e))
                 if platform == "ELK":
@@ -218,11 +215,10 @@ class ElkBridge(object):
         # Compute first display frame
         self.compute_display_frame(0)
 
-    def set_midi_input_filter_channel(self, midi_channel):
-        # NOTE: we do channel filtering in the plugin itself, set to 0 (all channels) here regardless
-        # of the parameter value. All references to setting midi channels here should probably be deleted
-        midi_channel = 0
-        if self.midic is not None and midi_channel != self.current_midi_in_channel:
+    def connect_midi_channels_to_source(self, midi_channel=0):
+        if self.midic is not None:
+            print("Connecting midi channel {} to source (0=omni)".format(midi_channel))
+
             raw_midi = True
             track_identifier = 0  # Source track ID
             port = 0
@@ -237,19 +233,12 @@ class ElkBridge(object):
                                                   self.midic._sushi_proto.MidiChannel(channel=midi_channel), port, raw_midi)
             self.current_midi_in_channel = midi_channel
 
-            # Also connect metronome
-            self.midic.connect_kbd_input_to_track(self.midic._sushi_proto.TrackIdentifier(id=METRONOME_TRACK_ID),
-                                                  self.midic._sushi_proto.MidiChannel(channel=METRONOME_MIDI_CHANNEL), 0, False)
-
     def is_shift_pressed(self):
         return self.buttons_state.get(0, 0) == 1
 
     def handle_potentiometer(self, val):
         if self.sushic is not None:
-            if self.is_shift_pressed():
-                controller_id = METRONOME_TRACK_ID
-            else:
-                controller_id = SOURCE_TRACK_ID
+            controller_id = SOURCE_TRACK_ID
             param_id = 0  # Gain
             # For some reason the gain only seems to be doing something when value is set between
             # 0.5 and 1.0, so we adapt the range

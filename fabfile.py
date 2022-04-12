@@ -84,7 +84,6 @@ def send_elk(ctx, include_config_files=False, include_plugin_files=True, include
         ]
 
         plugin_files = [            
-            ("elk_platform/metronome_plugin/Builds/ELKAudioOS/build/RitaAndAuroraMetronome.so", remote_dir + 'RitaAndAuroraMetronome.so'),
             ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSampler.so'),
             #("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
         ]
@@ -224,24 +223,6 @@ def compile_macos(ctx, configuration='Release'):
 @task
 def compile_macos_debug(ctx, configuration='Release'):
     compile_macos(ctx, configuration='Debug')
-
-
-@task
-def compile_metronome_elk(ctx, configuration='Release'):
-
-    print('Coss-compiling Metronome for ELK platform...')
-    print('********************************************')
-
-    # Cross-compile Source
-    # NOTE: for some reason (probably JUCE bug) the copy-step for VST3 in linux can not be disabled and generates permission errors when
-    # executed. To fix this issue here we mount a volume where the generated VST3 will be copied. This volume is inside the build folder so
-    # it is ignored by git. Hopefully this can be imporved in the future by simply disabling the VST3 copy step
-    print('\n* Cross-compiling')
-    os.system("find elk_platform/metronome_plugin/Builds/ELKAudioOS/build/intermediate/" + configuration + "/ -type f \( \! -name 'include_*' \) -exec rm {} \;")
-    os.system('docker run --rm -it -v elkvolume:/workdir -v ${PWD}/:/code/source -v ${PWD}/elk_platform/metronome_plugin/Builds/ELKAudioOS/build/copied_vst2:/home/sdkuser/.vst -v ${PWD}/SourceSampler/3rdParty/JUCE:/home/sdkuser/JUCE -v ' +
-              PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION + ':/code/VST2_SDK -v ${PWD}/elk_platform/build_system/custom-esdk-launch.py:/usr/bin/esdk-launch.py -e CC_CONFIG=' + configuration + ' -e CC_PATH_TO_MAKEFILE=/code/source/elk_platform/metronome_plugin/Builds/ELKAudioOS crops/extsdk-container')
-
-    print('\nAll done!')
 
 
 @task

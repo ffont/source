@@ -21,25 +21,6 @@
                     "uid": "SourceSampler"
                 }
             ]
-        },
-        {
-            "name": "metronome",
-            "mode": "stereo",
-            "inputs": [],
-            "outputs": [
-                {
-                    "engine_bus": 0,
-                    "track_bus": 0
-                }
-            ],
-            "plugins": [
-                {
-                    "path": "/udata/source/app/RitaAndAuroraMetronome.so",
-                    "name": "RitaAndAuroraMetronome",
-                    "type": "vst2x",
-                    "uid": "RitaAndAuroraMetronome"
-                }
-            ]
         }
     ]
 }
