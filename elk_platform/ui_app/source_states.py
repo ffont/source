@@ -16,7 +16,7 @@ from freesound_interface import find_sound_by_similarity, find_sound_by_query, f
 from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
     translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
     DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
-    add_recent_query, add_recent_query_filter, get_recent_queries, \
+    add_recent_query, add_recent_query_filter, get_recent_queries, sound_parameters_info_dict, \
     get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt
 
 try:
@@ -54,53 +54,6 @@ def get_preset_files_path():
             return base_path
     return None
 
-def snap_to_value(x, value=0.5, margin=0.07):
-    if abs(x - value) < margin:
-        return value
-    return x
-
-def lin_to_exp(x):
-    sign = 1 if x >= 0 else -1
-    return sign * pow(x, 2)
-
-#  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
-sound_parameters_info_dict = {
-    "gain": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)) if x >= 0.5 else 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Gain", "{0:.2f}dB", "/set_sound_parameter"),
-    "pitch": (lambda x: 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
-    "reverse": (lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
-    "launchMode": (lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
-    "startPosition": (lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
-    "endPosition": (lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
-    "loopStartPosition": (lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
-    "loopEndPosition": (lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
-    "attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Attack", "{0:.2f}s", "/set_sound_parameter"),
-    "decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Decay", "{0:.2f}s", "/set_sound_parameter"),
-    "sustain": (lambda x: x, lambda x: float(x), "Sustain", "{0:.2f}", "/set_sound_parameter"),
-    "release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Release", "{0:.2f}s", "/set_sound_parameter"),
-    "filterCutoff": (lambda x: 10 + 20000 * lin_to_exp(x), lambda x: float(x), "Cutoff", "{0:.2f}Hz", "/set_sound_parameter"),
-    "filterRessonance": (lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
-    "filterKeyboardTracking": (lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
-    "filterADSR2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Env amt", "{0:.0f}%", "/set_sound_parameter"),    
-    "filterAttack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Attack", "{0:.2f}s", "/set_sound_parameter"),
-    "filterDecay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Decay", "{0:.2f}s", "/set_sound_parameter"),
-    "filterSustain": (lambda x: x, lambda x: float(x), "Filter Sustain", "{0:.2f}", "/set_sound_parameter"),
-    "filterRelease": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Release", "{0:.2f}s", "/set_sound_parameter"),
-    "noteMappingMode": (lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
-    "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
-    "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
-    "freezePlayheadSpeed": (lambda x: 1 + 4999 * lin_to_exp(x), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
-    "pitchBendRangeUp": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend down", "{0:.1f}st", "/set_sound_parameter"),
-    "pitchBendRangeDown": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend up", "{0:.1f}st", "/set_sound_parameter"),
-    "mod2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Mod2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
-    "mod2GainAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Gain", "{0:.1f}dB", "/set_sound_parameter"),
-    "mod2PitchAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Pitch", "{0:.2f}st", "/set_sound_parameter"),
-    "mod2PlayheadPos": (lambda x: x, lambda x: float(x), "Mod2PlayheadPos", "{0:.2f}", "/set_sound_parameter"),
-    "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
-    "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
-    "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
-    "loopXFadeNSamples": (lambda x: 10 + int(round(lin_to_exp(x) * (100000 - 10))), lambda x: int(x), "Loop X fade len", "{0}", "/set_sound_parameter_int"),  
-    "midiChannel": (lambda x: int(round(16 * x)), lambda x: ['Global', "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"][int(x)], "MIDI channel", "{0}", "/set_sound_parameter_int"),
-}
 
 EXTRA_PAGE_1_NAME = "extra1"
 EXTRA_PAGE_2_NAME = "extra2"
@@ -1961,7 +1914,7 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
             if last_cc_received < 0:
                 last_cc_received = 0
             cc_number = last_cc_received
-        spi.send_osc_to_plugin('/add_or_update_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(self.uuid), cc_number, self.parameter_name, self.min_range, self.max_range])
+        spi.send_osc_to_plugin('/add_or_update_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), self.uuid, cc_number, self.parameter_name, self.min_range, self.max_range])
         sm.show_global_message('Adding MIDI\nmapping...')
         sm.go_back()
 
@@ -2638,8 +2591,10 @@ class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
 
 
 
-source_plugin_interface = SourcePluginInterface()
-spi = source_plugin_interface
 state_manager = StateManager()
 sm = state_manager
+
+source_plugin_interface = SourcePluginInterface(sm)
+spi = source_plugin_interface
+
 state_manager.move_to(HomeState())

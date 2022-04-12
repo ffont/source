@@ -898,7 +898,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         useOriginalFilesPreference = preference;
         saveGlobalPersistentStateToFile();
     }
-    
 }
 
 //==============================================================================

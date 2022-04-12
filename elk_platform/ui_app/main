@@ -32,9 +32,9 @@ except ModuleNotFoundError:
 
 from helpers import Timer, frame_from_start_animation, justify_text, START_ANIMATION_DURATION, translate_cc_license_url, StateNames, get_all_sound_usage_logs, sizeof_fmt
 
-from source_states import state_manager, source_plugin_interface, sound_parameters_info_dict, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
+from source_states import state_manager, source_plugin_interface, ALLOWED_AUDIO_FILE_EXTENSIONS, get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
 
-from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user, is_logged_in, get_stored_access_token, RefreshAccessTokenInThread
+from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user, is_logged_in, get_stored_access_token
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, send_from_directory
 from oscpy.client import OSCClient
@@ -111,7 +111,7 @@ def collect_system_stats():
                 if not network_currently_connected:
                     # Network has changed state from not connected to connected
                     # Do some "initialization" stuff that requires a connection
-                    RefreshAccessTokenInThread().start()  # Refesh access token at startup to make sure we have a valid one
+                    # NOTE: nothing to be done so far
                     network_currently_connected = True  # Set this to true so we don't do the initialization again
 
                 system_stats['network_ssid'] = connmanctl_services_output.split('*AO ')[1].split(' ')[0]
@@ -455,7 +455,12 @@ def download_sound(url, outfile, sound_uuid, use_header):
     progress = SoundDownloaderProgress(url, outfile, sound_uuid)
     if ':' in use_header:
         opener = urllib.request.build_opener()
-        opener.addheaders = [(use_header.split(':')[0], use_header.split(':')[1])]
+        if len(use_header) > len('Authorization: Bearer ' + 10):
+            # If the plugin has sent a header long enough so that it contains the actual access token, use it
+            opener.addheaders = [(use_header.split(':')[0], use_header.split(':')[1])]
+        else:
+            # If the plugin did not send an access token, use the one storen in python ui code
+            opener.addheaders = [('Authorization', 'Bearer {}'.format(get_stored_access_token()))]
         urllib.request.install_opener(opener)
     try:
         urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)

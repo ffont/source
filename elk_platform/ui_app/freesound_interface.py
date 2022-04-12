@@ -4,6 +4,7 @@ import random
 import requests
 import threading
 import asyncio
+import time
 
 from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
 
@@ -14,6 +15,7 @@ from helpers import DownloadFileThread
 
 access_token = None
 refresh_token = None
+access_token_expiration = None
 stored_tokens_filename = 'tokens.json'
 freesound_username = ""
 
@@ -176,11 +178,15 @@ def get_logged_in_user_information():
     global freesound_username
 
     url = 'https://freesound.org/apiv2/me/'
+    stored_access_token = get_stored_access_token()
+    r = requests.get(url, timeout=30, headers={'Authorization': 'Bearer {}'.format(stored_access_token)})
     print(url)
-    r = requests.get(url, timeout=30, headers={'Authorization': 'Bearer {}'.format(access_token)})
     response = r.json()
-    freesound_username = response['username']
-    print('Freesound username set')
+    if 'username' in response:
+        freesound_username = response['username']
+        print('Freesound username set')
+    else:
+        print('ERROR getting logged user info: {}'.format(response))
 
 
 def is_logged_in():
@@ -188,6 +194,9 @@ def is_logged_in():
 
 
 def get_stored_access_token():
+    if refresh_token is not None and (access_token_expiration is None or access_token_expiration < (time.time() - 60 * 5)):
+        # If access token might have expired, refresh it first
+        refresh_access_token()
     return access_token
 
 
@@ -198,49 +207,57 @@ def get_crurrently_logged_in_user():
 def refresh_access_token():
     global refresh_token
     global access_token
+    global access_token_expiration
 
     url = 'https://freesound.org/apiv2/oauth2/access_token/'
-    print(url)
     data = {
         'client_id': FREESOUND_CLIENT_ID,
         'client_secret': FREESOUND_API_KEY,
         'grant_type': 'refresh_token',
         'refresh_token': refresh_token
     }
+    print(url, data)
     r = requests.post(url, data=data, timeout=30)
     response = r.json()
     if 'access_token' in response:
         access_token = response['access_token']
         refresh_token = response['refresh_token']
+        access_token_expiration = time.time() + float(response['expires_in'])
         json.dump(response, open(stored_tokens_filename, 'w'))
         print('Freesound access token refreshed correctly')
         get_logged_in_user_information()
+        return True
     else:
-        print('ERROR refreshing access token')
+        print('ERROR refreshing access token: {}'.format(response))
+        return False
 
 
 def get_access_token_from_code(code):
     global refresh_token
     global access_token
+    global access_token_expiration
 
     url = 'https://freesound.org/apiv2/oauth2/access_token/'
-    print(url)
     data = {
         'client_id': FREESOUND_CLIENT_ID,
         'client_secret': FREESOUND_API_KEY,
         'grant_type': 'authorization_code',
         'code': code
     }
+    print(url, data)
     r = requests.post(url, data=data, timeout=30)
     response = r.json()
     if 'access_token' in response:
         access_token = response['access_token']
         refresh_token = response['refresh_token']
+        access_token_expiration = time.time() + float(response['expires_in'])
         json.dump(response, open(stored_tokens_filename, 'w'))
         print('New Freesound access token saved correctly')
         get_logged_in_user_information()
+        return True
     else:
-        print('ERROR getting new access token')
+        print('ERROR getting new access token: {}'.format(response))
+        return False
 
 
 def logout_from_freesound():
@@ -259,4 +276,4 @@ if os.path.exists(stored_tokens_filename):
     stored_tokens = json.load(open(stored_tokens_filename))
     access_token = stored_tokens['access_token']
     refresh_token = stored_tokens['refresh_token']
-
+    get_logged_in_user_information()

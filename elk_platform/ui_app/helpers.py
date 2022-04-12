@@ -9,7 +9,7 @@ import threading
 import fnmatch
 import urllib
 
-from collections import defaultdict, deque
+from collections import deque
 from enum import Enum, auto
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
@@ -17,11 +17,11 @@ from PIL import ImageFont, Image, ImageDraw
 
 # -- Porcessed state names
 
-class StateNames(Enum):
+class StateNames():
 
-    SYSTEM_STATS = auto()
-    CONNECTION_WITH_PLUGIN_OK = auto()
-    NETWORK_IS_CONNECTED = auto()
+    SYSTEM_STATS = 'SYSTEM_STATS'
+    CONNECTION_WITH_PLUGIN_OK = 'CONNECTION_WITH_PLUGIN_OK'
+    NETWORK_IS_CONNECTED = 'NETWORK_IS_CONNECTED'
 
     SOURCE_DATA_LOCATION = 'sourceDataLocation'
     SOUNDS_DATA_LOCATION = 'soundsDownloadLocation'
@@ -39,10 +39,9 @@ class StateNames(Enum):
     NUM_VOICES = 'numVoices'
     NOTE_LAYOUT_TYPE = 'noteLayoutType'
     
-    NUM_SOUNDS = auto()
-    NUM_SOUNDS_CHANGED = auto()
-    NUM_SOUNDS_DOWNLOADING = auto()
-    NUM_SOUNDS_LOADED_IN_SAMPLER = auto()
+    NUM_SOUNDS = 'NUM_SOUNDS'
+    NUM_SOUNDS_DOWNLOADING = 'NUM_SOUNDS_DOWNLOADING'
+    NUM_SOUNDS_LOADED_IN_SAMPLER = 'NUM_SOUNDS_LOADED_IN_SAMPLER'
 
     NAME = 'name'
     UUID = 'uuid'
@@ -62,28 +61,27 @@ class StateNames(Enum):
     SOUND_TYPE = 'format'
     SOUND_FILESIZE = 'filesize'
     SOUND_LOADED_PREVIEW_VERSION = 'usesPreview'
-    SOUND_SLICES = auto()
+    SOUND_SLICES = 'SOUND_SLICES'
     SOUND_ASSIGNED_NOTES = 'midiNotes'
     SOUND_LOADED_IN_SAMPLER = 'allSoundsLoaded'
     
+    SOUND_MIDI_CC_ASSIGNMENTS = 'SOUND_MIDI_CC_ASSIGNMENTS'
+    SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = 'SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER'
+    SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME = 'SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME'
+    SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE = 'SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE'
+    SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE = 'SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE'
+    SOUND_MIDI_CC_ASSIGNMENT_UUID = 'SOUND_MIDI_CC_ASSIGNMENT_UUID'
 
-    SOUND_MIDI_CC_ASSIGNMENTS = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE = auto()
-    SOUND_MIDI_CC_ASSIGNMENT_UUID = auto()
+    REVERB_SETTINGS = 'REVERB_SETTINGS'
 
-    REVERB_SETTINGS = auto()
-
-    METER_L = auto()
-    METER_R = auto()
-    IS_QUERYING = auto()
-    VOICE_SOUND_IDXS = auto()
-    NUM_ACTIVE_VOICES = auto()
-    MIDI_RECEIVED = auto()
-    LAST_CC_MIDI_RECEIVED = auto()
-    LAST_NOTE_MIDI_RECEIVED = auto()
+    METER_L = 'METER_L'
+    METER_R = 'METER_R'
+    IS_QUERYING = 'IS_QUERYING'
+    VOICE_SOUND_IDXS = 'VOICE_SOUND_IDXS'
+    NUM_ACTIVE_VOICES = 'NUM_ACTIVE_VOICES'
+    MIDI_RECEIVED = 'MIDI_RECEIVED'
+    LAST_CC_MIDI_RECEIVED = 'LAST_CC_MIDI_RECEIVED'
+    LAST_NOTE_MIDI_RECEIVED = 'LAST_NOTE_MIDI_RECEIVED'
 
 
 state_names_source_state_hierarchy_map = {
@@ -106,7 +104,6 @@ state_names_source_state_hierarchy_map = {
     StateNames.NOTE_LAYOUT_TYPE: 'preset',
     
     StateNames.NUM_SOUNDS: 'computed',
-    StateNames.NUM_SOUNDS_CHANGED: 'computed',
     StateNames.NUM_SOUNDS_DOWNLOADING: 'computed',
     StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER: 'computed',
     
@@ -130,8 +127,7 @@ state_names_source_state_hierarchy_map = {
     StateNames.SOUND_ASSIGNED_NOTES: 'sound_sample',
     StateNames.SOUND_LOADED_IN_SAMPLER: 'sound',
     
-    # TODO
-    StateNames.SOUND_MIDI_CC_ASSIGNMENTS: None,
+    StateNames.SOUND_MIDI_CC_ASSIGNMENTS: 'computed',
     StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: None,
     StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: None,
     StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: None,
@@ -151,34 +147,55 @@ state_names_source_state_hierarchy_map = {
 }
 
 
-'''
-    # Concoslidate MIDI CC mapping data into a dict
-        # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
-        processed_sound_midi_cc_info = {}
-        processed_sound_midi_cc_info_list_aux = []
-        # TODO: update midi mappings to MIDI_CC_MAPPING
-        for midi_cc in sound_info.find_all('SamplerSoundMidiCCMapping'.lower()): 
-            cc_number = int(midi_cc['ccNumber'.lower()])
-            parameter_name = midi_cc['parameterName'.lower()]
-            label = 'CC#{}->{}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
-            processed_sound_midi_cc_info_list_aux.append((label, {
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['minRange'.lower()]),
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['maxRange'.lower()]),
-                StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: int(midi_cc['uuid'.lower()]) ,
-            }))
-        # Sort by assignment random ID and then for label. In this way the sorting will be always consistent
-        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])
-        processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[0])
-        assignment_labels = [label for label, _ in processed_sound_midi_cc_info_list_aux]
-        added_labels_count = defaultdict(int)
-        for assignment_label, assignment_data in processed_sound_midi_cc_info_list_aux:
-            added_labels_count[assignment_label] += 1
-            if added_labels_count[assignment_label] > 1:
-                assignment_label = '{0} ({1})'.format(assignment_label, added_labels_count[assignment_label])
-            processed_sound_midi_cc_info[assignment_label] = assignment_data
-    '''
+# -- Sound parameters helpers
+
+def snap_to_value(x, value=0.5, margin=0.07):
+    if abs(x - value) < margin:
+        return value
+    return x
+
+def lin_to_exp(x):
+    sign = 1 if x >= 0 else -1
+    return sign * pow(x, 2)
+
+#  send_func (norm to val), get_func (val to val), parameter_label, value_label_template, set osc address
+sound_parameters_info_dict = {
+    "gain": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)) if x >= 0.5 else 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Gain", "{0:.2f}dB", "/set_sound_parameter"),
+    "pitch": (lambda x: 36.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Pitch", "{0:.2f}", "/set_sound_parameter"),
+    "reverse": (lambda x: int(round(x)), lambda x: ['Off', 'On'][int(x)], "Reverse", "{0}", "/set_sound_parameter_int"),
+    "launchMode": (lambda x: int(round(4 * x)), lambda x: ['Gate', 'Loop', 'Ping-pong', 'Trigger', 'Freeze'][int(x)], "Launch mode", "{0}", "/set_sound_parameter_int"),
+    "startPosition": (lambda x: x, lambda x: float(x), "Start pos", "{0:.4f}", "/set_sound_parameter"),
+    "endPosition": (lambda x: x, lambda x: float(x), "End pos", "{0:.4f}", "/set_sound_parameter"),
+    "loopStartPosition": (lambda x: x, lambda x: float(x), "Loop st pos", "{0:.4f}", "/set_sound_parameter"),
+    "loopEndPosition": (lambda x: x, lambda x: float(x), "Loop end pos", " {0:.4f}", "/set_sound_parameter"),
+    "attack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Attack", "{0:.2f}s", "/set_sound_parameter"),
+    "decay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Decay", "{0:.2f}s", "/set_sound_parameter"),
+    "sustain": (lambda x: x, lambda x: float(x), "Sustain", "{0:.2f}", "/set_sound_parameter"),
+    "release": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Release", "{0:.2f}s", "/set_sound_parameter"),
+    "filterCutoff": (lambda x: 10 + 20000 * lin_to_exp(x), lambda x: float(x), "Cutoff", "{0:.2f}Hz", "/set_sound_parameter"),
+    "filterRessonance": (lambda x: x, lambda x: float(x), "Resso", "{0:.2f}", "/set_sound_parameter"),
+    "filterKeyboardTracking": (lambda x: x, lambda x: float(x), "K.T.", "{0:.2f}", "/set_sound_parameter"),
+    "filterADSR2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Env amt", "{0:.0f}%", "/set_sound_parameter"),    
+    "filterAttack": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Attack", "{0:.2f}s", "/set_sound_parameter"),
+    "filterDecay": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Decay", "{0:.2f}s", "/set_sound_parameter"),
+    "filterSustain": (lambda x: x, lambda x: float(x), "Filter Sustain", "{0:.2f}", "/set_sound_parameter"),
+    "filterRelease": (lambda x: 20.0 * lin_to_exp(x), lambda x: float(x), "Filter Release", "{0:.2f}s", "/set_sound_parameter"),
+    "noteMappingMode": (lambda x: int(round(3 * x)), lambda x: ['Pitch', 'Slice', 'Both', 'Repeat'][int(x)], "Map mode", "{0}", "/set_sound_parameter_int"),
+    "numSlices": (lambda x: int(round(32.0 * x)), lambda x: (['Auto onsets', 'Auto notes']+[str(x) for x in range(2, 101)])[int(x)], "# slices", "{0}", "/set_sound_parameter_int"),
+    "playheadPosition": (lambda x: x, lambda x: float(x), "Playhead", "{0:.4f}", "/set_sound_parameter"),
+    "freezePlayheadSpeed": (lambda x: 1 + 4999 * lin_to_exp(x), lambda x: float(x), "Freeze speed", "{0:.1f}", "/set_sound_parameter"),
+    "pitchBendRangeUp": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend down", "{0:.1f}st", "/set_sound_parameter"),
+    "pitchBendRangeDown": (lambda x: 36.0 * x, lambda x: float(x), "P.Bend up", "{0:.1f}st", "/set_sound_parameter"),
+    "mod2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Mod2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
+    "mod2GainAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Gain", "{0:.1f}dB", "/set_sound_parameter"),
+    "mod2PitchAmt": (lambda x: 12.0 * lin_to_exp(2.0 * (snap_to_value(x) - 0.5)), lambda x: float(x), "Mod2Pitch", "{0:.2f}st", "/set_sound_parameter"),
+    "mod2PlayheadPos": (lambda x: x, lambda x: float(x), "Mod2PlayheadPos", "{0:.2f}", "/set_sound_parameter"),
+    "vel2CutoffAmt": (lambda x: 100.0 * x, lambda x: float(x), "Vel2Cutoff", "{0:.0f}%", "/set_sound_parameter"),
+    "vel2GainAmt": (lambda x: x, lambda x: int(100 * float(x)), "Vel2Gain", "{0}%", "/set_sound_parameter"),
+    "pan": (lambda x: 2.0 * (snap_to_value(x) - 0.5), lambda x: float(x), "Panning", "{0:.1f}", "/set_sound_parameter"),
+    "loopXFadeNSamples": (lambda x: 10 + int(round(lin_to_exp(x) * (100000 - 10))), lambda x: int(x), "Loop X fade len", "{0}", "/set_sound_parameter_int"),  
+    "midiChannel": (lambda x: int(round(16 * x)), lambda x: ['Global', "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"][int(x)], "MIDI channel", "{0}", "/set_sound_parameter_int"),
+}
 
 
 # -- UI helpers

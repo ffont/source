@@ -75,8 +75,11 @@ class SourceStateSynchronizer(object):
     verbose = False
     last_time_plugin_alive = 0
     volatile_state = {}
+    ui_state_manager = None
 
-    def __init__(self, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, verbose=True):
+    def __init__(self, ui_state_manager, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, verbose=True):
+        self.ui_state_manager = ui_state_manager
+        
         global sss_instance
         sss_instance = self
         
@@ -118,6 +121,7 @@ class SourceStateSynchronizer(object):
             print("Receiving full state with update id {}".format(update_id))
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
+        self.ui_state_manager.current_state.on_source_state_update()
 
         # Configure some stuff that requires the data paths to be known
         configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
@@ -203,10 +207,11 @@ class SourceStateSynchronizer(object):
                     if not self.full_state_requested:
                         self.request_full_state()
             
-
             # Check if update ID is correct and trigger request of full state if there are possible sync errors
             if self.last_update_id != -1 and self.last_update_id + 1 != update_id:
                 if not self.full_state_requested:
                     self.shoud_request_full_state = True
                     self.request_full_state()
             self.last_update_id = update_id
+
+            self.ui_state_manager.current_state.on_source_state_update()
