@@ -1,4 +1,3 @@
-import json
 import math
 import os
 import random
@@ -11,18 +10,17 @@ from scipy.io import wavfile
 from source_plugin_interface import SourcePluginInterface
 
 from freesound_api_key import FREESOUND_CLIENT_ID
-from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, find_random_sounds, logout_from_freesound, \
-    is_logged_in, get_crurrently_logged_in_user, get_user_bookmarks, bookmark_sound
-from helpers import justify_text, frame_from_lines, frame_from_start_animation, add_global_message_to_frame, START_ANIMATION_DURATION, \
-    translate_cc_license_url, StateNames, add_scroll_bar_to_frame, add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, \
-    DISPLAY_SIZE, add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, raw_assigned_notes_to_midi_assigned_notes, \
-    add_recent_query, add_recent_query_filter, get_recent_queries, sound_parameters_info_dict, \
-    get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt
+from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, \
+    find_random_sounds, logout_from_freesound, is_logged_in, get_crurrently_logged_in_user, get_user_bookmarks, \
+    bookmark_sound
+from helpers import justify_text, frame_from_lines, add_global_message_to_frame, StateNames, add_scroll_bar_to_frame, \
+    add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, \
+    add_midi_keyboard_and_extras_to_frame, add_text_input_to_frame, merge_dicts, \
+    raw_assigned_notes_to_midi_assigned_notes, add_recent_query, add_recent_query_filter, get_recent_queries, \
+    sound_parameters_info_dict, get_recent_query_filters, add_meter_to_frame, add_voice_grid_to_frame, \
+    get_filenames_in_dir, clear_moving_text_cache, sizeof_fmt
 
-try:
-    from elk_ui_custom import N_LEDS, N_FADERS
-except ModuleNotFoundError:
-    N_LEDS = 9
+from elk_bridge import N_LEDS
 
 ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav', 'aiff', 'mp3', 'flac']
 
@@ -176,7 +174,7 @@ predefined_queries = ['wind', 'rain', 'piano', 'explosion', 'music', 'whoosh', '
 predefined_queries = sorted(predefined_queries)
 
 
-class StateManager(object):
+class UIStateManager(object):
 
     state_stack = []
     global_message = ('', 0, 0)  # (text, starttime, duration)
@@ -2591,7 +2589,7 @@ class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
 
 
 
-state_manager = StateManager()
+state_manager = UIStateManager()
 sm = state_manager
 
 source_plugin_interface = SourcePluginInterface(sm)

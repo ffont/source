@@ -2,6 +2,8 @@ import asyncio
 import datetime
 import json
 import math
+import sys
+
 import numpy
 import os
 import time
@@ -10,9 +12,21 @@ import fnmatch
 import urllib
 
 from collections import deque
-from enum import Enum, auto
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
+
+# -- Various
+
+def get_platform():
+    if sys.platform == "linux" or sys.platform == "linux2":
+        platform = "ELK"
+    else:
+        platform = "desktop"
+    return platform
+
+
+def get_command_output(command):
+    return os.popen(command).read()[:-1]  # Remove last char which is always \n
 
 
 # -- Porcessed state names
