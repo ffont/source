@@ -46,6 +46,15 @@ public:
     int port = HTTP_SERVER_LISTEN_PORT;
     std::unique_ptr<ServerInterface> interface;
     
+    bool receivedRequestsRecently(){
+        if ((lastTimeRequestReceived > 0) && (juce::Time::getMillisecondCounterHiRes() - lastTimeRequestReceived > 5000)){
+            return false;
+        }
+        return true;
+    }
+    
+    double lastTimeRequestReceived = 0;
+    
 };
 
 class OSCServer: private OSCReceiver,
@@ -84,7 +93,7 @@ public:
     {
         #if ENABLE_EMBEDDED_HTTP_SERVER
         httpServer.setInterfacePointer(this);
-        httpServer.startThread(0); // Lowest priority
+        httpServer.startThread(10); // Max priority
         #endif
         
         #if ENABLE_OSC_SERVER
@@ -161,10 +170,6 @@ void HTTPServer::run()
     #endif
     
     // Some server configuration
-    // TODO: try if these parameters fix issues with server going down
-    //server.set_read_timeout(5, 0); // 5 seconds
-    //server.set_write_timeout(5, 0); // 5 seconds
-    //server.set_idle_interval(0, 100000); // 100 milliseconds
     
     File tmpFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
     auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
@@ -217,6 +222,10 @@ void HTTPServer::run()
     });
     
     server.Get("/update_state", [this](const httplib::Request &, httplib::Response &res) {
+        
+        lastTimeRequestReceived = juce::Time::getMillisecondCounterHiRes();
+        
+        //DBG("updating state from server UI " << juce::Time::getCurrentTime().formatted("%Y%m%d %M:%S") );
         if (interface != nullptr){
             res.set_content((interface->serializedAppState).toStdString(), "text/xml");
         } else {
@@ -243,18 +252,17 @@ void HTTPServer::run()
     // In ELK build there will allways going to be a single instance for the plugin, run it at a port known to be free
     server.bind_to_port("0.0.0.0", port);
     #endif
+    connected = true;
+    serverPtr.reset(&server);
     if (interface != nullptr){
         interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port));
     }
-    connected = true;
-    serverPtr.reset(&server);
     server.listen_after_bind();
 }
 
 
 void OSCServer::oscMessageReceived (const OSCMessage& message)
 {
-    //DBG("Received OSC message at address: " + message.getAddressPattern().toString());
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);
     }

@@ -1125,6 +1125,12 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
+    
+    // Check if http server is running
+    if (!serverInterface.httpServer.receivedRequestsRecently()){
+        DBG("No recent requests..." << juce::Time::getCurrentTime().formatted("%Y%m%d %M:%S"));
+    }
+    
     // Delete sounds that should be deleted
     //const ScopedLock sl (soundDeleteLock);
     for (int i=sounds->objects.size() - 1; i>=0 ; i--){
