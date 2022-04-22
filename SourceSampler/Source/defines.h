@@ -10,14 +10,17 @@
 
 #pragma once
 
+
+#define USE_WEBSOCKETS 1
+
 #if ELK_BUILD
     #define USE_EXTERNAL_HTTP_SERVER 1  // In ELK we don't use the embedded HTTP server but use the external one which runs in a separate process
-    #define ENABLE_EMBEDDED_HTTP_SERVER 0 // Don't use the embedded http server because we use the python one
+    #define USE_HTTP_SERVER 0 // Don't use the embedded http server because we use the python one
     #define ENABLE_OSC_SERVER 1  // In ELK we enable OSC interface as this is the way the external UI controls the plugin
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
     #define SYNC_STATE_WITH_OSC 1
 #else
-    #define ENABLE_EMBEDDED_HTTP_SERVER 1  // Enable embedded http server
+    #define USE_HTTP_SERVER 1  // Enable embedded http server
     #if JUCE_DEBUG
         #define ENABLE_OSC_SERVER 1 // In debug enable OSC server for testing purposes
         #define USE_EXTERNAL_HTTP_SERVER 1  // ...and also enable external HTTP server so we can test with the ELK blackboard simulator
@@ -44,6 +47,7 @@
 
 #define OSC_LISTEN_PORT 9001
 #define HTTP_SERVER_LISTEN_PORT 8124
+#define WEBSOCKETS_SERVER_PORT 8125
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 #define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
 
@@ -123,6 +127,7 @@
 #define USE_ORIGINAL_FILES_ALWAYS "always"
 
 #define SERIALIZATION_SEPARATOR ";"
+
 
 namespace Defaults
 {

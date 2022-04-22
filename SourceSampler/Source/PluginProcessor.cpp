@@ -1151,7 +1151,7 @@ void SourceSamplerAudioProcessor::timerCallback()
     #endif
     
     // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server    
-    #if ENABLE_EMBEDDED_HTTP_SERVER
+    #if USE_HTTP_SERVER
     //fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
     serverInterface.serializedAppState = state.toXmlString();
     juce::ValueTree volatileState = collectVolatileStateInformation();
@@ -1166,7 +1166,7 @@ void SourceSamplerAudioProcessor::timerCallback()
 
 int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 {
-    #if ENABLE_EMBEDDED_HTTP_SERVER
+    #if USE_HTTP_SERVER
     return serverInterface.httpServer.port;
     #else
     return 0;

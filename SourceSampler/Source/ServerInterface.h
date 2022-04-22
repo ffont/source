@@ -12,11 +12,101 @@
 
 #include <JuceHeader.h>
 #include "defines.h"
-#include "httplib.h"
 #include "BinaryData.h"
+#if USE_WEBSOCKETS
+#include "ws_server_certificate.hpp"
+#include <boost/beast/core.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/beast/websocket/ssl.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <cstdlib>
+#include <functional>
+#include <iostream>
+#include <string>
+#include <thread>
+namespace beast = boost::beast;         // from <boost/beast.hpp>
+namespace http = beast::http;           // from <boost/beast/http.hpp>
+namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
+namespace net = boost::asio;            // from <boost/asio.hpp>
+namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
+using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+#endif
+#if USE_HTTP_SERVER
+#include "httplib.h"
+#endif
 
 
-class ServerInterface;
+class ServerInterface;  // Forward delcaration
+
+
+#if USE_WEBSOCKETS
+
+void handle_ws_session(tcp::socket socket, ssl::context& ctx, ServerInterface* interfacePtr);  // Forward delcaration
+
+class WebSocketsServer: public Thread
+{
+public:
+   
+    WebSocketsServer(): Thread ("SourceWebsocketsServer")
+    {
+    }
+   
+    ~WebSocketsServer()
+    {
+    }
+    
+    void setInterfacePointer(ServerInterface* _interface){
+        interfacePtr = _interface;
+    }
+    
+    inline void run()
+    {
+        try
+        {
+            auto const address = net::ip::make_address("0.0.0.0");
+            auto const port = static_cast<unsigned short>(WEBSOCKETS_SERVER_PORT);
+
+            // The io_context is required for all I/O
+            net::io_context ioc{1};
+
+            // The SSL context is required, and holds certificates
+            ssl::context ctx{ssl::context::tlsv12};
+
+            // This holds the self-signed certificate used by the server
+            load_server_certificate(ctx);
+            
+            DBG("Starting websockets server, listening at 0.0.0.0, port " << port);
+
+            // The acceptor receives incoming connections
+            tcp::acceptor acceptor{ioc, {address, port}};
+            for(;;)
+            {
+                // This will receive the new connection
+                tcp::socket socket{ioc};
+
+                // Block until we get a connection
+                acceptor.accept(socket);
+
+                // Launch the session, transferring ownership of the socket
+                std::thread(
+                    &handle_ws_session,
+                    std::move(socket),
+                    std::ref(ctx),
+                    interfacePtr).detach();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            DBG("Error: " << e.what());
+        }
+    }
+    
+    ServerInterface* interfacePtr;
+    std::vector<websocket::stream<beast::ssl_stream<tcp::socket&>>*> wsSessions;
+};
+#endif
 
 
 class HTTPServer: public Thread
@@ -91,7 +181,7 @@ class ServerInterface: public ActionBroadcaster
 public:
     ServerInterface ()
     {
-        #if ENABLE_EMBEDDED_HTTP_SERVER
+        #if USE_HTTP_SERVER
         httpServer.setInterfacePointer(this);
         httpServer.startThread(10); // Max priority
         #endif
@@ -99,11 +189,16 @@ public:
         #if ENABLE_OSC_SERVER
         oscServer.setInterfacePointer(this);
         #endif
+        
+        #if USE_WEBSOCKETS
+        wsServer.setInterfacePointer(this);
+        wsServer.startThread(0);
+        #endif
     }
     
     ~ServerInterface ()
     {
-        #if ENABLE_EMBEDDED_HTTP_SERVER
+        #if USE_HTTP_SERVER
         httpServer.interface.release();
         if (httpServer.serverPtr != nullptr){
             httpServer.serverPtr->stop();
@@ -114,10 +209,39 @@ public:
         #if ENABLE_OSC_SERVER
         oscServer.interface.release();
         #endif
+        
+        #if USE_WEBSOCKETS
+        //wsServer.interface.release();
+        // wsServer run some beast stop methods?
+        wsServer.stopThread(5000);  // Give it enough time to stop the websockets server...
+        #endif
     }
     
     void log(String message){
         DBG(message);
+    }
+    
+    void addWsSession(websocket::stream<beast::ssl_stream<tcp::socket&>>* s){
+        const juce::ScopedLock sl (wsSessionAddRemoveLock);
+        wsServer.wsSessions.push_back(s);
+        DBG("Active WS sessions: " << (juce::String)wsServer.wsSessions.size());
+    }
+    
+    void removeWsSession(websocket::stream<beast::ssl_stream<tcp::socket&>>* s){
+        const juce::ScopedLock sl (wsSessionAddRemoveLock);
+        int position = -1;
+        for (int i=0; i<wsServer.wsSessions.size(); i++){
+            if (wsServer.wsSessions[i] == s){
+                position = i;
+            }
+        }
+        if (position > -1){
+            wsServer.wsSessions.erase(wsServer.wsSessions.begin() + position);
+            DBG("Session " << position << " removed");
+        } else {
+            DBG("No session to remove");
+        }
+        DBG("Active WS sessions: " << (juce::String)wsServer.wsSessions.size());
     }
         
     void processActionFromOSCMessage (const OSCMessage& message)
@@ -139,11 +263,15 @@ public:
         sendActionMessage(actionMessage);
     }
     
-    #if ENABLE_EMBEDDED_HTTP_SERVER
+    #if USE_HTTP_SERVER
     HTTPServer httpServer;
     #endif
     #if ENABLE_OSC_SERVER
     OSCServer oscServer;
+    #endif
+    #if USE_WEBSOCKETS
+    WebSocketsServer wsServer;
+    juce::CriticalSection wsSessionAddRemoveLock;
     #endif
     String serializedAppState;
     String serializedAppStateVolatile;
@@ -259,6 +387,66 @@ void HTTPServer::run()
     }
     server.listen_after_bind();
 }
+
+#if USE_WEBSOCKETS
+inline void handle_ws_session(tcp::socket socket, ssl::context& ctx, ServerInterface* interfacePtr)
+{
+    
+    websocket::stream<beast::ssl_stream<tcp::socket&>> ws{socket, ctx};
+    interfacePtr->addWsSession(&ws);
+    
+    try
+    {
+        DBG("Starting websockets session");
+        
+        // Construct the websocket stream around the socket
+        //websocket::stream<beast::ssl_stream<tcp::socket&>> ws{socket, ctx};
+        //interfacePtr->addWsSession(&ws);
+
+        // Perform the SSL handshake
+        ws.next_layer().handshake(ssl::stream_base::server);
+
+        // Set a decorator to change the Server of the handshake
+        ws.set_option(websocket::stream_base::decorator(
+            [](websocket::response_type& res)
+            {
+                res.set(http::field::server,
+                    std::string(BOOST_BEAST_VERSION_STRING) +
+                        " websocket-server-sync-ssl");
+            }));
+
+        // Accept the websocket handshake
+        ws.accept();
+
+        for(;;)
+        {
+            // This buffer will hold the incoming message
+            beast::flat_buffer buffer;
+
+            // Read a message
+            ws.read(buffer);
+
+            // Echo the message back
+            ws.text(ws.got_text());
+            ws.write(buffer.data());
+            OSCMessage message = OSCMessage("/test");
+            message.addInt32(1);
+            interfacePtr->processActionFromOSCMessage(message);
+        }
+    }
+    catch(beast::system_error const& se)
+    {
+        // This indicates that the session was closed
+        if(se.code() != websocket::error::closed)
+            std::cerr << "Error: " << se.code().message() << std::endl;
+    }
+    catch(std::exception const& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    interfacePtr->removeWsSession(&ws);
+}
+#endif
 
 
 void OSCServer::oscMessageReceived (const OSCMessage& message)
