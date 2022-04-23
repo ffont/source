@@ -30,7 +30,7 @@
  * \brief	Defines an alias representing a response for a request 
  */
 
-typedef std::pair<int, var> Response;
+typedef std::pair<int, juce::var> Response;
 
 /**
  * \typedef	std::function<void()> Callback
@@ -57,11 +57,11 @@ protected:
 	/** \brief	Total number of results returned from the FS response */
 	int count;
 	/** \brief	URL for accessing the next page of results */
-	String nextPage;
+    juce::String nextPage;
 	/** \brief	URL for accessing the previous page of results */
-	String previousPage;
+    juce::String previousPage;
 	/** \brief	var variable containing the results of the page */
-	var results;
+    juce::var results;
 public:
 
 	/**
@@ -88,7 +88,7 @@ public:
 	 * \param	response	The response from a FS API call which returns a list.
 	 */
 
-	FSList(var response);
+	FSList(juce::var response);
 
 	/**
 	 * \fn	String FSList::getNextPage();
@@ -101,7 +101,7 @@ public:
 	 * \returns	The next page URL.
 	 */
 
-	String getNextPage();
+    juce::String getNextPage();
 
 	/**
 	 * \fn	String FSList::getPreviousPage();
@@ -114,7 +114,7 @@ public:
 	 * \returns	The previous page URL.
 	 */
 
-	String getPreviousPage();
+    juce::String getPreviousPage();
 
 	/**
 	 * \fn	var FSList::getResults();
@@ -127,7 +127,7 @@ public:
 	 * \returns	The results of the current page.
 	 */
 
-	var getResults();
+    juce::var getResults();
 
 	/**
 	 * \fn	int FSList::getCount();
@@ -159,67 +159,67 @@ class URIS {
 public:
 
 	/** \brief	Freesound website */
-	static String HOST;
+	static juce::String HOST;
 	/** \brief	The base URL for the requests*/
-	static String BASE;
+	static juce::String BASE;
 	/** \brief	The text search resource*/
-	static String TEXT_SEARCH;
+	static juce::String TEXT_SEARCH;
 	/** \brief	The content search resource*/
-	static String CONTENT_SEARCH;
+	static juce::String CONTENT_SEARCH;
 	/** \brief	The combined search resource, not implemented*/
-	static String COMBINED_SEARCH;
+	static juce::String COMBINED_SEARCH;
 	/** \brief	The sound instance resource*/
-	static String SOUND;
+	static juce::String SOUND;
 	/** \brief	The sound analysis resource */
-	static String SOUND_ANALYSIS;
+	static juce::String SOUND_ANALYSIS;
 	/** \brief	The similar sounds resource */
-	static String SIMILAR_SOUNDS;
+	static juce::String SIMILAR_SOUNDS;
 	/** \brief	The sound comments resource*/
-	static String COMMENTS;
+	static juce::String COMMENTS;
 	/** \brief	The download sound resource*/
-	static String DOWNLOAD;
+	static juce::String DOWNLOAD;
 	/** \brief	The upload sound resource*/
-	static String UPLOAD;
+	static juce::String UPLOAD;
 	/** \brief	The describe sound resource*/
-	static String DESCRIBE;
+	static juce::String DESCRIBE;
 	/** \brief	The pending uploads resource*/
-	static String PENDING;
+	static juce::String PENDING;
 	/** \brief	The bookmark sound resource*/
-	static String BOOKMARK;
+	static juce::String BOOKMARK;
 	/** \brief	The rate sound resource*/
-	static String RATE;
+	static juce::String RATE;
 	/** \brief	The comment sound resource*/
-	static String COMMENT;
+	static juce::String COMMENT;
 	/** \brief	The authorization resource */
-	static String AUTHORIZE;
+	static juce::String AUTHORIZE;
 	/** \brief	The logout resource*/
-	static String LOGOUT;
+	static juce::String LOGOUT;
 	/** \brief	The logout and authorize resource*/
-	static String LOGOUT_AUTHORIZE;
+	static juce::String LOGOUT_AUTHORIZE;
 	/** \brief	The get access token resource*/
-	static String ACCESS_TOKEN;
+	static juce::String ACCESS_TOKEN;
 	/** \brief	The me resource*/
-	static String ME;
+	static juce::String ME;
 	/** \brief	The user instance resource*/
-	static String USER;
+	static juce::String USER;
 	/** \brief	The get user sounds resource*/
-	static String USER_SOUNDS;
+	static juce::String USER_SOUNDS;
 	/** \brief	The get user packs resource*/
-	static String USER_PACKS;
+	static juce::String USER_PACKS;
 	/** \brief	The get user bookmark categories resources*/
-	static String USER_BOOKMARK_CATEGORIES;
+	static juce::String USER_BOOKMARK_CATEGORIES;
 	/** \brief	The user bookmark category sounds resources*/
-	static String USER_BOOKMARK_CATEGORY_SOUNDS;
+	static juce::String USER_BOOKMARK_CATEGORY_SOUNDS;
 	/** \brief	The get pack instance resource*/
-	static String PACK;
+	static juce::String PACK;
 	/** \brief	The pack sounds */
-	static String PACK_SOUNDS;
+	static juce::String PACK_SOUNDS;
 	/** \brief	The pack download resource*/
-	static String PACK_DOWNLOAD;
+	static juce::String PACK_DOWNLOAD;
 	/** \brief	The confirmation URL*/
-	static String CONFIRMATION;
+	static juce::String CONFIRMATION;
 	/** \brief	The edit sound resource*/
-	static String EDIT;
+	static juce::String EDIT;
 
 	/**
 	 * \fn	URIS::URIS()
@@ -260,7 +260,7 @@ public:
 	 * \returns	The URL for the request.
 	 */
 
-	static URL uri(String uri, StringArray replacements = StringArray());
+	static juce::URL uri(juce::String uri, juce::StringArray replacements = juce::StringArray());
 };
 
 /**
@@ -276,34 +276,34 @@ class FSUser {
 
 public:
 	/** \brief	The URL of the user profile in Freesound*/
-	URL profile;
+    juce::URL profile;
 	/** \brief	The username */
-	String username;
+    juce::String username;
 	/** \brief	The ‘about’ text of users’ profile (if indicated)*/
-	String about;
+    juce::String about;
 	/** \brief	The URI of users’ homepage outside Freesound (if indicated)*/
-	URL homepage;
+    juce::URL homepage;
 	/** \brief	Dictionary including the URIs for the avatar of the user. 
 				The avatar is presented in three sizes Small, Medium and Large, which 
 				correspond to the three fields in the dictionary. 
 				If user has no avatar, this field is null.*/
-	var avatar;
+    juce::var avatar;
 	/** \brief	The date when the user joined Freesound */
-	String dateJoined;
+    juce::String dateJoined;
 	/** \brief	Number of sounds uploaded by the user*/
 	int numSounds;
 	/** \brief	The URI for a list of sounds by the user*/
-	URL sounds;
+    juce::URL sounds;
 	/** \brief	The number of packs by the user*/
 	int numPacks;
 	/** \brief	The URI for a list of packs by the user*/
-	URL packs;
+    juce::URL packs;
 	/** \brief	The number of forum posts by the user */
 	int numPosts;
 	/** \brief	The number of comments that user made in other users’ sounds*/
 	int numComments;   
 	/** \brief	The URI for a list of bookmark categories by the user*/
-	URL bookmarks;
+    juce::URL bookmarks;
 
 	/**
 	 * \fn	FSUser::FSUser();
@@ -327,7 +327,7 @@ public:
 	 * \param	user	The response of a user instance request.
 	 */
 
-	FSUser(var user);
+	FSUser(juce::var user);
 };
 
 /**
@@ -343,21 +343,21 @@ class FSPack {
 
 public:
 	/** \brief	The unique identifier of this pack*/
-	String id;
+    juce::String id;
 	/** \brief	The URI for this pack on the Freesound website*/
-	URL url;
+    juce::URL url;
 	/** \brief	The URI for this pack on the Freesound website */
-	String description;
+    juce::String description;
 	/** \brief	The date when the pack was created */
-	String created;
+    juce::String created;
 	/** \brief	The name user gave to the pack */
-	String name;
+    juce::String name;
 	/** \brief	Username of the creator of the pack */
-	String username;
+    juce::String username;
 	/** \brief	The number of sounds in the pack */
 	int numSounds;
 	/** \brief	The URI for a list of sounds in the pack */
-	URL sounds;
+    juce::URL sounds;
 	/** \brief	The number of times this pack has been downloaded */
 	int numDownloads;
 
@@ -383,7 +383,7 @@ public:
 	 * \param	pack	 The response of a pack instance request.
 	 */
 
-	FSPack(var pack);
+	FSPack(juce::var pack);
 
 	/**
 	 * \fn	String FSPack::getID();
@@ -396,7 +396,7 @@ public:
 	 * \returns The unique identifier of this pack.
 	 */
 
-	String getID();
+    juce::String getID();
 };
 
 /**
@@ -411,23 +411,23 @@ public:
 class FSSound {
 public:
 	/** \brief	The sound’s unique identifier */
-	String id;
+    juce::String id;
 	/** \brief	The URI for this sound on the Freesound website*/
-	URL url;
+    juce::URL url;
 	/** \brief	The name user gave to the sound*/
-	String name;
+    juce::String name;
 	/** \brief	An array of tags the user gave to the sound */
-	StringArray tags;
+    juce::StringArray tags;
 	/** \brief	The description the user gave to the sound*/
-	String description;
+    juce::String description;
 	/** \brief	Latitude and longitude of the geotag separated by spaces */
-	String geotag;
+    juce::String geotag;
 	/** \brief	The date when the sound was uploaded */
-	String created;
+    juce::String created;
 	/** \brief	The license under which the sound is available */
-	String license;
+    juce::String license;
 	/** \brief	The type of sound (wav, aif, aiff, mp3, m4a or flac) */
-	String format;
+    juce::String format;
 	/** \brief	The number of channels */
 	int channels;
 	/** \brief	The size of the file in bytes */
@@ -441,17 +441,17 @@ public:
 	/** \brief	The samplerate of the sound */
 	int samplerate;
 	/** \brief	The username of the uploader of the sound */
-	String user;
+    juce::String user;
 	/** \brief	If the sound is part of a pack, this URI points to that pack’s API resource */
-	URL pack;
+    juce::URL pack;
 	/** \brief	The URI for retrieving the original sound */
-	URL download;
+    juce::URL download;
 	/** \brief	The URI for bookmarking the sound */
-	URL bookmark;
+    juce::URL bookmark;
 	/** \brief	Dictionary containing the URIs for mp3 and ogg versions of the sound */
-	var previews;
+    juce::var previews;
 	/** \brief	Dictionary including the URIs for spectrogram and waveform visualizations of the sound */
-	var images;
+    juce::var images;
 	/** \brief	The number of times the sound was downloaded */
 	int numDownloads;
 	/** \brief	The average rating of the sound */
@@ -459,24 +459,24 @@ public:
 	/** \brief	The number of times the sound was rated */
 	int numRatings;
 	/** \brief	The URI for rating the sound */
-	URL rate;
+    juce::URL rate;
 	/** \brief	The URI of a paginated list of the comments of the sound */
-	URL comments;
+    juce::URL comments;
 	/** \brief	The number of comments */
 	int numComments;
 	/** \brief	The URI to comment the sound*/
-	URL comment;
+    juce::URL comment;
 	/** \brief	URI pointing to the similarity resource (to get a list of similar sounds) */
-	URL similarSounds;
+    juce::URL similarSounds;
 	/** \brief	Dictionary containing requested descriptors information according to the 
 				descriptors request parameter */
-	var analysis;
+    juce::var analysis;
 	/** \brief	URI pointing to the complete analysis results of the sound */
-	URL analysisStats;
+    juce::URL analysisStats;
 	/** \brief	The URI for retrieving a JSON file with analysis information for each frame of the sound */
-	URL analysisFrames;
+    juce::URL analysisFrames;
 	/** \brief	Dictionary containing the results of the AudioCommons analysis for the given sound */
-	var acAnalysis;
+    juce::var acAnalysis;
 
 	/**
 	 * \fn	FSSound::FSSound();
@@ -500,7 +500,7 @@ public:
 	 * \param	sound	The response of a sound instance request
 	 */
 
-	FSSound(var sound);
+	FSSound(juce::var sound);
 
 	/**
 	 * \fn	URL FSSound::getDownload();
@@ -513,7 +513,7 @@ public:
 	 * \returns	The sound download URL.
 	 */
 
-	URL getDownload();
+    juce::URL getDownload();
     
     /**
      * \fn    URL FSSound::getOGGPreviewURL();
@@ -526,9 +526,9 @@ public:
      * \returns    The OGG preview URL.
      */
     
-    URL getOGGPreviewURL();
+    juce::URL getOGGPreviewURL();
 
-	URL getMP3PreviewURL();
+    juce::URL getMP3PreviewURL();
 
 };
 
@@ -557,7 +557,7 @@ public:
 	 * \returns	A copy of this object as an array of FSSound;
 	 */
 
-	Array<FSSound> toArrayOfSounds();
+    juce::Array<FSSound> toArrayOfSounds();
 };
 
 /**
@@ -588,17 +588,17 @@ private:
 	};
 
 	/** \brief	Client secret/Api key */
-	String token;
+    juce::String token;
 	/** \brief	Client id of your API credential */
-	String clientID;
+    juce::String clientID;
 	/** \brief	The client secret */
-	String clientSecret;
+    juce::String clientSecret;
 	/** \brief	The access token */
-	String accessToken;
+    juce::String accessToken;
 	/** \brief	The refresh token */
-	String refreshToken;
+    juce::String refreshToken;
 	/** \brief	The header for all the requests*/
-	String header;
+    juce::String header;
 	/** \brief	The authentication type*/
 	Authorization auth;
 
@@ -628,7 +628,7 @@ public:
 	 * \param	secret	The client secret.
 	 */
 
-	FreesoundClient(String secret);
+	FreesoundClient(juce::String secret);
 
 	/**
 	 * \fn	FreesoundClient::FreesoundClient(String id, String secret);
@@ -642,7 +642,7 @@ public:
 	 * \param	secret	The client secret.
 	 */
 
-	FreesoundClient(String id, String secret);
+	FreesoundClient(juce::String id, juce::String secret);
 
 	/**
 	 * \fn	void FreesoundClient::authenticationOnBrowser(int mode=0, Callback cb = [] {});
@@ -671,7 +671,7 @@ public:
 	 * \param	cb			(Optional) The callback function called in the end of the function.
 	 */
 
-	void exchangeToken(String authCode, Callback cb = [] {});
+	void exchangeToken(juce::String authCode, Callback cb = [] {});
 
 	/**
 	 * \fn	void FreesoundClient::refreshAccessToken(Callback cb = [] {});
@@ -708,7 +708,7 @@ public:
 	 * \returns	A SoundList with the text search results.
 	 */
 
-	SoundList textSearch(String query, String filter=String(), String sort="score", int groupByPack=0, int page=-1, int pageSize=-1, String fields = String(), String descriptors = String(), int normalized=0);
+	SoundList textSearch(juce::String query, juce::String filter=juce::String(), juce::String sort="score", int groupByPack=0, int page=-1, int pageSize=-1, juce::String fields = juce::String(), juce::String descriptors = juce::String(), int normalized=0);
 
 	/**
 	 * \fn	SoundList FreesoundClient::contentSearch(String target, String descriptorsFilter=String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
@@ -729,7 +729,7 @@ public:
 	 * \returns	A SoundList with the content search results.
 	 */
 
-	SoundList contentSearch(String target, String descriptorsFilter=String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
+	SoundList contentSearch(juce::String target, juce::String descriptorsFilter=juce::String(), int page = -1, int pageSize = -1, juce::String fields = juce::String(), juce::String descriptors = juce::String(), int normalized = 0);
 
 	/**
 	 * \fn	FSList FreesoundClient::fetchNextPage(FSList fslist);
@@ -804,7 +804,7 @@ public:
 	 * \returns	A FSSound instance.
 	 */
 
-	FSSound getSound(String id, String fields = String());
+	FSSound getSound(juce::String id, juce::String fields = juce::String());
 
 	/**
 	 * \fn	var FreesoundClient::getSoundAnalysis(String id, String descriptors = String(), int normalized = 0);
@@ -821,7 +821,7 @@ public:
 	 * \returns	A var dictionary containing the results of the analysis
 	 */
 
-	var getSoundAnalysis(String id, String descriptors = String(), int normalized = 0);
+    juce::var getSoundAnalysis(juce::String id, juce::String descriptors = juce::String(), int normalized = 0);
 
 	/**
 	 * \fn	SoundList FreesoundClient::getSimilarSounds(String id, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
@@ -842,7 +842,7 @@ public:
 	 * \returns	A SoundList with the sounds similar to a target.
 	 */
 
-	SoundList getSimilarSounds(String id, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
+	SoundList getSimilarSounds(juce::String id, juce::String descriptorsFilter = juce::String(), int page = -1, int pageSize = -1, juce::String fields = juce::String(), juce::String descriptors = juce::String(), int normalized = 0);
 
 	/**
 	 * \fn	std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadSound(FSSound sound, const File &location, URL::DownloadTask::Listener * listener = nullptr);
@@ -859,7 +859,7 @@ public:
 	 * \returns	Null if it fails, else a pointer to an URL::DownloadTask.
 	 */
 
-	std::unique_ptr<URL::DownloadTask> downloadSound(FSSound sound, const File &location, URL::DownloadTask::Listener * listener = nullptr);
+	std::unique_ptr<juce::URL::DownloadTask> downloadSound(FSSound sound, const juce::File &location, juce::URL::DownloadTask::Listener * listener = nullptr);
     
     /**
      * \fn    std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadOGGSoundPreview(FSSound sound, const File &location, URL::DownloadTask::Listener * listener = nullptr);
@@ -876,9 +876,9 @@ public:
      * \returns    Null if it fails, else a pointer to an URL::DownloadTask.
      */
     
-    std::unique_ptr<URL::DownloadTask> downloadOGGSoundPreview(FSSound sound, const File &location, URL::DownloadTask::Listener * listener = nullptr);
+    std::unique_ptr<juce::URL::DownloadTask> downloadOGGSoundPreview(FSSound sound, const juce::File &location, juce::URL::DownloadTask::Listener * listener = nullptr);
 
-	std::unique_ptr<URL::DownloadTask> downloadMP3SoundPreview(FSSound sound, const File &location, URL::DownloadTask::Listener * listener = nullptr);
+	std::unique_ptr<juce::URL::DownloadTask> downloadMP3SoundPreview(FSSound sound, const juce::File &location, juce::URL::DownloadTask::Listener * listener = nullptr);
 
 
 	/**
@@ -901,7 +901,7 @@ public:
 	 * \returns	The id of the uploaded sound.
 	 */
 
-	int uploadSound(const File &fileToUpload, String tags, String description, String name = String(), String license = "Creative Commons 0", String pack = String(), String geotag = String(), Callback cb = [] {});
+	int uploadSound(const juce::File &fileToUpload, juce::String tags, juce::String description, juce::String name = juce::String(), juce::String license = "Creative Commons 0", juce::String pack = juce::String(), juce::String geotag = juce::String(), Callback cb = [] {});
 
 	/**
 	 * \fn	int FreesoundClient::describeSound(String uploadFilename, String description, String license, String name = String(), String tags = String(), String pack = String(), String geotag = String() );
@@ -922,7 +922,7 @@ public:
 	 * \returns	An int.
 	 */
 
-	int describeSound(String uploadFilename, String description, String license, String name = String(), String tags = String(), String pack = String(), String geotag = String() );
+	int describeSound(juce::String uploadFilename, juce::String description, juce::String license, juce::String name = juce::String(), juce::String tags = juce::String(), juce::String pack = juce::String(), juce::String geotag = juce::String() );
 
 	/**
 	 * \fn	var FreesoundClient::pendingUploads();
@@ -935,7 +935,7 @@ public:
 	 * \returns	A dictionary with a list of audio files uploaded by the Freesound user.
 	 */
 
-	var pendingUploads();
+    juce::var pendingUploads();
 
 	/**
 	 * \fn	void FreesoundClient::editSoundDescription(String id, String name = String(), String tags = String(), String description = String(), String license = String(), String pack = String(), String geotag = String(), Callback cb = [] {});
@@ -955,7 +955,7 @@ public:
 	 * \param	cb		   	(Optional) The callback function called in the end of the function.
 	 */
 
-	void editSoundDescription(String id, String name = String(), String tags = String(), String description = String(), String license = String(), String pack = String(), String geotag = String(), Callback cb = [] {});
+	void editSoundDescription(juce::String id, juce::String name = juce::String(), juce::String tags = juce::String(), juce::String description = juce::String(), juce::String license = juce::String(), juce::String pack = juce::String(), juce::String geotag = juce::String(), Callback cb = [] {});
 
 	/**
 	 * \fn	void FreesoundClient::bookmarkSound(String id, String name = String(), String category = String(), Callback cb = [] {});
@@ -971,7 +971,7 @@ public:
 	 * \param	cb			(Optional) The callback function called in the end of the function.
 	 */
 
-	void bookmarkSound(String id, String name = String(), String category = String(), Callback cb = [] {});
+	void bookmarkSound(juce::String id, juce::String name = juce::String(), juce::String category = juce::String(), Callback cb = [] {});
 
 	/**
 	 * \fn	void FreesoundClient::rateSound(String id, int rating, Callback cb = [] {});
@@ -986,7 +986,7 @@ public:
 	 * \param	cb	  	(Optional) The callback function called in the end of the function.
 	 */
 
-	void rateSound(String id, int rating, Callback cb = [] {});
+	void rateSound(juce::String id, int rating, Callback cb = [] {});
 
 	/**
 	 * \fn	void FreesoundClient::commentSound(String id, String comment, Callback cb = [] {});
@@ -1001,7 +1001,7 @@ public:
 	 * \param	cb	   	(Optional) The callback function called in the end of the function.
 	 */
 
-	void commentSound(String id, String comment, Callback cb = [] {});
+	void commentSound(juce::String id, juce::String comment, Callback cb = [] {});
 
 	/**
 	 * \fn	FSUser FreesoundClient::getUser(String user);
@@ -1016,7 +1016,7 @@ public:
 	 * \returns	A FSUser instance of the user requested.
 	 */
 
-	FSUser getUser(String user);
+	FSUser getUser(juce::String user);
 
 	/**
 	 * \fn	SoundList FreesoundClient::getUserSounds(String username, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
@@ -1037,7 +1037,7 @@ public:
 	 * \returns	A SoundList with the user sounds.
 	 */
 
-	SoundList getUserSounds(String username, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
+	SoundList getUserSounds(juce::String username, juce::String descriptorsFilter = juce::String(), int page = -1, int pageSize = -1, juce::String fields = juce::String(), juce::String descriptors = juce::String(), int normalized = 0);
 
 	/**
 	 * \fn	FSList FreesoundClient::getUserBookmarkCategories(String username);
@@ -1052,7 +1052,7 @@ public:
 	 * \returns	A FSList with the user bookmark categories.
 	 */
 
-	FSList getUserBookmarkCategories(String username);
+	FSList getUserBookmarkCategories(juce::String username);
 
 	/**
 	 * \fn	FSList FreesoundClient::getUserBookmarkCategoriesSounds(String username, String bookmarkCategory);
@@ -1068,7 +1068,7 @@ public:
 	 * \returns	A FSList with the user bookmark categories sounds.
 	 */
 
-	FSList getUserBookmarkCategoriesSounds(String username, String bookmarkCategory);
+	FSList getUserBookmarkCategoriesSounds(juce::String username, juce::String bookmarkCategory);
 
 	/**
 	 * \fn	FSList FreesoundClient::getUserPacks(String username);
@@ -1083,7 +1083,7 @@ public:
 	 * \returns	A FSList with the user packs.
 	 */
 
-	FSList getUserPacks(String username);
+	FSList getUserPacks(juce::String username);
 
 	/**
 	 * \fn	FSPack FreesoundClient::getPack(String id);
@@ -1098,7 +1098,7 @@ public:
 	 * \returns	A FSList with the user packs.
 	 */
 
-	FSPack getPack(String id);
+	FSPack getPack(juce::String id);
 
 	/**
 	 * \fn	SoundList FreesoundClient::getPackSounds(String id, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
@@ -1119,7 +1119,7 @@ public:
 	 * \returns	A FSPack instance of the desired pack
 	 */
 
-	SoundList getPackSounds(String id, String descriptorsFilter = String(), int page = -1, int pageSize = -1, String fields = String(), String descriptors = String(), int normalized = 0);
+	SoundList getPackSounds(juce::String id, juce::String descriptorsFilter = juce::String(), int page = -1, int pageSize = -1, juce::String fields = juce::String(), juce::String descriptors = juce::String(), int normalized = 0);
 
 	/**
 	 * \fn	std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadPack(FSPack pack, const File &location, URL::DownloadTask::Listener * listener = nullptr);
@@ -1136,7 +1136,7 @@ public:
 	 * \returns	Null if it fails, else a pointer to the URL::DownloadTask.
 	 */
 
-	std::unique_ptr<URL::DownloadTask> downloadPack(FSPack pack, const File &location, URL::DownloadTask::Listener * listener = nullptr);
+	std::unique_ptr<juce::URL::DownloadTask> downloadPack(FSPack pack, const juce::File &location, juce::URL::DownloadTask::Listener * listener = nullptr);
 
 	/**
 	 * \fn	FSUser FreesoundClient::getMe();
@@ -1175,7 +1175,7 @@ public:
 	 * \returns	The authentication token.
 	 */
 
-	String getToken();
+	juce::String getToken();
 
 	/**
 	 * \fn	String FreesoundClient::getHeader();
@@ -1188,7 +1188,7 @@ public:
 	 * \returns	The authentication header.
 	 */
 
-	String getHeader();
+	juce::String getHeader();
 
 	/**
 	 * \fn	String FreesoundClient::getClientID();
@@ -1201,7 +1201,7 @@ public:
 	 * \returns	The client identifier.
 	 */
 
-	String getClientID();
+	juce::String getClientID();
 
 
 };
@@ -1222,7 +1222,7 @@ public:
 	 * \param	clientToUse 	The FSClient to use.
 	 */
 
-	FSRequest(URL uriToRequest, FreesoundClient clientToUse)
+	FSRequest(juce::URL uriToRequest, FreesoundClient clientToUse)
 		:client(clientToUse),
 		uri(uriToRequest)
 	{}
@@ -1242,11 +1242,11 @@ public:
 	 * \returns The response for the request.
 	 */
 
-	Response request(StringPairArray params = StringPairArray(), String data = String(), bool postLikeRequest = true);
+	Response request(juce::StringPairArray params = juce::StringPairArray(), juce::String data = juce::String(), bool postLikeRequest = true);
 
 private:
 	/** \brief	The URI of the rrequest */
-	URL uri;
+    juce::URL uri;
 	/** \brief	The client used*/
 	FreesoundClient& client;
 };

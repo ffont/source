@@ -16,7 +16,7 @@ SourceSamplerSynthesiser::SourceSamplerSynthesiser()
     setSamplerVoices(maxNumVoices);
     
     // Configure effects chain
-    Reverb::Parameters reverbParameters;
+    juce::Reverb::Parameters reverbParameters;
     reverbParameters.roomSize = 0.5f;
     reverbParameters.damping = 0.5f;
     reverbParameters.wetLevel = 0.0f;
@@ -31,7 +31,7 @@ void SourceSamplerSynthesiser::setSamplerVoices(int nVoices)
 {
     // Clear existing voices and re-create new ones
     clearVoices();
-    for (auto i = 0; i < jmin(maxNumVoices, nVoices); ++i)
+    for (auto i = 0; i < juce::jmin(maxNumVoices, nVoices); ++i)
         addVoice (new SourceSamplerVoice);
     
     // Prepare newly created voices if processing specs are given (re-prepare voices)
@@ -71,7 +71,7 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
              const int midiNoteNumber,
              const float velocity)
 {
-    const ScopedLock sl (lock);
+    const juce::ScopedLock sl (lock);
     for (auto* sound : sounds)
     {
         if (sound->appliesToNote (midiNoteNumber) && sound->appliesToChannel (midiChannel))
@@ -91,7 +91,7 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
     }
 }
 
-void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
+void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
 {
     const int channel = m.getChannel();
     
@@ -152,7 +152,7 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
                     std::vector<MidiCCMapping*> mappings = sound->getSourceSound()->getMidiMappingsForCcNumber(number);
                     for (int i=0; i<mappings.size(); i++){
                         float normInputValue = (float)value/127.0;  // This goes from 0 to 1
-                        float value = jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
+                        float value = juce::jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
                         sound->getSourceSound()->setParameterByNameFloat(mappings[i]->parameterName.get(), value, true);
                     }
                 }
@@ -162,12 +162,12 @@ void SourceSamplerSynthesiser::handleMidiEvent (const MidiMessage& m)
     else if (m.isProgramChange())
     {
         int index = m.getProgramChangeNumber();  // Preset index, this is 0-based so MIDI value 0 will be also 0 here
-        String actionMessage = String(ACTION_LOAD_PRESET) + ":" + (String)index;
+        juce::String actionMessage = juce::String(ACTION_LOAD_PRESET) + ":" + (juce::String)index;
         sendActionMessage(actionMessage);
     }
 }
 
-void SourceSamplerSynthesiser::renderVoices (AudioBuffer< float > &outputAudio, int startSample, int numSamples)
+void SourceSamplerSynthesiser::renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples)
 {
     Synthesiser::renderVoices (outputAudio, startSample, numSamples);
     auto block = juce::dsp::AudioBlock<float> (outputAudio);
@@ -178,7 +178,7 @@ void SourceSamplerSynthesiser::renderVoices (AudioBuffer< float > &outputAudio, 
 
 //==============================================================================
 
-void SourceSamplerSynthesiser::setReverbParameters (Reverb::Parameters params) {
+void SourceSamplerSynthesiser::setReverbParameters (juce::Reverb::Parameters params) {
     auto& reverb = fxChain.get<reverbIndex>();
     reverb.setParameters(params);
 }

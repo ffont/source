@@ -23,10 +23,10 @@ struct GlobalContextStruct {
     int midiInChannel = 0;
     juce::Synthesiser* sampler = nullptr;
     juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
-    File sourceDataLocation;
-    File soundsDownloadLocation;
-    File presetFilesLocation;
-    File tmpFilesLocation;
+    juce::File sourceDataLocation;
+    juce::File soundsDownloadLocation;
+    juce::File presetFilesLocation;
+    juce::File tmpFilesLocation;
     juce::String freesoundOauthAccessToken = "";
 };
 
@@ -84,12 +84,12 @@ namespace Helpers
         return ss;
     }
 
-    inline juce::ValueTree createAnalysisFromSlices(StringArray slices)
+    inline juce::ValueTree createAnalysisFromSlices(juce::StringArray slices)
     {
         juce::ValueTree soundAnalysis = juce::ValueTree(IDs::ANALYSIS);
         juce::ValueTree soundAnalysisOnsetTimes = juce::ValueTree(IDs::onsets);
         for (auto sliceString: slices){
-            ValueTree onset = ValueTree(IDs::onset);
+            juce::ValueTree onset = juce::ValueTree(IDs::onset);
             onset.setProperty(IDs::onsetTime, sliceString.getFloatValue(), nullptr);
             soundAnalysisOnsetTimes.appendChild(onset, nullptr);
         }
@@ -97,7 +97,7 @@ namespace Helpers
         return soundAnalysis;
     }
 
-    inline juce::ValueTree createMidiMappingState(int ccNumber, String parameterName, float minRange, float maxRange)
+    inline juce::ValueTree createMidiMappingState(int ccNumber, juce::String parameterName, float minRange, float maxRange)
     {
         juce::ValueTree mapping (IDs::MIDI_CC_MAPPING);
         Helpers::createUuidProperty (mapping);
@@ -155,17 +155,17 @@ namespace Helpers
         return sound;
     }
 
-    inline juce::ValueTree createSourceSoundAndSourceSamplerSoundFromProperties(const String& soundUUID,
+    inline juce::ValueTree createSourceSoundAndSourceSamplerSoundFromProperties(const juce::String& soundUUID,
                                                                                 int soundID,
-                                                                                const String& soundName,
-                                                                                const String& soundUser,
-                                                                                const String& soundLicense,
-                                                                                const String& previewURL,
-                                                                                const String& localFilePath,
-                                                                                const String& format,
+                                                                                const juce::String& soundName,
+                                                                                const juce::String& soundUser,
+                                                                                const juce::String& soundLicense,
+                                                                                const juce::String& previewURL,
+                                                                                const juce::String& localFilePath,
+                                                                                const juce::String& format,
                                                                                 int sizeBytes,
-                                                                                StringArray slices,
-                                                                                BigInteger midiNotes,
+                                                                                juce::StringArray slices,
+                                                                                juce::BigInteger midiNotes,
                                                                                 int midiRootNote){
         juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState();
         

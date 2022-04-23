@@ -21,9 +21,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  AudioChannelSet::stereo(), true)
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                       #endif
-                       .withOutput ("Output", AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ),
     queryMakerThread (*this)
@@ -31,15 +31,15 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 {
     
     #if ELK_BUILD
-    sourceDataLocation = File(ELK_SOURCE_DATA_BASE_LOCATION);
-    soundsDownloadLocation = File(ELK_SOURCE_SOUNDS_LOCATION);
-    presetFilesLocation = File(ELK_SOURCE_PRESETS_LOCATION);
-    tmpFilesLocation = File(ELK_SOURCE_TMP_LOCATION);
+    sourceDataLocation = juce::File(ELK_SOURCE_DATA_BASE_LOCATION);
+    soundsDownloadLocation = juce::File(ELK_SOURCE_SOUNDS_LOCATION);
+    presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
+    tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    soundsDownloadLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
-    presetFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
-    tmpFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
+    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
+    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
     #endif
     
     if (!sourceDataLocation.exists()){
@@ -57,7 +57,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
     
-    startTime = Time::getMillisecondCounterHiRes() * 0.001;
+    startTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
     
     // Action listeners
     serverInterface.addActionListener(this);
@@ -107,14 +107,14 @@ void SourceSamplerAudioProcessor::bindState()
     state.setProperty(IDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
     state.setProperty(IDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
     state.setProperty(IDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);    
+    state.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
     currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr, Defaults::currentPresetIndex);
     globalMidiInChannel.referTo(state, IDs::globalMidiInChannel, nullptr, Defaults::globalMidiInChannel);
     midiOutForwardsMidiIn.referTo(state, IDs::midiOutForwardsMidiIn, nullptr, Defaults::midiOutForwardsMidiIn);
     useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
     
-    ValueTree preset = state.getChildWithName(IDs::PRESET);
+    juce::ValueTree preset = state.getChildWithName(IDs::PRESET);
     numVoices.referTo(preset, IDs::numVoices, nullptr, Defaults::numVoices);
     presetName.referTo(preset, IDs::name, nullptr);
     noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr, Defaults::noteLayoutType);
@@ -159,7 +159,7 @@ std::string SourceSamplerAudioProcessor::exec(const char* cmd) {
 }
 
 //==============================================================================
-const String SourceSamplerAudioProcessor::getName() const
+const juce::String SourceSamplerAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
@@ -227,14 +227,14 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
     saveGlobalPersistentStateToFile(); // Save global settings to file (which inlucdes the latest loaded preset index)
 }
 
-const String SourceSamplerAudioProcessor::getProgramName (int index)
+const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
 {
-    File location = getPresetFilePath(getPresetFilenameByIndex(index));
+    juce::File location = getPresetFilePath(getPresetFilenameByIndex(index));
     if (location.existsAsFile()){
-        XmlDocument xmlDocument (location);
-        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        juce::XmlDocument xmlDocument (location);
+        std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            ValueTree state = ValueTree::fromXml(*xmlState.get());
+            juce::ValueTree state = juce::ValueTree::fromXml(*xmlState.get());
             if (state.hasProperty(IDs::name)){
                 return state.getProperty(IDs::name).toString();
             }
@@ -243,18 +243,18 @@ const String SourceSamplerAudioProcessor::getProgramName (int index)
     return {};
 }
 
-void SourceSamplerAudioProcessor::changeProgramName (int index, const String& newName)
+void SourceSamplerAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
-    File location = getPresetFilePath(getPresetFilenameByIndex(index));
+    juce::File location = getPresetFilePath(getPresetFilenameByIndex(index));
     if (location.existsAsFile()){
-        XmlDocument xmlDocument (location);
-        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        juce::XmlDocument xmlDocument (location);
+        std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            ValueTree state = ValueTree::fromXml(*xmlState.get());
+            juce::ValueTree state = juce::ValueTree::fromXml(*xmlState.get());
             state.setProperty(IDs::name, newName, nullptr);
-            std::unique_ptr<XmlElement> updatedXmlState (state.createXml());
-            String filename = getPresetFilenameFromNameAndIndex(newName, index);
-            File location = getPresetFilePath(filename);
+            std::unique_ptr<juce::XmlElement> updatedXmlState (state.createXml());
+            juce::String filename = getPresetFilenameFromNameAndIndex(newName, index);
+            juce::File location = getPresetFilePath(filename);
             if (location.existsAsFile()){
                 // If already exists, delete it
                 location.deleteFile();
@@ -264,15 +264,15 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const String& ne
     }
 }
 
-String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
+juce::String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 {
-    return (String)index + ".xml";
+    return (juce::String)index + ".xml";
 }
 
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    logToState("Called prepareToPlay with sampleRate " + (String)sampleRate + " and block size " + (String)samplesPerBlock);
+    logToState("Called prepareToPlay with sampleRate " + (juce::String)sampleRate + " and block size " + (juce::String)samplesPerBlock);
     
     // Prepare sampler
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
@@ -300,8 +300,8 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
   #else
     // This is the place where you check if the layout is supported.
     // In this template code we only support mono or stereo.
-    if (layouts.getMainOutputChannelSet() != AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
     // This checks if the input layout matches the output layout
@@ -315,13 +315,13 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 }
 #endif
 
-void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
+void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     // Check if there are MIDI CC message in the buffer which are directed to the channel we're listening to
     // and store if we're receiving any message and the last MIDI CC controller number (if there's any)
     // Also get timestamp of the last received message
-    for (const MidiMessageMetadata metadata : midiMessages){
-        MidiMessage message = metadata.getMessage();
+    for (const juce::MidiMessageMetadata metadata : midiMessages){
+        juce::MidiMessage message = metadata.getMessage();
         if ((globalMidiInChannel == 0) || (message.getChannel() == globalMidiInChannel)){
             midiMessagesPresentInLastStateReport = true;
             if (message.isController()){
@@ -338,7 +338,7 @@ void SourceSamplerAudioProcessor::processBlock (AudioBuffer<float>& buffer, Midi
     midiFromEditor.clear();
     
     // Render preview player into buffer
-    transportSource.getNextAudioBlock(AudioSourceChannelInfo(buffer));
+    transportSource.getNextAudioBlock(juce::AudioSourceChannelInfo(buffer));
     
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
@@ -369,14 +369,14 @@ bool SourceSamplerAudioProcessor::hasEditor() const
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
+juce::AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 {
     return new SourceSamplerAudioProcessorEditor (*this);
 }
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _presetName, int index)
+void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const juce::String& _presetName, int index)
 {
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
     if (presetState.isValid()){
@@ -385,15 +385,15 @@ void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const String& _preset
             // No name provided, generate unique name
             presetName = "unnamed";
             for (int i=0; i<8; i++){
-                presetName = presetName + (String)juce::Random::getSystemRandom().nextInt (9);
+                presetName = presetName + (juce::String)juce::Random::getSystemRandom().nextInt (9);
             }
         } else {
             presetName = _presetName;
         }
         
-        std::unique_ptr<XmlElement> xml (presetState.createXml());
-        String filename = getPresetFilenameFromNameAndIndex(presetName, index);
-        File location = getPresetFilePath(filename);
+        std::unique_ptr<juce::XmlElement> xml (presetState.createXml());
+        juce::String filename = getPresetFilenameFromNameAndIndex(presetName, index);
+        juce::File location = getPresetFilePath(filename);
         if (location.existsAsFile()){
             // If already exists, delete it
             location.deleteFile();
@@ -420,7 +420,7 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileNa
     return false; // No file found
 }
 
-void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _state)
+void SourceSamplerAudioProcessor::loadPresetFromStateInformation (juce::ValueTree _state)
 {
     // If sounds are currently loaded in the state, remove them all
     // This will trigger the deletion of SampleSound and SourceSamplerSound objects
@@ -442,10 +442,10 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (ValueTree _sta
     setMidiInChannelFilter(globalMidiInChannel);
 }
 
-void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
+void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // Save current state information to memory block
-    std::unique_ptr<XmlElement> xml (state.createXml());
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
     DBG("> Running getStateInformation");
     DBG(xml->toString()); // Print state for debugging purposes
     copyXmlToBinary (*xml, destData);
@@ -454,9 +454,9 @@ void SourceSamplerAudioProcessor::getStateInformation (MemoryBlock& destData)
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     DBG("> Running setStateInformation");
-    std::unique_ptr<XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
-        loadPresetFromStateInformation(ValueTree::fromXml(*xmlState.get()));
+        loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
     }
     
 }
@@ -466,15 +466,15 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
     // This is to save settings that need to persist between sampler runs and that do not
     // change per preset
     
-    ValueTree settings = ValueTree(IDs::GLOBAL_SETTINGS);
+    juce::ValueTree settings = juce::ValueTree(IDs::GLOBAL_SETTINGS);
     settings.setProperty(IDs::globalMidiInChannel, globalMidiInChannel.get(), nullptr);
     settings.setProperty(IDs::midiOutForwardsMidiIn, midiOutForwardsMidiIn.get(), nullptr);
     settings.setProperty(IDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
     settings.setProperty(IDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
-    settings.setProperty(IDs::pluginVersion, String(JucePlugin_VersionString), nullptr);
+    settings.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
-    std::unique_ptr<XmlElement> xml (settings.createXml());
-    File location = getGlobalSettingsFilePathFromName();
+    std::unique_ptr<juce::XmlElement> xml (settings.createXml());
+    juce::File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
         // If already exists, delete it
         location.deleteFile();
@@ -484,12 +484,12 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
 
 void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
 {
-    File location = getGlobalSettingsFilePathFromName();
+    juce::File location = getGlobalSettingsFilePathFromName();
     if (location.existsAsFile()){
-        XmlDocument xmlDocument (location);
-        std::unique_ptr<XmlElement> xmlState = xmlDocument.getDocumentElement();
+        juce::XmlDocument xmlDocument (location);
+        std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            ValueTree settings = ValueTree::fromXml(*xmlState.get());
+            juce::ValueTree settings = juce::ValueTree::fromXml(*xmlState.get());
             if (settings.hasProperty(IDs::globalMidiInChannel)){
                 globalMidiInChannel = (int)settings.getProperty(IDs::globalMidiInChannel);
             }
@@ -507,34 +507,34 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
 }
 
 
-File SourceSamplerAudioProcessor::getPresetFilePath(const String& presetFilename)
+juce::File SourceSamplerAudioProcessor::getPresetFilePath(const juce::String& presetFilename)
 {
     return presetFilesLocation.getChildFile(presetFilename).withFileExtension("xml");
 }
 
 
-String SourceSamplerAudioProcessor::getPresetFilenameFromNameAndIndex(const String& presetName, int index)
+juce::String SourceSamplerAudioProcessor::getPresetFilenameFromNameAndIndex(const juce::String& presetName, int index)
 {
-    return (String)index; // Only use index as filename
+    return (juce::String)index; // Only use index as filename
 }
 
 
-File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
+juce::File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 {
     return sourceDataLocation.getChildFile("settings").withFileExtension("xml");
 }
 
-ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
-    ValueTree state = ValueTree(IDs::VOLATILE_STATE);
+juce::ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
+    juce::ValueTree state = juce::ValueTree(IDs::VOLATILE_STATE);
     state.setProperty(IDs::isQuerying, isQuerying, nullptr);
     state.setProperty(IDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
     midiMessagesPresentInLastStateReport = false;
     state.setProperty(IDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
     state.setProperty(IDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber, nullptr);
     
-    String voiceActivations = "";
-    String voiceSoundIdxs = "";
-    String voiceSoundPlayPositions = "";
+    juce::String voiceActivations = "";
+    juce::String voiceSoundIdxs = "";
+    juce::String voiceSoundPlayPositions = "";
     
     for (int i=0; i<sampler.getNumVoices(); i++){
         SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
@@ -546,7 +546,7 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
             } else {
                 voiceSoundIdxs += "-1,";
             }
-            voiceSoundPlayPositions += (String)voice->getPlayingPositionPercentage() + ",";
+            voiceSoundPlayPositions += (juce::String)voice->getPlayingPositionPercentage() + ",";
         } else {
             voiceActivations += "0,";
             voiceSoundIdxs += "-1,";
@@ -558,27 +558,27 @@ ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
     state.setProperty(IDs::voiceSoundIdxs, voiceSoundIdxs, nullptr);
     state.setProperty(IDs::voiceSoundPlayPosition, voiceSoundPlayPositions, nullptr);
     
-    String audioLevels = "";
+    juce::String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
-        audioLevels += (String)lms.getRMSLevel(i) + ",";
+        audioLevels += (juce::String)lms.getRMSLevel(i) + ",";
     }
     state.setProperty(IDs::audioLevels, audioLevels, nullptr);
     return state;
 }
 
-String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
+juce::String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     
-    StringArray stateAsStringParts = {};
+    juce::StringArray stateAsStringParts = {};
     
     stateAsStringParts.add(isQuerying ? "1": "0");
     stateAsStringParts.add(midiMessagesPresentInLastStateReport ? "1" : "0");
     midiMessagesPresentInLastStateReport = false;
-    stateAsStringParts.add((String)lastReceivedMIDIControllerNumber);
-    stateAsStringParts.add((String)lastReceivedMIDINoteNumber);
+    stateAsStringParts.add((juce::String)lastReceivedMIDIControllerNumber);
+    stateAsStringParts.add((juce::String)lastReceivedMIDINoteNumber);
     
-    String voiceActivations = "";
-    String voiceSoundIdxs = "";
-    String voiceSoundPlayPositions = "";
+    juce::String voiceActivations = "";
+    juce::String voiceSoundIdxs = "";
+    juce::String voiceSoundPlayPositions = "";
     
     for (int i=0; i<sampler.getNumVoices(); i++){
         SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
@@ -586,11 +586,11 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
             voiceActivations += "1,";
             if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
             {
-                voiceSoundIdxs += (String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
+                voiceSoundIdxs += (juce::String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
             } else {
                 voiceSoundIdxs += "-1,";
             }
-            voiceSoundPlayPositions += (String)voice->getPlayingPositionPercentage() + ",";
+            voiceSoundPlayPositions += (juce::String)voice->getPlayingPositionPercentage() + ",";
         } else {
             voiceActivations += "0,";
             voiceSoundIdxs += "-1,";
@@ -602,9 +602,9 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     stateAsStringParts.add(voiceSoundIdxs);
     stateAsStringParts.add(voiceSoundPlayPositions);
     
-    String audioLevels = "";
+    juce::String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
-        audioLevels += (String)lms.getRMSLevel(i) + ",";
+        audioLevels += (juce::String)lms.getRMSLevel(i) + ",";
     }
     
     stateAsStringParts.add(audioLevels);
@@ -612,20 +612,20 @@ String SourceSamplerAudioProcessor::collectVolatileStateInformationAsString(){
     return stateAsStringParts.joinIntoString(";");
 }
 
-void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, String stringData)
+void SourceSamplerAudioProcessor::sendStateToExternalServer(juce::ValueTree state, juce::String stringData)
 {
     // This is only used in ELK builds in which the HTTP server is running outside the plugin
-    URL url = URL("http://localhost:8123/state_from_plugin");
-    String header = "Content-Type: text/xml";
+    juce::URL url = juce::URL("http://localhost:8123/state_from_plugin");
+    juce::String header = "Content-Type: text/xml";
     int statusCode = -1;
-    StringPairArray responseHeaders;
-    String data = stringData;
+    juce::StringPairArray responseHeaders;
+    juce::String data = stringData;
     if (state.isValid()){
         data = state.toXmlString();
     }
     if (data.isNotEmpty()) { url = url.withPOSTData(data); }
     bool postLikeRequest = true;
-    if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+    if (auto stream = std::unique_ptr<juce::InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
         MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
         &responseHeaders, &statusCode)))
     {
@@ -636,7 +636,7 @@ void SourceSamplerAudioProcessor::sendStateToExternalServer(ValueTree state, Str
 
 void SourceSamplerAudioProcessor::updateReverbParameters()
 {
-    Reverb::Parameters reverbParameters;
+    juce::Reverb::Parameters reverbParameters;
     reverbParameters.roomSize = reverbRoomSize;
     reverbParameters.damping = reverbDamping;
     reverbParameters.wetLevel = reverbWetLevel;
@@ -649,12 +649,12 @@ void SourceSamplerAudioProcessor::updateReverbParameters()
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
+void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &message)
 {
-    String actionName = message.substring(0, message.indexOf(":"));
-    String serializedParameters = message.substring(message.indexOf(":") + 1);
-    StringArray parameters;
-    parameters.addTokens (serializedParameters, (String)SERIALIZATION_SEPARATOR, "");
+    juce::String actionName = message.substring(0, message.indexOf(":"));
+    juce::String serializedParameters = message.substring(message.indexOf(":") + 1);
+    juce::StringArray parameters;
+    parameters.addTokens (serializedParameters, (juce::String)SERIALIZATION_SEPARATOR, "");
     
     if (actionName != ACTION_GET_STATE){
         // Don't log get state actions as it creates too much logs
@@ -682,7 +682,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         }
         
     } else if (actionName == ACTION_NEW_QUERY){
-        String query = parameters[0];
+        juce::String query = parameters[0];
         int numSounds = parameters[1].getIntValue();
         float minSoundLength = parameters[2].getFloatValue();
         float maxSoundLength = parameters[3].getFloatValue();
@@ -737,7 +737,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         updateReverbParameters();
         
     } else if (actionName == ACTION_SAVE_PRESET){
-        String presetName = parameters[0];
+        juce::String presetName = parameters[0];
         int index = parameters[1].getIntValue();
         saveCurrentPresetToFile(presetName, index);  // Save to file...
         currentPresetIndex = index; // ...and update current preset index and name in case it was changed
@@ -782,7 +782,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 
     } else if (actionName == ACTION_REMOVE_CC_MAPPING){
         juce::String soundUUID = parameters[0];
-        String uuid = parameters[1];
+        juce::String uuid = parameters[1];
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->removeMidiMapping(uuid);
@@ -800,20 +800,20 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
         juce::String soundUUID = parameters[0];
         int soundID = parameters[1].getIntValue();
-        String soundName = parameters[2];
-        String soundUser = parameters[3];
-        String soundLicense = parameters[4];
-        String oggDownloadURL = parameters[5];
-        String localFilePath = parameters[6];
-        String type = parameters[7];
+        juce::String soundName = parameters[2];
+        juce::String soundUser = parameters[3];
+        juce::String soundLicense = parameters[4];
+        juce::String oggDownloadURL = parameters[5];
+        juce::String localFilePath = parameters[6];
+        juce::String type = parameters[7];
         int sizeBytes = parameters[8].getIntValue();
-        String serializedSlices = parameters[9];
-        StringArray slices;
+        juce::String serializedSlices = parameters[9];
+        juce::StringArray slices;
         if (serializedSlices != ""){
             slices.addTokens(serializedSlices, ",", "");
         }
-        String assignedNotesBigInteger = parameters[10];
-        BigInteger midiNotes;
+        juce::String assignedNotesBigInteger = parameters[10];
+        juce::BigInteger midiNotes;
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
@@ -842,10 +842,10 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
 
     } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
         juce::String soundUUID = parameters[0];
-        String assignedNotesBigInteger = parameters[1];
+        juce::String assignedNotesBigInteger = parameters[1];
         int rootNote = parameters[2].getIntValue();
         
-        BigInteger midiNotes;
+        juce::BigInteger midiNotes;
         if (assignedNotesBigInteger != ""){
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
@@ -860,7 +860,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
         removeAllSounds();
         
     } else if (actionName == ACTION_GET_STATE){
-        String stateType = parameters[0];
+        juce::String stateType = parameters[0];
         if (stateType == "volatile"){
             sendStateToExternalServer(collectVolatileStateInformation(), "");
         } else if (stateType == "volatileString"){
@@ -887,14 +887,14 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const String &message)
             sendOSCMessage(message);
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
-        String soundPath = parameters[0];
+        juce::String soundPath = parameters[0];
         if (soundPath == ""){
             stopPreviewingFile();  // Send empty string to stop currently previewing sound
         } else {
             previewFile(soundPath);
         }
     } else if (actionName == ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE){
-        String preference = parameters[0];
+        juce::String preference = parameters[0];
         useOriginalFilesPreference = preference;
         saveGlobalPersistentStateToFile();
     }
@@ -922,7 +922,7 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
     if (isQuerying){
         // If already querying, don't run another query
@@ -933,17 +933,17 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
     FreesoundClient client(FREESOUND_API_KEY);
     isQuerying = true;
     logToState("Querying new sounds for: " + textQuery);
-    auto filter = "duration:[" + (String)minSoundLength + " TO " + (String)maxSoundLength + "]";
+    auto filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
     SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 80, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     isQuerying = false;
     if (list.getCount() > 0){
         
         // Randmomize results and prepare for iteration
-        Array<FSSound> soundsFound = list.toArrayOfSounds();
-        logToState("Query got " + (String)list.getCount() + " results, " + (String)soundsFound.size() + " in the first page. Will load " + (String)numSounds + " sounds.");
+        juce::Array<FSSound> soundsFound = list.toArrayOfSounds();
+        logToState("Query got " + (juce::String)list.getCount() + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
-        soundsFound.resize(jmin(numSounds, list.getCount()));
+        soundsFound.resize(juce::jmin(numSounds, list.getCount()));
         int nSounds = soundsFound.size();
         
         // Move this elsewhere in a helper function (?)
@@ -958,7 +958,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const String& textQuery
             
             // Calculate assigned notes
             int midiRootNote;
-            BigInteger midiNotes;
+            juce::BigInteger midiNotes;
             if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
                 // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
                 midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
@@ -987,7 +987,7 @@ void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
 {
     // Trigger the deletion of the sound by disabling it
     // Once disabled, all playing notes will be stopped and the sound removed a while after that
-    const ScopedLock sl (soundDeleteLock);
+    const juce::ScopedLock sl (soundDeleteLock);
     sounds->getSoundWithUUID(soundUUID)->disableSound();
 }
 
@@ -995,23 +995,23 @@ void SourceSamplerAudioProcessor::removeAllSounds()
 {
     // Trigger the deletion of the sounds by disabling them
     // Once disabled, all playing notes will be stopped and the sounds removed a while after that
-    const ScopedLock sl (soundDeleteLock);
+    const juce::ScopedLock sl (soundDeleteLock);
     for (auto* sound: sounds->objects){
         sound->disableSound();
     }
 }
 
-void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
+void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
                                                                             int soundID,
-                                                                            const String& soundName,
-                                                                            const String& soundUser,
-                                                                            const String& soundLicense,
-                                                                            const String& previewURL,
-                                                                            const String& localFilePath,
-                                                                            const String& format,
+                                                                            const juce::String& soundName,
+                                                                            const juce::String& soundUser,
+                                                                            const juce::String& soundLicense,
+                                                                            const juce::String& previewURL,
+                                                                            const juce::String& localFilePath,
+                                                                            const juce::String& format,
                                                                             int sizeBytes,
-                                                                            StringArray slices,
-                                                                            BigInteger midiNotes,
+                                                                            juce::StringArray slices,
+                                                                            juce::BigInteger midiNotes,
                                                                             int midiRootNote)
 {
     int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
@@ -1036,13 +1036,13 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     }
 }
 
-void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const String& soundUUID,
+void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
                                                                             FSSound sound,
-                                                                            BigInteger midiNotes,
+                                                                            juce::BigInteger midiNotes,
                                                                             int midiRootNote)
 {
     // Prepare slices
-    StringArray slices;
+    juce::StringArray slices;
     if (sound.analysis.hasProperty("rhythm")){
         if (sound.analysis["rhythm"].hasProperty("onset_times")){
             for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
@@ -1067,13 +1067,13 @@ void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
                 if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
                     // Set midi root note to the center of the assigned range
                     int rootNote = i * nNotesPerSound + nNotesPerSound / 2;
-                    BigInteger midiNotes;
+                    juce::BigInteger midiNotes;
                     midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                     sound->setMappedMidiNotes(midiNotes);
                     sound->setMidiRootNote(rootNote);
                 } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
                     int rootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
-                    BigInteger midiNotes;
+                    juce::BigInteger midiNotes;
                     for (int j=rootNote; j<128; j=j+nSounds){
                         midiNotes.setBit(j);  // Map notes in upwards direction
                     }
@@ -1094,7 +1094,7 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID,
     if (sound != nullptr){
         int midiNoteForNormalPitch = 36;
         midiNoteForNormalPitch = sound->getMidiRootNote();
-        BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
+        juce::BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
         if (assignedMidiNotes[midiNoteForNormalPitch] == false){
             // If the root note is not mapped to the sound, find the closest mapped one
             midiNoteForNormalPitch = assignedMidiNotes.findNextSetBit(midiNoteForNormalPitch);
@@ -1110,9 +1110,9 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID,
                     midiChannel = 1;
                 }
             }
-            MidiMessage message = MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (uint8)127);
+            juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteForNormalPitch, (juce::uint8)127);
             if (doNoteOff){
-                message = MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (uint8)127);
+                message = juce::MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (juce::uint8)127);
             }
             midiFromEditor.addEvent(message, 0);
         }
@@ -1173,16 +1173,16 @@ int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
     #endif
 }
 
-void SourceSamplerAudioProcessor::logToState(const String& message)
+void SourceSamplerAudioProcessor::logToState(const juce::String& message)
 {
     DBG(message);
     
     recentLogMessages.push_back(message);  // Add a new element at the end
     if (recentLogMessages.size() > 50){
         // Keep only the last 20
-        std::vector<String>::const_iterator first = recentLogMessages.end() - 20;
-        std::vector<String>::const_iterator last = recentLogMessages.end();
-        std::vector<String> newVec(first, last);
+        std::vector<juce::String>::const_iterator first = recentLogMessages.end() - 20;
+        std::vector<juce::String>::const_iterator last = recentLogMessages.end();
+        std::vector<juce::String> newVec(first, last);
         recentLogMessages = newVec;
     }
     recentLogMessagesSerialized = "";
@@ -1191,27 +1191,27 @@ void SourceSamplerAudioProcessor::logToState(const String& message)
     }
 }
 
-void SourceSamplerAudioProcessor::previewFile(const String& path)
+void SourceSamplerAudioProcessor::previewFile(const juce::String& path)
 {
     if (transportSource.isPlaying()){
         transportSource.stop();
     }
     if (currentlyLoadedPreviewFilePath != path){
         // Load new file
-        String pathToLoad;
+        juce::String pathToLoad;
         if (path.startsWith("http")){
             // If path is an URL, download the file first
-            StringArray tokens;
+            juce::StringArray tokens;
             tokens.addTokens (path, "/", "");
-            String filename = tokens[tokens.size() - 1];
+            juce::String filename = tokens[tokens.size() - 1];
             
-            File location = tmpFilesLocation.getChildFile(filename);
+            juce::File location = tmpFilesLocation.getChildFile(filename);
             if (!location.exists()){  // Dont' re-download if file already exists
                 # if ELK_BUILD
                 // If on ELK build don't download here because it seems to hang forever
                 // On ELK, we should trigger the downloads from the Python script before calling this function
                 # else
-                std::unique_ptr<URL::DownloadTask> downloadTask = URL(path).downloadToFile(location, "");
+                std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(path).downloadToFile(location, "");
                 while (!downloadTask->isFinished()){
                     // Wait until it finished downloading
                 }
@@ -1221,13 +1221,13 @@ void SourceSamplerAudioProcessor::previewFile(const String& path)
         } else {
             pathToLoad = path;
         }
-        File file = File(pathToLoad);
+        juce::File file = juce::File(pathToLoad);
         if (file.existsAsFile()){
             
             auto* reader = audioFormatManager.createReaderFor (file);
             if (reader != nullptr)
             {
-                std::unique_ptr<AudioFormatReaderSource> newSource (new AudioFormatReaderSource (reader, true));
+                std::unique_ptr<juce::AudioFormatReaderSource> newSource (new juce::AudioFormatReaderSource (reader, true));
                 transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);
                 readerSource.reset (newSource.release());
             }
@@ -1246,7 +1246,7 @@ void SourceSamplerAudioProcessor::stopPreviewingFile(){
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::sendOSCMessage(const OSCMessage& message)
+void SourceSamplerAudioProcessor::sendOSCMessage(const juce::OSCMessage& message)
 {
     if (!oscSenderIsConnected){
         if (oscSender.connect ("127.0.0.1", OSC_TO_SEND_PORT)){
@@ -1331,7 +1331,7 @@ void SourceSamplerAudioProcessor::valueTreeParentChanged (juce::ValueTree& treeW
 
 //==============================================================================
 // This creates new instances of the plugin..
-AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new SourceSamplerAudioProcessor();
 }

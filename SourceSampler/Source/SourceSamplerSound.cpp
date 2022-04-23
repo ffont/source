@@ -14,7 +14,7 @@
 
 SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
                                         SourceSound* _sourceSoundPointer,
-                                        AudioFormatReader& source,
+                                        juce::AudioFormatReader& source,
                                         double maxSampleLengthSeconds,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
@@ -28,8 +28,8 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
     
     // Load audio
     if (soundSampleRate > 0 && source.lengthInSamples > 0) {
-        lengthInSamples = jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));
-        data.reset (new AudioBuffer<float> (jmin (2, (int) source.numChannels), lengthInSamples + 4));
+        lengthInSamples = juce::jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));
+        data.reset (new juce::AudioBuffer<float> (juce::jmin (2, (int) source.numChannels), lengthInSamples + 4));
         source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
         
         // Add duration to state
@@ -60,10 +60,10 @@ void SourceSamplerSound::writeBufferToDisk()
 {
     juce::AudioBuffer<float>* buffer = getAudioData();
     juce::WavAudioFormat format;
-    std::unique_ptr<AudioFormatWriter> writer;
+    std::unique_ptr<juce::AudioFormatWriter> writer;
     
-    juce::File outputLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
-    writer.reset (format.createWriterFor (new FileOutputStream (outputLocation),
+    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
                                           soundSampleRate,
                                           1,  // Write mono files for visualization (will probably only take the first channel)
                                           16,
@@ -147,13 +147,13 @@ std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
 }
 
 void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
-    ValueTree soundAnalysis = state.getChildWithName(IDs::ANALYSIS);
+    juce::ValueTree soundAnalysis = state.getChildWithName(IDs::ANALYSIS);
     if (soundAnalysis.isValid()){
-        ValueTree onsetTimes = soundAnalysis.getChildWithName(IDs::onsets);
+        juce::ValueTree onsetTimes = soundAnalysis.getChildWithName(IDs::onsets);
         if (onsetTimes.isValid()){
             std::vector<float> onsets = {};
             for (int i=0; i<onsetTimes.getNumChildren(); i++){
-                ValueTree onsetVT = onsetTimes.getChild(i);
+                juce::ValueTree onsetVT = onsetTimes.getChild(i);
                 float onset = (float)(onsetVT.getProperty(IDs::onsetTime));
                 onsets.push_back(onset);
             }
@@ -307,70 +307,70 @@ int SourceSound::getParameterInt(juce::Identifier identifier){
 
 float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
     // --> Start auto-generated code F
-        if (identifier == IDs::startPosition) { return !normed ? startPosition.get() : jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { return !normed ? endPosition.get() : jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { return !normed ? loopStartPosition.get() : jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { return !normed ? loopEndPosition.get() : jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { return !normed ? playheadPosition.get() : jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { return !normed ? filterAttack.get() : jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { return !normed ? filterDecay.get() : jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { return !normed ? filterSustain.get() : jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { return !normed ? filterRelease.get() : jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::gain) { return !normed ? gain.get() : jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::attack) { return !normed ? attack.get() : jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { return !normed ? decay.get() : jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { return !normed ? sustain.get() : jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { return !normed ? release.get() : jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { return !normed ? pan.get() : jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { return !normed ? pitch.get() : jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        if (identifier == IDs::startPosition) { return !normed ? startPosition.get() : juce::jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::endPosition) { return !normed ? endPosition.get() : juce::jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopStartPosition) { return !normed ? loopStartPosition.get() : juce::jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopEndPosition) { return !normed ? loopEndPosition.get() : juce::jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::playheadPosition) { return !normed ? playheadPosition.get() : juce::jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : juce::jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : juce::jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : juce::jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : juce::jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterAttack) { return !normed ? filterAttack.get() : juce::jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterDecay) { return !normed ? filterDecay.get() : juce::jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterSustain) { return !normed ? filterSustain.get() : juce::jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRelease) { return !normed ? filterRelease.get() : juce::jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : juce::jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::gain) { return !normed ? gain.get() : juce::jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::attack) { return !normed ? attack.get() : juce::jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::decay) { return !normed ? decay.get() : juce::jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::sustain) { return !normed ? sustain.get() : juce::jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::release) { return !normed ? release.get() : juce::jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pan) { return !normed ? pan.get() : juce::jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitch) { return !normed ? pitch.get() : juce::jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : juce::jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : juce::jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : juce::jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : juce::jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : juce::jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : juce::jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
     throw std::runtime_error("No float parameter with this name");
 }
 
 void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float value, bool normed){
     // --> Start auto-generated code B
-        if (identifier == IDs::startPosition) { startPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { endPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { loopStartPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { loopEndPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { playheadPosition = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? jlimit(1.0f, 5000.0f, value) : jmap(value, 1.0f, 5000.0f); }
-        else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? jlimit(10.0f, 20000.0f, value) : jmap(value, 10.0f, 20000.0f); }
-        else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { filterAttack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { filterDecay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { filterSustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { filterRelease = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::gain) { gain = !normed ? jlimit(-80.0f, 12.0f, value) : jmap(value, -80.0f, 12.0f); }
-        else if (identifier == IDs::attack) { attack = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { decay = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { sustain = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { release = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { pan = !normed ? jlimit(-1.0f, 1.0f, value) : jmap(value, -1.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { pitch = !normed ? jlimit(-36.0f, 36.0f, value) : jmap(value, -36.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? jlimit(0.0f, 36.0f, value) : jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::mod2GainAmt) { mod2GainAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { mod2PitchAmt = !normed ? jlimit(-12.0f, 12.0f, value) : jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? jlimit(0.0f, 100.0f, value) : jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? jlimit(0.0f, 1.0f, value) : jmap(value, 0.0f, 1.0f); }
+        if (identifier == IDs::startPosition) { startPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::endPosition) { endPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopStartPosition) { loopStartPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::loopEndPosition) { loopEndPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::playheadPosition) { playheadPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? juce::jlimit(1.0f, 5000.0f, value) : juce::jmap(value, 1.0f, 5000.0f); }
+        else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? juce::jlimit(10.0f, 20000.0f, value) : juce::jmap(value, 10.0f, 20000.0f); }
+        else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterAttack) { filterAttack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterDecay) { filterDecay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterSustain) { filterSustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterRelease) { filterRelease = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::gain) { gain = !normed ? juce::jlimit(-80.0f, 12.0f, value) : juce::jmap(value, -80.0f, 12.0f); }
+        else if (identifier == IDs::attack) { attack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::decay) { decay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::sustain) { sustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::release) { release = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::pan) { pan = !normed ? juce::jlimit(-1.0f, 1.0f, value) : juce::jmap(value, -1.0f, 1.0f); }
+        else if (identifier == IDs::pitch) { pitch = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
+        else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
+        else if (identifier == IDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
+        else if (identifier == IDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::mod2GainAmt) { mod2GainAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
+        else if (identifier == IDs::mod2PitchAmt) { mod2PitchAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
+        else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
         // --> End auto-generated code B
     else { throw std::runtime_error("No float parameter with this name"); }
     
@@ -391,13 +391,13 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
 
 void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
     // --> Start auto-generated code D
-        if (identifier == IDs::soundType) { soundType = jlimit(0, 1, value); }
-        else if (identifier == IDs::launchMode) { launchMode = jlimit(0, 4, value); }
-        else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = jlimit(10, 100000, value); }
-        else if (identifier == IDs::reverse) { reverse = jlimit(0, 1, value); }
-        else if (identifier == IDs::noteMappingMode) { noteMappingMode = jlimit(0, 3, value); }
-        else if (identifier == IDs::numSlices) { numSlices = jlimit(0, 100, value); }
-        else if (identifier == IDs::midiChannel) { midiChannel = jlimit(0, 16, value); }
+        if (identifier == IDs::soundType) { soundType = juce::jlimit(0, 1, value); }
+        else if (identifier == IDs::launchMode) { launchMode = juce::jlimit(0, 4, value); }
+        else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = juce::jlimit(10, 100000, value); }
+        else if (identifier == IDs::reverse) { reverse = juce::jlimit(0, 1, value); }
+        else if (identifier == IDs::noteMappingMode) { noteMappingMode = juce::jlimit(0, 3, value); }
+        else if (identifier == IDs::numSlices) { numSlices = juce::jlimit(0, 100, value); }
+        else if (identifier == IDs::midiChannel) { midiChannel = juce::jlimit(0, 16, value); }
         // --> End auto-generated code D
     else { throw std::runtime_error("No int parameter with this name"); }
 }
@@ -459,19 +459,19 @@ void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 
 // ------------------------------------------------------------------------------------------------
 
-void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange){
+void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange){
     
-    ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
+    juce::ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
     if (existingMapping.isValid()) {
         // Modify existing mapping
         existingMapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
         existingMapping.setProperty (IDs::parameterName, parameterName, nullptr);
-        existingMapping.setProperty (IDs::minRange, jlimit(0.0f, 1.0f, minRange), nullptr);
-        existingMapping.setProperty (IDs::maxRange, jlimit(0.0f, 1.0f, maxRange), nullptr);
+        existingMapping.setProperty (IDs::minRange, juce::jlimit(0.0f, 1.0f, minRange), nullptr);
+        existingMapping.setProperty (IDs::maxRange, juce::jlimit(0.0f, 1.0f, maxRange), nullptr);
     } else {
         // No mapping with uuid found, create a new one
         // TODO: move this to the MidiCCMappingList class?
-        ValueTree newMapping = Helpers::createMidiMappingState(ccNumber, parameterName, jlimit(0.0f, 1.0f, minRange), jlimit(0.0f, 1.0f, maxRange));
+        juce::ValueTree newMapping = Helpers::createMidiMappingState(ccNumber, parameterName, juce::jlimit(0.0f, 1.0f, minRange), juce::jlimit(0.0f, 1.0f, maxRange));
         state.addChild(newMapping, -1, nullptr);
     }
 }
@@ -500,15 +500,15 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
     // some sounds have more than one SourceSamplerSound (multi-layered sounds
     // for example)
     
-    AudioFormatManager audioFormatManager;
+    juce::AudioFormatManager audioFormatManager;
     audioFormatManager.registerBasicFormats();
     std::vector<SourceSamplerSound*> sounds = {};
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
-            File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
             if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
-                std::unique_ptr<AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
+                std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
                 SourceSamplerSound* createdSound = new SourceSamplerSound(child,
                                                                           this,
                                                                           *reader,
@@ -588,7 +588,7 @@ void SourceSound::loadSounds()
                         // Download original quality file
                         juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
-                        URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
+                        juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
@@ -611,7 +611,7 @@ void SourceSound::loadSounds()
                         child.setProperty(IDs::usesPreview, true, nullptr);
                         juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
-                        URL::DownloadTaskOptions options = URL::DownloadTaskOptions().withListener(this);
+                        juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
@@ -650,18 +650,18 @@ void SourceSound::loadSounds()
     }
 }
 
-bool SourceSound::isSupportedAudioFileFormat(const String& extension)
+bool SourceSound::isSupportedAudioFileFormat(const juce::String& extension)
 {
-    return StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
+    return juce::StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
 }
 
 
-bool SourceSound::fileLocationIsSupportedAudioFileFormat(File location)
+bool SourceSound::fileLocationIsSupportedAudioFileFormat(juce::File location)
 {
     return isSupportedAudioFileFormat(location.getFileExtension());
 }
 
-File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
+juce::File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
 {
     juce::File locationInDisk;
     juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
@@ -688,19 +688,19 @@ bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoun
     return false;
 }
 
-bool SourceSound::fileAlreadyInDisk(File locationInDisk)
+bool SourceSound::fileAlreadyInDisk(juce::File locationInDisk)
 {
     // Check that file exists in disk and that it has at least half of the expected full size
     int fileMinSize = 100; // Something smaller than 100 bytes will be considered corrupt file
     return locationInDisk.existsAsFile() && locationInDisk.getSize() > fileMinSize;
 }
 
-void SourceSound::downloadProgressUpdate(File targetFileLocation, float percentageCompleted)
+void SourceSound::downloadProgressUpdate(juce::File targetFileLocation, float percentageCompleted)
 {
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
-            File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
             if (targetFileLocation == locationInDisk){
                 // Find the sample that corresponds to this download task and update state
                 child.setProperty(IDs::downloadProgress, percentageCompleted, nullptr);
@@ -709,7 +709,7 @@ void SourceSound::downloadProgressUpdate(File targetFileLocation, float percenta
     }
 }
 
-void SourceSound::downloadFinished(File targetFileLocation, bool taskSucceeded)
+void SourceSound::downloadFinished(juce::File targetFileLocation, bool taskSucceeded)
 {
     bool allAlreadyDownloaded = true;
     for (int i=0; i<state.getNumChildren(); i++){
@@ -717,7 +717,7 @@ void SourceSound::downloadFinished(File targetFileLocation, bool taskSucceeded)
         if (child.hasType(IDs::SOUND_SAMPLE)){
             // Find the sample that corresponds to this download task and update state
             // To consider a download as succeeded, check that the the task returned succes
-            File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
             if (taskSucceeded && (targetFileLocation == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
                 child.setProperty(IDs::downloadCompleted, true, nullptr);
                 child.setProperty(IDs::downloadProgress, 100.0, nullptr);
@@ -734,13 +734,13 @@ void SourceSound::downloadFinished(File targetFileLocation, bool taskSucceeded)
     }
 }
 
-void SourceSound::progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength)
+void SourceSound::progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength)
 {
     float percentageCompleted = 100.0*(float)bytesDownloaded/(float)totalLength;
     downloadProgressUpdate(task->getTargetLocation(), percentageCompleted);
 }
 
-void SourceSound::finished(URL::DownloadTask *task, bool success)
+void SourceSound::finished(juce::URL::DownloadTask *task, bool success)
 {
     downloadFinished(task->getTargetLocation(), success);
 }

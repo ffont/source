@@ -35,7 +35,7 @@ def generate_code(controls_data_filename):
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf})
-            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = !normed ? jlimit({minf}f, {maxf}f, value) : jmap(value, {minf}f, {maxf}f); }}\n'.format(**control_data)
+            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = !normed ? juce::jlimit({minf}f, {maxf}f, value) : juce::jmap(value, {minf}f, {maxf}f); }}\n'.format(**control_data)
         else:
             # Don't know what to do with other types
             pass
@@ -52,7 +52,7 @@ def generate_code(controls_data_filename):
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi})
-            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
+            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = juce::jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
         else:
             # Don't know what to do with other types
             pass
@@ -67,7 +67,7 @@ def generate_code(controls_data_filename):
         minf = float(control_data['min'])
         maxf = float(control_data['max'])
         control_data.update({'minf': minf, 'maxf': maxf, 'iftag': iftag})
-        current_code_f += '        {iftag} (identifier == IDs::{name}) {{ return !normed ? {name}.get() : jmap({name}.get(), {minf}f, {maxf}f, 0.0f, 1.0f); }}\n'.format(**control_data)
+        current_code_f += '        {iftag} (identifier == IDs::{name}) {{ return !normed ? {name}.get() : juce::jmap({name}.get(), {minf}f, {maxf}f, 0.0f, 1.0f); }}\n'.format(**control_data)
     for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['int']]):
         iftag = 'else if' if count > 0 else 'if'
         control_data.update({'iftag': iftag})

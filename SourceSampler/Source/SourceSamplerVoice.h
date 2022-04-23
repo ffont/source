@@ -14,7 +14,7 @@
 #include "SourceSamplerSound.h"
 
 
-class SourceSamplerVoice: public SynthesiserVoice
+class SourceSamplerVoice: public juce::SynthesiserVoice
 {
 public:
     //==============================================================================
@@ -23,11 +23,11 @@ public:
     ~SourceSamplerVoice() override;
 
     //==============================================================================
-    bool canPlaySound (SynthesiserSound*) override;
+    bool canPlaySound (juce::SynthesiserSound*) override;
     
     void updateParametersFromSourceSamplerSound(SourceSamplerSound* sound);
 
-    void startNote (int midiNoteNumber, float velocity, SynthesiserSound*, int pitchWheel) override;
+    void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int pitchWheel) override;
     void stopNote (float velocity, bool allowTailOff) override;
 
     void pitchWheelMoved (int newValue) override;
@@ -35,7 +35,7 @@ public:
     void aftertouchChanged (int newAftertouchValue) override;
     void channelPressureChanged  (int newChannelPressureValue) override;
 
-    void renderNextBlock (AudioBuffer<float>&, int startSample, int numSamples) override;
+    void renderNextBlock (juce::AudioBuffer<float>&, int startSample, int numSamples) override;
     using SynthesiserVoice::renderNextBlock;
     
     //==============================================================================
@@ -66,8 +66,8 @@ private:
     double playheadSamplePositionMod = 0;
     float pan = 0;
     float lgain = 0, rgain = 0;
-    ADSR adsr;
-    ADSR adsrFilter;
+    juce::ADSR adsr;
+    juce::ADSR adsrFilter;
     
     //==============================================================================
     // ProcessorChain (filter, pan and master gain)
@@ -77,7 +77,7 @@ private:
         masterGainIndex
     };
     juce::dsp::ProcessorChain<juce::dsp::LadderFilter<float>, juce::dsp::Gain<float>> processorChain;
-    AudioBuffer<float> tmpVoiceBuffer;  // used for processing voice contents in each process block, then adding to the main output buffer
+    juce::AudioBuffer<float> tmpVoiceBuffer;  // used for processing voice contents in each process block, then adding to the main output buffer
     
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
@@ -95,12 +95,12 @@ private:
     // NOTE: the default values of the parameters above do not really matter because they'll be overriden by
     // the loaded sonund defaults
     
-    AudioBuffer<float> debugBuffer;  // Used only to store samples for debugging purposes
+    juce::AudioBuffer<float> debugBuffer;  // Used only to store samples for debugging purposes
     int debugBufferCurrentPosition = 0;
     bool isRecordingToDebugBuffer = false;
     void startRecordingToDebugBuffer(int bufferSize);
     void writeToDebugBuffer(float sample);
-    void endRecordingToDebugBuffer(String outFilename);
+    void endRecordingToDebugBuffer(juce::String outFilename);
     bool debugBufferFinishedRecording = false;
     
     JUCE_LEAK_DETECTOR (SourceSamplerVoice)

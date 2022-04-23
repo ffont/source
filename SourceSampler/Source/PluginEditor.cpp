@@ -21,9 +21,9 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     addAndMakeVisible(browser);
     int port = processor.getServerInterfaceHttpPort();
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    browser.goToURL("https://localhost:" + (String)port  + "/");
+    browser.goToURL("https://localhost:" + (juce::String)port  + "/");
     #else
-    browser.goToURL("http://localhost:" + (String)port  + "/");
+    browser.goToURL("http://localhost:" + (juce::String)port  + "/");
     #endif
     #endif
     
@@ -42,8 +42,8 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
                         "your browser. Close your browser, come back to this window and click \"Reload UI\". You should now be "
                         "seeing the plugin UI normally. Once the certificate is trusted, you should not be seeing this problem again "
                         "when using Source in the same computer. If this does not fix the problem but you can see the UI in the browser, "
-                        "you can use the UI from there (Source will work fine).", dontSendNotification);
-    explanation.setJustificationType(Justification::topLeft);
+                        "you can use the UI from there (Source will work fine).", juce::dontSendNotification);
+    explanation.setJustificationType(juce::Justification::topLeft);
     addAndMakeVisible (explanation);
     
     setSize(10, 10);  // This is reset later
@@ -57,14 +57,14 @@ SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
     #endif
 }
 
-void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
+void SourceSamplerAudioProcessorEditor::buttonClicked (juce::Button* button){
     if (button == &openInBrowser)
     {
         int port = processor.getServerInterfaceHttpPort();
         #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-        URL("https://localhost:" + (String)port + "/").launchInDefaultBrowser();
+        juce::URL("https://localhost:" + (juce::String)port + "/").launchInDefaultBrowser();
         #else
-        URL("http://localhost:" + (String)port + "/").launchInDefaultBrowser();
+        juce::URL("http://localhost:" + (juce::String)port + "/").launchInDefaultBrowser();
         #endif
     } else if (button == &reloadUI)
     {
@@ -72,7 +72,7 @@ void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
             hadBrowserError = false; // Reset browser error property
             int port = processor.getServerInterfaceHttpPort();
             #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            browser.goToURL("https://localhost:" + (String)port  + "/");
+            browser.goToURL("https://localhost:" + (juce::String)port  + "/");
             #else
             browser.goToURL("http://localhost:" + (String)port  + "/");
             #endif
@@ -82,9 +82,9 @@ void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
 }
 
 //==============================================================================
-void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
+void SourceSamplerAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 }
 
 void SourceSamplerAudioProcessorEditor::resized()

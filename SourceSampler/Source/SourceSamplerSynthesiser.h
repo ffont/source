@@ -18,8 +18,8 @@
 
 
 
-class SourceSamplerSynthesiser: public Synthesiser,
-                                public ActionBroadcaster
+class SourceSamplerSynthesiser: public juce::Synthesiser,
+                                public juce::ActionBroadcaster
 {
 public:
     SourceSamplerSynthesiser();
@@ -32,14 +32,14 @@ public:
     void noteOn (const int midiChannel,
                  const int midiNoteNumber,
                  const float velocity) override;
-    void handleMidiEvent (const MidiMessage& m) override;
+    void handleMidiEvent (const juce::MidiMessage& m) override;
     
     //==============================================================================
-    void setReverbParameters (Reverb::Parameters params);
+    void setReverbParameters (juce::Reverb::Parameters params);
     
 private:
     //==============================================================================
-    void renderVoices (AudioBuffer< float > &outputAudio, int startSample, int numSamples) override;
+    void renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples) override;
     enum
     {
         reverbIndex

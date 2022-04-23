@@ -17,7 +17,7 @@
 class SourceSound;
 
 
-class SourceSamplerSound: public SynthesiserSound
+class SourceSamplerSound: public juce::SynthesiserSound
 {
 public:
     //==============================================================================
@@ -36,7 +36,7 @@ public:
     */
     SourceSamplerSound (const juce::ValueTree& _state,
                         SourceSound* _sourceSoundPointer,
-                        AudioFormatReader& source,
+                        juce::AudioFormatReader& source,
                         double maxSampleLengthSeconds,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
@@ -48,7 +48,7 @@ public:
     
     SourceSound* getSourceSound() { return sourceSoundPointer; };
     
-    AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
+    juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     void writeBufferToDisk();
     
     juce::String getUUID() { return state.getProperty(IDs::uuid, "-"); };
@@ -156,7 +156,7 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
-    void addOrEditMidiMapping(juce::String uuid, int ccNumber, String parameterName, float minRange, float maxRange);
+    void addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange);
     std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber);
     void removeMidiMapping(juce::String uuid);
     
@@ -167,16 +167,16 @@ public:
     void removeSourceSampleSoundsFromSampler();
     
     void loadSounds();
-    bool isSupportedAudioFileFormat(const String& extension);
-    bool fileLocationIsSupportedAudioFileFormat(File location);
-    File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
+    bool isSupportedAudioFileFormat(const juce::String& extension);
+    bool fileLocationIsSupportedAudioFileFormat(juce::File location);
+    juce::File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
     bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState);
-    bool fileAlreadyInDisk(File locationInDisk);
-    void downloadProgressUpdate(File targetFileLocation, float percentageCompleted);
-    void downloadFinished(File targetFileLocation, bool taskSucceeded);
+    bool fileAlreadyInDisk(juce::File locationInDisk);
+    void downloadProgressUpdate(juce::File targetFileLocation, float percentageCompleted);
+    void downloadFinished(juce::File targetFileLocation, bool taskSucceeded);
     
-    void progress (URL::DownloadTask *task, int64 bytesDownloaded, int64 totalLength);
-    void finished(URL::DownloadTask *task, bool success);
+    void progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength);
+    void finished(juce::URL::DownloadTask *task, bool success);
     
     //==============================================================================
     class SoundLoaderThread : public juce::Thread
@@ -241,7 +241,7 @@ private:
     // --> End auto-generated code A
     
     // Other
-    std::vector<std::unique_ptr<URL::DownloadTask>> downloadTasks;
+    std::vector<std::unique_ptr<juce::URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
     double disabledTime = 0.0;
     

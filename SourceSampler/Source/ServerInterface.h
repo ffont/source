@@ -14,24 +14,8 @@
 #include "defines.h"
 #include "BinaryData.h"
 #if USE_WEBSOCKETS
-#include "ws_server_certificate.hpp"
-#include <boost/beast/core.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/beast/websocket/ssl.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#include <cstdlib>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <thread>
-namespace beast = boost::beast;         // from <boost/beast.hpp>
-namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
-namespace net = boost::asio;            // from <boost/asio.hpp>
-namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+#include "server_wss.hpp"
+#include <future>
 #endif
 #if USE_HTTP_SERVER
 #include "httplib.h"
@@ -43,77 +27,43 @@ class ServerInterface;  // Forward delcaration
 
 #if USE_WEBSOCKETS
 
-void handle_ws_session(tcp::socket socket, ssl::context& ctx, ServerInterface* interfacePtr);  // Forward delcaration
+#if USE_WEBSOCKETS_SSL
+using WsServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
+#else
+using WsServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
+#endif
 
-class WebSocketsServer: public Thread
+class WebSocketsServer: public juce::Thread
 {
 public:
    
-    WebSocketsServer(): Thread ("SourceWebsocketsServer")
+    WebSocketsServer(): juce::Thread ("SourceWebsocketsServer")
     {
     }
    
-    ~WebSocketsServer()
-    {
+    ~WebSocketsServer(){
+        if (serverPtr != nullptr){
+            serverPtr.release();
+        }
     }
     
     void setInterfacePointer(ServerInterface* _interface){
         interfacePtr = _interface;
     }
     
-    inline void run()
-    {
-        try
-        {
-            auto const address = net::ip::make_address("0.0.0.0");
-            auto const port = static_cast<unsigned short>(WEBSOCKETS_SERVER_PORT);
+    inline void run();
 
-            // The io_context is required for all I/O
-            net::io_context ioc{1};
-
-            // The SSL context is required, and holds certificates
-            ssl::context ctx{ssl::context::tlsv12};
-
-            // This holds the self-signed certificate used by the server
-            load_server_certificate(ctx);
-            
-            DBG("Starting websockets server, listening at 0.0.0.0, port " << port);
-
-            // The acceptor receives incoming connections
-            tcp::acceptor acceptor{ioc, {address, port}};
-            for(;;)
-            {
-                // This will receive the new connection
-                tcp::socket socket{ioc};
-
-                // Block until we get a connection
-                acceptor.accept(socket);
-
-                // Launch the session, transferring ownership of the socket
-                std::thread(
-                    &handle_ws_session,
-                    std::move(socket),
-                    std::ref(ctx),
-                    interfacePtr).detach();
-            }
-        }
-        catch (const std::exception& e)
-        {
-            DBG("Error: " << e.what());
-        }
-    }
-    
     ServerInterface* interfacePtr;
-    std::vector<websocket::stream<beast::ssl_stream<tcp::socket&>>*> wsSessions;
+    std::unique_ptr<WsServer> serverPtr;
 };
 #endif
 
 
-class HTTPServer: public Thread
+class HTTPServer: public juce::Thread
 {
 public:
    
-    HTTPServer(): Thread ("SourceHttpServer"){}
+    HTTPServer(): juce::Thread ("SourceHttpServer"){}
    
     ~HTTPServer(){
         if (serverPtr != nullptr){
@@ -147,8 +97,8 @@ public:
     
 };
 
-class OSCServer: private OSCReceiver,
-                 private OSCReceiver::Listener<OSCReceiver::MessageLoopCallback>
+class OSCServer: private juce::OSCReceiver,
+                 private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
 {
 public:
     
@@ -169,14 +119,14 @@ public:
         interface.reset(_interface);
     }
     
-    inline void oscMessageReceived (const OSCMessage& message) override;
+    inline void oscMessageReceived (const juce::OSCMessage& message) override;
     
     std::unique_ptr<ServerInterface> interface;
     
 };
 
 
-class ServerInterface: public ActionBroadcaster
+class ServerInterface: public juce::ActionBroadcaster
 {
 public:
     ServerInterface ()
@@ -211,55 +161,33 @@ public:
         #endif
         
         #if USE_WEBSOCKETS
-        //wsServer.interface.release();
-        // wsServer run some beast stop methods?
+        if (wsServer.serverPtr != nullptr){
+            wsServer.serverPtr->stop(); // some other method
+        }
         wsServer.stopThread(5000);  // Give it enough time to stop the websockets server...
         #endif
     }
     
-    void log(String message){
+    void log(juce::String message){
         DBG(message);
     }
-    
-    void addWsSession(websocket::stream<beast::ssl_stream<tcp::socket&>>* s){
-        const juce::ScopedLock sl (wsSessionAddRemoveLock);
-        wsServer.wsSessions.push_back(s);
-        DBG("Active WS sessions: " << (juce::String)wsServer.wsSessions.size());
-    }
-    
-    void removeWsSession(websocket::stream<beast::ssl_stream<tcp::socket&>>* s){
-        const juce::ScopedLock sl (wsSessionAddRemoveLock);
-        int position = -1;
-        for (int i=0; i<wsServer.wsSessions.size(); i++){
-            if (wsServer.wsSessions[i] == s){
-                position = i;
-            }
-        }
-        if (position > -1){
-            wsServer.wsSessions.erase(wsServer.wsSessions.begin() + position);
-            DBG("Session " << position << " removed");
-        } else {
-            DBG("No session to remove");
-        }
-        DBG("Active WS sessions: " << (juce::String)wsServer.wsSessions.size());
-    }
         
-    void processActionFromOSCMessage (const OSCMessage& message)
+    void processActionFromOSCMessage (const juce::OSCMessage& message)
     {
         // Trigger the OSC message as an Action Message in the plugin Processor
-        String actionName = message.getAddressPattern().toString();
-        StringArray actionParameters = {};
+        juce::String actionName = message.getAddressPattern().toString();
+        juce::StringArray actionParameters = {};
         for (int i=0; i<message.size(); i++){
             if (message[i].isString()){
                 actionParameters.add(message[i].getString());
             } else if (message[i].isInt32()){
-                actionParameters.add((String)message[i].getInt32());
+                actionParameters.add((juce::String)message[i].getInt32());
             } else if (message[i].isFloat32()){
-                actionParameters.add((String)message[i].getFloat32());
+                actionParameters.add((juce::String)message[i].getFloat32());
             }
         }
-        String serializedParameters = actionParameters.joinIntoString(SERIALIZATION_SEPARATOR);
-        String actionMessage = actionName + ":" + serializedParameters;
+        juce::String serializedParameters = actionParameters.joinIntoString(SERIALIZATION_SEPARATOR);
+        juce::String actionMessage = actionName + ":" + serializedParameters;
         sendActionMessage(actionMessage);
     }
     
@@ -271,23 +199,22 @@ public:
     #endif
     #if USE_WEBSOCKETS
     WebSocketsServer wsServer;
-    juce::CriticalSection wsSessionAddRemoveLock;
     #endif
-    String serializedAppState;
-    String serializedAppStateVolatile;
+    juce::String serializedAppState;
+    juce::String serializedAppStateVolatile;
 };
 
 
 void HTTPServer::run()
 {
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    File sourceDataLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
+    juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    juce::File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
     if (!certFile.existsAsFile()){
         // Write bundled binary resource to file so https server can load it
         certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
     }
-    File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
+    juce::File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
     if (!keyFile.existsAsFile()){
         // Write bundled binary resource to file so https server can load it
         keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
@@ -299,14 +226,14 @@ void HTTPServer::run()
     
     // Some server configuration
     
-    File tmpFilesLocation = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    juce::File tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
     auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
     if (!ret) {
         DBG("Can't serve sound files from directory as directory does not exist");
     }
     
     server.Get("/", [](const httplib::Request &, httplib::Response &res) {
-        String contents = String::fromUTF8 (BinaryData::ui_plugin_html, BinaryData::ui_plugin_htmlSize);
+        juce::String contents = juce::String::fromUTF8 (BinaryData::ui_plugin_html, BinaryData::ui_plugin_htmlSize);
         res.set_content(contents.toStdString(), "text/html");
     });
     
@@ -321,21 +248,21 @@ void HTTPServer::run()
         if (interface != nullptr){
             // Parse get parameters and transform to OSC message that we feed to the
             // ServerInterface as if we received OSC. In this way the interface is unified
-            String oscAddress = "";
-            StringArray types;
-            StringArray values;
+            juce::String oscAddress = "";
+            juce::StringArray types;
+            juce::StringArray values;
             
             std::multimap<std::string, std::string>::const_iterator it;
             for (it = req.params.begin(); it != req.params.end(); ++it){
-                if ((String)it->first == "address"){
-                    oscAddress = (String)it->second;
-                } else if ((String)it->first == "values"){
-                    values.addTokens ((String)it->second, ";", "");
-                } else if ((String)it->first == "types"){
-                    types.addTokens ((String)it->second, ";", "");
+                if ((juce::String)it->first == "address"){
+                    oscAddress = (juce::String)it->second;
+                } else if ((juce::String)it->first == "values"){
+                    values.addTokens ((juce::String)it->second, ";", "");
+                } else if ((juce::String)it->first == "types"){
+                    types.addTokens ((juce::String)it->second, ";", "");
                 }
             }
-            OSCMessage message = OSCMessage(oscAddress);
+            juce::OSCMessage message = juce::OSCMessage(oscAddress);
             for (int i=0; i<types.size(); i++){
                 if (types[i] == "int"){
                     message.addInt32(values[i].getIntValue());
@@ -383,73 +310,41 @@ void HTTPServer::run()
     connected = true;
     serverPtr.reset(&server);
     if (interface != nullptr){
-        interface->log("Started HTTP server, listening at 0.0.0.0:" + (String)(port));
+        interface->log("Started HTTP server, listening at 0.0.0.0:" + (juce::String)(port));
     }
     server.listen_after_bind();
 }
 
 #if USE_WEBSOCKETS
-inline void handle_ws_session(tcp::socket socket, ssl::context& ctx, ServerInterface* interfacePtr)
+void WebSocketsServer::run()
 {
+    #if USE_WEBSOCKETS_SSL
+    WsServer server("/Users/ffont/Developer/source/SourceSampler/Resources/localhost.crt", "/Users/ffont/Developer/source/SourceSampler/Resources/localhost.key");
+    #else
+    WsServer server;
+    #endif
+    server.config.port = 8125;
     
-    websocket::stream<beast::ssl_stream<tcp::socket&>> ws{socket, ctx};
-    interfacePtr->addWsSession(&ws);
+    auto &echo_all = server.endpoint["^/echo_all/?$"];
+    echo_all.on_message = [&server](std::shared_ptr<WsServer::Connection> /*connection*/, std::shared_ptr<WsServer::InMessage> in_message) {
+        auto out_message = in_message->string();
+        // echo_all.get_connections() can also be used to solely receive connections on this endpoint
+        for(auto &a_connection : server.get_connections())
+            a_connection->send(out_message);
+    };
     
-    try
-    {
-        DBG("Starting websockets session");
-        
-        // Construct the websocket stream around the socket
-        //websocket::stream<beast::ssl_stream<tcp::socket&>> ws{socket, ctx};
-        //interfacePtr->addWsSession(&ws);
-
-        // Perform the SSL handshake
-        ws.next_layer().handshake(ssl::stream_base::server);
-
-        // Set a decorator to change the Server of the handshake
-        ws.set_option(websocket::stream_base::decorator(
-            [](websocket::response_type& res)
-            {
-                res.set(http::field::server,
-                    std::string(BOOST_BEAST_VERSION_STRING) +
-                        " websocket-server-sync-ssl");
-            }));
-
-        // Accept the websocket handshake
-        ws.accept();
-
-        for(;;)
-        {
-            // This buffer will hold the incoming message
-            beast::flat_buffer buffer;
-
-            // Read a message
-            ws.read(buffer);
-
-            // Echo the message back
-            ws.text(ws.got_text());
-            ws.write(buffer.data());
-            OSCMessage message = OSCMessage("/test");
-            message.addInt32(1);
-            interfacePtr->processActionFromOSCMessage(message);
-        }
-    }
-    catch(beast::system_error const& se)
-    {
-        // This indicates that the session was closed
-        if(se.code() != websocket::error::closed)
-            std::cerr << "Error: " << se.code().message() << std::endl;
-    }
-    catch(std::exception const& e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-    interfacePtr->removeWsSession(&ws);
+    serverPtr.reset(&server);
+    
+    std::promise<unsigned short> server_port;
+    server.start([&server_port](unsigned short port) {
+        server_port.set_value(port);
+        DBG("Websockets Server listening on port " << port);
+    });
 }
 #endif
 
 
-void OSCServer::oscMessageReceived (const OSCMessage& message)
+void OSCServer::oscMessageReceived (const juce::OSCMessage& message)
 {
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);

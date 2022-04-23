@@ -24,7 +24,7 @@ void SourceSamplerVoice::setModWheelValue(int newValue)
     currentModWheelValue = newValue;
 }
 
-bool SourceSamplerVoice::canPlaySound (SynthesiserSound* sound)
+bool SourceSamplerVoice::canPlaySound (juce::SynthesiserSound* sound)
 {
     return dynamic_cast<const SourceSamplerSound*> (sound) != nullptr;
 }
@@ -43,7 +43,7 @@ int SourceSamplerVoice::getNoteIndex(int midiNote)
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         if (sound->getNumberOfMappedMidiNotes() > 0){
-            BigInteger mappedMidiNotes = sound->getMappedMidiNotes();
+            juce::BigInteger mappedMidiNotes = sound->getMappedMidiNotes();
             int noteIndex = 0;
             int closestNoteIndex = 0;
             int minDistanceWithNote = 1000;
@@ -85,7 +85,7 @@ int findNearestPositiveZeroCrossing (int position, const float* const signal, in
     return position;  // If none found, return original
 }
 
-void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, SynthesiserSound* s, int /*currentPitchWheelPosition*/)
+void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound* s, int /*currentPitchWheelPosition*/)
 {
     // This is called when note on is received
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
@@ -286,7 +286,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
                            filterCutoffVelMod + // Velocity mod to cutoff
                            newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            filterADSRMod; // ADSR mod
-    filter.setCutoffFrequencyHz (jmax(0.001f, computedCutoff));
+    filter.setCutoffFrequencyHz (juce::jmax(0.001f, computedCutoff));
     //std::cout << " vel:" << filterCutoffVelMod << " mod:" << newFilterCutoffMod << " adsr:" << filterADSRMod << std::endl;
     //std::cout << filterCutoff << " to " << jmax(0.001f, computedCutoff) << std::endl;
     filter.setResonance (filterRessonance);
@@ -296,9 +296,9 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     auto& gain = processorChain.get<masterGainIndex>();
     float newGainMod;
     if (sound->gpf(IDs::mod2GainAmt) >= 0){  // Set a maximum gain modulation combining mod wheel and aftertouch
-        newGainMod = (float)jmin((double)(gainMod + sound->gpf(IDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)sound->gpf(IDs::mod2GainAmt));  // Add mod wheel modulation here
+        newGainMod = (float)juce::jmin((double)(gainMod + sound->gpf(IDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)sound->gpf(IDs::mod2GainAmt));  // Add mod wheel modulation here
     } else {
-        newGainMod = (float)jmax((double)(gainMod + sound->gpf(IDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)sound->gpf(IDs::mod2GainAmt));  // Add mod wheel modulation here
+        newGainMod = (float)juce::jmax((double)(gainMod + sound->gpf(IDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)sound->gpf(IDs::mod2GainAmt));  // Add mod wheel modulation here
     }
     gain.setGainDecibels(sound->gpf(IDs::gain) + newGainMod);
 }
@@ -374,14 +374,14 @@ float interpolateSample (float samplePosition, const float* const signal)
 }
 
 //==============================================================================
-void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
+void SourceSamplerVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
         // Do some preparation (not all parameters will be used depending on the launch mode)
         int originalNumSamples = numSamples; // user later for filter processing
         double previousPitchRatio = pitchRatio;
-        float previousPitchModSemitones = (float)jmin((double)pitchModSemitones + sound->gpf(IDs::mod2PitchAmt) * (double)currentModWheelValue/127.0, (double)sound->gpf(IDs::mod2PitchAmt));  // Add mod wheel position
+        float previousPitchModSemitones = (float)juce::jmin((double)pitchModSemitones + sound->gpf(IDs::mod2PitchAmt) * (double)currentModWheelValue/127.0, (double)sound->gpf(IDs::mod2PitchAmt));  // Add mod wheel position
         float previousPitchBendModSemitones = pitchBendModSemitones;
         float previousPan = pan;
         bool noteStoppedHard = false;
@@ -463,10 +463,10 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
             }
             
             // Draw envelope sample and add it to L and R samples, also add panning and velocity gain
-            float rGainPan = jmin (1 - pan, 1.0f);
-            float lGainPan = jmin (1 + pan, 1.0f);
-            float previousRGainPan = jmin (1 - previousPan, 1.0f);
-            float previousLGainPan = jmin (1 + previousPan, 1.0f);
+            float rGainPan = juce::jmin (1 - pan, 1.0f);
+            float lGainPan = juce::jmin (1 + pan, 1.0f);
+            float previousRGainPan = juce::jmin (1 - previousPan, 1.0f);
+            float previousLGainPan = juce::jmin (1 + previousPan, 1.0f);
             float interpolatedRGainPan = (previousRGainPan * ((float)numSamples/originalNumSamples) + rGainPan * (1.0f - (float)numSamples/originalNumSamples));
             float interpolatedLGainPan = (previousLGainPan * ((float)numSamples/originalNumSamples) + lGainPan * (1.0f - (float)numSamples/originalNumSamples));
             auto envelopeValue = adsr.getNextSample();
@@ -486,14 +486,14 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
                 // If in freeze mode, move from the current playhead position to the target playhead position in the length of the block
                 double distanceTotargetPlayheadSamplePosition = targetPlayheadSamplePosition - playheadSamplePosition;
                 double distanceTotargetPlayheadSamplePositionNormalized = std::abs(distanceTotargetPlayheadSamplePosition / sound->getLengthInSamples()); // normalized between 0 and 1
-                double maxSpeed = jmax(std::pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * sound->gpf(IDs::freezePlayheadSpeed), 1.0);
-                double actualSpeed = jmin(maxSpeed, std::abs(distanceTotargetPlayheadSamplePosition));
+                double maxSpeed = juce::jmax(std::pow(distanceTotargetPlayheadSamplePositionNormalized, 2) * sound->gpf(IDs::freezePlayheadSpeed), 1.0);
+                double actualSpeed = juce::jmin(maxSpeed, std::abs(distanceTotargetPlayheadSamplePosition));
                 if (distanceTotargetPlayheadSamplePosition >= 0){
                     playheadSamplePosition += actualSpeed;
                 } else {
                     playheadSamplePosition -= actualSpeed;
                 }
-                playheadSamplePosition = jlimit(0.0, (double)(sound->getLengthInSamples() - 1), playheadSamplePosition);  // Just to be sure...
+                playheadSamplePosition = juce::jlimit(0.0, (double)(sound->getLengthInSamples() - 1), playheadSamplePosition);  // Just to be sure...
  
             } else {
                 // If not in freeze mode, advance source sample position for next iteration according to pitch ratio and other modulations...
@@ -573,7 +573,7 @@ void SourceSamplerVoice::renderNextBlock (AudioBuffer<float>& outputBuffer, int 
 
 void SourceSamplerVoice::prepare (const juce::dsp::ProcessSpec& spec)
 {
-    tmpVoiceBuffer = AudioBuffer<float>(spec.numChannels, spec.maximumBlockSize);
+    tmpVoiceBuffer = juce::AudioBuffer<float>(spec.numChannels, spec.maximumBlockSize);
     processorChain.prepare (spec);
 }
 
@@ -590,7 +590,7 @@ float SourceSamplerVoice::getPlayingPositionPercentage()
 void SourceSamplerVoice::startRecordingToDebugBuffer(int bufferSize){
     if (!isRecordingToDebugBuffer && !debugBufferFinishedRecording){
         //DBG("Started writing to buffer...");
-        debugBuffer = AudioBuffer<float>(1, bufferSize);
+        debugBuffer = juce::AudioBuffer<float>(1, bufferSize);
         isRecordingToDebugBuffer = true;
     }
 }
@@ -606,14 +606,14 @@ void SourceSamplerVoice::writeToDebugBuffer(float sample){
     }
 }
 
-void SourceSamplerVoice::endRecordingToDebugBuffer(String outFilename){
+void SourceSamplerVoice::endRecordingToDebugBuffer(juce::String outFilename){
     if (isRecordingToDebugBuffer){
         isRecordingToDebugBuffer = false;
         debugBufferCurrentPosition = 0;
-        WavAudioFormat format;
-        std::unique_ptr<AudioFormatWriter> writer;
-        File file = File::getSpecialLocation(File::userDesktopDirectory).getChildFile(outFilename).withFileExtension("wav");
-        writer.reset (format.createWriterFor (new FileOutputStream (file),
+        juce::WavAudioFormat format;
+        std::unique_ptr<juce::AudioFormatWriter> writer;
+        juce::File file = juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile(outFilename).withFileExtension("wav");
+        writer.reset (format.createWriterFor (new juce::FileOutputStream (file),
                                               getSampleRate(),
                                               debugBuffer.getNumChannels(),
                                               24,
