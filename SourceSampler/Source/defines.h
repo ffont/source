@@ -12,7 +12,6 @@
 
 
 #define USE_WEBSOCKETS 1
-#define USE_WEBSOCKETS_SSL 1
 
 #if ELK_BUILD
     #define USE_EXTERNAL_HTTP_SERVER 1  // In ELK we don't use the embedded HTTP server but use the external one which runs in a separate process

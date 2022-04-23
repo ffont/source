@@ -27,7 +27,7 @@ class ServerInterface;  // Forward delcaration
 
 #if USE_WEBSOCKETS
 
-#if USE_WEBSOCKETS_SSL
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
 using WsServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
 #else
 using WsServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
@@ -53,6 +53,7 @@ public:
     
     inline void run();
 
+    int assignedPort = -1;
     ServerInterface* interfacePtr;
     std::unique_ptr<WsServer> serverPtr;
 };
@@ -318,12 +319,24 @@ void HTTPServer::run()
 #if USE_WEBSOCKETS
 void WebSocketsServer::run()
 {
-    #if USE_WEBSOCKETS_SSL
+    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     WsServer server("/Users/ffont/Developer/source/SourceSampler/Resources/localhost.crt", "/Users/ffont/Developer/source/SourceSampler/Resources/localhost.key");
     #else
     WsServer server;
     #endif
-    server.config.port = 8125;
+    
+    #if !ELK_BUILD
+        #if !JUCE_DEBUG
+        // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
+        server.config.port = 0;
+        #else
+        // In debug builds we also want a known port so it is easy to test from browser
+        server.config.port = WEBSOCKETS_SERVER_PORT;
+        #endif
+    #else
+    server.config.port = WEBSOCKETS_SERVER_PORT;  // Use a known port so python UI can connect to it
+    #endif    
+    serverPtr.reset(&server);
     
     auto &echo_all = server.endpoint["^/echo_all/?$"];
     echo_all.on_message = [&server](std::shared_ptr<WsServer::Connection> /*connection*/, std::shared_ptr<WsServer::InMessage> in_message) {
@@ -333,12 +346,9 @@ void WebSocketsServer::run()
             a_connection->send(out_message);
     };
     
-    serverPtr.reset(&server);
-    
-    std::promise<unsigned short> server_port;
-    server.start([&server_port](unsigned short port) {
-        server_port.set_value(port);
-        DBG("Websockets Server listening on port " << port);
+    server.start([this](unsigned short port) {
+        assignedPort = port;
+        DBG("Started Websockets Server listening at 0.0.0.0:" << port);
     });
 }
 #endif
