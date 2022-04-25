@@ -251,6 +251,8 @@ SOURCE is released under the **GPLv3** open source software license (see [LICENS
 * [cpp-httplib](https://github.com/yhirose/cpp-httplib), available under MIT license ([@3da4a0a](https://github.com/yhirose/cpp-httplib/tree/3da4a0a))
 * [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@711ee87](https://github.com/ffont/ff_meters/tree/711ee87862e1c2485536e977ab57b1f78b84667f), I use a fork I made with a small patch for compatibility with ELK)
 * [twine](https://github.com/elk-audio/twine), vailable under GPLv3 license ([@1257d93](https://github.com/elk-audio/twine/tree/1257d93882cf9fd120539a2ce5497fcbef22af82))
+* [asio](https://github.com/chriskohlhoff/asio), vailable under Boost Sofrware License] ([@f0a1e1c](https://github.com/chriskohlhoff/asio/tree/f0a1e1c7c0387ad16358c81eb52528f190df625c))
+* [Simple-WebSocket-Server](https://gitlab.com/eidheim/Simple-WebSocket-Server), vailable under MIT license ([@a091e7c](https://gitlab.com/eidheim/Simple-WebSocket-Server/-/tree/a091e7cfb1587e3c0340bc7d2d850a4e44c03e11))
 
 <br><br>
 <p align="center">

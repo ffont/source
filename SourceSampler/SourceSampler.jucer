@@ -5,9 +5,9 @@
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../../../boost/&#10;"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/asio/asio/include/&#10;"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
-              defines="DONT_SET_USING_JUCE_NAMESPACE=1">
+              defines="DONT_SET_USING_JUCE_NAMESPACE=1&#10;ASIO_STANDALONE=1">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Main">
       <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>
