@@ -170,10 +170,9 @@ public:
     void log(juce::String message){
         DBG(message);
     }
-        
-    void processActionFromOSCMessage (const juce::OSCMessage& message)
+    
+    juce::String serliaizeOSCMessage(const juce::OSCMessage& message)
     {
-        // Trigger the OSC message as an Action Message in the plugin Processor
         juce::String actionName = message.getAddressPattern().toString();
         juce::StringArray actionParameters = {};
         for (int i=0; i<message.size(); i++){
@@ -187,7 +186,30 @@ public:
         }
         juce::String serializedParameters = actionParameters.joinIntoString(SERIALIZATION_SEPARATOR);
         juce::String actionMessage = actionName + ":" + serializedParameters;
+        return actionMessage;
+    }
+    
+    void sendMessageToWebSocketsClients(const juce::OSCMessage& message)
+    {
+        #if USE_WEBSOCKETS
+        // Takes a OSC message object and serializes in a way that can be sent to WebSockets conencted clients
+        for(auto &a_connection : wsServer.serverPtr->get_connections()){
+            juce::String serializedMessage = serliaizeOSCMessage(message);
+            a_connection->send(serializedMessage.toStdString());
+        }
+        #endif
+    }
+        
+    void processActionFromOSCMessage (const juce::OSCMessage& message)
+    {
+        // Trigger the OSC message as an Action Message in the plugin Processor
+        juce::String actionMessage = serliaizeOSCMessage(message);
         sendActionMessage(actionMessage);
+    }
+    
+    void processActionFromSerializedMessage (const juce::String& message)
+    {
+        sendActionMessage(message);
     }
     
     #if USE_HTTP_SERVER
@@ -336,12 +358,12 @@ void WebSocketsServer::run()
     #endif    
     serverPtr.reset(&server);
     
-    auto &echo_all = server.endpoint["^/echo_all/?$"];
-    echo_all.on_message = [&server](std::shared_ptr<WsServer::Connection> /*connection*/, std::shared_ptr<WsServer::InMessage> in_message) {
-        auto out_message = in_message->string();
-        // echo_all.get_connections() can also be used to solely receive connections on this endpoint
-        for(auto &a_connection : server.get_connections())
-            a_connection->send(out_message);
+    auto &source_endpoint = server.endpoint["^/source/?$"];
+    source_endpoint.on_message = [&server, this](std::shared_ptr<WsServer::Connection> /*connection*/, std::shared_ptr<WsServer::InMessage> in_message) {
+        auto message = in_message->string();
+        if (interfacePtr != nullptr){
+            interfacePtr->processActionFromSerializedMessage(juce::String(message));
+        }
     };
     
     server.start([this](unsigned short port) {

@@ -19,11 +19,11 @@ class SoundDownloaderProgress:
         percent = count * blockSize * 100 / totalSize
         if percent > self.old_percent:
             self.old_percent = percent
-            self.source_plugin_interface.send_osc_to_plugin(
+            self.source_plugin_interface.send_msg_to_plugin(
                 '/downloading_sound_progress', [self.sound_uuid, self.outfile, percent])
         if percent >= 100:
             os.rename(self.outfile + '.tmp', self.outfile)
-            self.source_plugin_interface.send_osc_to_plugin(
+            self.source_plugin_interface.send_msg_to_plugin(
                 '/finished_downloading_sound', [self.sound_uuid, self.outfile, True])
             n_seconds = time.time() - self.time_started
             kbytes_per_second = count * blockSize / n_seconds / 1000

@@ -248,7 +248,7 @@ def send_osc():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in
               zip(request.args['types'].split(';'), request.args['values'].split(';'))]
-    source_plugin_interface.send_osc_to_plugin(address, values)
+    source_plugin_interface.send_msg_to_plugin(address, values)
     return 'OSC sent'
 
 

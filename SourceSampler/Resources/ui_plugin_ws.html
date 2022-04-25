@@ -244,9 +244,9 @@
             }
             let wsUrl = "";
             if (useWss){
-                wsUrl = "wss://localhost:" + wsPort + "/echo_all/";
+                wsUrl = "wss://localhost:" + wsPort + "/source/";
             } else {
-                wsUrl = "ws://localhost:" + wsPort + "/echo_all/";
+                wsUrl = "ws://localhost:" + wsPort + "/source/";
             }
             console.log("Connecting to WS server: " + wsUrl);
             let socket = new WebSocket(wsUrl);

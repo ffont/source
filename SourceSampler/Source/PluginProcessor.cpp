@@ -84,6 +84,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(juce::OSCMessage("/plugin_started"));
     #endif
+    #if USE_WEBSOCKETS
+    serverInterface.sendMessageToWebSocketsClients(juce::OSCMessage("/plugin_started"));
+    #endif
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -879,12 +882,22 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             juce::OSCMessage message = juce::OSCMessage("/full_state");
             message.addInt32(stateUpdateID);
             message.addString(state.toXmlString());
+            #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
+            #endif
+            #if USE_WEBSOCKETS
+            serverInterface.sendMessageToWebSocketsClients(message);
+            #endif
             
         } else if (stateType == "oscVolatileString"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state_string");
             message.addString(collectVolatileStateInformationAsString());
+            #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
+            #endif
+            #if USE_WEBSOCKETS
+            serverInterface.sendMessageToWebSocketsClients(message);
+            #endif
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         juce::String soundPath = parameters[0];
@@ -1271,7 +1284,7 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
-    #if SYNC_STATE_WITH_OSC
+    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("propertyChanged");
     message.addInt32(stateUpdateID);
@@ -1279,7 +1292,12 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     message.addString(treeWhosePropertyHasChanged.getType().toString());
     message.addString(property.toString());
     message.addString(treeWhosePropertyHasChanged[property].toString());
+    #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
+    #endif
+    #if USE_WEBSOCKETS
+    serverInterface.sendMessageToWebSocketsClients(message);
+    #endif
     stateUpdateID += 1;
     #endif
 }
@@ -1290,7 +1308,7 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Added VT child " << childWhichHasBeenAdded.getType());
-    #if SYNC_STATE_WITH_OSC
+    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("addedChild");
     message.addInt32(stateUpdateID);
@@ -1298,7 +1316,12 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     message.addString(parentTree.getType().toString());
     message.addString(childWhichHasBeenAdded.toXmlString());
     message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
+    #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
+    #endif
+    #if USE_WEBSOCKETS
+    serverInterface.sendMessageToWebSocketsClients(message);
+    #endif
     stateUpdateID += 1;
     #endif
 }
@@ -1309,13 +1332,18 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Removed VT child " << childWhichHasBeenRemoved.getType());
-    #if SYNC_STATE_WITH_OSC
+    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("removedChild");
     message.addInt32(stateUpdateID);
     message.addString(childWhichHasBeenRemoved[IDs::uuid].toString());
     message.addString(childWhichHasBeenRemoved.getType().toString());
+    #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
+    #endif
+    #if USE_WEBSOCKETS
+    serverInterface.sendMessageToWebSocketsClients(message);
+    #endif
     stateUpdateID += 1;
     #endif
 }

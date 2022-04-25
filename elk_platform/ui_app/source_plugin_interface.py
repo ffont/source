@@ -12,10 +12,9 @@ class SourcePluginInterface(object):
     def __init__(self, ui_state_manager):
         self.sss = SourceStateSynchronizer(ui_state_manager, verbose=False)
 
-    def send_osc_to_plugin(self, address, values):
-        if self.sss.osc_client is not None:
-            self.sss.osc_client.send_message(address, values)
-
+    def send_msg_to_plugin(self, address, values):
+        self.sss.send_msg_to_plugin(address, values)
+        
     def update_source_extra_state(self, extra_state):
         self.extra_source_state.update(extra_state)
 

@@ -360,12 +360,12 @@ class State(object):
         current_preset_name = spi.get_property(StateNames.LOADED_PRESET_NAME, 'NoName')
         current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, -1)
         if current_preset_index > -1:
-            spi.send_osc_to_plugin("/save_preset", [current_preset_name, int(current_preset_index)])
+            spi.send_msg_to_plugin("/save_preset", [current_preset_name, int(current_preset_index)])
             sm.show_global_message("Saving {}\n{}...".format(current_preset_index, current_preset_name))
 
     def save_current_preset_to(self, query="", preset_idx=-1):
         preset_name = query  # NOTE: the parameter is called "query" because it reuses some classes used for entering queries. We might want to change that to "name"
-        spi.send_osc_to_plugin("/save_preset", [preset_name, int(preset_idx)])
+        spi.send_msg_to_plugin("/save_preset", [preset_name, int(preset_idx)])
         sm.show_global_message("Saving {}\n{}...".format(preset_idx, preset_name))
 
     def load_preset(self, preset_idx):
@@ -373,7 +373,7 @@ class State(object):
         if ':' in preset_idx:
             preset_name = preset_idx.split(':')[1]
             preset_idx = int(preset_idx.split(':')[0])  # This is because we're passing preset_idx:preset_name format (some callbacks might use it)
-        spi.send_osc_to_plugin("/load_preset", [int(preset_idx)])
+        spi.send_msg_to_plugin("/load_preset", [int(preset_idx)])
         if preset_name:
             sm.show_global_message("Loading {}\n{}...".format(preset_idx, preset_name), duration=5)
         else:
@@ -383,21 +383,21 @@ class State(object):
         current_preset_index = spi.get_property(StateNames.LOADED_PRESET_INDEX, -1)
         current_preset_name = spi.get_property(StateNames.LOADED_PRESET_NAME, "unnamed")
         if current_preset_index > -1:
-            spi.send_osc_to_plugin("/load_preset", [int(current_preset_index)])
+            spi.send_msg_to_plugin("/load_preset", [int(current_preset_index)])
             sm.show_global_message("Loading {}\n{}...".format(current_preset_index, current_preset_name), duration=5)
 
     def reapply_note_layout(self, layout_type):
-        spi.send_osc_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
+        spi.send_msg_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)]) 
         sm.show_global_message("Updated layout")
 
     def set_num_voices(self, num_voices):
-        spi.send_osc_to_plugin("/set_polyphony", [num_voices])
+        spi.send_msg_to_plugin("/set_polyphony", [num_voices])
 
     def set_midi_in_chhannel(self, midi_channel):
-        spi.send_osc_to_plugin("/set_midi_in_channel", [midi_channel])
+        spi.send_msg_to_plugin("/set_midi_in_channel", [midi_channel])
 
     def set_download_original_files(self, preference):
-        spi.send_osc_to_plugin("/set_use_original_files", [{
+        spi.send_msg_to_plugin("/set_use_original_files", [{
             'Never': 'never',
             'Only small': 'onlyShort',
             'Always': 'always',
@@ -416,7 +416,7 @@ class State(object):
         # Sending too many onsets might render the UPD OSC message too long
         sound_onsets_list = sound_onsets_list[:128]  
 
-        spi.send_osc_to_plugin("/add_or_replace_sound", [
+        spi.send_msg_to_plugin("/add_or_replace_sound", [
             sound_uuid, 
             new_sound['id'], 
             new_sound['name'], 
@@ -435,7 +435,7 @@ class State(object):
             sm.set_waiting_to_go_to_last_loaded_sound()
 
     def load_query_results(self, new_sounds, note_mapping_type=1, assigned_notes_per_sound_list=[]):
-        spi.send_osc_to_plugin('/clear_all_sounds', [])
+        spi.send_msg_to_plugin('/clear_all_sounds', [])
         time.sleep(0.2)
         n_sounds = len(new_sounds)
         n_notes_per_sound = 128 // n_sounds
@@ -594,7 +594,7 @@ class State(object):
 
     def set_slices_for_sound(self, sound_uuid, slices):
         if sound_uuid != "":
-            spi.send_osc_to_plugin('/set_slices', [sound_uuid, ','.join([str(s) for s in slices])])
+            spi.send_msg_to_plugin('/set_slices', [sound_uuid, ','.join([str(s) for s in slices])])
 
     def get_sound_idx_from_note(self, midi_note):
         # Iterate over sounds to find the first one that has that note assigned
@@ -618,10 +618,10 @@ class State(object):
             for note in assinged_notes:
                 assinged_notes_aux[note] = '1'
             midi_notes = hex(int("".join(reversed(''.join(assinged_notes_aux))), 2))  # Convert to a format expected by send_add_or_replace_sound_to_plugin
-            spi.send_osc_to_plugin('/set_assigned_notes', [sound_uuid, midi_notes, root_note])
+            spi.send_msg_to_plugin('/set_assigned_notes', [sound_uuid, midi_notes, root_note])
 
     def remove_sound(self, sound_uuid):
-        spi.send_osc_to_plugin('/remove_sound', [sound_uuid])
+        spi.send_msg_to_plugin('/remove_sound', [sound_uuid])
         sm.show_global_message("Sound removed!")
 
     def on_activating_state(self):
@@ -766,7 +766,7 @@ class ChangePresetOnEncoderShiftRotatedStateMixin(object):
                 current_preset_index += direction
                 if current_preset_index < 0:
                     current_preset_index = 0
-                spi.send_osc_to_plugin("/load_preset", [current_preset_index])
+                spi.send_msg_to_plugin("/load_preset", [current_preset_index])
         else:
             super().on_encoder_rotated(direction, shift=True)
 
@@ -870,7 +870,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain" or shift and parameter_name == "mod2PitchAmt":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                spi.send_osc_to_plugin(osc_address, ["", parameter_name, send_value])
+                spi.send_msg_to_plugin(osc_address, ["", parameter_name, send_value])
 
 
 class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
@@ -976,12 +976,12 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
     def play_selected_sound(self):
         if self.selected_sound_is_playing:
             self.stop_selected_sound()
-        spi.send_osc_to_plugin("/play_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
+        spi.send_msg_to_plugin("/play_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
         self.selected_sound_is_playing = True
 
     def stop_selected_sound(self):
         if self.selected_sound_is_playing:
-            spi.send_osc_to_plugin("/stop_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
+            spi.send_msg_to_plugin("/stop_sound", [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-')])
             self.selected_sound_is_playing = False
 
     def on_activating_state(self):
@@ -1063,7 +1063,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
                 send_value = send_func(value)
                 if shift and parameter_name == "pitch" or shift and parameter_name == "gain":
                     send_value = send_value * 0.3333333  # Reduced range mode
-                spi.send_osc_to_plugin(osc_address, [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), parameter_name, send_value])
+                spi.send_msg_to_plugin(osc_address, [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), parameter_name, send_value])
 
 
 class MenuState(State):
@@ -1231,7 +1231,7 @@ class ReverbSettingsMenuState(GoBackOnEncoderLongPressedStateMixin, PaginatedSta
             param_position, _ = reverb_parameters_info_dict[parameter_name]
             reverb_params = spi.get_property(StateNames.REVERB_SETTINGS, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             reverb_params[param_position] = value
-            spi.send_osc_to_plugin("/set_reverb_parameters", reverb_params)
+            spi.send_msg_to_plugin("/set_reverb_parameters", reverb_params)
 
 
 class EnterQuerySettingsState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, PaginatedState):
@@ -1854,7 +1854,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     def handle_delete_midi_cc_assignment(self, midi_cc_assignment_label):
         midi_cc_assignment = spi.get_sound_property(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
         if midi_cc_assignment is not None:
-            spi.send_osc_to_plugin('/remove_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
+            spi.send_msg_to_plugin('/remove_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
             sm.show_global_message('Removing MIDI\nmapping...')
 
 class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
@@ -1912,7 +1912,7 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
             if last_cc_received < 0:
                 last_cc_received = 0
             cc_number = last_cc_received
-        spi.send_osc_to_plugin('/add_or_update_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), self.uuid, cc_number, self.parameter_name, self.min_range, self.max_range])
+        spi.send_msg_to_plugin('/add_or_update_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), self.uuid, cc_number, self.parameter_name, self.min_range, self.max_range])
         sm.show_global_message('Adding MIDI\nmapping...')
         sm.go_back()
 
@@ -2311,16 +2311,16 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
     def on_button_pressed(self, button_idx, shift=False):
         if button_idx == 1:
             # Set start position
-            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "startPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_msg_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "startPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 2:
             # Set loop start position
-            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_msg_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopStartPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 3:
             # Set loop end position
-            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_msg_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "loopEndPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 4:
             # Set end position
-            spi.send_osc_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "endPosition", self.cursor_position * 1.0 / self.sound_length])
+            spi.send_msg_to_plugin('/set_sound_parameter', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), "endPosition", self.cursor_position * 1.0 / self.sound_length])
         elif button_idx == 5:
             # Add slice
             if self.cursor_position not in self.slices:
@@ -2529,7 +2529,7 @@ class FileChooserState(MenuCallbackState):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base_path = kwargs.get('base_path', '')
-        self.shift_callback=lambda file_path: spi.send_osc_to_plugin('/play_sound_from_path', [file_path])  # Send preview sound OSC on shift+encoder
+        self.shift_callback=lambda file_path: spi.send_msg_to_plugin('/play_sound_from_path', [file_path])  # Send preview sound OSC on shift+encoder
         self.go_back_n_times_shift_callback = 0
     
     def get_menu_item_lines(self):
@@ -2555,11 +2555,11 @@ class FileChooserState(MenuCallbackState):
     def on_encoder_rotated(self, direction, shift=False):
         super().on_encoder_rotated(direction, shift=shift)
         clear_moving_text_cache()
-        spi.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+        spi.send_msg_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
 
     def on_deactivating_state(self):
         super().on_deactivating_state()
-        spi.send_osc_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
+        spi.send_msg_to_plugin('/play_sound_from_path', [""])  # Stop sound being previewed (if any)
 
 
 class SoundChooserState(FileChooserState):
@@ -2570,7 +2570,7 @@ class SoundChooserState(FileChooserState):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sounds_data = kwargs.get('sounds_data', '')
-        self.shift_callback=lambda sound_name: spi.send_osc_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
+        self.shift_callback=lambda sound_name: spi.send_msg_to_plugin('/play_sound_from_path', [self.sounds_data.get(sound_name, {}).get("previews", {}).get("preview-lq-ogg", "")])  # Send preview sound OSC on shift+encoder
 
 
 class InfoPanelState(GoBackOnEncoderLongPressedStateMixin, State):
