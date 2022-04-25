@@ -63,6 +63,7 @@ private:
     juce::TextButton openInBrowser;
     juce::TextButton reloadUI;
     juce::Label explanation;
+    juce::String uiHTMLFilePath;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };

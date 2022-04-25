@@ -13,12 +13,10 @@
 #include <JuceHeader.h>
 #include "defines.h"
 #include "BinaryData.h"
+#include "httplib.h"
 #if USE_WEBSOCKETS
 #include "server_wss.hpp"
 #include <future>
-#endif
-#if USE_HTTP_SERVER
-#include "httplib.h"
 #endif
 
 
@@ -209,17 +207,12 @@ public:
 void HTTPServer::run()
 {
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+    // Write bundled binary SSL cert/key files server can load them
     juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
     juce::File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
-    if (!certFile.existsAsFile()){
-        // Write bundled binary resource to file so https server can load it
-        certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
-    }
+    certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
     juce::File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
-    if (!keyFile.existsAsFile()){
-        // Write bundled binary resource to file so https server can load it
-        keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
-    }
+    keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
     httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
     httplib::Server server;
@@ -320,7 +313,12 @@ void HTTPServer::run()
 void WebSocketsServer::run()
 {
     #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    WsServer server("/Users/ffont/Developer/source/SourceSampler/Resources/localhost.crt", "/Users/ffont/Developer/source/SourceSampler/Resources/localhost.key");
+    juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    juce::File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
+    certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
+    juce::File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
+    keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
+    WsServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
     WsServer server;
     #endif

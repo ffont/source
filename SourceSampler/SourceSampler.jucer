@@ -7,7 +7,7 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/asio/asio/include/&#10;"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
-              defines="DONT_SET_USING_JUCE_NAMESPACE=1&#10;ASIO_STANDALONE=1">
+              defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Main">
       <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>
@@ -71,6 +71,8 @@
     </GROUP>
     <GROUP id="{D8B11299-9CBB-B918-B21A-0DF22D8F20C8}" name="Resources">
       <FILE id="OMOWkz" name="ui_plugin.html" compile="0" resource="0" file="Resources/ui_plugin.html"/>
+      <FILE id="EZPDae" name="ui_plugin_ws.html" compile="0" resource="0"
+            file="Resources/ui_plugin_ws.html"/>
       <FILE id="tDxeWY" name="icon.png" compile="0" resource="0" file="../docs/icon.png"/>
     </GROUP>
   </MAINGROUP>

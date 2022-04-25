@@ -113,6 +113,7 @@
 		51B8BE17C29C2141DE1111F6 /* juce_osc */ /* juce_osc */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_osc; path = ../../3rdParty/JUCE/modules/juce_osc; sourceTree = SOURCE_ROOT; };
 		546E5C94581589536369E97E /* include_juce_audio_plugin_client_AU_2.mm */ /* include_juce_audio_plugin_client_AU_2.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_AU_2.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU_2.mm; sourceTree = SOURCE_ROOT; };
 		5484510AED0F6B29577E7953 /* Icon.icns */ /* Icon.icns */ = {isa = PBXFileReference; lastKnownFileType = file.icns; name = Icon.icns; path = Icon.icns; sourceTree = SOURCE_ROOT; };
+		573CAC9016BECDC2EBAF3BF3 /* ui_plugin_ws.html */ /* ui_plugin_ws.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = ui_plugin_ws.html; path = ../../Resources/ui_plugin_ws.html; sourceTree = SOURCE_ROOT; };
 		5B679FDC2FB9A717B0B91CDC /* include_juce_audio_plugin_client_Standalone.cpp */ /* include_juce_audio_plugin_client_Standalone.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_Standalone.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_Standalone.cpp; sourceTree = SOURCE_ROOT; };
 		5CD3B3FC87940B9B55B2FB81 /* include_juce_audio_plugin_client_AU.r */ /* include_juce_audio_plugin_client_AU.r */ = {isa = PBXFileReference; lastKnownFileType = file.r; name = include_juce_audio_plugin_client_AU.r; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU.r; sourceTree = SOURCE_ROOT; };
 		5CF30F550442F175107D86F0 /* include_juce_audio_formats.mm */ /* include_juce_audio_formats.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_formats.mm; path = ../../JuceLibraryCode/include_juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
@@ -431,6 +432,7 @@
 			isa = PBXGroup;
 			children = (
 				680555E5E194E7C02FA99468,
+				573CAC9016BECDC2EBAF3BF3,
 				CAA46233BEAE6C5D01EBA25B,
 			);
 			name = Resources;
@@ -974,7 +976,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_NDEBUG=1",
 					"NDEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1134,7 +1135,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_NDEBUG=1",
 					"NDEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1194,7 +1194,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_NDEBUG=1",
 					"NDEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1257,7 +1256,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_DEBUG=1",
 					"DEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1322,7 +1320,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_DEBUG=1",
 					"DEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1388,7 +1385,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_DEBUG=1",
 					"DEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1453,7 +1449,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_NDEBUG=1",
 					"NDEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1526,7 +1521,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_DEBUG=1",
 					"DEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1586,7 +1580,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_DEBUG=1",
 					"DEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",
@@ -1655,7 +1648,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"_NDEBUG=1",
 					"NDEBUG=1",
-					"DONT_SET_USING_JUCE_NAMESPACE=1",
 					"ASIO_STANDALONE=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.5",

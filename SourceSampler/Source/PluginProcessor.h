@@ -157,6 +157,7 @@ public:
     
     void timerCallback() override;
     int getServerInterfaceHttpPort();
+    int getServerInterfaceWSPort();
     
     void previewFile(const juce::String& path);
     void stopPreviewingFile();
