@@ -54,7 +54,11 @@ class SourcePluginInterface(object):
             property_name = StateNames.UUID
 
         source_state = self.sss.state_soup
-        preset_state = source_state.find_all("PRESET".lower())[0]
+        try:
+            preset_state = source_state.find_all("PRESET".lower())[0]
+        except IndexError:
+            # If no PRESET in state, then state is not available, return default
+            return default
         sounds_state = preset_state.find_all("SOUND".lower())
 
         if sound_idx is not None and sound_idx >= len(sounds_state):
