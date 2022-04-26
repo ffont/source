@@ -1854,7 +1854,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     def handle_delete_midi_cc_assignment(self, midi_cc_assignment_label):
         midi_cc_assignment = spi.get_sound_property(self.sound_idx, StateNames.SOUND_MIDI_CC_ASSIGNMENTS, default={}).get(midi_cc_assignment_label, None)
         if midi_cc_assignment is not None:
-            spi.send_msg_to_plugin('/remove_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), int(midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])])
+            spi.send_msg_to_plugin('/remove_cc_mapping', [spi.get_sound_property(self.sound_idx, StateNames.SOUND_UUID, '-'), midi_cc_assignment[StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID]])
             sm.show_global_message('Removing MIDI\nmapping...')
 
 class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):

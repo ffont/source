@@ -105,12 +105,19 @@ def ws_on_message(ws, message):
         data_parts = data.split(';')
         update_type = data_parts[0]
         update_id = int(data_parts[1])
-        update_data = data_parts[2:]
+        if update_type == "propertyChanged" or update_type == "removedChild":
+            # Can safely use the data parts after splitting by ; because we know no ; characters would be in the data
+            update_data = data_parts[2:]
+        elif update_type == "addedChild":
+            # Can't directly use split by ; because the XML state portion might contain ; characters inside, need to be careful
+            update_data = [data_parts[2], data_parts[3], data_parts[4], ';'.join(data_parts[5:])]
         args = [update_type, update_id] + update_data
         state_update_handler(*args)
 
     elif address == '/full_state':
-        data_parts = data.split(';')
+        # Split data at first ocurrence of ; instead of all ocurrences of ; as character ; might be in XML state portion
+        split_at = data.find(';')
+        data_parts = data[:split_at], data[split_at + 1:]
         update_id = int(data_parts[0])
         full_state_raw = data_parts[1]
         args = [update_id, full_state_raw]
@@ -119,11 +126,9 @@ def ws_on_message(ws, message):
 
 def ws_on_error(ws, error):
     print("* WS connection error: {}".format(error))
-    if 'Connection refused' not in str(error) or 'WebSocketConnectionClosedException' not in str(error):
-        # Don't print traceboack for these errors as these are expected
-        pass
-    else:
+    if 'Connection refused' not in str(error) and 'WebSocketConnectionClosedException' not in str(error):
         print(traceback.format_exc())
+        
     if sss_instance is not None:
         sss_instance.ws_connection_ok = False
 
@@ -143,7 +148,7 @@ def ws_on_open(ws):
 class WSConnectionThread(threading.Thread):
 
     reconnect_interval = 2
-    last_time_tried_wss = False
+    last_time_tried_wss = True  # Start trying ws connection (instead of wss)
 
     def __init__(self, port, source_state_synchronizer, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -320,14 +325,14 @@ class SourceStateSynchronizer(object):
             elif update_type == "addedChild":
                 parent_tree_uuid = update_data[0]
                 parent_tree_type = update_data[1].lower()
+                index_in_parent_childs = int(update_data[2])
                 # Only compute child_soup later, if parent is found
-                index_in_parent_childs = update_data[3]
                 results = self.state_soup.findAll(parent_tree_type, {"uuid" : parent_tree_uuid})
                 if len(results) == 0:
                     # Found 0 results, initial state is not ready yet so we ignore
                     pass
                 elif len(results) == 1:
-                    child_soup =  BeautifulSoup(update_data[2], "lxml")
+                    child_soup =  next(BeautifulSoup(update_data[3], "lxml").find("body").children)
                     if index_in_parent_childs == -1:
                         results[0].append(child_soup)
                     else:

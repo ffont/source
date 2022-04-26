@@ -16,13 +16,11 @@
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    #if USE_WEBSOCKETS
     // Copy bundled HTML plugin file to dcuments folder so we can load it
     juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
     juce::File uiHtmlFile = sourceDataLocation.getChildFile("ui_plugin_ws").withFileExtension("html");
     uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_html, BinaryData::ui_plugin_ws_htmlSize);
     uiHTMLFilePath = uiHtmlFile.getFullPathName();
-    #endif
     
     openInBrowser.addListener(this);
     openInBrowser.setButtonText("Open UI in browser");
@@ -46,16 +44,7 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     #if !ELK_BUILD
         browser.setEditorPointer(this);
         addAndMakeVisible(browser);
-        #if USE_WEBSOCKETS
-            browser.goToURL("file://" + uiHTMLFilePath + "?wsPort=" + (juce::String)processor.getServerInterfaceWSPort() + "&useWss=" + (juce::String)USE_WEBSOCKETS);
-        #else
-            int port = processor.getServerInterfaceHttpPort();
-            #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            browser.goToURL("https://localhost:" + (juce::String)port  + "/");
-            #else
-            browser.goToURL("http://localhost:" + (juce::String)port  + "/");
-            #endif
-        #endif
+        browser.goToURL(makeUIURL().toString(true));
     #endif
     
     setSize(10, 10);  // This is reset later
@@ -69,33 +58,26 @@ SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
     #endif
 }
 
+juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
+    #if USE_SSL_FOR_HTTP_AND_WS
+    juce::String useWss = "1";
+    #else
+    juce::String useWss = "0";
+    #endif
+    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.getServerInterfaceHttpPort());
+    return url;
+}
+
 void SourceSamplerAudioProcessorEditor::buttonClicked (juce::Button* button){
     if (button == &openInBrowser)
     {
-        #if USE_WEBSOCKETS
-            juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.getServerInterfaceWSPort()).withParameter("useWss", (juce::String)USE_WEBSOCKETS).launchInDefaultBrowser();
-        #else
-            int port = processor.getServerInterfaceHttpPort();
-            #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            juce::URL("https://localhost:" + (juce::String)port + "/").launchInDefaultBrowser();
-            #else
-            juce::URL("http://localhost:" + (juce::String)port + "/").launchInDefaultBrowser();
-            #endif
-        #endif
+        makeUIURL().launchInDefaultBrowser();
+     
     } else if (button == &reloadUI)
     {
         #if !ELK_BUILD
             hadBrowserError = false; // Reset browser error property
-            #if USE_WEBSOCKETS
-                browser.goToURL("file://" + uiHTMLFilePath + "?wsPort=" + (juce::String)processor.getServerInterfaceWSPort() + "&useWss=" + (juce::String)USE_WEBSOCKETS);
-            #else
-                int port = processor.getServerInterfaceHttpPort();
-                #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-                browser.goToURL("https://localhost:" + (juce::String)port  + "/");
-                #else
-                browser.goToURL("http://localhost:" + (juce::String)port  + "/");
-                #endif
-            #endif
+            browser.goToURL(makeUIURL().toString(true));
             resized();
         #endif
     }

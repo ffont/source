@@ -179,14 +179,17 @@ def get_logged_in_user_information():
 
     url = 'https://freesound.org/apiv2/me/'
     stored_access_token = get_stored_access_token()
-    r = requests.get(url, timeout=30, headers={'Authorization': 'Bearer {}'.format(stored_access_token)})
-    print(url)
-    response = r.json()
-    if 'username' in response:
-        freesound_username = response['username']
-        print('Freesound username set')
-    else:
-        print('ERROR getting logged user info: {}'.format(response))
+    try:
+        r = requests.get(url, timeout=10, headers={'Authorization': 'Bearer {}'.format(stored_access_token)})
+        print(url)
+        response = r.json()
+        if 'username' in response:
+            freesound_username = response['username']
+            print('Freesound username set')
+        else:
+            print('ERROR getting logged user info: {}'.format(response))
+    except requests.exceptions.ReadTimeout:
+        print('ERROR request timed out')
 
 
 def is_logged_in():
@@ -217,18 +220,22 @@ def refresh_access_token():
         'refresh_token': refresh_token
     }
     print(url, data)
-    r = requests.post(url, data=data, timeout=30)
-    response = r.json()
-    if 'access_token' in response:
-        access_token = response['access_token']
-        refresh_token = response['refresh_token']
-        access_token_expiration = time.time() + float(response['expires_in'])
-        json.dump(response, open(stored_tokens_filename, 'w'))
-        print('Freesound access token refreshed correctly')
-        get_logged_in_user_information()
-        return True
-    else:
-        print('ERROR refreshing access token: {}'.format(response))
+    try:
+        r = requests.post(url, data=data, timeout=10)
+        response = r.json()
+        if 'access_token' in response:
+            access_token = response['access_token']
+            refresh_token = response['refresh_token']
+            access_token_expiration = time.time() + float(response['expires_in'])
+            json.dump(response, open(stored_tokens_filename, 'w'))
+            print('Freesound access token refreshed correctly')
+            get_logged_in_user_information()
+            return True
+        else:
+            print('ERROR refreshing access token: {}'.format(response))
+            return False
+    except requests.exceptions.ReadTimeout:
+        print('ERROR request timed out')
         return False
 
 
@@ -245,18 +252,22 @@ def get_access_token_from_code(code):
         'code': code
     }
     print(url, data)
-    r = requests.post(url, data=data, timeout=30)
-    response = r.json()
-    if 'access_token' in response:
-        access_token = response['access_token']
-        refresh_token = response['refresh_token']
-        access_token_expiration = time.time() + float(response['expires_in'])
-        json.dump(response, open(stored_tokens_filename, 'w'))
-        print('New Freesound access token saved correctly')
-        get_logged_in_user_information()
-        return True
-    else:
-        print('ERROR getting new access token: {}'.format(response))
+    try:
+        r = requests.post(url, data=data, timeout=10)
+        response = r.json()
+        if 'access_token' in response:
+            access_token = response['access_token']
+            refresh_token = response['refresh_token']
+            access_token_expiration = time.time() + float(response['expires_in'])
+            json.dump(response, open(stored_tokens_filename, 'w'))
+            print('New Freesound access token saved correctly')
+            get_logged_in_user_information()
+            return True
+        else:
+            print('ERROR getting new access token: {}'.format(response))
+            return False
+    except requests.exceptions.ReadTimeout:
+        print('ERROR request timed out')
         return False
 
 

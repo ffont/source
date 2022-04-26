@@ -84,9 +84,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(juce::OSCMessage("/plugin_started"));
     #endif
-    #if USE_WEBSOCKETS
-    serverInterface.sendMessageToWebSocketsClients(juce::OSCMessage("/plugin_started"));
-    #endif
+    serverInterface.sendMessageToWebSocketClients(juce::OSCMessage("/plugin_started"));
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -275,7 +273,7 @@ juce::String SourceSamplerAudioProcessor::getPresetFilenameByIndex(int index)
 //==============================================================================
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    logToState("Called prepareToPlay with sampleRate " + (juce::String)sampleRate + " and block size " + (juce::String)samplesPerBlock);
+    DBG("Called prepareToPlay with sampleRate " + (juce::String)sampleRate + " and block size " + (juce::String)samplesPerBlock);
     
     // Prepare sampler
     sampler.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, 2 });
@@ -401,7 +399,7 @@ void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const juce::String& _
             // If already exists, delete it
             location.deleteFile();
         }
-        logToState("Saving preset to: " + location.getFullPathName());
+        DBG("Saving preset to: " + location.getFullPathName());
         xml->writeTo(location);
     }
 }
@@ -433,7 +431,7 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (juce::ValueTre
     }
     
     // Load new state informaiton to the state
-    logToState("Loading state...");
+    DBG("Loading state...");
     state.copyPropertiesAndChildrenFrom(_state, nullptr);
     
     // Trigger bind state again to re-create sounds and the rest
@@ -777,7 +775,6 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         juce::String parameterName = parameters[3];
         float minRange = parameters[4].getFloatValue();
         float maxRange = parameters[5].getFloatValue();
-        DBG(soundUUID);
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
             sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
@@ -871,19 +868,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
-            #if USE_WEBSOCKETS
-            serverInterface.sendMessageToWebSocketsClients(message);
-            #endif
-            
+            serverInterface.sendMessageToWebSocketClients(message);
         } else if (stateType == "volatileString"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state_string");
             message.addString(collectVolatileStateInformationAsString());
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
-            #if USE_WEBSOCKETS
-            serverInterface.sendMessageToWebSocketsClients(message);
+            serverInterface.sendMessageToWebSocketClients(message);
+        } else if (stateType == "volatile"){
+            juce::OSCMessage message = juce::OSCMessage("/volatile_state");
+            message.addString(collectVolatileStateInformation().toXmlString());
+            #if SYNC_STATE_WITH_OSC
+            sendOSCMessage(message);
             #endif
+            serverInterface.sendMessageToWebSocketClients(message);
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         juce::String soundPath = parameters[0];
@@ -925,13 +924,13 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& tex
 {
     if (isQuerying){
         // If already querying, don't run another query
-        logToState("Skip query as already querying...");
+        DBG("Skip query as already querying...");
         return;
     }
     
     FreesoundClient client(FREESOUND_API_KEY);
     isQuerying = true;
-    logToState("Querying new sounds for: " + textQuery);
+    DBG("Querying new sounds for: " + textQuery);
     auto filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
     SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 80, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     isQuerying = false;
@@ -939,7 +938,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& tex
         
         // Randmomize results and prepare for iteration
         juce::Array<FSSound> soundsFound = list.toArrayOfSounds();
-        logToState("Query got " + (juce::String)list.getCount() + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
+        DBG("Query got " + (juce::String)list.getCount() + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
         soundsFound.resize(juce::jmin(numSounds, list.getCount()));
@@ -977,7 +976,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& tex
             addOrReplaceSoundFromBasicSoundProperties("", soundsFound[i], midiNotes, midiRootNote);
         }
     } else {
-        logToState("Query got no results...");
+        DBG("Query got no results...");
     }
 }
 
@@ -1134,26 +1133,15 @@ void SourceSamplerAudioProcessor::timerCallback()
     }
     
     #if SYNC_STATE_WITH_OSC
+    // If syncing the state wia OSC, we send "/plugin_alive" messages as these are used to determine
+    // if the plugin is up and running
     if ((juce::Time::getMillisecondCounterHiRes() - lastTimeIsAliveWasSent) > 1000.0){
         // Every second send "alive" message
         juce::OSCMessage message = juce::OSCMessage("/plugin_alive");
         sendOSCMessage(message);
         lastTimeIsAliveWasSent = juce::Time::getMillisecondCounterHiRes();
     }
-        
     #endif
-    
-    // Collect the state and update the serverInterface object with that state information so it can be used by the embedded http server    
-    #if USE_HTTP_SERVER
-    //fullState.setProperty(STATE_CURRENT_PORT, getServerInterfaceHttpPort(), nullptr);
-    serverInterface.serializedAppState = state.toXmlString();
-    juce::ValueTree volatileState = collectVolatileStateInformation();
-    volatileState.setProperty(IDs::logMessages, recentLogMessagesSerialized, nullptr);
-    serverInterface.serializedAppStateVolatile = volatileState.toXmlString();
-    #endif
-    
-    // NOTE: if using externall HTTP server (i.e. in ELK), we don't send state updates from a timer but only send
-    // them in response to requests from the external server app
 }
 
 
@@ -1168,31 +1156,9 @@ int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 
 int SourceSamplerAudioProcessor::getServerInterfaceWSPort()
 {
-    #if USE_WEBSOCKETS
     return serverInterface.wsServer.assignedPort;
-    #else
-    return 0;
-    #endif
 }
 
-
-void SourceSamplerAudioProcessor::logToState(const juce::String& message)
-{
-    DBG(message);
-    
-    recentLogMessages.push_back(message);  // Add a new element at the end
-    if (recentLogMessages.size() > 50){
-        // Keep only the last 20
-        std::vector<juce::String>::const_iterator first = recentLogMessages.end() - 20;
-        std::vector<juce::String>::const_iterator last = recentLogMessages.end();
-        std::vector<juce::String> newVec(first, last);
-        recentLogMessages = newVec;
-    }
-    recentLogMessagesSerialized = "";
-    for (int i=0; i<recentLogMessages.size();i++){
-        recentLogMessagesSerialized += recentLogMessages[i] +  ";";
-    }
-}
 
 void SourceSamplerAudioProcessor::previewFile(const juce::String& path)
 {
@@ -1270,7 +1236,6 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
-    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("propertyChanged");
     message.addInt32(stateUpdateID);
@@ -1281,11 +1246,8 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    #if USE_WEBSOCKETS
-    serverInterface.sendMessageToWebSocketsClients(message);
-    #endif
+    serverInterface.sendMessageToWebSocketClients(message);
     stateUpdateID += 1;
-    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
@@ -1294,22 +1256,18 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Added VT child " << childWhichHasBeenAdded.getType());
-    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("addedChild");
     message.addInt32(stateUpdateID);
     message.addString(parentTree[IDs::uuid].toString());
     message.addString(parentTree.getType().toString());
-    message.addString(childWhichHasBeenAdded.toXmlString());
     message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
+    message.addString(childWhichHasBeenAdded.toXmlString());
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    #if USE_WEBSOCKETS
-    serverInterface.sendMessageToWebSocketsClients(message);
-    #endif
+    serverInterface.sendMessageToWebSocketClients(message);
     stateUpdateID += 1;
-    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
@@ -1318,7 +1276,6 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
     DBG("Removed VT child " << childWhichHasBeenRemoved.getType());
-    #if SYNC_STATE_WITH_OSC || USE_WEBSOCKETS
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("removedChild");
     message.addInt32(stateUpdateID);
@@ -1327,11 +1284,8 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    #if USE_WEBSOCKETS
-    serverInterface.sendMessageToWebSocketsClients(message);
-    #endif
+    serverInterface.sendMessageToWebSocketClients(message);
     stateUpdateID += 1;
-    #endif
 }
 
 void SourceSamplerAudioProcessor::valueTreeChildOrderChanged (juce::ValueTree& parentTree, int oldIndex, int newIndex)

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Source, a Freesound-powered sampler</title>
+    <title>Source, a Freesound Commmunity Sampler</title>
 
     <style>
         body {
@@ -215,18 +215,162 @@
     </style>
 
     <script>
+
+        class StateSynchronizer {
+
+            constructor(wsPort, useWss) {
+                this.state = undefined;
+                this.volatileState = undefined;
+                this.volatileStateRequestTimer = undefined;
+                this.volatileStateRequestTimerInterval = 100;
+                this.parser = new DOMParser();
+
+                this.wsPort = wsPort;
+                this.useWss = useWss;
+                this.wsConnection = this.configureWSConnection();
+            }
+
+            configureWSConnection () {
+                let wsUrl = "";
+                if (this.useWss){
+                    wsUrl = "wss://localhost:" + this.wsPort + "/source_coms/";
+                } else {
+                    wsUrl = "ws://localhost:" + this.wsPort + "/source_coms/";
+                }
+                console.log("Connecting to WS server: " + wsUrl);
+                let socket = new WebSocket(wsUrl);
+                
+                let self = this;
+
+                socket.onopen = function(e) {
+                    console.log("[WS open] Connection established");
+                    
+                    // Once connection established, request full state once and start polling volatile state
+                    self.requestFullState();
+                    self.volatileStateRequestTimer = setInterval(function () {
+                        self.requestVolatileState();
+                    }, self.volatileStateRequestTimerInterval);
+                };
+
+                socket.onclose = function(event) {
+                    if (event.wasClean) {
+                        console.log(`[WS close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+                    } else {
+                        console.log('[WS close] Connection died');
+                    }
+                    setTimeout(() => {
+                        self.configureWSConnection (); // Start again connection if it fails, wait 2 seconds
+                    }, 2000);
+                    
+                };
+
+                socket.onerror = function(error) {
+                    console.log(`[WS error] ${error.message}`);
+                };
+
+                socket.onmessage = function(event) {
+                    const msgTypeSeparatorPosition = event.data.indexOf(':');
+                    const msgType = event.data.slice(0, msgTypeSeparatorPosition);
+                    const rawData = event.data.slice(msgTypeSeparatorPosition + 1, event.data.length);
+
+                    if (msgType === "/full_state"){
+                        const updateIdSeparatorPosition = rawData.indexOf(';');
+                        const updateId = parseInt(rawData.slice(0, updateIdSeparatorPosition), 10);
+                        const dataToParse = rawData.slice(updateIdSeparatorPosition + 1, rawData.length);
+                        self.state = self.parser.parseFromString(dataToParse, "text/xml");
+                        syncUIWithState();
+
+                    } else if (msgType === "/volatile_state"){
+                        self.volatileState = self.parser.parseFromString(rawData, "text/xml");
+                        syncUIWithVolatileState();
+
+                    } else if (msgType === "/state_update"){
+                        const rawDataParts = rawData.split(';');
+                        const updateType = rawDataParts[0];
+                        const updateId = parseInt(rawDataParts[1], 10);
+                        const restOfDataSliced = rawDataParts.slice(2, rawDataParts.length);
+
+                        if (updateType === 'propertyChanged'){
+                            const treeUUID = restOfDataSliced[0];
+                            const treeType = restOfDataSliced[1].toLowerCase();
+                            const propertyName = restOfDataSliced[2].toLowerCase();
+                            const propertyValue = restOfDataSliced[3].toLowerCase();
+
+                            const elementToUpdate = self.state.querySelector("[uuid='" + treeUUID + "']");
+                            if (elementToUpdate !== null){
+                                elementToUpdate.setAttribute(propertyName, propertyValue);
+                            }
+
+                            // TODO: Update corresponding property in the DOM
+
+                        } else if (updateType === 'addedChild'){
+                            const parentTreeUUID = restOfDataSliced[0];
+                            const parentTreeType = restOfDataSliced[1].toLowerCase();
+                            const indexInParentChildren = parseInt(restOfDataSliced[2], 10);
+                            const childXmlString = restOfDataSliced.slice(3, restOfDataSliced.length).join(';');
+
+                            // Add new child element to the state
+                            const elementToUpdate = self.state.querySelector("[uuid='" + parentTreeUUID + "']");
+                            if (elementToUpdate !== null){
+                                if (indexInParentChildren < 0){
+                                    elementToUpdate.appendChild(self.parser.parseFromString(childXmlString, "text/xml"));
+                                } else {
+                                    elementToUpdate.insertBefore(self.parser.parseFromString(childXmlString, "text/xml"), elementToUpdate.childNodes[indexInParentChildren]);
+                                }
+                            }
+
+                            // TODO: create new corresponding element in the DOM
+ 
+                        } else if (updateType === 'removedChild'){
+                            const childToRemoveUUID = restOfDataSliced[0];
+                            const childToRemoveType = restOfDataSliced[1].toLowerCase();
+
+                            // Remove the selected element from the state
+                            const stateElementToRemove = self.state.querySelector("[uuid='" + childToRemoveUUID + "']");
+                            if (stateElementToRemove !== null){
+                                stateElementToRemove.remove();
+                            }
+
+                            // Also remove that element from the DOM
+                            const domElementToUpdate = document.querySelector("[id='" + childToRemoveUUID + "']");
+                            if (domElementToUpdate !== null){
+                                domElementToUpdate.remove();
+                            }
+                            if (childToRemoveType === "sound"){
+                                updateAllSoundCardNumbers();
+                            }
+                            
+                        }
+                    }                
+                };
+
+                return socket;
+            }
+
+            sendMessageToPlugin(address, args){
+                const message = address + ':' + args.join(';');
+                this.wsConnection.send(message);
+            }
+
+            requestFullState(){
+                this.sendMessageToPlugin('/get_state', ["full"]);
+            }
+
+            requestVolatileState(){
+                this.sendMessageToPlugin('/get_state', ["volatile"]);
+            }
+
+        }
+
         
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
         let currentBuffer = null;
 
-        var updateStateTimer;
-        var lastReceivedStateText;
-        var lastReceivedStateXml;
-        var updateStateInterval = 150;
-        
-        var updateVolatileStateTimer;
-        var updateVolatileStateInterval = 50;
+        let ss = undefined;
+        let httpPort = undefined;
+        let useHttps = undefined;
+  
 
         document.addEventListener("DOMContentLoaded", function () {
 
@@ -237,60 +381,19 @@
                 const urlParams = new URLSearchParams(queryString);
                 wsPort = urlParams.get('wsPort');
                 useWss = urlParams.get('useWss') === '1';
+                httpPort = urlParams.get('httpPort');
+                useHttps = useWss;
             } else {
                 // If not passed as parameters, use default values used when debugging
                 wsPort = "8125";
-                useWss = true;
+                useWss = false;
+                httpPort = "8124";
+                useHttps = useWss;
             }
-            let wsUrl = "";
-            if (useWss){
-                wsUrl = "wss://localhost:" + wsPort + "/source_coms/";
-            } else {
-                wsUrl = "ws://localhost:" + wsPort + "/source_coms/";
-            }
-            console.log("Connecting to WS server: " + wsUrl);
-            let socket = new WebSocket(wsUrl);
+            // Start state synchronizer
+            ss = new StateSynchronizer(wsPort, useWss);
             
-            socket.onopen = function(e) {
-              console.log("[open] Connection established");
-              console.log("Sending test message");
-              socket.send("Test message");
-            };
-
-            socket.onmessage = function(event) {
-              console.log(`[message] Data received from server: ${event.data}`);
-              document.getElementById("state").value = `[message] Data received from server: ${event.data}`;
-            };
-
-            socket.onclose = function(event) {
-              if (event.wasClean) {
-                console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-              } else {
-                // e.g. server process killed or network down
-                // event.code is usually 1006 in this case
-                console.log('[close] Connection died');
-              }
-            };
-
-            socket.onerror = function(error) {
-              console.log(`[error] ${error.message}`);
-            };
         });
-
-        function startAutoUpdate(){
-            updateStateTimer = setInterval(function () {
-                updateState();
-            }, updateStateInterval);
-            
-            updateVolatileStateTimer = setInterval(function () {
-                updateVolatileState();
-            }, updateVolatileStateInterval);
-        }
-
-        function stopAutoUpdate() {
-            window.clearInterval(updateStateTimer);
-            window.clearInterval(updateVolatileStateTimer);
-        }
 
         function updateAllSliderLabels(){
             var elements = document.querySelectorAll("input[type=range]")
@@ -347,6 +450,14 @@
             return false;
         }
 
+        function updateAllSoundCardNumbers() {
+            var sounds = ss.state.getElementsByTagName('SOUND');
+            for (i=0; i<sounds.length; i++) {
+                var soundUUID = sounds[i].getAttribute('uuid');
+                document.getElementById(soundUUID + '_idx').innerHTML = i + 1;
+            }
+        }
+
         function getProcessedSoundParameterValuLinToExp(sliderElement){
             var value = parseFloat(sliderElement.value, 10);
             if (sliderShouldBehaveExponentially(sliderElement) == true){
@@ -364,27 +475,20 @@
             }
         }
 
-        function sendOsc(address, values, types) {
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (this.readyState != 4) return;
-                if (this.status == 200) {
-                }
-            };
-            xhr.open('GET', '/send_osc?address=' + address + '&values=' + values.join(';') + '&types=' + types, true);
-            xhr.send();
+        function sendMessageToPlugin(address, values, types) {
+            ss.sendMessageToPlugin(address, values);
         }
 
         function setSoundParameter(soundUUID, sliderElement){
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
-            sendOsc('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'str;str;float')
+            sendMessageToPlugin('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'str;str;float')
         }
 
         function setSoundParameterInt(soundUUID, sliderElement){
             sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
             updateSliderLabel(sliderElement);
-            sendOsc('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value], 'str;str;int')
+            sendMessageToPlugin('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value], 'str;str;int')
         }
 
         function makeQuery(){
@@ -393,26 +497,26 @@
             var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
             var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
             var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-            sendOsc('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
+            sendMessageToPlugin('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
         }
                                        
         function clearAllSounds(){
-            sendOsc('/clear_all_sounds', [], '')
+            sendMessageToPlugin('/clear_all_sounds', [], '')
         }
 
         function setMidiInChannel() {
             var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
-            sendOsc('/set_midi_in_channel', [midiInChannel], 'int')
+            sendMessageToPlugin('/set_midi_in_channel', [midiInChannel], 'int')
         }
 
         function setMidiThru() {
             var midiThru = document.getElementsByName('midiThru')[0].checked;
-            sendOsc('/set_midi_thru', [midiThru ? 1: 0], 'int')
+            sendMessageToPlugin('/set_midi_thru', [midiThru ? 1: 0], 'int')
         }
 
         function setStateUpdateHz() {
             var stateUpdateHz = document.getElementsByName('stateUpdateHz')[0].value;
-            sendOsc('/set_state_timer_hz', [stateUpdateHz], 'int')
+            sendMessageToPlugin('/set_state_timer_hz', [stateUpdateHz], 'int')
         }
 
         function setReverbParameters() {
@@ -423,35 +527,35 @@
             var width = document.getElementById('0_width').value;
             var freezeMode = document.getElementById('0_freezeMode').value;
             updateAllSliderLabels();
-            sendOsc('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
+            sendMessageToPlugin('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
         }
 
         function setNumVoices() {
             var numVoices = document.getElementsByName('numVoices')[0].value;
-            sendOsc('/set_polyphony', [numVoices], 'int')
+            sendMessageToPlugin('/set_polyphony', [numVoices], 'int')
         }
 
         function playSound(soundUUID){
-            sendOsc('/play_sound', [soundUUID], 'str')
+            sendMessageToPlugin('/play_sound', [soundUUID], 'str')
         }
 
         function stopSound(soundUUID){
-            sendOsc('/stop_sound', [soundUUID], 'str')
+            sendMessageToPlugin('/stop_sound', [soundUUID], 'str')
         }
                                        
         function removeSound(soundUUID){
-            sendOsc('/remove_sound', [soundUUID], 'str')
+            sendMessageToPlugin('/remove_sound', [soundUUID], 'str')
         }
 
         function savePreset(){
             var name = document.getElementsByName('presetName')[0].value;
             var idx = document.getElementsByName('presetIdx')[0].value;
-            sendOsc('/save_preset', [name, idx], 'str;int')
+            sendMessageToPlugin('/save_preset', [name, idx], 'str;int')
         }
 
         function loadPreset() {
             var idx = document.getElementsByName('presetIdx')[0].value;
-            sendOsc('/load_preset', [idx], 'int')
+            sendMessageToPlugin('/load_preset', [idx], 'int')
         }
 
         function nextPreset(){
@@ -464,7 +568,7 @@
                     idx = -1;
                 }
             }
-            sendOsc('/load_preset', [idx + 1], 'int')
+            sendMessageToPlugin('/load_preset', [idx + 1], 'int')
         }
 
         function previousPreset(){
@@ -481,7 +585,7 @@
             if (idx < 1){
                 idx = 1; //Will become 0 when subtracted 1
             }
-            sendOsc('/load_preset', [idx - 1], 'int')
+            sendMessageToPlugin('/load_preset', [idx - 1], 'int')
         }
 
         function createUpdateMapping(mappingID){
@@ -491,19 +595,17 @@
             var name = document.getElementById(mappingID + '_mappingParameterName').value;
             var minRange = parseFloat(document.getElementById(mappingID + '_mappingMinRange').value, 10);
             var maxRange = parseFloat(document.getElementById(mappingID + '_mappingMaxRange').value, 10);
-            sendOsc('/add_or_update_cc_mapping', [soundUUID, randomID, ccNumber, name, minRange, maxRange], 'str;str;int;str;float;float');
+            sendMessageToPlugin('/add_or_update_cc_mapping', [soundUUID, randomID, ccNumber, name, minRange, maxRange], 'str;str;int;str;float;float');
             if (randomID == ""){
                 // Remove this element from DOM because this one is only while creating a new mappping
                 document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";
             }
         }
 
-        function removeMidiMapping(mappingID){
-            var randomID = mappingID.split('_')[0];
-            var soundUUID = mappingID.split('_')[1];
-            if (randomID != ""){
-                sendOsc('/remove_cc_mapping', [soundUUID, randomID], 'str;str');
-                //document.getElementById(mappingID).remove();  // No need to remove because it will be removed when updating state
+        function removeMidiMapping(soundUUID, mappingID){
+            if (mappingID != ""){
+                sendMessageToPlugin('/remove_cc_mapping', [soundUUID, mappingID], 'str;str');
+                // No need to remove the element itself because it will be removed when updating state
             } else {
                 document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
             }
@@ -536,10 +638,10 @@
                 document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = createMIDIMappingEditor(soundUUID, "", 0, "", 0.0, 1.0);
             }
 
-        function createMIDIMappingEditor(soundUUID, randomID, ccNumber, parameterName, minRange, maxRange){
-            html = '<div id="' + randomID + '_' + soundUUID + '" class="midiMapping">';
-            html += 'CC number: <input id="' + randomID + '_' + soundUUID + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
-            html += 'Parameter: <select class="select-css" id="' + randomID + '_' + soundUUID + '_mappingParameterName">';
+        function createMIDIMappingEditor(soundUUID, mappingUUID, ccNumber, parameterName, minRange, maxRange){
+            html = '<div id="' + mappingUUID + '" class="midiMapping">';
+            html += 'CC number: <input id="' + mappingUUID + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
+            html += 'Parameter: <select class="select-css" id="' + mappingUUID + '_mappingParameterName">';
             var availableParams = getMidiControllableParameterNames();
             for (var i=0; i<availableParams.length; i++){
                 if (availableParams[i] != parameterName){
@@ -549,9 +651,9 @@
                 }
             }
             html += '</select><br>';
-            html += '<input type="range" id="' + randomID + '_' + soundUUID + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + randomID + '_' + soundUUID + '_mappingMinRangeLabel"></span><br>';
-            html += '<input type="range" id="' + randomID + '_' + soundUUID + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + randomID + '_' + soundUUID + '_mappingMaxRangeLabel"></span><br>';
-            html += '<button onclick="createUpdateMapping(\'' + randomID + '_' + soundUUID + '\')">save</button><button onclick="removeMidiMapping(\'' + randomID + '_' + soundUUID + '\')">x</button>';
+            html += '<input type="range" id="' + mappingUUID + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + mappingUUID + '_mappingMinRangeLabel"></span><br>';
+            html += '<input type="range" id="' + mappingUUID + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + mappingUUID + '_mappingMaxRangeLabel"></span><br>';
+            html += '<button onclick="createUpdateMapping(\'' + mappingUUID + '\')">save</button><button onclick="removeMidiMapping(\'' + soundUUID + '\',\'' + mappingUUID + '\')">x</button>';
             html += '</div>';
             return html;
         }
@@ -600,19 +702,10 @@
             return html;
         }
 
-        function updateElementValueFromXmlStates(element, attrName, newState, oldState){
-            if (oldState !== undefined){
-                if (oldState.getAttribute(attrName) != newState.getAttribute(attrName)){
-                    element.value = newState.getAttribute(attrName);
-                }
-            } else {
-                element.value = newState.getAttribute(attrName);
-            }
-        }
-
         function createCardForSound(soundUUID, sound){ //sound = xml element
-            var cardElementId = soundUUID + "_" + sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
-            html = '<div class="controls_card" id="' + cardElementId + '">';
+            var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
+            // TODO: use soundUUID as id and not the complex one
+            html = '<div class="controls_card" id="' + soundUUID + '" data-sound-sample-sound-id="' + soundID + '">';
             html += '<div id="soundCardInfo_' + soundUUID + '"></div>';
             html += '<div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
@@ -645,7 +738,7 @@
                 // Sound already loaded, show all info (if it has not been already shown)
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
                     html = '<div class="transportSoundButtons"><button onclick="playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="removeSound(\'' + soundUUID + '\')">x</button></div>';
-                    html += '<h4>' + (parseInt(idx, 10) + 1) + " - " + soundID + '</h4>';
+                    html += '<h4><span id="' + soundUUID + '_idx">' + (parseInt(idx, 10) + 1) + "</span> - " + soundID + '</h4>';
                     html += soundName + '<br>';
                     var licenseName = "-";
                     if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
@@ -668,10 +761,8 @@
             }
         }
         
-        function findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){
-            var State = lastReceivedStateXml.getElementsByTagName('PRESET')[0];
-            
-            var sounds = State.getElementsByTagName('SOUND');
+        function findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){            
+            var sounds = ss.state.getElementsByTagName('SOUND');
             for (i=0; i<sounds.length; i++) {
                 var samplerSounds = sounds[i].getElementsByTagName('SOUND_SAMPLE');
                 for (j=0; j<samplerSounds.length; j++) {
@@ -683,15 +774,78 @@
             }
             return "-1"
         }
-        
-        function syncUIWithVolatileState(xmlState){
-            var VolatileState = xmlState.getElementsByTagName('VOLATILE_STATE')[0];
+
+        function syncUIWithState(){
+
+            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
             
-            var logMessages = VolatileState.getAttribute('logMessages').split(';');
-            document.getElementById("log").innerHTML = '';
-            for (var i=0; i<logMessages.length; i++){
-                document.getElementById("log").innerHTML += logMessages[i] + '<br>';
-            }
+            var sourceState = ss.state.getElementsByTagName('SOURCE_STATE')[0];
+            document.getElementsByName('presetIdx')[0].value = sourceState.getAttribute('currentPresetIndex');
+            document.getElementsByName('midiThru')[0].value = sourceState.getAttribute('midiOutForwardsMidiIn');
+            document.getElementsByName('midiInChannel')[0].value = sourceState.getAttribute('globalMidiInChannel');
+
+            var presetState = sourceState.getElementsByTagName('PRESET')[0];
+            document.getElementsByName('presetName')[0].value = presetState.getAttribute('name');
+            document.getElementsByName('numVoices')[0].value = presetState.getAttribute('numVoices');
+            document.getElementById('0_roomSize').value = presetState.getAttribute('reverbRoomSize');
+            document.getElementById('0_damping').value = presetState.getAttribute('reverbDamping');
+            document.getElementById('0_wetLevel').value = presetState.getAttribute('reverbWetLevel');
+            document.getElementById('0_dryLevel').value = presetState.getAttribute('reverbDryLevel');
+            document.getElementById('0_width').value = presetState.getAttribute('reverbWidth');
+            document.getElementById('0_freezeMode').value = presetState.getAttribute('reverbFreezeMode');
+
+ 
+            // Create individual sound cards
+            var soundElements = presetState.getElementsByTagName('SOUND');
+            var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
+            individualSoundEditorsElement.innerHTML = '';
+            for (var i = 0; i < soundElements.length; i++) {
+                var sound = soundElements[i];
+                var soundUUID = sound.getAttribute('uuid');
+                
+                // Create "empty sound cards"
+                var soundCardHtml = createCardForSound(soundUUID, sound);  
+                individualSoundEditorsElement.innerHTML += soundCardHtml;
+                
+                // Update basic sound card details
+                updateCardForSound(soundUUID, sound, i); 
+                
+                // Set parameter values of sound card
+                var soundParameters = getAllSoundParameterNames();
+                var soundParameterTpes = getAllSoundParameterTypes();
+                for (var j=0; j<soundParameters.length; j++){
+                    var parameterName = soundParameters[j];
+                    var parameterType = soundParameterTpes[j];
+                    var sliderElement = document.getElementById(soundUUID + '_' + parameterName);
+                    var rawValue = sound.getAttribute(parameterName);
+                    if (parameterType == "float"){
+                        sliderElement.value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
+                    } else if (parameterType == "int"){
+                        sliderElement.value = parseInt(rawValue, 10);
+                    }
+                }
+                updateAllSliderLabels();
+
+                // Update MIDI CC mappings
+                var samplerSoundMappings = sound.getElementsByTagName('MIDI_CC_MAPPING');
+                var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
+                for (var j = 0; j < samplerSoundMappings.length; j++) {
+                    var mapping = samplerSoundMappings[j];
+                    var mappingUUID = mapping.getAttribute('uuid');
+                    var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
+                    var name = mapping.getAttribute('parameterName');
+                    var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
+                    var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
+       
+                    // if such a mappingID is not yet there, add it
+                    html = createMIDIMappingEditor(soundUUID, mappingUUID, ccNumber, name, minRange, maxRange);
+                    samplerSoundMappingsElement.innerHTML += html;
+                } 
+            }                     
+        }
+
+        function syncUIWithVolatileState(){
+            var VolatileState = ss.volatileState.getElementsByTagName('VOLATILE_STATE')[0];
             
             var isQuerying = VolatileState.getAttribute('isQuerying') != "0";
             var queryButton = document.getElementById('makeQueryButton');
@@ -735,181 +889,7 @@
             html += "</div>";
             metersStateElement.innerHTML = html;
         }
-
-        function syncUIWithState(xmlState){
-            
-            var State = xmlState.getElementsByTagName('SOURCE_STATE')[0];
-            var SourcePresetState = xmlState.getElementsByTagName('PRESET')[0];
-            var OldStateSourcePresetState, OldState = undefined;
-            if (lastReceivedStateXml !== undefined){
-                OldStateSourcePresetState = lastReceivedStateXml.getElementsByTagName('PRESET')[0];
-                OldState = lastReceivedStateXml.getElementsByTagName('SOURCE_STATE')[0];
-            }
-            
-            // Update main preset settings and global settings (only update if state has changed)
-            updateElementValueFromXmlStates(document.getElementsByName('presetIdx')[0], 'currentPresetIndex', State, OldState);
-            updateElementValueFromXmlStates(document.getElementsByName('presetName')[0], 'name', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementsByName('midiThru')[0], 'midiOutForwardsMidiIn', State, OldState);
-            updateElementValueFromXmlStates(document.getElementsByName('midiInChannel')[0], 'globalMidiInChannel', State, OldState);
-            updateElementValueFromXmlStates(document.getElementsByName('numVoices')[0], 'numVoices', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_roomSize'), 'reverbRoomSize', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_damping'), 'reverbDamping', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_wetLevel'), 'reverbWetLevel', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_dryLevel'), 'reverbDryLevel', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_width'), 'reverbWidth', SourcePresetState, OldStateSourcePresetState);
-            updateElementValueFromXmlStates(document.getElementById('0_freezeMode'), 'reverbFreezeMode', SourcePresetState, OldStateSourcePresetState);
-
- 
-            // Update individual sound editors
-
-            // Check if the sound listing has changed
-            var shouldRedoCards = false;
-            var soundInfoElements = xmlState.getElementsByTagName('SOUND');
-            var OldStateSoundInfoElements = undefined;
-
-            if (lastReceivedStateXml === undefined){
-                shouldRedoCards = true;
-            } else {
-                OldStateSoundInfoElements = lastReceivedStateXml.getElementsByTagName('SOUND');
-                
-                var newStateIds = "";
-                var oldStateIds = "";
-                for (var i=0; i<soundInfoElements.length; i++){
-                    newStateIds += soundInfoElements[i].getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId') + ',';
-                }
-                for (var i=0; i<OldStateSoundInfoElements.length; i++){
-                    oldStateIds += OldStateSoundInfoElements[i].getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId') + ',';
-                }
-                if (newStateIds != oldStateIds){
-                    shouldRedoCards = true;
-                }
-            }
-
-            // Re-create sound cards if needed
-            if (shouldRedoCards){
-                var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
-                individualSoundEditorsElement.innerHTML = '';
-                for (var i = 0; i < soundInfoElements.length; i++) {
-                    var sound = soundInfoElements[i];
-                    var soundUUID = sound.getAttribute('uuid');
-                    var soundCardHtml = createCardForSound(soundUUID, sound);
-                    individualSoundEditorsElement.innerHTML += soundCardHtml;
-                }
-            }
-
-            // Update sound sliders if slider was not moved recently
-            var slidersToUpdate = [];
-            for (var i = 0; i < soundInfoElements.length; i++) {
-                var sound = soundInfoElements[i];
-                var soundUUID = sound.getAttribute('uuid');
-                updateCardForSound(soundUUID, sound, i); // Update basic card details
-                var soundParameterNames = getAllSoundParameterNames();
-                var soundParameterTpes = getAllSoundParameterTypes();
-                for (var j = 0; j < soundParameterNames.length; j++) {
-                    var name = soundParameterNames[j];
-                    var type = soundParameterTpes[j];
-                    var rawValue = sound.getAttribute(name);
-                    if (type == "float"){
-                        var sliderElement = document.getElementById(soundUUID + '_' + name) // Needed to get slider max value
-                        var value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
-                        slidersToUpdate.push([soundUUID + '_' + name, value])
-                    } else if (type == "int"){
-                        slidersToUpdate.push([soundUUID + '_' + name, parseInt(rawValue, 10)])
-                    }
-                }
-            }
-            for (var i=0; i<slidersToUpdate.length; i++){
-                var sliderElement = document.getElementById(slidersToUpdate[i][0]);
-                if (sliderElement !== undefined){
-                    var sliderLastMoved = sliderElement.getAttribute("data-lastMoved");
-                    if ((sliderLastMoved === undefined) || ((Date.now()/1000 - sliderLastMoved) > 0.25)){
-                        // Only update sliders if they are being moved in the last 1 sec
-                        sliderElement.value = slidersToUpdate[i][1];
-                    }
-                }
-            }
-            updateAllSliderLabels();
-
-            // Add/updae sound MIDI mappings
-            for (var i = 0; i < soundInfoElements.length; i++) {
-                var sound = soundInfoElements[i];
-                var soundUUID = sound.getAttribute('uuid');
-                var samplerSoundMappings = sound.getElementsByTagName('MIDI_CC_MAPPING');
-                var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
-                var currentMappingIDs = []; // Used later to decide whether some elements should be removed
-                for (var j = 0; j < samplerSoundMappings.length; j++) {
-                    var mapping = samplerSoundMappings[j];
-                    var randomID = mapping.getAttribute('uuid');
-                    var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
-                    var name = mapping.getAttribute('parameterName');
-                    var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
-                    var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
-
-                    var mappingID = randomID + '_' + soundUUID;
-                    currentMappingIDs.push(mappingID);
-                    if (document.getElementById(mappingID) != undefined){
-                        // if a div with that mappingID already exists in the samplerSoundMappingsElement, do nothing
-                        
-                    } else {
-                        // if such a mappingID is not yet there, add it
-                        html = createMIDIMappingEditor(soundUUID, randomID, ccNumber, name, minRange, maxRange);
-                        samplerSoundMappingsElement.innerHTML += html;
-                    }
-                
-                    // TODO: this assumes that mappings are not changed elsewhere. this should probably be improved doing
-                    // proper checking of whether we should redraw, update, etc...
-                }
-
-                // Also we need to remove the divs for mappings which are no longer in the state (have been removed)
-                var elementsInDiv = samplerSoundMappingsElement.getElementsByClassName("midiMapping");
-                for (var j = 0; j < elementsInDiv.length; j++) {
-                    var mappingElement = elementsInDiv[j];
-                    if (currentMappingIDs.indexOf(mappingElement.id) == -1){
-                        mappingElement.remove();
-                    }
-                }
-            }
-        }
-
-        // State handling
-        function updateState(){
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (this.readyState != 4) return;
-                if (this.status == 200) {
-                    if (this.responseText == 'Maybe old'){
-                        document.getElementById("errorIndicator").innerHTML = '&nbsp;| Plugin appears to be offline';
-                    } else {
-                        if (this.responseXML != undefined){
-                            document.getElementById("errorIndicator").innerHTML = '';
-                            document.getElementById("state").value = this.responseText;
-                            syncUIWithState(this.responseXML);
-                            lastReceivedStateText = this.responseText;
-                            lastReceivedStateXml = this.responseXML;
-                        }
-                    }
-                } else {
-                    document.getElementById("errorIndicator").innerHTML = '<br>Server appears to be offline';
-                    document.getElementById("state").value = '';
-                }
-            };
-            xhr.open('GET', '/update_state', true);
-            xhr.send();
-        }
         
-        function updateVolatileState(){
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (this.readyState != 4) return;
-                if (this.status == 200) {
-                    if (this.responseXML != undefined){
-                        syncUIWithVolatileState(this.responseXML);
-                    }
-                }
-            };
-            xhr.open('GET', '/update_state_volatile', true);
-            xhr.send();
-        }
         
         function drawSoundWaveform(sourceSamplerSoundUUID, canvasID){
             // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
@@ -976,8 +956,10 @@
             const canvas = document.getElementById(canvasID);
             if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
                 canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
-                let url = '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
-                drawAudio(url);
+                if (httpPort !== undefined){
+                    let url = 'http' + (useHttps ? 's':'') + '://localhost:' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
+                    drawAudio(url);
+                }
             }
         }
         
@@ -1053,18 +1035,6 @@
         <div id="allSoundsEditor"></div>
         <div id="individualSoundEditors"></div>
     </div>
-    
-    <div>
-        <div class="controls_card">
-            <b>Log</b><br>
-            <div id="log"></div>
-        </div>
-
-        <h3>State</h3>
-        <button onclick="startAutoUpdate();">Start auto update</button><button onclick="stopAutoUpdate();">Stop auto update</button>
-        <textarea id="state" style="width:100%;height:500px;"></textarea>
-    </div>
-    
 
 </body>
 </html>

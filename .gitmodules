@@ -9,7 +9,7 @@
 	url = https://github.com/elk-audio/twine
 [submodule "SourceSampler/3rdParty/ff_meters"]
 	path = SourceSampler/3rdParty/ff_meters
-	url = git@github.com:ffont/ff_meters.git
+	url = https://github.com/ffont/ff_meters.git
 [submodule "SourceSampler/3rdParty/Simple-WebSocket-Server"]
 	path = SourceSampler/3rdParty/Simple-WebSocket-Server
 	url = https://gitlab.com/eidheim/Simple-WebSocket-Server.git

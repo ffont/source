@@ -121,7 +121,7 @@ state_names_source_state_hierarchy_map = {
     StateNames.NUM_SOUNDS_DOWNLOADING: 'computed',
     StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER: 'computed',
     
-    StateNames.SOUND_NAME: 'sound',
+    StateNames.SOUND_NAME: 'sound_sample',
     StateNames.SOUND_UUID: 'sound',
     
     StateNames.SOURCE_SAMPLER_SOUND_UUID: 'sound_sample', 

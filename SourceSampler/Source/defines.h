@@ -10,28 +10,20 @@
 
 #pragma once
 
+#define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
 
-#define USE_WEBSOCKETS 1
+#define USE_OSC_SERVER 0  // OSC can be used as well as an alternative to Websockets, keeping this here for legacy reasons but not really used
+#define SYNC_STATE_WITH_OSC 0
 
 #if ELK_BUILD
-    #define USE_HTTP_SERVER 0 // Don't use the embedded http server because we use the python one
-    #define ENABLE_OSC_SERVER 1  // In ELK we enable OSC interface as this is the way the external UI controls the plugin
+    #define USE_HTTP_SERVER 0 // Don't use the embedded http server to serve audio files as these are directly loaded from disk
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
-    #define SYNC_STATE_WITH_OSC 1
 #else
-    #define USE_HTTP_SERVER 0  // Enable embedded http server
-    #if JUCE_DEBUG
-        #define ENABLE_OSC_SERVER 1 // In debug enable OSC server for testing purposes
-        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Use the external HTTP server for downloads, as if we were in ELK platform
-        #define SYNC_STATE_WITH_OSC 1
-    #else
-        #define ENABLE_OSC_SERVER 0 // Don't enable OSC server for non-ELK builds as we won't use this interface in non-ELK release builds
-        #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Also don't use external server for downloads, we use built-in download functionality
-        #define SYNC_STATE_WITH_OSC 0
-    #endif
+    #define USE_HTTP_SERVER 1  // Use embedded http server to serve audio files to plugin UI
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
-#define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sound that need to be removed, setting state updates in non-elk and possibly other tasks)
+#define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 
 #define ENABLE_DEBUG_BUFFER 0
 
@@ -43,10 +35,11 @@
 #define ELK_SOURCE_TMP_LOCATION "/udata/source/tmp/"
 
 #define OSC_LISTEN_PORT 9001
-#define HTTP_SERVER_LISTEN_PORT 8124
+#define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
+#define HTTP_SERVER_PORT 8124
 #define WEBSOCKETS_SERVER_PORT 8125
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
-#define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
+
 
 #define MAX_SAMPLE_LENGTH 300  // minutes maximum sample length
 

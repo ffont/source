@@ -43,6 +43,8 @@ public:
     SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor&);
     ~SourceSamplerAudioProcessorEditor();
     
+    juce::URL makeUIURL();
+    
     void buttonClicked (juce::Button* button) override;
 
     //==============================================================================

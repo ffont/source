@@ -215,9 +215,6 @@ private:
     
     // Other
     juce::CriticalSection soundDeleteLock;
-    void logToState(const juce::String& message);
-    std::vector<juce::String> recentLogMessages = {};
-    juce::String recentLogMessagesSerialized = "";
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
