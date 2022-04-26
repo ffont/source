@@ -864,21 +864,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         
     } else if (actionName == ACTION_GET_STATE){
         juce::String stateType = parameters[0];
-        if (stateType == "volatile"){
-            sendStateToExternalServer(collectVolatileStateInformation(), "");
-        } else if (stateType == "volatileString"){
-            #if SEND_VOLATILE_STATE_OVER_OSC
-            juce::OSCMessage message = juce::OSCMessage("/volatile_state_osc");
-            message.addString(collectVolatileStateInformationAsString());
-            sendOSCMessage(message);
-            #else
-            sendStateToExternalServer(ValueTree(), collectVolatileStateInformationAsString());
-            #endif
-            
-        } else if (stateType == "full"){
-            sendStateToExternalServer(state, "");
-            
-        } else if (stateType == "oscFull"){
+        if (stateType == "full"){
             juce::OSCMessage message = juce::OSCMessage("/full_state");
             message.addInt32(stateUpdateID);
             message.addString(state.toXmlString());
@@ -889,7 +875,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             serverInterface.sendMessageToWebSocketsClients(message);
             #endif
             
-        } else if (stateType == "oscVolatileString"){
+        } else if (stateType == "volatileString"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state_string");
             message.addString(collectVolatileStateInformationAsString());
             #if SYNC_STATE_WITH_OSC

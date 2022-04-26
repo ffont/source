@@ -10,10 +10,12 @@ import websocket
 import ssl
 import traceback
 
+# If USE_WEBSOCKETS is set to True, WebSockets will be used to communicate with plugin, otherwise OSC 
+# will be used
+USE_WEBSOCKETS = True  
 
 sss_instance = None
 volatile_state_refresh_fps = 15
-use_websockets = True
 
 
 def state_update_handler(*values):
@@ -37,6 +39,36 @@ def volatile_state_string_handler(*values):
         sss_instance.set_volatile_state_from_string(volatile_state_string)
 
 
+def osc_state_update_handler(*values):
+    new_values = []
+    for value in values:
+        if type(value) == bytes:
+            new_values.append(str(value.decode('utf-8')))
+        else:
+            new_values.append(value)
+    state_update_handler(*new_values)
+
+
+def osc_full_state_handler(*values):
+    new_values = []
+    for value in values:
+        if type(value) == bytes:
+            new_values.append(str(value.decode('utf-8')))
+        else:
+            new_values.append(value)
+    full_state_handler(*new_values)
+
+
+def osc_volatile_state_string_handler(*values):
+    new_values = []
+    for value in values:
+        if type(value) == bytes:
+            new_values.append(str(value.decode('utf-8')))
+        else:
+            new_values.append(value)
+    volatile_state_string_handler(*new_values)
+
+
 class OSCReceiverThread(threading.Thread):
 
     def __init__(self, port, source_state_synchronizer, *args, **kwargs):
@@ -50,19 +82,25 @@ class OSCReceiverThread(threading.Thread):
         osc.listen(address='0.0.0.0', port=self.port, default=True)
         osc.bind(b'/plugin_started', lambda: sss_instance.plugin_has_started())
         osc.bind(b'/plugin_alive', lambda: sss_instance.plugin_is_alive())
-        osc.bind(b'/state_update', state_update_handler)
-        osc.bind(b'/full_state', full_state_handler)
-        osc.bind(b'/volatile_state_string', volatile_state_string_handler)
+        osc.bind(b'/state_update', osc_state_update_handler)
+        osc.bind(b'/full_state', osc_full_state_handler)
+        osc.bind(b'/volatile_state_string', osc_volatile_state_string_handler)
         print('* Listening OSC messages in port {}'.format(self.port))
 
 
 def ws_on_message(ws, message):
+    if sss_instance is not None:
+        sss_instance.ws_connection_ok = True
+
     address = message[:message.find(':')]
     data = message[message.find(':') + 1:]
+    
     if address == '/volatile_state_string':
         volatile_state_string_handler(data)
+
     elif address == '/plugin_started':
         sss_instance.plugin_has_started()
+
     elif address == '/state_update':
         data_parts = data.split(';')
         update_type = data_parts[0]
@@ -70,6 +108,7 @@ def ws_on_message(ws, message):
         update_data = data_parts[2:]
         args = [update_type, update_id] + update_data
         state_update_handler(*args)
+
     elif address == '/full_state':
         data_parts = data.split(';')
         update_id = int(data_parts[0])
@@ -79,25 +118,32 @@ def ws_on_message(ws, message):
     
 
 def ws_on_error(ws, error):
-    print("WS connection error: {}".format(error))
-    print(traceback.format_exc())
+    print("* WS connection error: {}".format(error))
+    if 'Connection refused' not in str(error) or 'WebSocketConnectionClosedException' not in str(error):
+        # Don't print traceboack for these errors as these are expected
+        pass
+    else:
+        print(traceback.format_exc())
     if sss_instance is not None:
-        sss_instance.had_ws_errors = True
+        sss_instance.ws_connection_ok = False
 
 
 def ws_on_close(ws, close_status_code, close_msg):
-    print("WS connection closed: {} - {}".format(close_status_code, close_msg))
+    print("* WS connection closed: {} - {}".format(close_status_code, close_msg))
     if sss_instance is not None:
-        sss_instance.had_ws_errors = True
+        sss_instance.ws_connection_ok = False
 
 
 def ws_on_open(ws):
-    print("WS connection opened")
+    print("* WS connection opened")
     if sss_instance is not None:
-        sss_instance.had_ws_errors = False
+        sss_instance.ws_connection_ok = True
 
 
 class WSConnectionThread(threading.Thread):
+
+    reconnect_interval = 2
+    last_time_tried_wss = False
 
     def __init__(self, port, source_state_synchronizer, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -105,19 +151,28 @@ class WSConnectionThread(threading.Thread):
         self.source_state_synchronizer = source_state_synchronizer
 
     def run(self):
+        # Try to establish a connection with the websockets server
+        # If it can't be established, tries again every self.reconnect_interval seconds
+        # Because we don't know if the server will use wss or not, we alternatively try
+        # one or the other
         asyncio.set_event_loop(asyncio.new_event_loop())
-        #websocket.enableTrace(True)
-        ws = websocket.WebSocketApp("wss://localhost:{}/source/".format(self.port),
-                                on_open=ws_on_open,
-                                on_message=ws_on_message,
-                                on_error=ws_on_error,
-                                on_close=ws_on_close)
-        print('* Connecting to WS server in port {}'.format(self.port))
-        self.source_state_synchronizer.ws_connection = ws
-        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, skip_utf8_validation=True)
+        while True:
+            try_wss = not self.last_time_tried_wss
+            self.last_time_tried_wss = not self.last_time_tried_wss
+            ws_endpoint = "ws{}://localhost:{}/source_coms/".format('s' if try_wss else '', self.port)
+            ws = websocket.WebSocketApp(ws_endpoint,
+                                    on_open=ws_on_open,
+                                    on_message=ws_on_message,
+                                    on_error=ws_on_error,
+                                    on_close=ws_on_close)
+            self.source_state_synchronizer.ws_connection = ws
+            print('* Connecting to WS server: {}'.format(ws_endpoint))
+            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE}, skip_utf8_validation=True)
+            print('WS connection lost - will try connecting again in {} seconds'.format(self.reconnect_interval))
+            time.sleep(self.reconnect_interval)
     
 
-class RequestVolatileStateThread(threading.Thread):
+class RequestStateThread(threading.Thread):
 
     def __init__(self, source_state_synchronizer, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -125,24 +180,31 @@ class RequestVolatileStateThread(threading.Thread):
 
     def run(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
+        print('* Starting loop to request state')
         while True:
             time.sleep(1.0/volatile_state_refresh_fps)
             self.source_state_synchronizer.request_volatile_state()
+            if self.source_state_synchronizer.should_request_full_state:
+                self.source_state_synchronizer.request_full_state()
 
 
 class SourceStateSynchronizer(object):
 
     osc_client = None
+    last_time_plugin_alive = 0  # Only used when using OSC communication
+
     ws_connection = None
-    had_ws_errors = False
+    ws_connection_ok = False
+
     last_update_id = -1
-    shoud_request_full_state = False
+    should_request_full_state = False
     full_state_requested = False
+
     state_soup = None
-    verbose = False
-    last_time_plugin_alive = 0
     volatile_state = {}
     ui_state_manager = None
+
+    verbose = False
 
     def __init__(self, ui_state_manager, osc_ip="127.0.0.1", osc_port_send=9001, osc_port_receive=9002, ws_port=8125, verbose=True):
         self.ui_state_manager = ui_state_manager
@@ -151,7 +213,9 @@ class SourceStateSynchronizer(object):
         sss_instance = self
         self.verbose = verbose
         
-        if not use_websockets:
+        if not USE_WEBSOCKETS:
+            print('* Using OSC to communicate with plugin')
+
             # Start OSC receiver to receive OSC messages from the plugin
             OSCReceiverThread(osc_port_receive, self).start()
             
@@ -159,48 +223,54 @@ class SourceStateSynchronizer(object):
             self.osc_client = OSCClient(osc_ip, osc_port_send, encoding='utf8')
             print('* Sending OSC messages in port {}'.format(osc_port_send))
         else:
+            print('* Using WebSockets to communicate with plugin')
+
             # Start websockets client to handle communication with plugin
             WSConnectionThread(ws_port, self).start()
 
-        # Start Thread to request volatile state to plugin
-        RequestVolatileStateThread(self).start()
+        # Start Thread to request state to plugin
+        # This thread will request mostly the volatile state, but will also occasioanally
+        # request full state if self.should_request_full_state is True
+        RequestStateThread(self).start()
 
-        time.sleep(0.5)  # Give time for threads to starts
-        self.request_full_state()
+        time.sleep(0.5)  # Give time for threads to start
+        self.should_request_full_state = True
 
     def send_msg_to_plugin(self, address, values):
         if self.osc_client is not None:
             self.osc_client.send_message(address, values)
-        if self.ws_connection is not None and not self.had_ws_errors:
+        if self.ws_connection is not None and self.ws_connection_ok:
             self.ws_connection.send(address + ':' + ';'.join([str(value) for value in values]))
 
     def plugin_has_started(self):
         self.last_update_id = -1
         self.state_soup = None
-        self.request_full_state()
+        self.should_request_full_state = True
 
     def plugin_is_alive(self):
         self.last_time_plugin_alive = time.time()
 
     def plugin_may_be_down(self):
-        if not use_websockets:
+        if not USE_WEBSOCKETS:
             return time.time() - self.last_time_plugin_alive > 5.0  # Consider plugin maybe down if no alive message in 5 seconds
         else:
-            return False #self.had_ws_errors
+            return not self.ws_connection_ok  # Consider plugin down if no active WS connection
 
     def request_full_state(self):
-        self.send_msg_to_plugin('/get_state', ["oscFull"])
-        self.full_state_requested = True
-        self.shoud_request_full_state = False
+        if not self.full_state_requested and not self.plugin_may_be_down():
+            print('* Requesting full state')
+            self.full_state_requested = True
+            self.send_msg_to_plugin('/get_state', ["full"])
 
     def request_volatile_state(self):
-        self.send_msg_to_plugin('/get_state', ["oscVolatileString"])
+        self.send_msg_to_plugin('/get_state', ["volatileString"])
 
     def set_full_state(self, update_id, full_state_raw):
         if self.verbose:
             print("Receiving full state with update id {}".format(update_id))
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
+        self.should_request_full_state = False
         self.ui_state_manager.current_state.on_source_state_update()
 
         # Configure some stuff that requires the data paths to be known
@@ -245,8 +315,7 @@ class SourceStateSynchronizer(object):
                     # Should never return more than one, request a full state as there will be sync issues
                     if self.verbose:
                         print('Unexpected number of results ({})'.format(len(results)))
-                    if not self.full_state_requested:
-                        self.request_full_state()
+                    self.should_request_full_state = True
             
             elif update_type == "addedChild":
                 parent_tree_uuid = update_data[0]
@@ -268,8 +337,7 @@ class SourceStateSynchronizer(object):
                     # Should never return more than one, request a full state as there will be sync issues
                     if self.verbose:
                         print('Unexpected number of results ({})'.format(len(results)))
-                    if not self.full_state_requested:
-                        self.request_full_state()
+                    self.should_request_full_state = True
             
             elif update_type == "removedChild":
                 child_to_remove_tree_uuid = update_data[0]
@@ -284,14 +352,11 @@ class SourceStateSynchronizer(object):
                     # Should never return more than one, request a full state as there will be sync issues
                     if self.verbose:
                         print('Unexpected number of results ({})'.format(len(results)))
-                    if not self.full_state_requested:
-                        self.request_full_state()
+                    self.should_request_full_state = True
             
             # Check if update ID is correct and trigger request of full state if there are possible sync errors
             if self.last_update_id != -1 and self.last_update_id + 1 != update_id:
-                if not self.full_state_requested:
-                    self.shoud_request_full_state = True
-                    self.request_full_state()
+                self.should_request_full_state = True
             self.last_update_id = update_id
 
             self.ui_state_manager.current_state.on_source_state_update()

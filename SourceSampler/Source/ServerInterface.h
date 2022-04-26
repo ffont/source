@@ -358,7 +358,7 @@ void WebSocketsServer::run()
     #endif    
     serverPtr.reset(&server);
     
-    auto &source_endpoint = server.endpoint["^/source/?$"];
+    auto &source_endpoint = server.endpoint["^/source_coms/?$"];
     source_endpoint.on_message = [&server, this](std::shared_ptr<WsServer::Connection> /*connection*/, std::shared_ptr<WsServer::InMessage> in_message) {
         auto message = in_message->string();
         if (interfacePtr != nullptr){
