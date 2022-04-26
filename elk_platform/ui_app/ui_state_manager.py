@@ -2222,6 +2222,9 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
         if self.sound_idx > -1:
             sound_id = spi.get_sound_property(self.sound_idx, StateNames.SOUND_ID)
             if sound_id is not None:
+                # The plugin saves .wav versions of all the loaded sounds in a TMP location and with a known filename
+                # Here we use these files to load them directly in the slice editor and there is no need to send the files
+                # over the websockets or osc connection
                 path = os.path.join(spi.get_property(StateNames.TMP_DATA_LOCATION, ''), spi.get_sound_property(self.sound_idx, StateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav') 
                 if os.path.exists(path):
                     sm.show_global_message('Loading\nwaveform...', duration=10)
