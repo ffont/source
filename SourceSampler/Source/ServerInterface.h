@@ -270,6 +270,7 @@ void HTTPServer::run() {
     }
     
     server.set_file_request_handler([](const auto& req, auto& res) {
+        DBG("Adding CORS header to requested file: " << req.path);
         res.set_header("Access-Control-Allow-Origin", "*");
     });
     

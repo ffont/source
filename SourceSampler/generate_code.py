@@ -145,21 +145,21 @@ def generate_code(controls_data_filename):
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf, 'step': 1.0 if control_data['name'] == 'basePitch' else 0.01})
-            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="ss.setSoundParameter(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi, 'defaulti': defaulti, 'step': 1})
-            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="setSoundParameterInt(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="ss.setSoundParameterInt(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         else:
             # Don't know what to do with other types
             pass
     current_code += '            '
-    code_dict['Resources/ui_plugin.html'] = {}
-    code_dict['Resources/ui_plugin.html']['A'] = current_code
+    code_dict['Resources/ui_plugin_ws.html'] = {}
+    code_dict['Resources/ui_plugin_ws.html']['A'] = current_code
 
     # Generate list of controls modifiable via MIDI cc in interface.hmtl
     current_code = '            parameterNames = ['
@@ -170,7 +170,7 @@ def generate_code(controls_data_filename):
         else:
             current_code += '"{name}"]'.format(**control_data)
     current_code += '\n            '
-    code_dict['Resources/ui_plugin.html']['B'] = current_code
+    code_dict['Resources/ui_plugin_ws.html']['B'] = current_code
 
     # Generate list of all controls in interface.hmtl
     current_code = '            parameterNames = ['
@@ -181,7 +181,7 @@ def generate_code(controls_data_filename):
         else:
             current_code += '"{name}"]'.format(**control_data)
     current_code += '\n            '
-    code_dict['Resources/ui_plugin.html']['C'] = current_code
+    code_dict['Resources/ui_plugin_ws.html']['C'] = current_code
 
     # Generate list of all control types in interface.hmtl
     current_code = '            parameterTypes = ['
@@ -192,7 +192,7 @@ def generate_code(controls_data_filename):
         else:
             current_code += '"{type}"]'.format(**control_data)
     current_code += '\n            '
-    code_dict['Resources/ui_plugin.html']['D'] = current_code
+    code_dict['Resources/ui_plugin_ws.html']['D'] = current_code
 
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))

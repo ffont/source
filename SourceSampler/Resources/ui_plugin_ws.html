@@ -272,7 +272,7 @@
                     const msgTypeSeparatorPosition = event.data.indexOf(':');
                     const msgType = event.data.slice(0, msgTypeSeparatorPosition);
                     const rawData = event.data.slice(msgTypeSeparatorPosition + 1, event.data.length);
-
+                    
                     if (msgType === "/full_state"){
                         const updateIdSeparatorPosition = rawData.indexOf(';');
                         const updateId = parseInt(rawData.slice(0, updateIdSeparatorPosition), 10);
@@ -292,20 +292,33 @@
 
                         if (updateType === 'propertyChanged'){
                             const treeUUID = restOfDataSliced[0];
-                            const treeType = restOfDataSliced[1].toLowerCase();
-                            const propertyName = restOfDataSliced[2].toLowerCase();
-                            const propertyValue = restOfDataSliced[3].toLowerCase();
+                            const treeType = restOfDataSliced[1];
+                            const propertyName = restOfDataSliced[2];
+                            const propertyValue = restOfDataSliced[3];
 
                             const elementToUpdate = self.state.querySelector("[uuid='" + treeUUID + "']");
                             if (elementToUpdate !== null){
                                 elementToUpdate.setAttribute(propertyName, propertyValue);
                             }
+                            
+                            if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
+                                // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                updateCardForSound(treeUUID);
 
-                            // TODO: Update corresponding property in the DOM
+                                // If the property name is that of a slider (sound parameter), then update the slider as well
+                                if (isSoundParameter(propertyName)){
+                                    updateSoundParameter(treeUUID, propertyName, propertyValue);
+                                }
+                            } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
+                                // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
+                                updateMainPresetParameters();
+                            } else if (treeType === "MIDI_CC_MAPPING"){
+                                updateMIDIMappingEditor(treeUUID);
+                            }
 
                         } else if (updateType === 'addedChild'){
                             const parentTreeUUID = restOfDataSliced[0];
-                            const parentTreeType = restOfDataSliced[1].toLowerCase();
+                            const parentTreeType = restOfDataSliced[1];
                             const indexInParentChildren = parseInt(restOfDataSliced[2], 10);
                             const childXmlString = restOfDataSliced.slice(3, restOfDataSliced.length).join(';');
 
@@ -315,15 +328,17 @@
                                 if (indexInParentChildren < 0){
                                     elementToUpdate.appendChild(self.parser.parseFromString(childXmlString, "text/xml"));
                                 } else {
-                                    elementToUpdate.insertBefore(self.parser.parseFromString(childXmlString, "text/xml"), elementToUpdate.childNodes[indexInParentChildren]);
+                                    var beforeNode = elementToUpdate.childNodes[indexInParentChildren];
+                                    //elementToUpdate.insertBefore(self.parser.parseFromString(childXmlString, "text/xml"), beforeNode);
+                                    // TODO: look at errors with inserBefore
+                                    elementToUpdate.appendChild(self.parser.parseFromString(childXmlString, "text/xml"));
                                 }
                             }
-
                             // TODO: create new corresponding element in the DOM
  
                         } else if (updateType === 'removedChild'){
                             const childToRemoveUUID = restOfDataSliced[0];
-                            const childToRemoveType = restOfDataSliced[1].toLowerCase();
+                            const childToRemoveType = restOfDataSliced[1];
 
                             // Remove the selected element from the state
                             const stateElementToRemove = self.state.querySelector("[uuid='" + childToRemoveUUID + "']");
@@ -358,6 +373,152 @@
 
             requestVolatileState(){
                 this.sendMessageToPlugin('/get_state', ["volatile"]);
+            }
+
+            // Util methods to get state info
+
+            findSoundIdxFromSoundUUID(soundUUID){            
+                var sounds = this.state.getElementsByTagName('SOUND');
+                for (var i=0; i<sounds.length; i++) {
+                    if (sounds[i].getAttribute("uuid") == soundUUID){
+                        return i + 1;
+                    }
+                }
+                return -1
+            }
+
+            findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){            
+                var sounds = ss.state.getElementsByTagName('SOUND');
+                for (var i=0; i<sounds.length; i++) {
+                    var samplerSounds = sounds[i].getElementsByTagName('SOUND_SAMPLE');
+                    for (var j=0; j<samplerSounds.length; j++) {
+                        var samplerSound = samplerSounds[j];
+                        if (samplerSound.getAttribute("uuid") == samplerSoundUUID){
+                            return i + 1;
+                        }
+                    }
+                }
+                return -1
+            }
+
+            // Util methods to change things of the state
+
+            setSoundParameter(soundUUID, sliderElement){
+                this.sendMessageToPlugin('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)])
+            }
+
+            setSoundParameterInt(soundUUID, sliderElement){
+                sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
+                updateSliderLabel(sliderElement);
+                this.sendMessageToPlugin('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value])
+            }
+
+            makeQuery(){
+                var query = document.getElementsByName('query')[0].value;
+                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
+                var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
+                var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
+                var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+                this.sendMessageToPlugin('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
+            }
+                                        
+            clearAllSounds(){
+                this.sendMessageToPlugin('/clear_all_sounds', [])
+            }
+
+            setMidiInChannel() {
+                var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
+                this.sendMessageToPlugin('/set_midi_in_channel', [midiInChannel])
+            }
+
+            setReverbParameters() {
+                var roomSize = document.getElementById('0_roomSize').value;
+                var damping = document.getElementById('0_damping').value;
+                var wetLevel = document.getElementById('0_wetLevel').value;
+                var dryLevel = document.getElementById('0_dryLevel').value;
+                var width = document.getElementById('0_width').value;
+                var freezeMode = document.getElementById('0_freezeMode').value;
+                updateAllSliderLabels();
+                this.sendMessageToPlugin('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode])
+            }
+
+            setNumVoices() {
+                var numVoices = document.getElementsByName('numVoices')[0].value;
+                this.sendMessageToPlugin('/set_polyphony', [numVoices])
+            }
+
+            playSound(soundUUID){
+                this.sendMessageToPlugin('/play_sound', [soundUUID])
+            }
+
+            stopSound(soundUUID){
+                this.sendMessageToPlugin('/stop_sound', [soundUUID])
+            }
+                                        
+            removeSound(soundUUID){
+                this.sendMessageToPlugin('/remove_sound', [soundUUID])
+            }
+
+            savePreset(){
+                var name = document.getElementsByName('presetName')[0].value;
+                var idx = document.getElementsByName('presetIdx')[0].value;
+                this.sendMessageToPlugin('/save_preset', [name, idx])
+            }
+
+            loadPreset() {
+                var idx = document.getElementsByName('presetIdx')[0].value;
+                this.sendMessageToPlugin('/load_preset', [idx])
+            }
+
+            nextPreset(){
+                var idx = document.getElementsByName('presetIdx')[0].value;
+                if (idx == undefined){
+                    idx = -1;
+                } else {
+                    idx = parseInt(idx, 10);
+                    if (isNaN(idx)){
+                        idx = -1;
+                    }
+                }
+                this.sendMessageToPlugin('/load_preset', [idx + 1])
+            }
+
+            previousPreset(){
+                var idx = document.getElementsByName('presetIdx')[0].value;
+                if (idx == undefined){
+                    idx = 1;
+                } else {
+                    idx = parseInt(idx, 10);
+
+                    if (isNaN(idx)){
+                        idx = 1;
+                    }
+                }
+                if (idx < 1){
+                    idx = 1; //Will become 0 when subtracted 1
+                }
+                this.sendMessageToPlugin('/load_preset', [idx - 1])
+            }
+
+            createUpdateMapping(soundUUID, mappingID){
+                var ccNumber = document.getElementById(mappingID + '_mappingCCNumber').value;
+                var name = document.getElementById(mappingID + '_mappingParameterName').value;
+                var minRange = parseFloat(document.getElementById(mappingID + '_mappingMinRange').value, 10);
+                var maxRange = parseFloat(document.getElementById(mappingID + '_mappingMaxRange').value, 10);
+                this.sendMessageToPlugin('/add_or_update_cc_mapping', [soundUUID, mappingID, ccNumber, name, minRange, maxRange]);
+                if (mappingID == ""){
+                    // Remove this element from DOM because this one is only while creating a new mappping
+                    document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";
+                }
+            }
+
+            removeMidiMapping(soundUUID, mappingID){
+                if (mappingID != ""){
+                    this.sendMessageToPlugin('/remove_cc_mapping', [soundUUID, mappingID]);
+                    // No need to remove the element itself because it will be removed when updating state
+                } else {
+                    document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
+                }
             }
 
         }
@@ -492,142 +653,6 @@
             }
         }
 
-        function sendMessageToPlugin(address, values, types) {
-            ss.sendMessageToPlugin(address, values);
-        }
-
-        function setSoundParameter(soundUUID, sliderElement){
-            sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
-            updateSliderLabel(sliderElement);
-            sendMessageToPlugin('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)], 'str;str;float')
-        }
-
-        function setSoundParameterInt(soundUUID, sliderElement){
-            sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
-            updateSliderLabel(sliderElement);
-            sendMessageToPlugin('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value], 'str;str;int')
-        }
-
-        function makeQuery(){
-            var query = document.getElementsByName('query')[0].value;
-            var numSounds = document.getElementsByName('numSounds')[0].value || 16;
-            var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
-            var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-            var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-            sendMessageToPlugin('/new_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType], 'str;int;float;float;int')
-        }
-                                       
-        function clearAllSounds(){
-            sendMessageToPlugin('/clear_all_sounds', [], '')
-        }
-
-        function setMidiInChannel() {
-            var midiInChannel = document.getElementsByName('midiInChannel')[0].value;
-            sendMessageToPlugin('/set_midi_in_channel', [midiInChannel], 'int')
-        }
-
-        function setMidiThru() {
-            var midiThru = document.getElementsByName('midiThru')[0].checked;
-            sendMessageToPlugin('/set_midi_thru', [midiThru ? 1: 0], 'int')
-        }
-
-        function setStateUpdateHz() {
-            var stateUpdateHz = document.getElementsByName('stateUpdateHz')[0].value;
-            sendMessageToPlugin('/set_state_timer_hz', [stateUpdateHz], 'int')
-        }
-
-        function setReverbParameters() {
-            var roomSize = document.getElementById('0_roomSize').value;
-            var damping = document.getElementById('0_damping').value;
-            var wetLevel = document.getElementById('0_wetLevel').value;
-            var dryLevel = document.getElementById('0_dryLevel').value;
-            var width = document.getElementById('0_width').value;
-            var freezeMode = document.getElementById('0_freezeMode').value;
-            updateAllSliderLabels();
-            sendMessageToPlugin('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode], 'float;float;float;float;float;float')
-        }
-
-        function setNumVoices() {
-            var numVoices = document.getElementsByName('numVoices')[0].value;
-            sendMessageToPlugin('/set_polyphony', [numVoices], 'int')
-        }
-
-        function playSound(soundUUID){
-            sendMessageToPlugin('/play_sound', [soundUUID], 'str')
-        }
-
-        function stopSound(soundUUID){
-            sendMessageToPlugin('/stop_sound', [soundUUID], 'str')
-        }
-                                       
-        function removeSound(soundUUID){
-            sendMessageToPlugin('/remove_sound', [soundUUID], 'str')
-        }
-
-        function savePreset(){
-            var name = document.getElementsByName('presetName')[0].value;
-            var idx = document.getElementsByName('presetIdx')[0].value;
-            sendMessageToPlugin('/save_preset', [name, idx], 'str;int')
-        }
-
-        function loadPreset() {
-            var idx = document.getElementsByName('presetIdx')[0].value;
-            sendMessageToPlugin('/load_preset', [idx], 'int')
-        }
-
-        function nextPreset(){
-            var idx = document.getElementsByName('presetIdx')[0].value;
-            if (idx == undefined){
-                idx = -1;
-            } else {
-                idx = parseInt(idx, 10);
-                if (isNaN(idx)){
-                    idx = -1;
-                }
-            }
-            sendMessageToPlugin('/load_preset', [idx + 1], 'int')
-        }
-
-        function previousPreset(){
-            var idx = document.getElementsByName('presetIdx')[0].value;
-            if (idx == undefined){
-                idx = 1;
-            } else {
-                idx = parseInt(idx, 10);
-
-                if (isNaN(idx)){
-                    idx = 1;
-                }
-            }
-            if (idx < 1){
-                idx = 1; //Will become 0 when subtracted 1
-            }
-            sendMessageToPlugin('/load_preset', [idx - 1], 'int')
-        }
-
-        function createUpdateMapping(mappingID){
-            var randomID = mappingID.split('_')[0];
-            var soundUUID = mappingID.split('_')[1];
-            var ccNumber = document.getElementById(mappingID + '_mappingCCNumber').value;
-            var name = document.getElementById(mappingID + '_mappingParameterName').value;
-            var minRange = parseFloat(document.getElementById(mappingID + '_mappingMinRange').value, 10);
-            var maxRange = parseFloat(document.getElementById(mappingID + '_mappingMaxRange').value, 10);
-            sendMessageToPlugin('/add_or_update_cc_mapping', [soundUUID, randomID, ccNumber, name, minRange, maxRange], 'str;str;int;str;float;float');
-            if (randomID == ""){
-                // Remove this element from DOM because this one is only while creating a new mappping
-                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";
-            }
-        }
-
-        function removeMidiMapping(soundUUID, mappingID){
-            if (mappingID != ""){
-                sendMessageToPlugin('/remove_cc_mapping', [soundUUID, mappingID], 'str;str');
-                // No need to remove the element itself because it will be removed when updating state
-            } else {
-                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = "";  // Remove new mapping palceholder as the mapping was not yet created
-            }
-        }
-
         // UI generation
 
         function getMidiControllableParameterNames(){
@@ -639,24 +664,41 @@
         
         function getAllSoundParameterNames(){
             // --> Start auto-generated code C
-            parameterNames = ["soundType", "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
+            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
             // --> End auto-generated code C
             return parameterNames;
+        }
+
+        function isSoundParameter(parameterName){
+            return getAllSoundParameterNames().indexOf(parameterName) > -1;
         }
         
         function getAllSoundParameterTypes(){
             // --> Start auto-generated code D
-            parameterTypes = ["int", "int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
+            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
             // --> End auto-generated code D
             return parameterTypes;
         }
 
-        function addNewMIDIMappingEditor(soundUUID) {
-                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = createMIDIMappingEditor(soundUUID, "", 0, "", 0.0, 1.0);
-            }
+        function getParameterType(parameterName){
+            return getAllSoundParameterTypes()[getAllSoundParameterNames().indexOf(parameterName)];
+        }
 
-        function createMIDIMappingEditor(soundUUID, mappingUUID, ccNumber, parameterName, minRange, maxRange){
-            html = '<div id="' + mappingUUID + '" class="midiMapping">';
+        function addNewMIDIMappingEditor(soundUUID) {
+                document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = createMIDIMappingEditorFromRawParams(soundUUID, "", 0, "", 0.0, 1.0);
+            }
+        
+        function createMIDIMappingEditor(soundUUID, mapping){ // mapping xml form state
+            var mappingUUID = mapping.getAttribute('uuid');
+            var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
+            var name = mapping.getAttribute('parameterName');
+            var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
+            var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
+            return createMIDIMappingEditorFromRawParams(soundUUID, mappingUUID, ccNumber, name, minRange, maxRange);
+        }
+
+        function createMIDIMappingEditorFromRawParams(soundUUID, mappingUUID, ccNumber, parameterName, minRange, maxRange){
+            html = '<div id="' + mappingUUID + '" data-sound-id="' + soundUUID + '" class="midiMapping">';
             html += 'CC number: <input id="' + mappingUUID + '_mappingCCNumber" value="' + ccNumber + '" type="number"><br>';
             html += 'Parameter: <select class="select-css" id="' + mappingUUID + '_mappingParameterName">';
             var availableParams = getMidiControllableParameterNames();
@@ -670,56 +712,70 @@
             html += '</select><br>';
             html += '<input type="range" id="' + mappingUUID + '_mappingMinRange"  min="0" max="1.0" value="' + minRange + '" step="0.01"> min: <span id="' + mappingUUID + '_mappingMinRangeLabel"></span><br>';
             html += '<input type="range" id="' + mappingUUID + '_mappingMaxRange"  min="0" max="1.0" value="' + maxRange + '" step="0.01"> max: <span id="' + mappingUUID + '_mappingMaxRangeLabel"></span><br>';
-            html += '<button onclick="createUpdateMapping(\'' + mappingUUID + '\')">save</button><button onclick="removeMidiMapping(\'' + soundUUID + '\',\'' + mappingUUID + '\')">x</button>';
+            html += '<button onclick="ss.createUpdateMapping(\'' + soundUUID + '\',\'' + mappingUUID + '\')">save</button><button onclick="ss.removeMidiMapping(\'' + soundUUID + '\',\'' + mappingUUID + '\')">x</button>';
             html += '</div>';
             return html;
         }
 
+        function updateMIDIMappingEditor(mappingUUID){
+            var mapping = ss.state.querySelector("[uuid='" + mappingUUID + "']");
+            var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
+            var name = mapping.getAttribute('parameterName');
+            var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
+            var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
+            
+            document.getElementById(mappingUUID + '_mappingCCNumber').value = ccNumber;
+            document.getElementById(mappingUUID + '_mappingParameterName').value = name;
+            document.getElementById(mappingUUID + '_mappingMinRange').value = minRange;
+            document.getElementById(mappingUUID + '_mappingMinRangeLabel').innerHTML = minRange;
+            document.getElementById(mappingUUID + '_mappingMaxRange').value = maxRange;
+            document.getElementById(mappingUUID + '_mappingMaxRangeLabel').innerHTML = maxRange;
+        }
 
         function generateSoundEditControls(soundUUID){
             html = '';
             // --> Start auto-generated code A
-            html += '<input type="range" id="' + soundUUID + '_soundType" name="soundType" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > soundType: <span id="' + soundUUID + '_soundTypeLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > launchMode: <span id="' + soundUUID + '_launchModeLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > startPosition: <span id="' + soundUUID + '_startPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > endPosition: <span id="' + soundUUID + '_endPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > loopStartPosition: <span id="' + soundUUID + '_loopStartPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > loopEndPosition: <span id="' + soundUUID + '_loopEndPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > loopXFadeNSamples: <span id="' + soundUUID + '_loopXFadeNSamplesLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > reverse: <span id="' + soundUUID + '_reverseLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > noteMappingMode: <span id="' + soundUUID + '_noteMappingModeLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_numSlices" name="numSlices" min="0" max="100" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > numSlices: <span id="' + soundUUID + '_numSlicesLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_playheadPosition" name="playheadPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > playheadPosition: <span id="' + soundUUID + '_playheadPositionLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_freezePlayheadSpeed" name="freezePlayheadSpeed" min="1.0" max="5000.0" value="100.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > freezePlayheadSpeed: <span id="' + soundUUID + '_freezePlayheadSpeedLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterCutoff" name="filterCutoff" min="10.0" max="20000.0" value="20000.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterCutoff: <span id="' + soundUUID + '_filterCutoffLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterRessonance: <span id="' + soundUUID + '_filterRessonanceLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterKeyboardTracking" name="filterKeyboardTracking" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterKeyboardTracking: <span id="' + soundUUID + '_filterKeyboardTrackingLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterAttack" name="filterAttack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterAttack: <span id="' + soundUUID + '_filterAttackLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterDecay" name="filterDecay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterDecay: <span id="' + soundUUID + '_filterDecayLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterSustain" name="filterSustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterSustain: <span id="' + soundUUID + '_filterSustainLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterRelease" name="filterRelease" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterRelease: <span id="' + soundUUID + '_filterReleaseLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_filterADSR2CutoffAmt" name="filterADSR2CutoffAmt" min="0.0" max="100.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > filterADSR2CutoffAmt: <span id="' + soundUUID + '_filterADSR2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > gain: <span id="' + soundUUID + '_gainLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_attack" name="attack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > attack: <span id="' + soundUUID + '_attackLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_decay" name="decay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > decay: <span id="' + soundUUID + '_decayLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_sustain" name="sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > sustain: <span id="' + soundUUID + '_sustainLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_release" name="release" min="0.0" max="1.0" value="0.01" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > release: <span id="' + soundUUID + '_releaseLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pan: <span id="' + soundUUID + '_panLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_pitch" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitch: <span id="' + soundUUID + '_pitchLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeUp: <span id="' + soundUUID + '_pitchBendRangeUpLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeDown: <span id="' + soundUUID + '_pitchBendRangeDownLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_mod2CutoffAmt" name="mod2CutoffAmt" min="0.0" max="100.0" value="10.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2CutoffAmt: <span id="' + soundUUID + '_mod2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_mod2GainAmt" name="mod2GainAmt" min="-12.0" max="12.0" value="6.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2GainAmt: <span id="' + soundUUID + '_mod2GainAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_mod2PitchAmt" name="mod2PitchAmt" min="-12.0" max="12.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2PitchAmt: <span id="' + soundUUID + '_mod2PitchAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > mod2PlayheadPos: <span id="' + soundUUID + '_mod2PlayheadPosLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2CutoffAmt: <span id="' + soundUUID + '_vel2CutoffAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > vel2GainAmt: <span id="' + soundUUID + '_vel2GainAmtLabel"></span><br>'
-            html += '<input type="range" id="' + soundUUID + '_midiChannel" name="midiChannel" min="0" max="16" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > midiChannel: <span id="' + soundUUID + '_midiChannelLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > launchMode: <span id="' + soundUUID + '_launchModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > startPosition: <span id="' + soundUUID + '_startPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > endPosition: <span id="' + soundUUID + '_endPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopStartPosition" name="loopStartPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > loopStartPosition: <span id="' + soundUUID + '_loopStartPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopEndPosition" name="loopEndPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > loopEndPosition: <span id="' + soundUUID + '_loopEndPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_loopXFadeNSamples" name="loopXFadeNSamples" min="10" max="100000" value="500" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > loopXFadeNSamples: <span id="' + soundUUID + '_loopXFadeNSamplesLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_reverse" name="reverse" min="0" max="1" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > reverse: <span id="' + soundUUID + '_reverseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_noteMappingMode" name="noteMappingMode" min="0" max="3" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > noteMappingMode: <span id="' + soundUUID + '_noteMappingModeLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_numSlices" name="numSlices" min="0" max="100" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > numSlices: <span id="' + soundUUID + '_numSlicesLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_playheadPosition" name="playheadPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > playheadPosition: <span id="' + soundUUID + '_playheadPositionLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_freezePlayheadSpeed" name="freezePlayheadSpeed" min="1.0" max="5000.0" value="100.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > freezePlayheadSpeed: <span id="' + soundUUID + '_freezePlayheadSpeedLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterCutoff" name="filterCutoff" min="10.0" max="20000.0" value="20000.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterCutoff: <span id="' + soundUUID + '_filterCutoffLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterRessonance" name="filterRessonance" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterRessonance: <span id="' + soundUUID + '_filterRessonanceLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterKeyboardTracking" name="filterKeyboardTracking" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterKeyboardTracking: <span id="' + soundUUID + '_filterKeyboardTrackingLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterAttack" name="filterAttack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterAttack: <span id="' + soundUUID + '_filterAttackLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterDecay" name="filterDecay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterDecay: <span id="' + soundUUID + '_filterDecayLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterSustain" name="filterSustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterSustain: <span id="' + soundUUID + '_filterSustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterRelease" name="filterRelease" min="0.0" max="1.0" value="0.01" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterRelease: <span id="' + soundUUID + '_filterReleaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_filterADSR2CutoffAmt" name="filterADSR2CutoffAmt" min="0.0" max="100.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > filterADSR2CutoffAmt: <span id="' + soundUUID + '_filterADSR2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_gain" name="gain" min="-80.0" max="12.0" value="-10.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > gain: <span id="' + soundUUID + '_gainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_attack" name="attack" min="0.0" max="1.0" value="0.01" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > attack: <span id="' + soundUUID + '_attackLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_decay" name="decay" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > decay: <span id="' + soundUUID + '_decayLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_sustain" name="sustain" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > sustain: <span id="' + soundUUID + '_sustainLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_release" name="release" min="0.0" max="1.0" value="0.01" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > release: <span id="' + soundUUID + '_releaseLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pan" name="pan" min="-1.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > pan: <span id="' + soundUUID + '_panLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitch" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > pitch: <span id="' + soundUUID + '_pitchLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeUp" name="pitchBendRangeUp" min="0.0" max="36.0" value="12.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeUp: <span id="' + soundUUID + '_pitchBendRangeUpLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitchBendRangeDown" name="pitchBendRangeDown" min="0.0" max="36.0" value="12.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > pitchBendRangeDown: <span id="' + soundUUID + '_pitchBendRangeDownLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2CutoffAmt" name="mod2CutoffAmt" min="0.0" max="100.0" value="10.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > mod2CutoffAmt: <span id="' + soundUUID + '_mod2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2GainAmt" name="mod2GainAmt" min="-12.0" max="12.0" value="6.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > mod2GainAmt: <span id="' + soundUUID + '_mod2GainAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2PitchAmt" name="mod2PitchAmt" min="-12.0" max="12.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > mod2PitchAmt: <span id="' + soundUUID + '_mod2PitchAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_mod2PlayheadPos" name="mod2PlayheadPos" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > mod2PlayheadPos: <span id="' + soundUUID + '_mod2PlayheadPosLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_vel2CutoffAmt" name="vel2CutoffAmt" min="0.0" max="100.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > vel2CutoffAmt: <span id="' + soundUUID + '_vel2CutoffAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > vel2GainAmt: <span id="' + soundUUID + '_vel2GainAmtLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_midiChannel" name="midiChannel" min="0" max="16" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > midiChannel: <span id="' + soundUUID + '_midiChannelLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }
 
-        function createCardForSound(soundUUID, sound){ //sound = xml element
+        function createCardForSound(sound){ //sound = xml element from state
+            var soundUUID = sound.getAttribute('uuid');
             var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
             // TODO: use soundUUID as id and not the complex one
             html = '<div class="controls_card" id="' + soundUUID + '" data-sound-sample-sound-id="' + soundID + '">';
@@ -732,7 +788,8 @@
             return html;
         }
     
-        function updateCardForSound(soundUUID, sound, idx){ //sound = xml element
+        function updateCardForSound(soundUUID){
+            var sound = ss.state.querySelector("[uuid='" + soundUUID + "']");
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
             var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
             var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
@@ -744,7 +801,8 @@
             var licenseURL = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
             if ((downloadProgress != 100) && (soundID != -1)){
                 // Sound not yet loaded, show download progress
-                html = '<h5>' + idx + " - " + soundID + '</h5>';
+                idx = 
+                html = '<h5>' + ss.findSoundIdxFromSoundUUID(soundUUID) + " - " + soundID + '</h5>';
                 if (downloadProgress == null){
                     downloadProgress = 0;
                 }
@@ -754,8 +812,8 @@
             } else {
                 // Sound already loaded, show all info (if it has not been already shown)
                 if (soundInfoElement.innerHTML.indexOf('playSound') == -1){
-                    html = '<div class="transportSoundButtons"><button onclick="playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="removeSound(\'' + soundUUID + '\')">x</button></div>';
-                    html += '<h4><span id="' + soundUUID + '_idx">' + (parseInt(idx, 10) + 1) + "</span> - " + soundID + '</h4>';
+                    html = '<div class="transportSoundButtons"><button onclick="ss.playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="ss.stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="ss.removeSound(\'' + soundUUID + '\')">x</button></div>';
+                    html += '<h4><span id="' + soundUUID + '_idx">' + ss.findSoundIdxFromSoundUUID(soundUUID) + "</span> - " + soundID + '</h4>';
                     html += soundName + '<br>';
                     var licenseName = "-";
                     if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
@@ -777,28 +835,26 @@
                 }
             }
         }
-        
-        function findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){            
-            var sounds = ss.state.getElementsByTagName('SOUND');
-            for (i=0; i<sounds.length; i++) {
-                var samplerSounds = sounds[i].getElementsByTagName('SOUND_SAMPLE');
-                for (j=0; j<samplerSounds.length; j++) {
-                    var samplerSound = samplerSounds[j];
-                    if (samplerSound.getAttribute("uuid") == samplerSoundUUID){
-                        return (i + 1).toString();
-                    }
-                }
+
+        function updateSoundParameter(soundUUID, parameterName, parameterValue){
+            if (parameterValue === undefined){
+                var sound = ss.state.querySelector("[uuid='" + soundUUID + "']");
+                parameterValue = sound.getAttribute(parameterName);
             }
-            return "-1"
+            
+            const sliderElement = document.getElementById(soundUUID + '_' + parameterName);
+            const parameterType = getParameterType(parameterName);
+            if (parameterType == "float"){
+                sliderElement.value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(parameterValue, 10));
+            } else if (parameterType == "int"){
+                sliderElement.value = parseInt(parameterValue, 10);
+            }
+            updateSliderLabel(sliderElement);
         }
 
-        function syncUIWithState(){
-
-            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
-            
+        function updateMainPresetParameters(){
             var sourceState = ss.state.getElementsByTagName('SOURCE_STATE')[0];
             document.getElementsByName('presetIdx')[0].value = sourceState.getAttribute('currentPresetIndex');
-            document.getElementsByName('midiThru')[0].value = sourceState.getAttribute('midiOutForwardsMidiIn');
             document.getElementsByName('midiInChannel')[0].value = sourceState.getAttribute('globalMidiInChannel');
 
             var presetState = sourceState.getElementsByTagName('PRESET')[0];
@@ -810,9 +866,18 @@
             document.getElementById('0_dryLevel').value = presetState.getAttribute('reverbDryLevel');
             document.getElementById('0_width').value = presetState.getAttribute('reverbWidth');
             document.getElementById('0_freezeMode').value = presetState.getAttribute('reverbFreezeMode');
+        }
+        
+
+        function syncUIWithState(){
+
+            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
+            
+            // Set the main preset parameters to the values form the state
+            updateMainPresetParameters();
  
             // Create individual sound cards
-            var soundElements = presetState.getElementsByTagName('SOUND');
+            var soundElements = ss.state.getElementsByTagName('SOUND');
             var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
             individualSoundEditorsElement.innerHTML = '';
             for (var i = 0; i < soundElements.length; i++) {
@@ -820,42 +885,27 @@
                 var soundUUID = sound.getAttribute('uuid');
                 
                 // Create "empty sound cards"
-                var soundCardHtml = createCardForSound(soundUUID, sound);  
+                var soundCardHtml = createCardForSound(sound);  
                 individualSoundEditorsElement.innerHTML += soundCardHtml;
                 
                 // Update basic sound card details
-                updateCardForSound(soundUUID, sound, i); 
+                updateCardForSound(soundUUID); 
                 
                 // Set parameter values of sound card
                 var soundParameters = getAllSoundParameterNames();
-                var soundParameterTpes = getAllSoundParameterTypes();
                 for (var j=0; j<soundParameters.length; j++){
                     var parameterName = soundParameters[j];
-                    var parameterType = soundParameterTpes[j];
-                    var sliderElement = document.getElementById(soundUUID + '_' + parameterName);
-                    var rawValue = sound.getAttribute(parameterName);
-                    if (parameterType == "float"){
-                        sliderElement.value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(rawValue, 10));
-                    } else if (parameterType == "int"){
-                        sliderElement.value = parseInt(rawValue, 10);
-                    }
+                    updateSoundParameter(soundUUID, parameterName);                    
                 }
-                updateAllSliderLabels();
 
                 // Update MIDI CC mappings
                 var samplerSoundMappings = sound.getElementsByTagName('MIDI_CC_MAPPING');
                 var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
                 for (var j = 0; j < samplerSoundMappings.length; j++) {
                     var mapping = samplerSoundMappings[j];
-                    var mappingUUID = mapping.getAttribute('uuid');
-                    var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
-                    var name = mapping.getAttribute('parameterName');
-                    var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
-                    var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
-       
-                    // if such a mappingID is not yet there, add it
-                    html = createMIDIMappingEditor(soundUUID, mappingUUID, ccNumber, name, minRange, maxRange);
+                    html = createMIDIMappingEditor(soundUUID, mapping);
                     samplerSoundMappingsElement.innerHTML += html;
+                    updateMIDIMappingEditor(mapping.getAttribute('uuid'));
                 } 
             }                     
         }
@@ -887,7 +937,7 @@
                         // Draw empty square
                         html += '<div class="voice"><div class="voice_progress" style="width:0%;">&nbsp;</div></div>'
                     } else {
-                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + findSoundIdxFromSourceSamplerSoundUUID(voiceSoundIdxs[i]) + '</div></div>'
+                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + ss.findSoundIdxFromSourceSamplerSoundUUID(voiceSoundIdxs[i]) + '</div></div>'
                     }
                 }
             }
@@ -999,17 +1049,12 @@
     <div class="controls_card controls_card_top">
         <h4>Preset & settings</h4>
         Preset number:</label><input name="presetIdx" value="" type="number">
-        <button onclick="savePreset()">Save</button>
-        <button onclick="loadPreset()">Load</button><br>
+        <button onclick="ss.savePreset()">Save</button>
+        <button onclick="ss.loadPreset()">Load</button><br>
         Preset name:</label><input name="presetName" value="" type="text">
-        <button onclick="previousPreset()">&#x25C0</button><button onclick="nextPreset()">&#x25b6</button><br>
-        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="setMidiInChannel()"><br>
-        <div style="display: none;">
-            <MIDI thru:<input name="midiThru" value="" type="checkbox" onchange="setMidiThru()"><br>
-            <hr>
-            State update HZ:<input name="stateUpdateHz" value="" type="number" onchange="setStateUpdateHz()"><br>
-        </div>
-        Num voices:<input name="numVoices" value="" type="number" onchange="setNumVoices()"><br>
+        <button onclick="ss.previousPreset()">&#x25C0</button><button onclick="ss.nextPreset()">&#x25b6</button><br>
+        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="ss.setMidiInChannel()"><br>
+        Num voices:<input name="numVoices" value="" type="number" onchange="ss.setNumVoices()"><br>
         <div id="voicesState"></div>
     </div>
 
@@ -1022,24 +1067,24 @@
             <option value="0">&nbsp;&nbsp;contiguous&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
             <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
         </select><br>
-        <button id="makeQueryButton" onclick="makeQuery()">Search...</button>
-        <button id="clearAllSoundsButton" onclick="clearAllSounds()">Clear all sounds</button>
+        <button id="makeQueryButton" onclick="ss.makeQuery()">Search...</button>
+        <button id="clearAllSoundsButton" onclick="ss.clearAllSounds()">Clear all sounds</button>
     </div>
 
 
     <div class="controls_card controls_card_top">
         <h4>Reverb</h4>
-        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
         roomSize: <span id="0_roomSizeLabel"></span><br>
-        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
         damping: <span id="0_dampingLabel"></span><br>
-        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
         width: <span id="0_widthLabel"></span><br>
-        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
         freezeMode: <span id="0_freezeModeLabel"></span><br>
-        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
         wetLevel: <span id="0_wetLevelLabel"></span><br>
-        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setReverbParameters()">
+        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
         dryLevel: <span id="0_dryLevelLabel"></span>
     </div>
     
