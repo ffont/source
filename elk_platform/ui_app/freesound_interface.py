@@ -203,7 +203,7 @@ def get_stored_access_token():
     return access_token
 
 
-def get_crurrently_logged_in_user():
+def get_currently_logged_in_user():
     return freesound_username
 
 

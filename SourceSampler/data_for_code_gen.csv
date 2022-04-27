@@ -1,5 +1,4 @@
 name;type;min;max;default;midiCCenabled;
-soundType;int;0;1;0;;single-sample,multi-sample
 launchMode;int;0;4;0;;gate,loop,loop ping-pong,trigger,freeze
 startPosition;float;0;1;0;1;percentage position
 endPosition;float;0;1;1;1;percentage position

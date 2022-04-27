@@ -478,14 +478,14 @@
         
         function getAllSoundParameterNames(){
             // --> Start auto-generated code C
-            parameterNames = ["soundType", "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
+            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
             // --> End auto-generated code C
             return parameterNames;
         }
         
         function getAllSoundParameterTypes(){
             // --> Start auto-generated code D
-            parameterTypes = ["int", "int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
+            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
             // --> End auto-generated code D
             return parameterTypes;
         }
@@ -518,7 +518,6 @@
         function generateSoundEditControls(soundUUID){
             html = '';
             // --> Start auto-generated code A
-            html += '<input type="range" id="' + soundUUID + '_soundType" name="soundType" min="0" max="1" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > soundType: <span id="' + soundUUID + '_soundTypeLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_launchMode" name="launchMode" min="0" max="4" value="0" step="1" oninput="setSoundParameterInt(\'' + soundUUID + '\', this)" > launchMode: <span id="' + soundUUID + '_launchModeLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_startPosition" name="startPosition" min="0.0" max="1.0" value="0.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > startPosition: <span id="' + soundUUID + '_startPositionLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_endPosition" name="endPosition" min="0.0" max="1.0" value="1.0" step="0.01" oninput="setSoundParameter(\'' + soundUUID + '\', this)" > endPosition: <span id="' + soundUUID + '_endPositionLabel"></span><br>'

@@ -11,7 +11,7 @@ from source_plugin_interface import SourcePluginInterface
 
 from freesound_api_key import FREESOUND_CLIENT_ID
 from freesound_interface import find_sound_by_similarity, find_sound_by_query, find_sounds_by_query, \
-    find_random_sounds, logout_from_freesound, is_logged_in, get_crurrently_logged_in_user, get_user_bookmarks, \
+    find_random_sounds, logout_from_freesound, is_logged_in, get_currently_logged_in_user, get_user_bookmarks, \
     bookmark_sound
 from helpers import justify_text, frame_from_lines, add_global_message_to_frame, StateNames, add_scroll_bar_to_frame, \
     add_centered_value_to_frame, add_sound_waveform_and_extras_to_frame, DISPLAY_SIZE, \
@@ -1497,7 +1497,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
         # Add FS username 
         for line in lines:
             if line['text'] == self.OPTION_LOGOUT_FROM_FREESOUND:
-                line['text'] = 'Logout ({})'.format(get_crurrently_logged_in_user())
+                line['text'] = 'Logout ({})'.format(get_currently_logged_in_user())
 
         return frame_from_lines([self.get_default_header_line()] + lines)
 

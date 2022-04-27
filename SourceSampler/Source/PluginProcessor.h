@@ -38,6 +38,8 @@ public:
     void bindState();
     GlobalContextStruct getGlobalContext();
     
+    void createDirectories();
+    
     //==============================================================================
     std::string exec(const char* cmd); // Util function to run in command line
 
@@ -85,7 +87,6 @@ public:
     
     juce::ValueTree collectVolatileStateInformation ();
     juce::String collectVolatileStateInformationAsString ();
-    void sendStateToExternalServer(juce::ValueTree state, juce::String stringData);
     
     //==============================================================================
     void actionListenerCallback (const juce::String &message) override;
@@ -183,6 +184,7 @@ private:
     juce::CachedValue<juce::String> useOriginalFilesPreference;
     
     std::unique_ptr<SourceSoundList> sounds;
+    std::unique_ptr<SourceSoundList> soundsOld;  // Used when sounds is replaced to not immediately delete all objects inside and give time for save deletion
     juce::CachedValue<juce::String> presetName;
     juce::CachedValue<int> numVoices;
     juce::CachedValue<int> noteLayoutType;

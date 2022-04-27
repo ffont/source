@@ -18,6 +18,14 @@
             margin-block-end: 0.33em;
         }
 
+        a {
+            color: rgb(209, 209, 209);
+        }
+
+        a:visited {
+            color: rgb(209, 209, 209);
+        }
+
         #wrapper {
             padding: 5px;
             width: 290px;
@@ -162,14 +170,14 @@
             }
         }
 
-        function sendOsc(address, values, types) {
+        function sendMessageToPlugin(address, values, types) {
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (this.readyState != 4) return;
                 if (this.status == 200) {
                 }
             };
-            xhr.open('GET', '/send_osc?address=' + address + '&values=' + values.join(';') + '&types=' + types, true);
+            xhr.open('GET', '/send_message_to_plugin?address=' + address + '&values=' + values.join(';') + '&types=' + types, true);
             xhr.send();
         }
 
@@ -188,7 +196,7 @@
             var element = document.getElementById('savePreset');
             var name = element.querySelector("input[name='presetName']").value;
             var idx = element.querySelector("input[name='presetIdx']").value;
-            sendOsc('/save_preset', [name, idx], 'str;int');
+            sendMessageToPlugin('/save_preset', [name, idx], 'str;int');
         }
 
         function enterQuery(){
@@ -277,6 +285,10 @@
                 <br>
                 <input type="submit" value="Submit">                
             </form>
+        </div>
+
+        <div>
+            You can open the full <a href="/ui_plugin">HTML UI here</a>.
         </div>
 
         <br>

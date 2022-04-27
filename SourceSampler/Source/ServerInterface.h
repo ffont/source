@@ -46,7 +46,7 @@ public:
         interfacePtr = _interface;
     }
     
-    inline void run();
+    inline void run();  // Implemented after ServerInterface is defined
 
     int assignedPort = -1;
     ServerInterface* interfacePtr;
@@ -100,41 +100,7 @@ public:
         interface.reset(_interface);
     }
     
-    inline void run() {
-        #if USE_SSL_FOR_HTTP_AND_WS
-        // Write bundled binary SSL cert/key files server can load them
-        juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
-        juce::File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
-        certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
-        juce::File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
-        keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
-        httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
-        #else
-        httplib::Server server;
-        #endif
-            
-        juce::File tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
-        auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
-        if (!ret) {
-            DBG("Can't serve sound files from directory as directory does not exist");
-        }
-        
-        server.set_file_request_handler([](const auto& req, auto& res) {
-            res.set_header("Access-Control-Allow-Origin", "*");
-        });
-        
-        #if !JUCE_DEBUG
-        // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
-        port = server.bind_to_any_port("0.0.0.0");
-        #else
-        // In debug builds we also want a known port so it is easy to test from browser
-        port = HTTP_SERVER_PORT;
-        server.bind_to_port("0.0.0.0", port);
-        #endif
-        serverPtr.reset(&server);
-        DBG("Started HTTP server, listening at 0.0.0.0:" + (juce::String)(port));
-        server.listen_after_bind();
-    }
+    inline void run(); // Implemented after ServerInterface is defined
     
     #if USE_SSL_FOR_HTTP_AND_WS
     std::unique_ptr<httplib::SSLServer> serverPtr;
@@ -149,8 +115,10 @@ public:
 class ServerInterface: public juce::ActionBroadcaster
 {
 public:
-    ServerInterface ()
+    ServerInterface (std::function<GlobalContextStruct()> globalContextGetter)
     {
+        getGlobalContext = globalContextGetter;
+        
         #if USE_HTTP_SERVER
         httpServer.setInterfacePointer(this);
         httpServer.startThread(0);
@@ -230,19 +198,21 @@ public:
     OSCServer oscServer;
     #endif
     WebSocketsServer wsServer;
-    juce::String serializedAppState;
-    juce::String serializedAppStateVolatile;
-};
 
+    std::function<GlobalContextStruct()> getGlobalContext;
+};
 
 
 void WebSocketsServer::run()
 {
     #if USE_SSL_FOR_HTTP_AND_WS
-    juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    juce::File certFile = sourceDataLocation.getChildFile("localhost").withFileExtension("crt");
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    if (!baseLocation.exists()){
+        baseLocation.createDirectory();
+    }
+    juce::File certFile = baseLocation.getChildFile("localhost").withFileExtension("crt");
     certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
-    juce::File keyFile = sourceDataLocation.getChildFile("localhost").withFileExtension("key");
+    juce::File keyFile = baseLocation.getChildFile("localhost").withFileExtension("key");
     keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
     WsServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
@@ -274,6 +244,46 @@ void WebSocketsServer::run()
         assignedPort = port;
         DBG("Started Websockets Server listening at 0.0.0.0:" << port);
     });
+}
+
+
+void HTTPServer::run() {
+    #if USE_SSL_FOR_HTTP_AND_WS
+    // Write bundled binary SSL cert/key files server can load them
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    if (!baseLocation.exists()){
+        baseLocation.createDirectory();
+    }
+    juce::File certFile = baseLocation.getChildFile("localhost").withFileExtension("crt");
+    certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
+    juce::File keyFile = baseLocation.getChildFile("localhost").withFileExtension("key");
+    keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
+    httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
+    #else
+    httplib::Server server;
+    #endif
+        
+    juce::File tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
+    if (!ret) {
+        DBG("Can't serve sound files from directory as directory does not exist");
+    }
+    
+    server.set_file_request_handler([](const auto& req, auto& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+    });
+    
+    #if !JUCE_DEBUG
+    // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
+    port = server.bind_to_any_port("0.0.0.0");
+    #else
+    // In debug builds we also want a known port so it is easy to test from browser
+    port = HTTP_SERVER_PORT;
+    server.bind_to_port("0.0.0.0", port);
+    #endif
+    serverPtr.reset(&server);
+    DBG("Started HTTP server, listening at 0.0.0.0:" + (juce::String)(port));
+    server.listen_after_bind();
 }
 
 

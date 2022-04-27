@@ -129,7 +129,6 @@ inline bool midiOutForwardsMidiIn = false;
 inline juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
 
 // --> Start auto-generated code A
-inline int soundType = 0;
 inline int launchMode = 0;
 inline float  startPosition = 0.0f;
 inline float  endPosition = 1.0f;
@@ -247,7 +246,6 @@ DECLARE_ID (minRange)
 DECLARE_ID (maxRange)
 
 // --> Start auto-generated code B
-DECLARE_ID (soundType)
 DECLARE_ID (launchMode)
 DECLARE_ID (startPosition)
 DECLARE_ID (endPosition)

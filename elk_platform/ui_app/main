@@ -8,6 +8,7 @@ import os
 import random
 import threading
 import time
+import shutil
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 
@@ -16,7 +17,7 @@ from sound_downloader import download_sound
 from helpers import get_all_sound_usage_logs, get_platform, get_command_output
 from ui_state_manager import state_manager, source_plugin_interface, ALLOWED_AUDIO_FILE_EXTENSIONS, \
     get_local_audio_files_path, get_preset_files_path, get_sound_audio_files_path
-from freesound_interface import get_access_token_from_code, get_crurrently_logged_in_user
+from freesound_interface import get_access_token_from_code, get_currently_logged_in_user
 from system_stats import collect_system_stats
 
 
@@ -38,6 +39,11 @@ elk_bridge = None
 elk_bridge_thread = None
 
 http_server = Flask(__name__, template_folder='/udata/source/app/' if get_platform() == "ELK" else 'html/')
+
+if get_platform() != "ELK":
+    # Copy main ui html file to template folder so it can also be served directly from there
+    plugin_ui_html_file_path = '../../SourceSampler/Resources/ui_plugin_ws.html'
+    shutil.copy(plugin_ui_html_file_path, 'html/ui_plugin_copy.html')
 
 
 # --- Thread utils ------------------------------------------------------------------------
@@ -96,7 +102,7 @@ def download_sound_endpoint():
 
 @http_server.route('/', methods=['GET', 'POST'])  # Serve main interface HTML file
 def index():
-    tvars = {'freesound_username': get_crurrently_logged_in_user()}
+    tvars = {'freesound_username': get_currently_logged_in_user()}
     if request.method == 'GET':
         return render_template("index.html", **tvars)
     elif request.method == 'POST':
@@ -243,13 +249,20 @@ def receive_data_from_web():
     return 'Thanks!'
 
 
-@http_server.route('/send_osc', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin
-def send_osc():
+@http_server.route('/send_message_to_plugin', methods=['GET'])  # Forwards the request contents as an OSC message to the plugin
+def sensend_message_to_plugin():
     address = request.args['address']
     values = [getattr(__builtins__, type_name)(value) for type_name, value in
               zip(request.args['types'].split(';'), request.args['values'].split(';'))]
     source_plugin_interface.send_msg_to_plugin(address, values)
-    return 'OSC sent'
+    return 'Message sent'
+
+
+@http_server.route('/ui_plugin', methods=['GET'])
+def plugin_ui():
+    # Serve the main plugin ui as it is done in desktop computers
+    tvars = {}
+    return render_template("ui_plugin_copy.html", **tvars)
 
 
 # --- Main ------------------------------------------------------------------------

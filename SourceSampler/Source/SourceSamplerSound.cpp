@@ -190,7 +190,6 @@ void SourceSound::bindState ()
     allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
     
     // --> Start auto-generated code C
-        soundType.referTo(state, IDs::soundType, nullptr, Defaults::soundType);
         launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
         startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
         endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
@@ -294,8 +293,7 @@ bool SourceSound::shouldBeDeleted(){
 
 int SourceSound::getParameterInt(juce::Identifier identifier){
     // --> Start auto-generated code E
-        if (identifier == IDs::soundType) { return soundType.get(); }
-        else if (identifier == IDs::launchMode) { return launchMode.get(); }
+        if (identifier == IDs::launchMode) { return launchMode.get(); }
         else if (identifier == IDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
         else if (identifier == IDs::reverse) { return reverse.get(); }
         else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
@@ -391,8 +389,7 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
 
 void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
     // --> Start auto-generated code D
-        if (identifier == IDs::soundType) { soundType = juce::jlimit(0, 1, value); }
-        else if (identifier == IDs::launchMode) { launchMode = juce::jlimit(0, 4, value); }
+        if (identifier == IDs::launchMode) { launchMode = juce::jlimit(0, 4, value); }
         else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = juce::jlimit(10, 100000, value); }
         else if (identifier == IDs::reverse) { reverse = juce::jlimit(0, 1, value); }
         else if (identifier == IDs::noteMappingMode) { noteMappingMode = juce::jlimit(0, 3, value); }

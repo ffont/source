@@ -26,34 +26,11 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ),
-    queryMakerThread (*this)
+    queryMakerThread (*this),
+    serverInterface ([this]{return getGlobalContext();})
 #endif
 {
-    
-    #if ELK_BUILD
-    sourceDataLocation = juce::File(ELK_SOURCE_DATA_BASE_LOCATION);
-    soundsDownloadLocation = juce::File(ELK_SOURCE_SOUNDS_LOCATION);
-    presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
-    tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
-    #else
-    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
-    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
-    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
-    #endif
-    
-    if (!sourceDataLocation.exists()){
-        sourceDataLocation.createDirectory();
-    }
-    if (!soundsDownloadLocation.exists()){
-        soundsDownloadLocation.createDirectory();
-    }
-    if (!presetFilesLocation.exists()){
-        presetFilesLocation.createDirectory();
-    }
-    if (!tmpFilesLocation.exists()){
-        tmpFilesLocation.createDirectory();
-    }
+    createDirectories();
     
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
     
@@ -126,7 +103,39 @@ void SourceSamplerAudioProcessor::bindState()
     reverbWidth.referTo(preset, IDs::reverbWidth, nullptr, Defaults::reverbWidth);
     reverbFreezeMode.referTo(preset, IDs::reverbFreezeMode, nullptr, Defaults::reverbFreezeMode);
     
+    // Swap pointer with oldSound so if there were objects in there still pending to be safely deleted, these will be
+    // deleted when needed. Then create a new SourceSoundList with the new preset information
+    soundsOld.swap(sounds);
+    sounds.reset();
     sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET), [this]{return getGlobalContext();});
+}
+
+void SourceSamplerAudioProcessor::createDirectories()
+{
+    #if ELK_BUILD
+    sourceDataLocation = juce::File(ELK_SOURCE_DATA_BASE_LOCATION);
+    soundsDownloadLocation = juce::File(ELK_SOURCE_SOUNDS_LOCATION);
+    presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
+    tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
+    #else
+    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
+    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
+    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
+    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    #endif
+
+    if (!sourceDataLocation.exists()){
+        sourceDataLocation.createDirectory();
+    }
+    if (!soundsDownloadLocation.exists()){
+        soundsDownloadLocation.createDirectory();
+    }
+    if (!presetFilesLocation.exists()){
+        presetFilesLocation.createDirectory();
+    }
+    if (!tmpFilesLocation.exists()){
+        tmpFilesLocation.createDirectory();
+    }
 }
 
 GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
@@ -212,20 +221,21 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
     // Load the preset from the file, this will also clear any existing sounds
     bool loaded = loadPresetFromFile(getPresetFilenameByIndex(index));
     if (loaded){
+        // If file was loaded, update the current present index to the new one
         currentPresetIndex = index;
     } else {
-        // No preset exists at that number, create a new empty one
-        currentPresetIndex = index;
-        juce::ValueTree newState = state.createCopy();
-        juce::ValueTree presetState = newState.getChildWithName(IDs::PRESET);
-        if (presetState.isValid()){
-            newState.removeChild(presetState, nullptr);
-        }
+        // If no file was loaded (no file found or errors ocurred), create a new empty preset
+        DBG("Creating new empty preset");
+        juce::ValueTree newState = Helpers::createNewStateFromCurrentSatate(state);
         juce::ValueTree newPresetState = Helpers::createEmptyPresetState();
         newState.addChild(newPresetState, -1, nullptr);
         loadPresetFromStateInformation(newState);
+        currentPresetIndex = index;
     }
     saveGlobalPersistentStateToFile(); // Save global settings to file (which inlucdes the latest loaded preset index)
+    
+    // Trigger action to re-send full state to UI clients
+    actionListenerCallback(juce::String(ACTION_GET_STATE) + juce::String(":full"));
 }
 
 const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
@@ -411,7 +421,7 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileNa
         juce::XmlDocument xmlDocument (location);
         std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            juce::ValueTree newState = Helpers::createEmptyState();
+            juce::ValueTree newState = Helpers::createNewStateFromCurrentSatate(state);
             juce::ValueTree presetState = juce::ValueTree::fromXml(*xmlState.get());
             newState.addChild (presetState, -1, nullptr);
             loadPresetFromStateInformation(newState);
@@ -459,7 +469,6 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     if (xmlState.get() != nullptr){
         loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
     }
-    
 }
 
 void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
@@ -613,27 +622,6 @@ juce::String SourceSamplerAudioProcessor::collectVolatileStateInformationAsStrin
     return stateAsStringParts.joinIntoString(";");
 }
 
-void SourceSamplerAudioProcessor::sendStateToExternalServer(juce::ValueTree state, juce::String stringData)
-{
-    // This is only used in ELK builds in which the HTTP server is running outside the plugin
-    juce::URL url = juce::URL("http://localhost:8123/state_from_plugin");
-    juce::String header = "Content-Type: text/xml";
-    int statusCode = -1;
-    juce::StringPairArray responseHeaders;
-    juce::String data = stringData;
-    if (state.isValid()){
-        data = state.toXmlString();
-    }
-    if (data.isNotEmpty()) { url = url.withPOSTData(data); }
-    bool postLikeRequest = true;
-    if (auto stream = std::unique_ptr<juce::InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
-        MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-        &responseHeaders, &statusCode)))
-    {
-        // No need to read response really
-        //String resp = stream->readEntireStreamAsString();
-    }
-}
 
 void SourceSamplerAudioProcessor::updateReverbParameters()
 {

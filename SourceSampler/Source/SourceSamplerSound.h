@@ -202,7 +202,6 @@ private:
     std::unique_ptr<MidiCCMappingList> midiCCmappings;
 
     // --> Start auto-generated code A
-    juce::CachedValue<int> soundType;
     juce::CachedValue<int> launchMode;
     juce::CachedValue<float> startPosition;
     juce::CachedValue<float> endPosition;

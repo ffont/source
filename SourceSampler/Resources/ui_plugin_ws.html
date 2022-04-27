@@ -233,9 +233,9 @@
             configureWSConnection () {
                 let wsUrl = "";
                 if (this.useWss){
-                    wsUrl = "wss://localhost:" + this.wsPort + "/source_coms/";
+                    wsUrl = "wss://" + hostname + ":" + this.wsPort + "/source_coms/";
                 } else {
-                    wsUrl = "ws://localhost:" + this.wsPort + "/source_coms/";
+                    wsUrl = "ws://" + hostname + ":" + this.wsPort + "/source_coms/";
                 }
                 console.log("Connecting to WS server: " + wsUrl);
                 let socket = new WebSocket(wsUrl);
@@ -370,26 +370,43 @@
         let ss = undefined;
         let httpPort = undefined;
         let useHttps = undefined;
+        let hostname = undefined;
   
-
         document.addEventListener("DOMContentLoaded", function () {
 
-            // Get websockets port number
             const queryString = window.location.search;
-            let wsPort, useWss;
-            if (queryString !== ""){
-                const urlParams = new URLSearchParams(queryString);
-                wsPort = urlParams.get('wsPort');
-                useWss = urlParams.get('useWss') === '1';
-                httpPort = urlParams.get('httpPort');
-                useHttps = useWss;
+            const urlParams = new URLSearchParams(queryString);
+
+            // If hostname is passed as a parameter, use it for WS and HTTP communications
+            // Otherwise set it to the hostname of the current location
+            if (urlParams.get('hostname') !== null){
+                hostname = urlParams.get('hostname');
             } else {
-                // If not passed as parameters, use default values used when debugging
-                wsPort = "8125";
-                useWss = false;
-                httpPort = "8124";
-                useHttps = useWss;
+                if (location.hostname !== ""){
+                    hostname = location.hostname;
+                } else {
+                    hostname = 'localhost';
+                }
             }
+            
+            // Get websockets/http connection config parameters (or use defaults)
+            if (urlParams.get('wsPort') !== null){
+                wsPort = urlParams.get('wsPort');
+            } else {
+                wsPort = "8125";
+            }
+            if (urlParams.get('useWss') !== null){
+                useWss = urlParams.get('useWss') == '1';
+            } else {
+                useWss = false;
+            }
+            if (urlParams.get('httpPort') !== null){
+                httpPort = urlParams.get('httpPort');
+            } else {
+                httpPort = "8124";
+            }
+            useHttps = useWss;
+
             // Start state synchronizer
             ss = new StateSynchronizer(wsPort, useWss);
             
@@ -793,7 +810,6 @@
             document.getElementById('0_dryLevel').value = presetState.getAttribute('reverbDryLevel');
             document.getElementById('0_width').value = presetState.getAttribute('reverbWidth');
             document.getElementById('0_freezeMode').value = presetState.getAttribute('reverbFreezeMode');
-
  
             // Create individual sound cards
             var soundElements = presetState.getElementsByTagName('SOUND');
@@ -957,7 +973,7 @@
             if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
                 canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
                 if (httpPort !== undefined){
-                    let url = 'http' + (useHttps ? 's':'') + '://localhost:' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
+                    let url = 'http' + (useHttps ? 's':'') + '://' + hostname + ':' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
                     drawAudio(url);
                 }
             }

@@ -17,8 +17,11 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     : AudioProcessorEditor (&p), processor (p)
 {
     // Copy bundled HTML plugin file to dcuments folder so we can load it
-    juce::File sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    juce::File uiHtmlFile = sourceDataLocation.getChildFile("ui_plugin_ws").withFileExtension("html");
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    if (!baseLocation.exists()){
+        baseLocation.createDirectory();
+    }
+    juce::File uiHtmlFile = baseLocation.getChildFile("ui_plugin_ws").withFileExtension("html");
     uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_html, BinaryData::ui_plugin_ws_htmlSize);
     uiHTMLFilePath = uiHtmlFile.getFullPathName();
     
@@ -65,6 +68,7 @@ juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
     juce::String useWss = "0";
     #endif
     juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.getServerInterfaceHttpPort());
+    DBG("> Satic UI URL: " << url.toString(true));
     return url;
 }
 

@@ -41,7 +41,7 @@ namespace Helpers
         return v;
     }
 
-    inline juce::ValueTree createEmptyState()
+    inline juce::ValueTree createNewEmptyState()
     {
         juce::ValueTree state (IDs::SOURCE_STATE);
         Helpers::createUuidProperty (state);
@@ -49,6 +49,17 @@ namespace Helpers
         state.setProperty (IDs::globalMidiInChannel, Defaults::globalMidiInChannel, nullptr);
         state.setProperty (IDs::midiOutForwardsMidiIn, Defaults::midiOutForwardsMidiIn, nullptr);
         state.setProperty (IDs::useOriginalFilesPreference, Defaults::useOriginalFilesPreference, nullptr);
+        return state;
+    }
+
+    inline juce::ValueTree createNewStateFromCurrentSatate(juce::ValueTree currentState)
+    {
+        juce::ValueTree state (IDs::SOURCE_STATE);
+        Helpers::createUuidProperty (state);
+        state.setProperty (IDs::currentPresetIndex, currentState.getProperty(IDs::currentPresetIndex), nullptr);
+        state.setProperty (IDs::globalMidiInChannel, currentState.getProperty(IDs::globalMidiInChannel), nullptr);
+        state.setProperty (IDs::midiOutForwardsMidiIn, currentState.getProperty(IDs::midiOutForwardsMidiIn), nullptr);
+        state.setProperty (IDs::useOriginalFilesPreference, currentState.getProperty(IDs::useOriginalFilesPreference), nullptr);
         return state;
     }
 
@@ -115,7 +126,6 @@ namespace Helpers
         sound.setProperty (IDs::enabled, true, nullptr);
         sound.setProperty (IDs::allSoundsLoaded, false, nullptr);
         // --> Start auto-generated code A
-        sound.setProperty (IDs::soundType, 0, nullptr);
         sound.setProperty (IDs::launchMode, 0, nullptr);
         sound.setProperty (IDs::startPosition, 0.0f, nullptr);
         sound.setProperty (IDs::endPosition, 1.0f, nullptr);
@@ -197,7 +207,7 @@ namespace Helpers
 
     inline juce::ValueTree createDefaultEmptyState()
     {
-        juce::ValueTree state = createEmptyState();
+        juce::ValueTree state = createNewEmptyState();
         juce::ValueTree preset = createEmptyPresetState();
         state.addChild (preset, -1, nullptr);
         return state;
