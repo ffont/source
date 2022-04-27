@@ -325,17 +325,20 @@
                             // Add new child element to the state
                             const elementToUpdate = self.state.querySelector("[uuid='" + parentTreeUUID + "']");
                             if (elementToUpdate !== null){
+                                var nodeToAdd = self.parser.parseFromString(childXmlString, "text/xml").childNodes[0];
                                 if (indexInParentChildren < 0){
-                                    elementToUpdate.appendChild(self.parser.parseFromString(childXmlString, "text/xml"));
+                                    elementToUpdate.appendChild(nodeToAdd);
                                 } else {
                                     var beforeNode = elementToUpdate.childNodes[indexInParentChildren];
-                                    //elementToUpdate.insertBefore(self.parser.parseFromString(childXmlString, "text/xml"), beforeNode);
-                                    // TODO: look at errors with inserBefore
-                                    elementToUpdate.appendChild(self.parser.parseFromString(childXmlString, "text/xml"));
+                                    elementToUpdate.insertBefore(nodeToAdd, beforeNode);
+                                }
+
+                                // If new sounds or midi cc mappings are added, recreate sounds section
+                                if ((nodeToAdd.tagName === "MIDI_CC_MAPPING") || (nodeToAdd.tagName === "SOUND")){
+                                    syncUISoundsSectionWithState();
                                 }
                             }
-                            // TODO: create new corresponding element in the DOM
- 
+                            
                         } else if (updateType === 'removedChild'){
                             const childToRemoveUUID = restOfDataSliced[0];
                             const childToRemoveType = restOfDataSliced[1];
@@ -867,15 +870,8 @@
             document.getElementById('0_width').value = presetState.getAttribute('reverbWidth');
             document.getElementById('0_freezeMode').value = presetState.getAttribute('reverbFreezeMode');
         }
-        
 
-        function syncUIWithState(){
-
-            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
-            
-            // Set the main preset parameters to the values form the state
-            updateMainPresetParameters();
- 
+        function syncUISoundsSectionWithState(){
             // Create individual sound cards
             var soundElements = ss.state.getElementsByTagName('SOUND');
             var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
@@ -907,7 +903,16 @@
                     samplerSoundMappingsElement.innerHTML += html;
                     updateMIDIMappingEditor(mapping.getAttribute('uuid'));
                 } 
-            }                     
+            } 
+        }
+        
+
+        function syncUIWithState(){
+            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
+            
+            // Set the main preset parameters to the values form the state
+            updateMainPresetParameters();
+            syncUISoundsSectionWithState();
         }
 
         function syncUIWithVolatileState(){
