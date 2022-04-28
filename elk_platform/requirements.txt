@@ -1,9 +1,0 @@
-Flask
-requests
-oscpy
-lxml
-bs4
-PyOgg==0.6.14a1
-numpy==1.19.5
-Pillow
-scipy

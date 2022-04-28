@@ -1,0 +1,26 @@
+{
+    "host_config": {
+        "samplerate": 48000
+    },
+    "tracks": [
+        {
+            "name": "main",
+            "mode": "stereo",
+            "inputs": [],
+            "outputs": [
+                {
+                    "engine_bus": 0,
+                    "track_bus": 0
+                }
+            ],
+            "plugins": [
+                {
+                    "path": "/udata/source/app/SourceSampler.so",
+                    "name": "SourceSampler",
+                    "type": "vst2x",
+                    "uid": "SourceSampler"
+                }
+            ]
+        }
+    ]
+}

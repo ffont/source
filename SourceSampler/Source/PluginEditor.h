@@ -20,7 +20,7 @@
 class SourceSamplerAudioProcessorEditor;
 
 #if !ELK_BUILD
-class CustomWebBrowserComponent: public WebBrowserComponent
+class CustomWebBrowserComponent: public juce::WebBrowserComponent
 {
 public:
     ~CustomWebBrowserComponent(){}
@@ -29,24 +29,26 @@ public:
          editor.reset(_editor);
     }
     
-    inline bool pageLoadHadNetworkError (const String& errorInfo) override;
+    inline bool pageLoadHadNetworkError (const juce::String& errorInfo) override;
     
     std::unique_ptr<SourceSamplerAudioProcessorEditor> editor;
 };
 #endif
 
 
-class SourceSamplerAudioProcessorEditor  : public AudioProcessorEditor,
-                                           public Button::Listener
+class SourceSamplerAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                           public juce::Button::Listener
 {
 public:
     SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor&);
     ~SourceSamplerAudioProcessorEditor();
     
-    void buttonClicked (Button* button) override;
+    juce::URL makeUIURL();
+    
+    void buttonClicked (juce::Button* button) override;
 
     //==============================================================================
-    void paint (Graphics&) override;
+    void paint (juce::Graphics&) override;
     void resized() override;
     
     bool hadBrowserError = false;
@@ -60,16 +62,17 @@ private:
     #if !ELK_BUILD
     CustomWebBrowserComponent browser;  // ELK compialtion fails if using WebBrowserComponent
     #endif
-    TextButton openInBrowser;
-    TextButton reloadUI;
-    Label explanation;
+    juce::TextButton openInBrowser;
+    juce::TextButton reloadUI;
+    juce::Label explanation;
+    juce::String uiHTMLFilePath;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };
 
 
 #if !ELK_BUILD
-bool CustomWebBrowserComponent::pageLoadHadNetworkError (const String& errorInfo)
+bool CustomWebBrowserComponent::pageLoadHadNetworkError (const juce::String& errorInfo)
 {
     if (editor != nullptr){
         editor->hadBrowserError = true;

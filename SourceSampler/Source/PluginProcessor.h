@@ -11,10 +11,11 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "helpers.h"
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
-#include "SourceSampler.h"
-#include "Downloader.h"
+#include "SourceSamplerSynthesiser.h"
+#include "SourceSamplerSound.h"
 #include "LevelMeterSource.h"
 #include "defines.h"
 
@@ -22,15 +23,22 @@
 //==============================================================================
 /**
 */
-class SourceSamplerAudioProcessor  : public AudioProcessor,
-                                     public ActionBroadcaster,
-                                     public ActionListener,
-                                     public Timer
+class SourceSamplerAudioProcessor  : public juce::AudioProcessor,
+                                     public juce::ActionBroadcaster,
+                                     public juce::ActionListener,
+                                     public juce::Timer,
+                                     protected juce::ValueTree::Listener
 {
 public:
     //==============================================================================
     SourceSamplerAudioProcessor();
     ~SourceSamplerAudioProcessor();
+    
+    juce::ValueTree state;
+    void bindState();
+    GlobalContextStruct getGlobalContext();
+    
+    void createDirectories();
     
     //==============================================================================
     std::string exec(const char* cmd); // Util function to run in command line
@@ -43,14 +51,14 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
    #endif
 
-    void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
-    AudioProcessorEditor* createEditor() override;
+    juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
     //==============================================================================
-    const String getName() const override;
+    const juce::String getName() const override;
 
     bool acceptsMidi() const override;
     bool producesMidi() const override;
@@ -61,57 +69,53 @@ public:
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
-    const String getProgramName (int index) override;
-    void changeProgramName (int index, const String& newName) override;
-    String getPresetFilenameByIndex(int index);
-    int currentPresetIndex = -1;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& newName) override;
+    juce::String getPresetFilenameByIndex(int index);
+    juce::CachedValue<int> currentPresetIndex;
     int latestLoadedPreset = 0; // Only used in ELK builds to re-load the last preset that was loaded (in previous runs included)
 
     //==============================================================================
-    ValueTree collectPresetStateInformation ();
-    void getStateInformation (MemoryBlock& destData) override;
-    void loadPresetFromStateInformation (ValueTree state);
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void loadPresetFromStateInformation (juce::ValueTree state);
     void setStateInformation (const void* data, int sizeInBytes) override;
-    void saveCurrentPresetToFile(const String& presetName, int index);
-    bool loadPresetFromFile (const String& fileName);
+    void saveCurrentPresetToFile(const juce::String& presetName, int index);
+    bool loadPresetFromFile (const juce::String& fileName);
     
-    ValueTree collectGlobalSettingsStateInformation ();
     void saveGlobalPersistentStateToFile();
     void loadGlobalPersistentStateFromFile();
     
-    ValueTree collectVolatileStateInformation ();
-    String collectVolatileStateInformationAsString ();
-    
-    ValueTree collectFullStateInformation (bool skipVolatile);
-    void sendStateToExternalServer(ValueTree state, String stringData);
+    juce::ValueTree collectVolatileStateInformation ();
+    juce::String collectVolatileStateInformationAsString ();
     
     //==============================================================================
-    // Action listener
-    void actionListenerCallback (const String &message) override;
+    void actionListenerCallback (const juce::String &message) override;
     
     //==============================================================================
-    File sourceDataLocation;
-    File soundsDownloadLocation;
-    File presetFilesLocation;
-    File tmpFilesLocation;
+    juce::File sourceDataLocation;
+    juce::File soundsDownloadLocation;
+    juce::File presetFilesLocation;
+    juce::File tmpFilesLocation;
     
-    String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
-    
-    File getPresetFilePath(const String& presetFilename);
-    String getPresetFilenameFromNameAndIndex(const String& presetName, int index);
-    File getGlobalSettingsFilePathFromName();
+    juce::File getPresetFilePath(const juce::String& presetFilename);
+    juce::String getPresetFilenameFromNameAndIndex(const juce::String& presetName, int index);
+    juce::File getGlobalSettingsFilePathFromName();
     
     //==============================================================================
     void setMidiInChannelFilter(int channel);
     void setMidiThru(bool doMidiTrhu);
     
     //==============================================================================
-    class QueryMakerThread : private Thread
+    void updateReverbParameters();
+    
+    //==============================================================================
+    class QueryMakerThread : public juce::Thread
     {
     public:
-        QueryMakerThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
+        QueryMakerThread(SourceSamplerAudioProcessor& p) : juce::Thread ("QueryMakerThread"), processor (p){}
         
-        void setQueryParameters(const String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
+        void setQueryParameters(const juce::String& _addReplaceOrReplaceSound, const juce::String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
+            addReplaceOrReplaceSound = _addReplaceOrReplaceSound;
             query = _query;
             numSounds = _numSounds;
             minSoundLength = _minSoundLength;
@@ -120,109 +124,102 @@ public:
         
         void run() override
         {
-            processor.makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
+            processor.makeQueryAndLoadSounds(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
         }
         SourceSamplerAudioProcessor& processor;
-        String query;
+        juce::String addReplaceOrReplaceSound;
+        juce::String query;
         int numSounds;
         float minSoundLength;
         float maxSoundLength;
     };
     QueryMakerThread queryMakerThread;
-    void makeQueryAndLoadSounds(const String& query, int numSounds, float minSoundLength, float maxSoundLength);
-    bool isSupportedAudioFileFormat(const String& extension);
-    bool fileLocationIsSupportedAudioFileFormat(File location);
-    File getSoundPreviewLocation(ValueTree sound);
-    File getSoundOriginalFileLocation(ValueTree sound);
-    File getSoundLocalPathLocation(ValueTree sound);
-    File getSoundFileLocationToLoad(ValueTree sound);
-    void downloadSounds(bool blocking, int soundIndexFilter);
-    bool allSoundsFinishedDownloading();
-    
-    class SampleLoaderThread : private Thread
-    {
-    public:
-        SampleLoaderThread(SourceSamplerAudioProcessor& p) : Thread ("SampleLoaderThread"), processor (p){}
-        
-        void setSoundToLoad(int _soundIdx){
-            soundIdx = _soundIdx;
-        }
-        
-        void run() override
-        {
-            processor.setSingleSourceSamplerSoundObject(soundIdx);
-        }
-        SourceSamplerAudioProcessor& processor;
-        int soundIdx;
-    };
-    SampleLoaderThread sampleLoaderThread;
-    void setSingleSourceSamplerSoundObject(int soundIdx);  // Create a sound object in the sampler corresponding to an element of "loadedSoundsInfo"
-    void removeSound(int soundIdx); // Remove an element from "loadedSoundsInfo" and the corresponding sound in the sampler
-    int addOrReplaceSoundFromSoundInfoValueTree(int soundIdx, ValueTree soundInfo);  // Add or replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
-    void addOrReplaceSoundFromBasicSoundProperties(int soundIdx,
+    //==============================================================================
+    void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);
+    void removeSound(const juce::String& soundUUID);
+    void removeAllSounds();
+    void addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
                                                    int soundID,
-                                                   const String& soundName,
-                                                   const String& soundUser,
-                                                   const String& soundLicense,
-                                                   const String& oggDownloadURL,
-                                                   const String& localFilePath,
-                                                   const String& type,
+                                                   const juce::String& soundName,
+                                                   const juce::String& soundUser,
+                                                   const juce::String& soundLicense,
+                                                   const juce::String& oggDownloadURL,
+                                                   const juce::String& localFilePath,
+                                                   const juce::String& format,
                                                    int sizeBytes,
-                                                   StringArray slices,
-                                                   BigInteger midiNotes,
-                                                   int midiRootNote,
-                                                   const String& triggerDownloadSoundAction
-                                                   );  // Replace an element of "loadedSoundsInfo" and trigger its download (and further replacement in the sampler)
-    
+                                                   juce::StringArray slices,
+                                                   juce::BigInteger midiNotes,
+                                                   int midiRootNote);
+    void addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
+                                                   FSSound sound,
+                                                   juce::BigInteger midiNotes,
+                                                   int midiRootNote);
     void reapplyNoteLayout(int newNoteLayoutType);
-    
-    void addToMidiBuffer(int soundIndex, bool doNoteOff);
-
+    void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);
     double getStartTime();
     
     void timerCallback() override;
     int getServerInterfaceHttpPort();
+    int getServerInterfaceWSPort();
     
-    void previewFile(const String& path);
+    void previewFile(const juce::String& path);
     void stopPreviewingFile();
-    String currentlyLoadedPreviewFilePath = "";
+    juce::String currentlyLoadedPreviewFilePath = "";
+    
+protected:
+    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
+    void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree&) override;
+    void valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree&, int) override;
+    void valueTreeChildOrderChanged (juce::ValueTree& parentTree, int, int) override;
+    void valueTreeParentChanged (juce::ValueTree&) override;
+
     
 private:
-    AudioFormatManager audioFormatManager;
+    juce::AudioFormatManager audioFormatManager;
+    SourceSamplerSynthesiser sampler;
+    ServerInterface serverInterface;
+    foleys::LevelMeterSource lms;  // Object to measure audio output levels
     
-    SourceSamplerSynthesiser sampler;  // Where the magic happens
+    // Properties binded to state
+    juce::CachedValue<int> globalMidiInChannel;
+    juce::CachedValue<int> midiOutForwardsMidiIn;
+    juce::CachedValue<juce::String> useOriginalFilesPreference;
     
-    // The next two objects are to preview sounds independently of the sampler
-    std::unique_ptr<AudioFormatReaderSource> readerSource;
-    AudioTransportSource transportSource;
+    std::unique_ptr<SourceSoundList> sounds;
+    std::unique_ptr<SourceSoundList> soundsOld;  // Used when sounds is replaced to not immediately delete all objects inside and give time for save deletion
+    juce::CachedValue<juce::String> presetName;
+    juce::CachedValue<int> numVoices;
+    juce::CachedValue<int> noteLayoutType;
+    juce::CachedValue<float> reverbRoomSize;
+    juce::CachedValue<float> reverbDamping;
+    juce::CachedValue<float> reverbWetLevel;
+    juce::CachedValue<float> reverbDryLevel;
+    juce::CachedValue<float> reverbWidth;
+    juce::CachedValue<float> reverbFreezeMode;
     
-    MidiBuffer midiFromEditor;
-    long midicounter;
-    bool midiOutForwardsMidiIn = true;
+    // Other "volatile" properties
+    bool isQuerying = false;
+    juce::MidiBuffer midiFromEditor;
     int lastReceivedMIDIControllerNumber = -1;
     int lastReceivedMIDINoteNumber = -1;
     bool midiMessagesPresentInLastStateReport = false;
-    bool isQueryDownloadingAndLoadingSounds = false;
-    double startedQueryDownloadingAndLoadingSoundsTime = 0;
     double startTime;
+    double lastTimeIsAliveWasSent = 0;
     bool aconnectWasRun = false;
-    String presetName = "empty";
-    int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
-    ValueTree loadedSoundsInfo;
     
-    ServerInterface serverInterface;
-    
-    foleys::LevelMeterSource lms;  // Object to measure audio output levels
-    
-    Downloader downloader; // Object to download sounds in the background (or synchrounously)
-    
-    void logToState(const String& message);
-    std::vector<String> recentLogMessages = {};
-    String recentLogMessagesSerialized = "";
-    
-    juce::OSCSender oscSender;  // Used to send state updates to glue app
+    // State sync stuff
     bool oscSenderIsConnected = false;
+    int stateUpdateID = 0;
+    juce::OSCSender oscSender;  // Used to send state updates to glue app
+    void sendOSCMessage(const juce::OSCMessage& message);
     
+    // The next two objects are to preview sounds independently of the sampler
+    std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+    juce::AudioTransportSource transportSource;
+    
+    // Other
+    juce::CriticalSection soundDeleteLock;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessor)
 };

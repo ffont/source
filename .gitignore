@@ -12,3 +12,8 @@ sound_usage_log
 tokens.json
 sm_settings.json
 last_commit_info
+frame/
+.idea
+SourceSampler/Projucer alias
+SourceSampler/Builds/MacOSX/SourceSampler.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+ui_plugin_copy.html

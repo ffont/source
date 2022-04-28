@@ -28,43 +28,20 @@ def generate_code(controls_data_filename):
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameFloat and setParameterByNameFloatNorm
     current_code = ''
-    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float']]):
         iftag = 'else if' if count > 0 else 'if'
         control_data.update({'iftag': iftag})
         if control_data['type'] == 'float':
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf})
-            current_code += '    {iftag} (name == "{name}") {{ {name} = jlimit({minf}f, {maxf}f, value); }}\n'.format(**control_data)
-        elif control_data['type'] == 'adsr':
-            for adsr_phase in ['attack', 'decay', 'sustain', 'release']:  # Note that these names ust match ADSR::Parameters names
-                control_data.update({'adsr_phase': adsr_phase})
-                current_code += '    {iftag} (name == "{name}.{adsr_phase}") {{ {name}.{adsr_phase} = value; }}\n'.format(**control_data)
+            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = !normed ? juce::jlimit({minf}f, {maxf}f, value) : juce::jmap(value, {minf}f, {maxf}f); }}\n'.format(**control_data)
         else:
             # Don't know what to do with other types
             pass
-    current_code += '    '
-    code_dict['SourceSampler.cpp'] = {}
-    code_dict['SourceSampler.cpp']['A'] = current_code
-
-    current_code = ''
-    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float', 'adsr']]):
-        iftag = 'else if' if count > 0 else 'if'
-        control_data.update({'iftag': iftag})
-        if control_data['type'] == 'float':
-            minf = float(control_data['min'])
-            maxf = float(control_data['max'])
-            control_data.update({'minf': minf, 'maxf': maxf})
-            current_code += '    {iftag} (name == "{name}") {{ setParameterByNameFloat("{name}", jmap(value0to1, {minf}f, {maxf}f)); }}\n'.format(**control_data)
-        elif control_data['type'] == 'adsr':
-            for adsr_phase in ['attack', 'decay', 'sustain', 'release']:  # Note that these names ust match ADSR::Parameters names
-                control_data.update({'adsr_phase': adsr_phase})
-                current_code += '    {iftag} (name == "{name}.{adsr_phase}") {{ setParameterByNameFloat("{name}.{adsr_phase}", value0to1); }}\n'.format(**control_data)
-        else:
-            # Don't know what to do with other types
-            pass
-    current_code += '    '
-    code_dict['SourceSampler.cpp']['D'] = current_code
+    current_code += '        '
+    code_dict['Source/SourceSamplerSound.cpp'] = {}
+    code_dict['Source/SourceSamplerSound.cpp']['B'] = current_code
 
     # Generate SourceSamplerSound paramter attributes assignation for setParameterByNameInt
     current_code = ''
@@ -75,64 +52,90 @@ def generate_code(controls_data_filename):
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi})
-            current_code += '    {iftag} (name == "{name}") {{ {name} = jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
+            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = juce::jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
         else:
             # Don't know what to do with other types
             pass
-    current_code += '    '
-    code_dict['SourceSampler.cpp']['C'] = current_code
+    current_code += '        '
+    code_dict['Source/SourceSamplerSound.cpp']['D'] = current_code
 
-    # Generate SourceSamplerSound code to save state
+     # Generate SourceSamplerSound attributes for getParameterFloat i getParameterInt
+    current_code_e = ''
+    current_code_f = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['float']]):
+        iftag = 'else if' if count > 0 else 'if'
+        minf = float(control_data['min'])
+        maxf = float(control_data['max'])
+        control_data.update({'minf': minf, 'maxf': maxf, 'iftag': iftag})
+        current_code_f += '        {iftag} (identifier == IDs::{name}) {{ return !normed ? {name}.get() : juce::jmap({name}.get(), {minf}f, {maxf}f, 0.0f, 1.0f); }}\n'.format(**control_data)
+    for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['int']]):
+        iftag = 'else if' if count > 0 else 'if'
+        control_data.update({'iftag': iftag})
+        current_code_e += '        {iftag} (identifier == IDs::{name}) {{ return {name}.get(); }}\n'.format(**control_data)
+        
+    current_code_e += '        '
+    current_code_f += '        '
+    code_dict['Source/SourceSamplerSound.cpp']['E'] = current_code_e
+    code_dict['Source/SourceSamplerSound.cpp']['F'] = current_code_f
+
+    # Generate SourceSamplerSound.h code to define parameters
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         if control_data['type'] == 'float':
-            current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, {name}, nullptr),
-                      nullptr);
-""".format(**control_data)
+            current_code += "    juce::CachedValue<float> {name};\n".format(**control_data)
         elif control_data['type'] == 'int':
-            current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "int", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, {name}, nullptr),
-                      nullptr);
-""".format(**control_data)
-        elif control_data['type'] == 'adsr':
-            for adsr_phase in ['attack', 'decay', 'sustain', 'release']:  # Note that these names ust match ADSR::Parameters names
-                control_data.update({'adsr_phase': adsr_phase})
-                current_code += """    state.appendChild(ValueTree(STATE_SAMPLER_SOUND_PARAMETER)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_TYPE, "float", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_NAME, "{name}.{adsr_phase}", nullptr)
-                      .setProperty(STATE_SAMPLER_SOUND_PARAMETER_VALUE, {name}.{adsr_phase}, nullptr),
-                      nullptr);
-""".format(**control_data)
+            current_code += "    juce::CachedValue<int> {name};\n".format(**control_data)
         else:
             # Don't know what to do with other types
             pass
     current_code += '    '
-    code_dict['SourceSampler.cpp']['B'] = current_code
+    code_dict['Source/SourceSamplerSound.h'] = {}
+    code_dict['Source/SourceSamplerSound.h']['A'] = current_code
 
-    # Generate SourceSamplerSound code to define parameters
+    # Generate SourceSamplerSound.h code to bind state
     current_code = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list]):
+        current_code += "        {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
+    current_code += '        '
+    code_dict['Source/SourceSamplerSound.cpp']['C'] = current_code
+
+    # Generate defines.h code to define parameter IDs and defaults
+    current_code_a = ''
+    current_code_b = ''
+    for count, control_data in enumerate([control_data for control_data in controls_list]):
+        current_code_b += "DECLARE_ID ({name})\n".format(**control_data)
+        if control_data['type'] == 'float':
+            defaultf = float(control_data['default'])
+            control_data.update({'defaultf': defaultf})
+            current_code_a += "inline float  {name} = {defaultf}f;\n".format(**control_data)
+        elif control_data['type'] == 'int':
+            defaulti = int(control_data['default'])
+            control_data.update({'defaulti': defaulti})
+            current_code_a += "inline int {name} = {defaulti};\n".format(**control_data)
+        else:
+            # Don't know what to do with other types
+            pass
+    code_dict['Source/defines.h'] = {}
+    code_dict['Source/defines.h']['A'] = current_code_a
+    code_dict['Source/defines.h']['B'] = current_code_b
+
+    # Generate helpers.h code to include all sound parameters when creating an empry sound
+    current_code_a = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         if control_data['type'] == 'float':
             defaultf = float(control_data['default'])
             control_data.update({'defaultf': defaultf})
-            current_code += "    float {name} = {defaultf}f;\n".format(**control_data)
+            current_code_a += "        sound.setProperty (IDs::{name}, {defaultf}f, nullptr);\n".format(**control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             control_data.update({'defaulti': defaulti})
-            current_code += "    int {name} = {defaulti};\n".format(**control_data)
-        elif control_data['type'] == 'adsr':
-            current_code += "    ADSR::Parameters {name} = {{{default}}};\n".format(**control_data)
+            current_code_a += "        sound.setProperty (IDs::{name}, {defaulti}, nullptr);\n".format(**control_data)
         else:
             # Don't know what to do with other types
             pass
-    current_code += '    '
-    code_dict['SourceSampler.h'] = {}
-    code_dict['SourceSampler.h']['A'] = current_code
+    current_code_a += "        "
+    code_dict['Source/helpers.h'] = {}
+    code_dict['Source/helpers.h']['A'] = current_code_a
 
     # Generate HTML interface sound edit elements code
     current_code = ''
@@ -142,29 +145,21 @@ def generate_code(controls_data_filename):
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf, 'defaultf': defaultf, 'step': 1.0 if control_data['name'] == 'basePitch' else 0.01})
-            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{minf}" max="{maxf}" value="{defaultf}" step="{step}" oninput="ss.setSoundParameter(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi, 'defaulti': defaulti, 'step': 1})
-            current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="setSoundParameterInt(' + soundIdx + ', this)" > {name}: <span id="' + soundIdx + '_{name}Label"></span><br>'\n""".format(
+            current_code += """            html += '<input type="range" id="' + soundUUID + '_{name}" name="{name}" min="{mini}" max="{maxi}" value="{defaulti}" step="{step}" oninput="ss.setSoundParameterInt(\\'' + soundUUID + '\\', this)" > {name}: <span id="' + soundUUID + '_{name}Label"></span><br>'\n""".format(
                 **control_data)
-        elif control_data['type'] == 'adsr':
-            for count, adsr_phase in enumerate(['attack', 'decay', 'sustain', 'release']):  # Note that these names ust match ADSR::Parameters names
-                minf = [0.0, 0.0, 0.0, 0.0][count]
-                maxf = [20.0, 20.0, 1.0, 20.0][count]
-                defaultf = float(control_data['default'].replace('f', '').split(',')[count])
-                control_data.update({'adsr_phase': adsr_phase, 'minf': minf, 'maxf': maxf, 'defaultf': defaultf})
-                current_code += """            html += '<input type="range" id="' + soundIdx + '_{name}.{adsr_phase}" name="{name}.{adsr_phase}" min="{minf}" max="{maxf}" value="{defaultf}" step="0.01" oninput="setSoundParameter(' + soundIdx + ', this)" > {name}.{adsr_phase}: <span id="' + soundIdx + '_{name}.{adsr_phase}Label"></span><br>'\n""".format(
-                    **control_data)
         else:
             # Don't know what to do with other types
             pass
     current_code += '            '
-    code_dict['../Resources/index.html'] = {}
-    code_dict['../Resources/index.html']['A'] = current_code
+    code_dict['Resources/ui_plugin_ws.html'] = {}
+    code_dict['Resources/ui_plugin_ws.html']['A'] = current_code
 
     # Generate list of controls modifiable via MIDI cc in interface.hmtl
     current_code = '            parameterNames = ['
@@ -175,7 +170,29 @@ def generate_code(controls_data_filename):
         else:
             current_code += '"{name}"]'.format(**control_data)
     current_code += '\n            '
-    code_dict['../Resources/index.html']['B'] = current_code
+    code_dict['Resources/ui_plugin_ws.html']['B'] = current_code
+
+    # Generate list of all controls in interface.hmtl
+    current_code = '            parameterNames = ['
+    allControls = [control_data for control_data in controls_list]
+    for count, control_data in enumerate(allControls):
+        if count != len(allControls) - 1:
+            current_code += '"{name}", '.format(**control_data)
+        else:
+            current_code += '"{name}"]'.format(**control_data)
+    current_code += '\n            '
+    code_dict['Resources/ui_plugin_ws.html']['C'] = current_code
+
+    # Generate list of all control types in interface.hmtl
+    current_code = '            parameterTypes = ['
+    allControls = [control_data for control_data in controls_list]
+    for count, control_data in enumerate(allControls):
+        if count != len(allControls) - 1:
+            current_code += '"{type}", '.format(**control_data)
+        else:
+            current_code += '"{type}"]'.format(**control_data)
+    current_code += '\n            '
+    code_dict['Resources/ui_plugin_ws.html']['D'] = current_code
 
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))
@@ -193,7 +210,7 @@ def insert_code(code_dict):
     for key, sections_dict in code_dict.items():
         for section_key, code in sections_dict.items():
             replace_in_file(
-                os.path.join(SOURCE_CODE_FOLDER, key), 
+                key, 
                 START_DELIMITER_TEMPLATE.format(section_key), 
                 END_DELIMITER_TEMPLATE.format(section_key),
                 code)

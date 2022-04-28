@@ -35,7 +35,7 @@ ifeq ($(CONFIG),Debug)
     TARGET_ARCH := 
   endif
 
-  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DDEBUG=1" "-D_DEBUG=1" "-DJUCER_LINUX_MAKE_84E12380=1" "-DJUCE_APP_VERSION=0.5" "-DJUCE_APP_VERSION_HEX=0x500" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ $(CPPFLAGS)
+  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DDEBUG=1" "-D_DEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_84E12380=1" "-DJUCE_APP_VERSION=0.5" "-DJUCE_APP_VERSION_HEX=0x500" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
 
   JUCE_CPPFLAGS_VST :=  "-DJucePlugin_Build_VST=1" "-DJucePlugin_Build_VST3=0" "-DJucePlugin_Build_AU=0" "-DJucePlugin_Build_AUv3=0" "-DJucePlugin_Build_RTAS=0" "-DJucePlugin_Build_AAX=0" "-DJucePlugin_Build_Standalone=0" "-DJucePlugin_Build_Unity=0"
   JUCE_CFLAGS_VST := -fPIC -fvisibility=hidden
@@ -77,7 +77,7 @@ ifeq ($(CONFIG),Release)
     TARGET_ARCH := 
   endif
 
-  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DNDEBUG=1" "-DJUCER_LINUX_MAKE_84E12380=1" "-DJUCE_APP_VERSION=0.5" "-DJUCE_APP_VERSION_HEX=0x500" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ $(CPPFLAGS)
+  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DNDEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_84E12380=1" "-DJUCE_APP_VERSION=0.5" "-DJUCE_APP_VERSION_HEX=0x500" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I/code/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/ -I../../3rdParty/cpp-httplib/ -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
 
   JUCE_CPPFLAGS_VST :=  "-DJucePlugin_Build_VST=1" "-DJucePlugin_Build_VST3=0" "-DJucePlugin_Build_AU=0" "-DJucePlugin_Build_AUv3=0" "-DJucePlugin_Build_RTAS=0" "-DJucePlugin_Build_AAX=0" "-DJucePlugin_Build_Standalone=0" "-DJucePlugin_Build_Unity=0"
   JUCE_CFLAGS_VST := -fPIC -fvisibility=hidden
@@ -121,11 +121,13 @@ OBJECTS_STANDALONE_PLUGIN := \
   $(JUCE_OBJDIR)/include_juce_audio_plugin_client_Standalone_1a871192.o \
 
 OBJECTS_SHARED_CODE := \
-  $(JUCE_OBJDIR)/BinaryData_5ba7f54.o \
-  $(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o \
   $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o \
   $(JUCE_OBJDIR)/PluginProcessor_a059e380.o \
-  $(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o \
+  $(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o \
+  $(JUCE_OBJDIR)/SourceSamplerSound_cc95aa2b.o \
+  $(JUCE_OBJDIR)/SourceSamplerVoice_fbe0f8ce.o \
+  $(JUCE_OBJDIR)/BinaryData_5ba7f54.o \
+  $(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o \
   $(JUCE_OBJDIR)/twine_f8dfbf07.o \
   $(JUCE_OBJDIR)/include_juce_audio_basics_8a4e984a.o \
   $(JUCE_OBJDIR)/include_juce_audio_devices_63111d02.o \
@@ -208,16 +210,6 @@ $(JUCE_OBJDIR)/include_juce_audio_plugin_client_Standalone_1a871192.o: ../../Juc
 	@echo "Compiling include_juce_audio_plugin_client_Standalone.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_STANDALONE_PLUGIN) $(JUCE_CFLAGS_STANDALONE_PLUGIN) -o "$@" -c "$<"
 
-$(JUCE_OBJDIR)/BinaryData_5ba7f54.o: ../../Source/BinaryData.cpp
-	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling BinaryData.cpp"
-	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
-
-$(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o: ../../Source/FreesoundAPI.cpp
-	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling FreesoundAPI.cpp"
-	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
-
 $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o: ../../Source/PluginEditor.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling PluginEditor.cpp"
@@ -228,9 +220,29 @@ $(JUCE_OBJDIR)/PluginProcessor_a059e380.o: ../../Source/PluginProcessor.cpp
 	@echo "Compiling PluginProcessor.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
 
-$(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o: ../../Source/SourceSampler.cpp
+$(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o: ../../Source/SourceSamplerSynthesiser.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
-	@echo "Compiling SourceSampler.cpp"
+	@echo "Compiling SourceSamplerSynthesiser.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/SourceSamplerSound_cc95aa2b.o: ../../Source/SourceSamplerSound.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling SourceSamplerSound.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/SourceSamplerVoice_fbe0f8ce.o: ../../Source/SourceSamplerVoice.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling SourceSamplerVoice.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/BinaryData_5ba7f54.o: ../../Source/BinaryData.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling BinaryData.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/FreesoundAPI_973f2e00.o: ../../Source/FreesoundAPI.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling FreesoundAPI.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/twine_f8dfbf07.o: ../../3rdParty/twine/src/twine.cpp

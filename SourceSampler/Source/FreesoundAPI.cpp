@@ -1,38 +1,38 @@
 #include "FreesoundAPI.h"
 
-String URIS::HOST = String("freesound.org");
-String URIS::BASE = String("https://" + HOST + "/apiv2");
-String URIS::TEXT_SEARCH = String("/search/text/");
-String URIS::CONTENT_SEARCH = String("/search/content/");
-String URIS::COMBINED_SEARCH = String("/search/combined/");
-String URIS::SOUND = String("/sounds/<sound_id>/");
-String URIS::SOUND_ANALYSIS = String("/sounds/<sound_id>/analysis/");
-String URIS::SIMILAR_SOUNDS = String("/sounds/<sound_id>/similar/");
-String URIS::COMMENTS = String("/sounds/<sound_id>/comments/");
-String URIS::DOWNLOAD = String("/sounds/<sound_id>/download/");
-String URIS::UPLOAD = String("/sounds/upload/");
-String URIS::DESCRIBE = String("/sounds/<sound_id>/describe/");
-String URIS::EDIT = String("/sounds/<sound_id>/edit/");
-String URIS::PENDING = String("/sounds/pending_uploads/");
-String URIS::BOOKMARK = String("/sounds/<sound_id>/bookmark/");
-String URIS::RATE = String("/sounds/<sound_id>/rate/");
-String URIS::COMMENT = String("/sounds/<sound_id>/comment/");
-String URIS::AUTHORIZE = String("/oauth2/authorize/");
-String URIS::LOGOUT = String("/api-auth/logout/");
-String URIS::LOGOUT_AUTHORIZE = String("/oauth2/logout_and_authorize/");
-String URIS::ACCESS_TOKEN = String("/oauth2/access_token/");
-String URIS::ME = String("/me/");
-String URIS::USER = String("/users/<username>/");
-String URIS::USER_SOUNDS = String("/users/<username>/sounds/");
-String URIS::USER_PACKS = String("/users/<username>/packs/");
-String URIS::USER_BOOKMARK_CATEGORIES = String("/users/<username>/bookmark_categories/");
-String URIS::USER_BOOKMARK_CATEGORY_SOUNDS = String("/users/<username>/bookmark_categories/<category_id>/sounds/");
-String URIS::PACK = String("/packs/<pack_id>/");
-String URIS::PACK_SOUNDS = String("/packs/<pack_id>/sounds/");
-String URIS::PACK_DOWNLOAD = String("/packs/<pack_id>/download/");
-String URIS::CONFIRMATION = String("https://" + HOST + "/home/app_permissions/permission_granted/");
+juce::String URIS::HOST = juce::String("freesound.org");
+juce::String URIS::BASE = juce::String("https://" + HOST + "/apiv2");
+juce::String URIS::TEXT_SEARCH = juce::String("/search/text/");
+juce::String URIS::CONTENT_SEARCH = juce::String("/search/content/");
+juce::String URIS::COMBINED_SEARCH = juce::String("/search/combined/");
+juce::String URIS::SOUND = juce::String("/sounds/<sound_id>/");
+juce::String URIS::SOUND_ANALYSIS = juce::String("/sounds/<sound_id>/analysis/");
+juce::String URIS::SIMILAR_SOUNDS = juce::String("/sounds/<sound_id>/similar/");
+juce::String URIS::COMMENTS = juce::String("/sounds/<sound_id>/comments/");
+juce::String URIS::DOWNLOAD = juce::String("/sounds/<sound_id>/download/");
+juce::String URIS::UPLOAD = juce::String("/sounds/upload/");
+juce::String URIS::DESCRIBE = juce::String("/sounds/<sound_id>/describe/");
+juce::String URIS::EDIT = juce::String("/sounds/<sound_id>/edit/");
+juce::String URIS::PENDING = juce::String("/sounds/pending_uploads/");
+juce::String URIS::BOOKMARK = juce::String("/sounds/<sound_id>/bookmark/");
+juce::String URIS::RATE = juce::String("/sounds/<sound_id>/rate/");
+juce::String URIS::COMMENT = juce::String("/sounds/<sound_id>/comment/");
+juce::String URIS::AUTHORIZE = juce::String("/oauth2/authorize/");
+juce::String URIS::LOGOUT = juce::String("/api-auth/logout/");
+juce::String URIS::LOGOUT_AUTHORIZE = juce::String("/oauth2/logout_and_authorize/");
+juce::String URIS::ACCESS_TOKEN = juce::String("/oauth2/access_token/");
+juce::String URIS::ME = juce::String("/me/");
+juce::String URIS::USER = juce::String("/users/<username>/");
+juce::String URIS::USER_SOUNDS = juce::String("/users/<username>/sounds/");
+juce::String URIS::USER_PACKS = juce::String("/users/<username>/packs/");
+juce::String URIS::USER_BOOKMARK_CATEGORIES = juce::String("/users/<username>/bookmark_categories/");
+juce::String URIS::USER_BOOKMARK_CATEGORY_SOUNDS = juce::String("/users/<username>/bookmark_categories/<category_id>/sounds/");
+juce::String URIS::PACK = juce::String("/packs/<pack_id>/");
+juce::String URIS::PACK_SOUNDS = juce::String("/packs/<pack_id>/sounds/");
+juce::String URIS::PACK_DOWNLOAD = juce::String("/packs/<pack_id>/download/");
+juce::String URIS::CONFIRMATION = juce::String("https://" + HOST + "/home/app_permissions/permission_granted/");
 
-URL URIS::uri(String uri, StringArray replacements)
+juce::URL URIS::uri(juce::String uri, juce::StringArray replacements)
 {
 	if (!replacements.isEmpty()) {
 		for (int i = 0; i < replacements.size(); i++) {
@@ -46,21 +46,21 @@ URL URIS::uri(String uri, StringArray replacements)
 
 FreesoundClient::FreesoundClient()
 {
-	token = String();
-	clientID = String();
-	clientSecret = String();
-	header = String();
+	token = juce::String();
+	clientID = juce::String();
+	clientSecret = juce::String();
+	header = juce::String();
 	auth = None;
 }
 
-FreesoundClient::FreesoundClient(String secret)
+FreesoundClient::FreesoundClient(juce::String secret)
 {
 	clientSecret = secret;
 	header = "Token " + clientSecret;
 	auth = Token;
 }
 
-FreesoundClient::FreesoundClient(String id, String secret)
+FreesoundClient::FreesoundClient(juce::String id, juce::String secret)
 {
 	clientID = id;
 	clientSecret = secret;
@@ -70,29 +70,29 @@ FreesoundClient::FreesoundClient(String id, String secret)
 //Function for doing the authorization, the mode selects between LOGOUT_AUTHORIZE(0) and AUTHORIZE(1)
 void FreesoundClient::authenticationOnBrowser(int mode, Callback cb)
 {
-	URL url;
-	if(mode == 0){url = URIS::uri(URIS::LOGOUT_AUTHORIZE, StringArray());}
-	else{url = URIS::uri(URIS::AUTHORIZE, StringArray()); }
+    juce::URL url;
+	if(mode == 0){url = URIS::uri(URIS::LOGOUT_AUTHORIZE, juce::StringArray());}
+	else{url = URIS::uri(URIS::AUTHORIZE, juce::StringArray()); }
 	url = url.withParameter("client_id", clientID);
 	url = url.withParameter("response_type", "code");
 	url.launchInDefaultBrowser();
 	cb();
 }
 
-void FreesoundClient::exchangeToken(String authCode, Callback cb)
+void FreesoundClient::exchangeToken(juce::String authCode, Callback cb)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 	params.set("client_id", clientID);
 	params.set("client_secret", clientSecret);
 	params.set("grant_type", "authorization_code");
 	params.set("code", authCode);
 
-	URL url = URIS::uri(URIS::ACCESS_TOKEN, StringArray());
+    juce::URL url = URIS::uri(URIS::ACCESS_TOKEN, juce::StringArray());
 	FSRequest request(url, *this);
 	Response resp = request.request(params);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		accessToken = response["access_token"];
 		refreshToken = response["refresh_token"];
 		header = "Bearer " + accessToken;
@@ -101,18 +101,18 @@ void FreesoundClient::exchangeToken(String authCode, Callback cb)
 }
 
 void FreesoundClient::refreshAccessToken(Callback cb) {
-	StringPairArray params;
+    juce::StringPairArray params;
 	params.set("client_id", clientID);
 	params.set("client_secret", clientSecret);
 	params.set("grant_type", "refresh_token");
 	params.set("refresh_token", refreshToken);
 
-	URL url = URIS::uri(URIS::ACCESS_TOKEN, StringArray());
+    juce::URL url = URIS::uri(URIS::ACCESS_TOKEN, juce::StringArray());
 	FSRequest request(url, *this);
 	Response resp = request.request(params);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		accessToken = response["access_token"];
 		refreshToken = response["refresh_token"];
 		header = "Bearer " + accessToken;
@@ -121,23 +121,23 @@ void FreesoundClient::refreshAccessToken(Callback cb) {
 }
 
 // https://freesound.org/docs/api/resources_apiv2.html#text-search
-SoundList FreesoundClient::textSearch(String query, String filter, String sort, int groupByPack, int page, int pageSize, String fields, String descriptors, int normalized)
+SoundList FreesoundClient::textSearch(juce::String query, juce::String filter, juce::String sort, int groupByPack, int page, int pageSize, juce::String fields, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 	params.set("query", query);
 	params.set("sort", sort);
-	params.set("group_by_pack", String(groupByPack));
+	params.set("group_by_pack", juce::String(groupByPack));
 
 	if (filter.isNotEmpty()) {
 		params.set("filter", filter);
 	}
 
 	if (page != -1) {
-		params.set("page", String(page));
+		params.set("page", juce::String(page));
 	}
 
 	if (pageSize != -1) {
-		params.set("page_size", String(pageSize));
+		params.set("page_size", juce::String(pageSize));
 	}
 
 	if (fields.isNotEmpty()) {
@@ -152,21 +152,21 @@ SoundList FreesoundClient::textSearch(String query, String filter, String sort, 
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::TEXT_SEARCH, StringArray());
+    juce::URL url = URIS::uri(URIS::TEXT_SEARCH, juce::StringArray());
 	FSRequest request(url, *this);
-	Response resp = request.request(params,String(),false);
+	Response resp = request.request(params,juce::String(),false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
 	return SoundList();
 }
 
-SoundList FreesoundClient::contentSearch(String target, String descriptorsFilter, int page, int pageSize, String fields, String descriptors, int normalized)
+SoundList FreesoundClient::contentSearch(juce::String target, juce::String descriptorsFilter, int page, int pageSize, juce::String fields, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	params.set("target", target);
 
@@ -175,11 +175,11 @@ SoundList FreesoundClient::contentSearch(String target, String descriptorsFilter
 	}
 
 	if (page != -1) {
-		params.set("page", String(page));
+		params.set("page", juce::String(page));
 	}
 
 	if (pageSize != -1) {
-		params.set("page_size", String(pageSize));
+		params.set("page_size", juce::String(pageSize));
 	}
 
 	if (fields.isNotEmpty()) {
@@ -194,12 +194,12 @@ SoundList FreesoundClient::contentSearch(String target, String descriptorsFilter
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::CONTENT_SEARCH, StringArray());
+    juce::URL url = URIS::uri(URIS::CONTENT_SEARCH, juce::StringArray());
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
@@ -209,10 +209,10 @@ SoundList FreesoundClient::contentSearch(String target, String descriptorsFilter
 FSList FreesoundClient::fetchNextPage(FSList soundList)
 {
 	FSRequest request(soundList.getNextPage(), *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSList returnedSounds(response);
 		return returnedSounds;
 	}
@@ -222,10 +222,10 @@ FSList FreesoundClient::fetchNextPage(FSList soundList)
 FSList FreesoundClient::fetchPreviousPage(FSList soundList)
 {
 	FSRequest request(soundList.getPreviousPage(), *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSList returnedSounds(response);
 		return returnedSounds;
 	}
@@ -235,10 +235,10 @@ FSList FreesoundClient::fetchPreviousPage(FSList soundList)
 SoundList FreesoundClient::fetchNextPage(SoundList soundList)
 {
 	FSRequest request(soundList.getNextPage(), *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
@@ -248,29 +248,29 @@ SoundList FreesoundClient::fetchNextPage(SoundList soundList)
 SoundList FreesoundClient::fetchPreviousPage(SoundList soundList)
 {
 	FSRequest request(soundList.getPreviousPage(), *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
 	return SoundList();
 }
 
-FSSound FreesoundClient::getSound(String id, String fields)
+FSSound FreesoundClient::getSound(juce::String id, juce::String fields)
 {
-	URL url = URIS::uri(URIS::SOUND, StringArray(id));
-	StringPairArray params;
+    juce::URL url = URIS::uri(URIS::SOUND, juce::StringArray(id));
+    juce::StringPairArray params;
 	if (fields.isNotEmpty()) {
 		params.set("fields", fields);
 	}
 	
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSSound returnedSound(response);
 		return returnedSound;
 	}
@@ -278,9 +278,9 @@ FSSound FreesoundClient::getSound(String id, String fields)
 	return FSSound();
 }
 
-var FreesoundClient::getSoundAnalysis(String id, String descriptors, int normalized)
+juce::var FreesoundClient::getSoundAnalysis(juce::String id, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (descriptors.isNotEmpty()) {
 		params.set("descriptors", descriptors);
@@ -290,31 +290,31 @@ var FreesoundClient::getSoundAnalysis(String id, String descriptors, int normali
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::SOUND_ANALYSIS, id);
+    juce::URL url = URIS::uri(URIS::SOUND_ANALYSIS, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		return response;
 	}
-	return var();
+	return juce::var();
 }
 
-SoundList FreesoundClient::getSimilarSounds(String id, String descriptorsFilter, int page, int pageSize, String fields, String descriptors, int normalized)
+SoundList FreesoundClient::getSimilarSounds(juce::String id, juce::String descriptorsFilter, int page, int pageSize, juce::String fields, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (descriptorsFilter.isNotEmpty()) {
 		params.set("descriptors_filter", descriptorsFilter);
 	}
 
 	if (page != -1) {
-		params.set("page", String(page));
+		params.set("page", juce::String(page));
 	}
 
 	if (pageSize != -1) {
-		params.set("page_size", String(pageSize));
+		params.set("page_size", juce::String(pageSize));
 	}
 
 	if (fields.isNotEmpty()) {
@@ -329,39 +329,39 @@ SoundList FreesoundClient::getSimilarSounds(String id, String descriptorsFilter,
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::SIMILAR_SOUNDS, id);
+    juce::URL url = URIS::uri(URIS::SIMILAR_SOUNDS, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
 	return SoundList();
 }
 
-std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadSound(FSSound sound, const File & location, URL::DownloadTask::Listener * listener)
+std::unique_ptr<juce::URL::DownloadTask> FreesoundClient::downloadSound(FSSound sound, const juce::File & location, juce::URL::DownloadTask::Listener * listener)
 {
-	URL address = sound.getDownload();
+    juce::URL address = sound.getDownload();
 	return address.downloadToFile(location, "Authorization: " + header, listener);
 }
 
-std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadOGGSoundPreview(FSSound sound, const File & location, URL::DownloadTask::Listener * listener)
+std::unique_ptr<juce::URL::DownloadTask> FreesoundClient::downloadOGGSoundPreview(FSSound sound, const juce::File & location, juce::URL::DownloadTask::Listener * listener)
 {
-    URL address = sound.getOGGPreviewURL();
+    juce::URL address = sound.getOGGPreviewURL();
     return address.downloadToFile(location, "", listener);
 }
 
-std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadMP3SoundPreview(FSSound sound, const File & location, URL::DownloadTask::Listener * listener)
+std::unique_ptr<juce::URL::DownloadTask> FreesoundClient::downloadMP3SoundPreview(FSSound sound, const juce::File & location, juce::URL::DownloadTask::Listener * listener)
 {
-	URL address = sound.getMP3PreviewURL();
+	juce::URL address = sound.getMP3PreviewURL();
 	return address.downloadToFile(location, "", listener);
 }
 
-int FreesoundClient::uploadSound(const File & fileToUpload, String tags, String description, String name, String license, String pack, String geotag, Callback cb)
+int FreesoundClient::uploadSound(const juce::File & fileToUpload, juce::String tags, juce::String description, juce::String name, juce::String license, juce::String pack, juce::String geotag, Callback cb)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	params.set("tags", tags);
 	params.set("description", description);
@@ -379,13 +379,13 @@ int FreesoundClient::uploadSound(const File & fileToUpload, String tags, String 
 		params.set("geotag", geotag);
 	}
 
-	URL url = URIS::uri(URIS::UPLOAD);
+    juce::URL url = URIS::uri(URIS::UPLOAD);
 	url = url.withFileToUpload("audiofile", fileToUpload, "audio/*");
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		cb();
 		return response["id"];
 	}
@@ -393,9 +393,9 @@ int FreesoundClient::uploadSound(const File & fileToUpload, String tags, String 
 	return 0;
 }
 
-int FreesoundClient::describeSound(String uploadFilename, String description, String license, String name, String tags, String pack, String geotag)
+int FreesoundClient::describeSound(juce::String uploadFilename, juce::String description, juce::String license, juce::String name, juce::String tags, juce::String pack, juce::String geotag)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 	params.set("upload_filename", uploadFilename);
 	params.set("license", license);
 	params.set("description", description);
@@ -417,9 +417,9 @@ int FreesoundClient::describeSound(String uploadFilename, String description, St
 		params.set("geotag", geotag);
 	}
 
-	URL url = URIS::uri(URIS::DESCRIBE);
+    juce::URL url = URIS::uri(URIS::DESCRIBE);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
@@ -427,11 +427,11 @@ int FreesoundClient::describeSound(String uploadFilename, String description, St
 	return resp.second["id"];
 }
 
-var FreesoundClient::pendingUploads()
+juce::var FreesoundClient::pendingUploads()
 {
-	URL url = URIS::uri(URIS::PENDING);
+    juce::URL url = URIS::uri(URIS::PENDING);
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
@@ -439,9 +439,9 @@ var FreesoundClient::pendingUploads()
 	return resp.second;
 }
 
-void FreesoundClient::editSoundDescription(String id, String name, String tags, String description, String license, String pack, String geotag, Callback cb)
+void FreesoundClient::editSoundDescription(juce::String id, juce::String name, juce::String tags, juce::String description, juce::String license, juce::String pack, juce::String geotag, Callback cb)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (tags.isNotEmpty()) {
 		params.set("tags", tags);
@@ -467,9 +467,9 @@ void FreesoundClient::editSoundDescription(String id, String name, String tags, 
 		params.set("geotag", geotag);
 	}
 
-	URL url = URIS::uri(URIS::EDIT, id);
+    juce::URL url = URIS::uri(URIS::EDIT, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
@@ -478,9 +478,9 @@ void FreesoundClient::editSoundDescription(String id, String name, String tags, 
 
 }
 
-void FreesoundClient::bookmarkSound(String id, String name, String category, Callback cb)
+void FreesoundClient::bookmarkSound(juce::String id, juce::String name, juce::String category, Callback cb)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (name.isNotEmpty()) {
 		params.set("name", name);
@@ -490,23 +490,23 @@ void FreesoundClient::bookmarkSound(String id, String name, String category, Cal
 		params.set("category", category);
 	}
 
-	URL url = URIS::uri(URIS::BOOKMARK, id);
+    juce::URL url = URIS::uri(URIS::BOOKMARK, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
 	cb();
 }
 
-void FreesoundClient::rateSound(String id, int rating, Callback cb)
+void FreesoundClient::rateSound(juce::String id, int rating, Callback cb)
 {
-	StringPairArray params;
-	params.set("rating", String(rating));
+    juce::StringPairArray params;
+	params.set("rating", juce::String(rating));
 
-	URL url = URIS::uri(URIS::RATE, id);
+    juce::URL url = URIS::uri(URIS::RATE, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
@@ -514,28 +514,28 @@ void FreesoundClient::rateSound(String id, int rating, Callback cb)
 	cb();
 }
 
-void FreesoundClient::commentSound(String id, String comment, Callback cb)
+void FreesoundClient::commentSound(juce::String id, juce::String comment, Callback cb)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 	params.set("comment", comment);
 
-	URL url = URIS::uri(URIS::RATE, id);
+    juce::URL url = URIS::uri(URIS::RATE, id);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
 	}
 	cb();
 }
 
-FSUser FreesoundClient::getUser(String user)
+FSUser FreesoundClient::getUser(juce::String user)
 {
-	URL url = URIS::uri(URIS::USER, StringArray(user));
+    juce::URL url = URIS::uri(URIS::USER, juce::StringArray(user));
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSUser returnedUser(response);
 		return returnedUser;
 	}
@@ -543,20 +543,20 @@ FSUser FreesoundClient::getUser(String user)
 	return FSUser();
 }
 
-SoundList FreesoundClient::getUserSounds(String username, String descriptorsFilter, int page, int pageSize, String fields, String descriptors, int normalized)
+SoundList FreesoundClient::getUserSounds(juce::String username, juce::String descriptorsFilter, int page, int pageSize, juce::String fields, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (descriptorsFilter.isNotEmpty()) {
 		params.set("descriptors_filter", descriptorsFilter);
 	}
 
 	if (page != -1) {
-		params.set("page", String(page));
+		params.set("page", juce::String(page));
 	}
 
 	if (pageSize != -1) {
-		params.set("page_size", String(pageSize));
+		params.set("page_size", juce::String(pageSize));
 	}
 
 	if (fields.isNotEmpty()) {
@@ -571,71 +571,71 @@ SoundList FreesoundClient::getUserSounds(String username, String descriptorsFilt
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::USER_SOUNDS, username);
+    juce::URL url = URIS::uri(URIS::USER_SOUNDS, username);
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
 	return SoundList();
 }
 
-FSList FreesoundClient::getUserBookmarkCategories(String username)
+FSList FreesoundClient::getUserBookmarkCategories(juce::String username)
 {
-	URL url = URIS::uri(URIS::USER_BOOKMARK_CATEGORIES, username);
+    juce::URL url = URIS::uri(URIS::USER_BOOKMARK_CATEGORIES, username);
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSList returnedSounds(response);
 		return returnedSounds;
 	}
 	return FSList();
 }
 
-FSList FreesoundClient::getUserBookmarkCategoriesSounds(String username, String bookmarkCategory)
+FSList FreesoundClient::getUserBookmarkCategoriesSounds(juce::String username, juce::String bookmarkCategory)
 {	
-	StringArray params;
+    juce::StringArray params;
 	params.add(username);
 	params.add(bookmarkCategory);
-	URL url = URIS::uri(URIS::USER_BOOKMARK_CATEGORY_SOUNDS, params);
+    juce::URL url = URIS::uri(URIS::USER_BOOKMARK_CATEGORY_SOUNDS, params);
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSList returnedSounds(response);
 		return returnedSounds;
 	}
 	return FSList();
 }
 
-FSList FreesoundClient::getUserPacks(String username)
+FSList FreesoundClient::getUserPacks(juce::String username)
 {
-	URL url = URIS::uri(URIS::USER_PACKS, username);
+    juce::URL url = URIS::uri(URIS::USER_PACKS, username);
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSList returnedSounds(response);
 		return returnedSounds;
 	}
 	return FSList();
 }
 
-FSPack FreesoundClient::getPack(String id)
+FSPack FreesoundClient::getPack(juce::String id)
 {
-	URL url = URIS::uri(URIS::PACK, StringArray(id));
+    juce::URL url = URIS::uri(URIS::PACK, juce::StringArray(id));
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSPack returnedUser(response);
 		return returnedUser;
 	}
@@ -643,20 +643,20 @@ FSPack FreesoundClient::getPack(String id)
 	return FSPack();
 }
 
-SoundList FreesoundClient::getPackSounds(String id, String descriptorsFilter, int page, int pageSize, String fields, String descriptors, int normalized)
+SoundList FreesoundClient::getPackSounds(juce::String id, juce::String descriptorsFilter, int page, int pageSize, juce::String fields, juce::String descriptors, int normalized)
 {
-	StringPairArray params;
+    juce::StringPairArray params;
 
 	if (descriptorsFilter.isNotEmpty()) {
 		params.set("descriptors_filter", descriptorsFilter);
 	}
 
 	if (page != -1) {
-		params.set("page", String(page));
+		params.set("page", juce::String(page));
 	}
 
 	if (pageSize != -1) {
-		params.set("page_size", String(pageSize));
+		params.set("page_size", juce::String(pageSize));
 	}
 
 	if (fields.isNotEmpty()) {
@@ -671,34 +671,34 @@ SoundList FreesoundClient::getPackSounds(String id, String descriptorsFilter, in
 		params.set("normalized", "1");
 	}
 
-	URL url = URIS::uri(URIS::PACK_SOUNDS, StringArray(id));
+    juce::URL url = URIS::uri(URIS::PACK_SOUNDS, juce::StringArray(id));
 	FSRequest request(url, *this);
-	Response resp = request.request(params, String(), false);
+	Response resp = request.request(params, juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		SoundList returnedSounds(response);
 		return returnedSounds;
 	}
 	return SoundList();
 }
 
-std::unique_ptr<URL::DownloadTask> FreesoundClient::downloadPack(FSPack pack, const File & location, URL::DownloadTask::Listener * listener)
+std::unique_ptr<juce::URL::DownloadTask> FreesoundClient::downloadPack(FSPack pack, const juce::File & location, juce::URL::DownloadTask::Listener * listener)
 {
 
-	URL address = URIS::uri(URIS::PACK_DOWNLOAD, StringArray(pack.getID()));
+    juce::URL address = URIS::uri(URIS::PACK_DOWNLOAD, juce::StringArray(pack.getID()));
 	return address.downloadToFile(location, this->header, listener);
 	
 }
 
 FSUser FreesoundClient::getMe()
 {
-	URL url = URIS::uri(URIS::ME, StringArray());
+    juce::URL url = URIS::uri(URIS::ME, juce::StringArray());
 	FSRequest request(url, *this);
-	Response resp = request.request(StringPairArray(), String(), false);
+	Response resp = request.request(juce::StringPairArray(), juce::String(), false);
 	int resultCode = resp.first;
 	if (resultCode == 200) {
-		var response = resp.second;
+        juce::var response = resp.second;
 		FSUser returnedUser(response);
 		return returnedUser;
 	}
@@ -713,45 +713,45 @@ bool FreesoundClient::isTokenNotEmpty()
 	else { return false; }
 }
 
-String FreesoundClient::getToken()
+juce::String FreesoundClient::getToken()
 {
 	return token;
 }
 
-String FreesoundClient::getHeader()
+juce::String FreesoundClient::getHeader()
 {
 	return header;
 }
 
-String FreesoundClient::getClientID()
+juce::String FreesoundClient::getClientID()
 {
 	return clientID;
 }
 
-Response FSRequest::request(StringPairArray params, String data, bool postLikeRequest)
+Response FSRequest::request(juce::StringPairArray params, juce::String data, bool postLikeRequest)
 {
 
-	URL url = uri;
-	String header;
+    juce::URL url = uri;
+    juce::String header;
 	int statusCode = -1;
-	StringPairArray responseHeaders;
+    juce::StringPairArray responseHeaders;
 	if (data.isNotEmpty()) { url = url.withPOSTData(data); }
 	if (params.size() != 0) { url = url.withParameters(params); }
 	if (client.isTokenNotEmpty()) { header = "Authorization: " + client.getHeader(); }
 
 
 	//Try to open a stream with this information.
-	if (auto stream = std::unique_ptr<InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
+	if (auto stream = std::unique_ptr<juce::InputStream>(url.createInputStream(postLikeRequest, nullptr, nullptr, header,
 		FREESOUND_API_REQUEST_TIMEOUT, // timeout in millisecs
 		&responseHeaders, &statusCode)))
 	{
 		//Stream created successfully, store the response, log it and return the response in a pair containing (statusCode, response)
-		String resp = stream->readEntireStreamAsString();
-		var response = JSON::parse(resp);
+        juce::String resp = stream->readEntireStreamAsString();
+        juce::var response = juce::JSON::parse(resp);
 		return Response(statusCode, response);
 	}
 	//Couldnt create stream, return (-1, emptyVar)
-	return Response(statusCode, var());
+	return Response(statusCode, juce::var());
 }
 
 FSList::FSList()
@@ -759,7 +759,7 @@ FSList::FSList()
 	count = 0;
 }
 
-FSList::FSList(var response)
+FSList::FSList(juce::var response)
 {
 	count = response["count"]; //getIntValue
 	nextPage = response["next"];
@@ -767,17 +767,17 @@ FSList::FSList(var response)
 	results = response["results"];
 }
 
-String FSList::getNextPage()
+juce::String FSList::getNextPage()
 {
 	return nextPage;
 }
 
-String FSList::getPreviousPage()
+juce::String FSList::getPreviousPage()
 {
 	return previousPage;
 }
 
-var FSList::getResults()
+juce::var FSList::getResults()
 {
 	return results;
 }
@@ -791,12 +791,12 @@ FSSound::FSSound()
 {
 }
 
-FSSound::FSSound(var sound)
+FSSound::FSSound(juce::var sound)
 {
 	id = sound["id"];
-	url = URL(sound["url"]);
+	url = juce::URL(sound["url"]);
 	name = sound["name"];
-	tags = StringArray();
+	tags = juce::StringArray();
 	//Verificar que isto está bem. sound[tags]precisa de ser um array
 	for (int i = 0; i < sound["tags"].size(); i++) {
 		tags.add(sound["tags"][i]);
@@ -813,32 +813,32 @@ FSSound::FSSound(var sound)
 	duration = sound["duration"];
 	samplerate = sound["samplerate"];
 	user = sound["username"];
-	pack = URL(sound["pack"]);
-	download = URL(sound["download"]);
-	bookmark = URL(sound["bookmark"]);
+	pack = juce::URL(sound["pack"]);
+	download = juce::URL(sound["download"]);
+	bookmark = juce::URL(sound["bookmark"]);
 	previews = sound["previews"];
     images = sound["images"];
 	numDownloads = sound["images"];
 	avgRating = sound["num_downloads"];
 	numRatings = sound["avg_rating"];
-	rate = URL(sound["rate"]);
-	comments = URL(sound["comments"]);
+	rate = juce::URL(sound["rate"]);
+	comments = juce::URL(sound["comments"]);
 	numComments = sound["num_comments"];
-	comment = URL(sound["comment"]);
-	similarSounds = URL(sound["similar_sounds"]);
+	comment = juce::URL(sound["comment"]);
+	similarSounds = juce::URL(sound["similar_sounds"]);
 	analysis = sound["analysis"];
-	analysisStats = URL(sound["analysis_stats"]);
-	analysisFrames = URL(sound["analysis_frames"]);
+	analysisStats = juce::URL(sound["analysis_stats"]);
+	analysisFrames = juce::URL(sound["analysis_frames"]);
 	acAnalysis = sound["ac_analysis"];
 
 }
 
-URL FSSound::getDownload()
+juce::URL FSSound::getDownload()
 {
 	return download;
 }
 
-URL FSSound::getOGGPreviewURL()
+juce::URL FSSound::getOGGPreviewURL()
 {
     if (!previews.hasProperty("preview-hq-ogg")){
         /*
@@ -853,10 +853,10 @@ URL FSSound::getOGGPreviewURL()
          */
         throw;
     }
-    return URL(previews["preview-hq-ogg"]);
+    return juce::URL(previews["preview-hq-ogg"]);
 }
 
-URL FSSound::getMP3PreviewURL()
+juce::URL FSSound::getMP3PreviewURL()
 {
 	if (!previews.hasProperty("preview-hq-mp3")) {
 		/*
@@ -871,28 +871,28 @@ URL FSSound::getMP3PreviewURL()
 		 */
 		throw;
 	}
-	return URL(previews["preview-hq-mp3"]);
+	return juce::URL(previews["preview-hq-mp3"]);
 }
 
 FSUser::FSUser()
 {
 }
 
-FSUser::FSUser(var user)
+FSUser::FSUser(juce::var user)
 {
-	profile = URL(user["url"]);
+	profile = juce::URL(user["url"]);
 	about = user["about"];
 	username = user["username"];
-	homepage = URL(user["homepage"]);
+	homepage = juce::URL(user["homepage"]);
 	avatar = user["avatar"];
 	dateJoined = user["date_joined"];
 	numSounds = user["num_sounds"];
-	sounds = URL(user["sounds"]);
+	sounds = juce::URL(user["sounds"]);
 	numPacks = user["num_packs"];
-	packs = URL(user["packs"]);
+	packs = juce::URL(user["packs"]);
 	numPosts = user["num_posts"];
 	numComments = user["num_comments"];
-	bookmarks = URL(user["bookmarks"]);
+	bookmarks = juce::URL(user["bookmarks"]);
 
 }
 
@@ -900,29 +900,29 @@ FSPack::FSPack()
 {
 }
 
-FSPack::FSPack(var pack)
+FSPack::FSPack(juce::var pack)
 {
 	id = pack["id"];
-	url = URL(pack["url"]);
+	url = juce::URL(pack["url"]);
 	description = pack["description"];
 	created = pack["created"];
 	name = pack["name"];
 	username = pack["username"];
 	numSounds = pack["num_sounds"];
-	sounds = URL(pack["sounds"]);
+	sounds = juce::URL(pack["sounds"]);
 	numDownloads = pack["num_downloads"];
 }
 
-String FSPack::getID()
+juce::String FSPack::getID()
 {
 	return id;
 }
 
-Array<FSSound> SoundList::toArrayOfSounds()
+juce::Array<FSSound> SoundList::toArrayOfSounds()
 {
 
 
-	Array<FSSound> arrayOfSounds;
+	juce::Array<FSSound> arrayOfSounds;
 
 	for (int i = 0; i < results.size(); i++)
 	{

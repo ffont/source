@@ -1,0 +1,9 @@
+Flask
+requests
+oscpy
+lxml
+bs4
+numpy==1.19.5
+Pillow
+scipy
+websocket-client

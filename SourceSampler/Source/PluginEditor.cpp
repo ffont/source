@@ -16,16 +16,14 @@
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    #if !ELK_BUILD
-    browser.setEditorPointer(this);
-    addAndMakeVisible(browser);
-    int port = processor.getServerInterfaceHttpPort();
-    #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-    browser.goToURL("https://localhost:" + (String)port  + "/");
-    #else
-    browser.goToURL("http://localhost:" + (String)port  + "/");
-    #endif
-    #endif
+    // Copy bundled HTML plugin file to dcuments folder so we can load it
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    if (!baseLocation.exists()){
+        baseLocation.createDirectory();
+    }
+    juce::File uiHtmlFile = baseLocation.getChildFile("ui_plugin_ws").withFileExtension("html");
+    uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_html, BinaryData::ui_plugin_ws_htmlSize);
+    uiHTMLFilePath = uiHtmlFile.getFullPathName();
     
     openInBrowser.addListener(this);
     openInBrowser.setButtonText("Open UI in browser");
@@ -42,9 +40,15 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
                         "your browser. Close your browser, come back to this window and click \"Reload UI\". You should now be "
                         "seeing the plugin UI normally. Once the certificate is trusted, you should not be seeing this problem again "
                         "when using Source in the same computer. If this does not fix the problem but you can see the UI in the browser, "
-                        "you can use the UI from there (Source will work fine).", dontSendNotification);
-    explanation.setJustificationType(Justification::topLeft);
+                        "you can use the UI from there (Source will work fine).", juce::dontSendNotification);
+    explanation.setJustificationType(juce::Justification::topLeft);
     addAndMakeVisible (explanation);
+    
+    #if !ELK_BUILD
+        browser.setEditorPointer(this);
+        addAndMakeVisible(browser);
+        browser.goToURL(makeUIURL().toString(true));
+    #endif
     
     setSize(10, 10);  // This is reset later
     setResizable(false, false);
@@ -57,34 +61,36 @@ SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
     #endif
 }
 
-void SourceSamplerAudioProcessorEditor::buttonClicked (Button* button){
+juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
+    #if USE_SSL_FOR_HTTP_AND_WS
+    juce::String useWss = "1";
+    #else
+    juce::String useWss = "0";
+    #endif
+    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.getServerInterfaceHttpPort());
+    DBG("> Satic UI URL: " << url.toString(true));
+    return url;
+}
+
+void SourceSamplerAudioProcessorEditor::buttonClicked (juce::Button* button){
     if (button == &openInBrowser)
     {
-        int port = processor.getServerInterfaceHttpPort();
-        #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-        URL("https://localhost:" + (String)port + "/").launchInDefaultBrowser();
-        #else
-        URL("http://localhost:" + (String)port + "/").launchInDefaultBrowser();
-        #endif
+        makeUIURL().launchInDefaultBrowser();
+     
     } else if (button == &reloadUI)
     {
         #if !ELK_BUILD
             hadBrowserError = false; // Reset browser error property
-            int port = processor.getServerInterfaceHttpPort();
-            #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            browser.goToURL("https://localhost:" + (String)port  + "/");
-            #else
-            browser.goToURL("http://localhost:" + (String)port  + "/");
-            #endif
+            browser.goToURL(makeUIURL().toString(true));
             resized();
         #endif
     }
 }
 
 //==============================================================================
-void SourceSamplerAudioProcessorEditor::paint (Graphics& g)
+void SourceSamplerAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 }
 
 void SourceSamplerAudioProcessorEditor::resized()
@@ -93,8 +99,14 @@ void SourceSamplerAudioProcessorEditor::resized()
     if (!hadBrowserError){
         float width = 933;
         float height = 800;
+        #if JUCE_DEBUG
+        setSize(width, height + 20);
+        openInBrowser.setBounds(0, 0, 150, 20);
+        browser.setBounds(0, 20, width, height);
+        #else
         setSize(width, height);
-        browser.setBounds(getLocalBounds());
+        browser.setBounds(0, 0, width, height);
+        #endif
     } else {
         browser.setBounds(0, 0, 0, 0);
         explanation.setBounds(10, 10, 590, 150);
