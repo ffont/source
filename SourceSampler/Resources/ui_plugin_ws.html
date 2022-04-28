@@ -96,7 +96,6 @@
             margin-right: 2px;
             vertical-align: top;
             border-radius: 5px;
-            width: 269px;
         }
         
         .voice {
@@ -405,7 +404,12 @@
             }
 
             getSoundSamplerSounds(sound){  // sound = sound xml state
-                return sound.getElementsByTagName('SOUND_SAMPLE');
+                if (sound !== null){
+                    return sound.getElementsByTagName('SOUND_SAMPLE');
+                } else {
+                    return [];
+                }
+                
             }
 
             getFirstSoundSampleSound(sound) {  // sound = sound xml state
@@ -451,12 +455,20 @@
             // Util methods to change things of the state
 
             setSoundParameter(soundUUID, sliderElement){
+                if (soundUUID === ''){
+                    // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
+                    // corresponding state updates
+                    updateSliderLabel(sliderElement);
+                } 
                 this.sendMessageToPlugin('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)])
             }
 
             setSoundParameterInt(soundUUID, sliderElement){
-                sliderElement.setAttribute("data-lastMoved", Date.now()/1000);
-                updateSliderLabel(sliderElement);
+                if (soundUUID === ''){
+                    // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
+                    // corresponding state updates
+                    updateSliderLabel(sliderElement);
+                } 
                 this.sendMessageToPlugin('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value])
             }
 
@@ -950,6 +962,7 @@
 
             // Add the "all sounds" sound card
             document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
+            updateAllSliderLabels(); // So labels for all sounds section appear
 
             // Update all the section with individual sound cards
             updateSoundsSectionUI();
