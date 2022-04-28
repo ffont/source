@@ -527,6 +527,11 @@
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
                 this.sendMessageToPlugin('/find_sounds', ['add', query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
             }
+
+            reapplyLayout(){
+                var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+                this.sendMessageToPlugin('/reapply_layout', [noteMappingType]);
+            }
                            
             clearAllSounds(){
                 this.sendMessageToPlugin('/clear_all_sounds', [])
@@ -1184,7 +1189,7 @@
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
         Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
         Sound length:<input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
-        Note layout type: <select class="select-css" name="noteMappingType">
+        Note layout type: <select class="select-css" name="noteMappingType" onchange="ss.reapplyLayout()">
             <option value="0">&nbsp;&nbsp;contiguous&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
             <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
         </select><br>
