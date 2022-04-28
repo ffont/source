@@ -66,7 +66,6 @@
         }
     
         .cards_container_slide {
-            overflow: scroll;
             white-space: nowrap;
             vertical-align: top;
             margin-left: 4px;
@@ -77,14 +76,15 @@
             display:inline-block;
             padding:10px;
             background-color:#303030;
-            margin:5px;
+            margin:4px;
             vertical-align: top;
             border-radius: 5px;
         }
 
         .controls_card_top {
             height: 200px;
-            overflow: scroll;
+            overflow: hidden;
+            margin-right: 2px;
         }
 
         #allSoundsEditor {
@@ -96,6 +96,7 @@
             margin-right: 2px;
             vertical-align: top;
             border-radius: 5px;
+            width: 269px;
         }
         
         .voice {
@@ -285,6 +286,14 @@
                         syncUIWithVolatileState();
 
                     } else if (msgType === "/state_update"){
+
+                        if (ss.state === undefined){
+                            // If no state is present, ignore stat update messages as these will fail
+                            // also request full state to get in sync again
+                            self.requestFullState();
+                            return;                            
+                        }
+
                         const rawDataParts = rawData.split(';');
                         const updateType = rawDataParts[0];
                         const updateId = parseInt(rawDataParts[1], 10);
