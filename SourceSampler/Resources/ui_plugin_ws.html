@@ -248,7 +248,10 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        
+        const autoUIUpdateInterval = 0; // 3000
+        let lastUIAction = 0;
+
+
         class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
 
             constructor(wsPort, useWss) {
@@ -482,6 +485,7 @@
             // Util methods to change things of the state
 
             setSoundParameter(soundUUID, sliderElement){
+                saveCurrentUserActionTime();
                 if (soundUUID === ''){
                     // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
                     // corresponding state updates
@@ -491,6 +495,7 @@
             }
 
             setSoundParameterInt(soundUUID, sliderElement){
+                saveCurrentUserActionTime();
                 if (soundUUID === ''){
                     // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
                     // corresponding state updates
@@ -675,10 +680,36 @@
 
             // Start state synchronizer
             ss = new StateSynchronizer(wsPort, useWss);
-            
+
+            // Start auto UI sync timer
+            // This timer triggers re-updates of the UI regularly if there has not been any recent user action
+            // In theory this should not be necessary, but because there might be some sync bugs here and there
+            // I opted to include this "brute force" method to make sure the UI is properly in sync
+            if (autoUIUpdateInterval > 0){
+                setInterval(() => {
+                    const noRecentUserActions = msSinceLastUserAction() > 2000;
+                    let enteringNewMidiMapping = false;
+                    document.querySelectorAll('*[id^="newMappingPlaceholder_"]').forEach(element => {
+                        if (element.innerHTML !== ""){
+                            enteringNewMidiMapping = true;
+                        }
+                    });
+                    if ((noRecentUserActions) && (!enteringNewMidiMapping)){
+                        ss.requestFullState();
+                    }
+                }, autoUIUpdateInterval);
+            }
         });
 
         // Util methods
+
+        function saveCurrentUserActionTime(){
+            lastUIAction = (new Date()).getTime();
+        }
+
+        function msSinceLastUserAction(){
+            return (new Date()).getTime() - lastUIAction;
+        }
 
         function linToExp(x){
             return (Math.pow(x,expStrength));

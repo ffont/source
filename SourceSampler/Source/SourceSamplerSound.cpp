@@ -268,17 +268,20 @@ bool SourceSound::isEnabled() {
 
 void SourceSound::disableSound(){
     // Trigger stop all currently active notes for that sound and set timestamp so sound gets deleted async
-    enabled = false;
-    disabledTime = juce::Time::getMillisecondCounterHiRes();
-    
-    // Stop all notes currently being played from that sound
-    for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
-        auto* voice = getGlobalContext().sampler->getVoice(i);
-        if (voice != nullptr){
-            if (voice->isVoiceActive()){
-                auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
-                if (currentlyPlayingSound->getSourceSound()->getUUID() == getUUID()){
-                    voice->stopNote(0.0f, false);
+    // If sound already disabled, don't trigger deletion again
+    if (enabled) {
+        enabled = false;
+        disabledTime = juce::Time::getMillisecondCounterHiRes();
+        
+        // Stop all notes currently being played from that sound
+        for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
+            auto* voice = getGlobalContext().sampler->getVoice(i);
+            if (voice != nullptr){
+                if (voice->isVoiceActive()){
+                    auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
+                    if (currentlyPlayingSound->getSourceSound()->getUUID() == getUUID()){
+                        voice->stopNote(0.0f, false);
+                    }
                 }
             }
         }
