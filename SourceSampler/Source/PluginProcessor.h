@@ -114,7 +114,8 @@ public:
     public:
         QueryMakerThread(SourceSamplerAudioProcessor& p) : juce::Thread ("QueryMakerThread"), processor (p){}
         
-        void setQueryParameters(const juce::String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
+        void setQueryParameters(const juce::String& _addReplaceOrReplaceSound, const juce::String& _query, int _numSounds, float _minSoundLength, float _maxSoundLength){
+            addReplaceOrReplaceSound = _addReplaceOrReplaceSound;
             query = _query;
             numSounds = _numSounds;
             minSoundLength = _minSoundLength;
@@ -123,9 +124,10 @@ public:
         
         void run() override
         {
-            processor.makeQueryAndLoadSounds(query, numSounds, minSoundLength, maxSoundLength);
+            processor.makeQueryAndLoadSounds(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
         }
         SourceSamplerAudioProcessor& processor;
+        juce::String addReplaceOrReplaceSound;
         juce::String query;
         int numSounds;
         float minSoundLength;
@@ -133,7 +135,7 @@ public:
     };
     QueryMakerThread queryMakerThread;
     //==============================================================================
-    void makeQueryAndLoadSounds(const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);
+    void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void removeSound(const juce::String& soundUUID);
     void removeAllSounds();
     void addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,

@@ -119,7 +119,6 @@
 		5CF30F550442F175107D86F0 /* include_juce_audio_formats.mm */ /* include_juce_audio_formats.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_formats.mm; path = ../../JuceLibraryCode/include_juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
 		63E83AC6DCE44B9FB257A26D /* twine_internal.h */ /* twine_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = twine_internal.h; path = ../../3rdParty/twine/src/twine_internal.h; sourceTree = SOURCE_ROOT; };
 		65A0D5DA36D845821F5E8616 /* include_juce_audio_plugin_client_VST2.cpp */ /* include_juce_audio_plugin_client_VST2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_VST2.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_VST2.cpp; sourceTree = SOURCE_ROOT; };
-		680555E5E194E7C02FA99468 /* ui_plugin.html */ /* ui_plugin.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = ui_plugin.html; path = ../../Resources/ui_plugin.html; sourceTree = SOURCE_ROOT; };
 		6890C3E0045A04E713CAA3BB /* SourceSamplerSynthesiser.cpp */ /* SourceSamplerSynthesiser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SourceSamplerSynthesiser.cpp; path = ../../Source/SourceSamplerSynthesiser.cpp; sourceTree = SOURCE_ROOT; };
 		6A463BCE492C7AF8B1EE0AF4 /* juce_audio_utils */ /* juce_audio_utils */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_utils; path = ../../3rdParty/JUCE/modules/juce_audio_utils; sourceTree = SOURCE_ROOT; };
 		6D32FB9D9274AC704883201F /* AudioUnit.framework */ /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
@@ -431,7 +430,6 @@
 		CC7523ACA440D9FDC6A9E7C7 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				680555E5E194E7C02FA99468,
 				573CAC9016BECDC2EBAF3BF3,
 				CAA46233BEAE6C5D01EBA25B,
 			);

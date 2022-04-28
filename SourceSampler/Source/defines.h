@@ -66,7 +66,7 @@
 // Actions to trigger in plugin
 #define ACTION_SAVE_PRESET "/save_preset"
 #define ACTION_LOAD_PRESET "/load_preset"
-#define ACTION_NEW_QUERY "/new_query"
+#define ACTION_FIND_SOUNDS "/find_sounds"
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
 #define ACTION_GET_STATE "/get_state"

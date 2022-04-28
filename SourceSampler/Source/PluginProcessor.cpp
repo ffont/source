@@ -670,16 +670,17 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             sound->downloadProgressUpdate(targetFileLocation, downloadedPercentage);
         }
         
-    } else if (actionName == ACTION_NEW_QUERY){
-        juce::String query = parameters[0];
-        int numSounds = parameters[1].getIntValue();
-        float minSoundLength = parameters[2].getFloatValue();
-        float maxSoundLength = parameters[3].getFloatValue();
-        int noteMappingType = parameters[4].getFloatValue();
+    } else if (actionName == ACTION_FIND_SOUNDS){
+        juce::String addReplaceOrReplaceSound = parameters[0];
+        juce::String query = parameters[1];
+        int numSounds = parameters[2].getIntValue();
+        float minSoundLength = parameters[3].getFloatValue();
+        float maxSoundLength = parameters[4].getFloatValue();
+        int noteMappingType = parameters[5].getFloatValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         
         // Trigger query in a separate thread so that we don't block UI
-        queryMakerThread.setQueryParameters(query, numSounds, minSoundLength, maxSoundLength);
+        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
         queryMakerThread.startThread(0);  // Lowest thread priority
         
     } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
@@ -908,12 +909,20 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
+void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
     if (isQuerying){
         // If already querying, don't run another query
         DBG("Skip query as already querying...");
         return;
+    }
+    
+    juce::String soundUUIDToReplace = "";
+    if ((addReplaceOrReplaceSound != "add") && (addReplaceOrReplaceSound != "replace")){
+        // if action is not "add" or "replace", then it is "replace one" and the contents of this variable are the sound UUID to replace
+        // in that case, make sure numSounds is limited to 1 as this is the number of sounds we need to replace
+        numSounds = 1;
+        soundUUIDToReplace = addReplaceOrReplaceSound;
     }
     
     FreesoundClient client(FREESOUND_API_KEY);
@@ -935,8 +944,10 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& tex
         // Move this elsewhere in a helper function (?)
         juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
         
-        // Clear all loaded sounds
-        removeAllSounds();
+        if (addReplaceOrReplaceSound == "replace"){
+            // If action is to replace all sounds, then we need to first clear all loaded sounds
+            removeAllSounds();
+        }
 
         // Load the first nSounds from the found ones
         int nNotesPerSound = 128 / nSounds;
@@ -961,7 +972,8 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& tex
             }
             
             // Create sound
-            addOrReplaceSoundFromBasicSoundProperties("", soundsFound[i], midiNotes, midiRootNote);
+            // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
+            addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote);
         }
     } else {
         DBG("Query got no results...");
