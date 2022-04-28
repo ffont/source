@@ -974,6 +974,11 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
             // Create sound
             // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
             addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote);
+            
+            if (addReplaceOrReplaceSound == "add"){
+                // If the operation was adding sounds, recompute mapping layout as otherwise new sounds might overlap with previous
+                reapplyNoteLayout(noteLayoutType);
+            }
         }
     } else {
         DBG("Query got no results...");
