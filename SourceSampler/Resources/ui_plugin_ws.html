@@ -217,7 +217,18 @@
 
     <script>
 
-        class StateSynchronizer {
+        let ss = undefined;  // Will keep source plugin state and has util methods to interact with it
+        let httpPort = undefined;
+        let useHttps = undefined;
+        let hostname = undefined;
+        
+        var expStrength = 2;  // For sliders
+
+        window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
+        const audioContext = new AudioContext();
+
+        
+        class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
 
             constructor(wsPort, useWss) {
                 this.state = undefined;
@@ -279,11 +290,11 @@
                         const updateId = parseInt(rawData.slice(0, updateIdSeparatorPosition), 10);
                         const dataToParse = rawData.slice(updateIdSeparatorPosition + 1, rawData.length);
                         self.state = self.parser.parseFromString(dataToParse, "text/xml");
-                        syncUIWithState();
+                        updateFullUI();
 
                     } else if (msgType === "/volatile_state"){
                         self.volatileState = self.parser.parseFromString(rawData, "text/xml");
-                        syncUIWithVolatileState();
+                        updateVolatileUI();
 
                     } else if (msgType === "/state_update"){
 
@@ -344,7 +355,7 @@
 
                                 // If new sounds or midi cc mappings are added, recreate sounds section
                                 if ((nodeToAdd.tagName === "MIDI_CC_MAPPING") || (nodeToAdd.tagName === "SOUND")){
-                                    syncUISoundsSectionWithState();
+                                    updateSoundsSectionUI();
                                 }
                             }
                             
@@ -389,8 +400,32 @@
 
             // Util methods to get state info
 
+            getSounds(){
+                return ss.state.getElementsByTagName('SOUND');
+            }
+
+            getSoundSamplerSounds(sound){  // sound = sound xml state
+                return sound.getElementsByTagName('SOUND_SAMPLE');
+            }
+
+            getFirstSoundSampleSound(sound) {  // sound = sound xml state
+                return this.getSoundSamplerSounds(sound)[0];
+            }
+
+            getSoundStateFromSoundUUID(soundUUID){
+                return ss.state.querySelector("[uuid='" + soundUUID + "']");
+            }
+
+            getMidiMappingStateFromMappingUUID(mappingUUID){
+                return ss.state.querySelector("[uuid='" + mappingUUID + "']");
+            }
+
+            getSoundMidiMappings(sound){  // sound = sound xml state
+                return sound.getElementsByTagName('MIDI_CC_MAPPING');
+            }
+
             findSoundIdxFromSoundUUID(soundUUID){            
-                var sounds = this.state.getElementsByTagName('SOUND');
+                var sounds = ss.getSounds();
                 for (var i=0; i<sounds.length; i++) {
                     if (sounds[i].getAttribute("uuid") == soundUUID){
                         return i + 1;
@@ -400,9 +435,9 @@
             }
 
             findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){            
-                var sounds = ss.state.getElementsByTagName('SOUND');
+                var sounds = ss.getSounds();
                 for (var i=0; i<sounds.length; i++) {
-                    var samplerSounds = sounds[i].getElementsByTagName('SOUND_SAMPLE');
+                    var samplerSounds = this.getSoundSamplerSounds(sounds[i]);
                     for (var j=0; j<samplerSounds.length; j++) {
                         var samplerSound = samplerSounds[j];
                         if (samplerSound.getAttribute("uuid") == samplerSoundUUID){
@@ -535,17 +570,11 @@
 
         }
 
-        
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioContext = new AudioContext();
-        let currentBuffer = null;
-
-        let ss = undefined;
-        let httpPort = undefined;
-        let useHttps = undefined;
-        let hostname = undefined;
-  
         document.addEventListener("DOMContentLoaded", function () {
+
+            // Main funciont: reads some configuration properties form the URL and starte the StateSynchronizer
+            // Once the StateSyncronizer is started, it will start to receive updates when changes happen in
+            // the plugin's state. These updates will triger renders of appropriate parts of the UI.
 
             const queryString = window.location.search;
             const urlParams = new URLSearchParams(queryString);
@@ -585,6 +614,79 @@
             
         });
 
+        // Util methods
+
+        function linToExp(x){
+            return (Math.pow(x,expStrength));
+        }
+
+        function expToLin(x){
+            return (Math.pow(x,1/expStrength));
+        }
+
+        function sliderShouldBehaveExponentially(sliderElement){
+            var name = sliderElement.name;
+            if (name != null){
+                if ((name.toLowerCase().indexOf("attack") > -1) ||
+                    (name.toLowerCase().indexOf("decay") > -1) ||
+                    (name.toLowerCase().indexOf("release") > -1) ||
+                    (name == "filterCutoff")
+                ){
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        function getProcessedSoundParameterValuLinToExp(sliderElement){
+            var value = parseFloat(sliderElement.value, 10);
+            if (sliderShouldBehaveExponentially(sliderElement) == true){
+                return linToExp(value/sliderElement.max)*sliderElement.max;
+            } else {
+                return value;
+            }
+        }
+
+        function getProcessedSoundParameterValueExpToLin(sliderElement, valueRaw){
+            if (sliderShouldBehaveExponentially(sliderElement) == true){
+                return expToLin(valueRaw/sliderElement.max)*sliderElement.max;
+            } else {
+                return valueRaw;
+            }
+        }
+        
+        function getMidiControllableParameterNames(){
+            // --> Start auto-generated code B
+            parameterNames = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
+            // --> End auto-generated code B
+            return parameterNames;
+        }
+        
+        function getAllSoundParameterNames(){
+            // --> Start auto-generated code C
+            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
+            // --> End auto-generated code C
+            return parameterNames;
+        }
+
+        function isSoundParameter(parameterName){
+            return getAllSoundParameterNames().indexOf(parameterName) > -1;
+        }
+        
+        function getAllSoundParameterTypes(){
+            // --> Start auto-generated code D
+            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
+            // --> End auto-generated code D
+            return parameterTypes;
+        }
+
+        function getParameterType(parameterName){
+            return getAllSoundParameterTypes()[getAllSoundParameterNames().indexOf(parameterName)];
+        }
+
+        // Methods to update different parts of the UI
+
         function updateAllSliderLabels(){
             var elements = document.querySelectorAll("input[type=range]")
             for (var i = 0, sliderElement; sliderElement = elements[i++];) {
@@ -613,87 +715,6 @@
                     labelElement.innerHTML = getProcessedSoundParameterValuLinToExp(sliderElement).toFixed(2);
                 }
             }
-        }
-
-        var expStrength = 2;
-
-        function linToExp(x){
-            return (Math.pow(x,expStrength));
-        }
-
-        function expToLin(x){
-            return (Math.pow(x,1/expStrength));
-        }
-
-        function sliderShouldBehaveExponentially(sliderElement){
-            var name = sliderElement.name;
-            if (name != null){
-                if ((name.toLowerCase().indexOf("attack") > -1) ||
-                    (name.toLowerCase().indexOf("decay") > -1) ||
-                    (name.toLowerCase().indexOf("release") > -1) ||
-                    (name == "filterCutoff")
-                ){
-                    return true;
-                }
-            }
-            
-            return false;
-        }
-
-        function updateAllSoundCardNumbers() {
-            var sounds = ss.state.getElementsByTagName('SOUND');
-            for (i=0; i<sounds.length; i++) {
-                var soundUUID = sounds[i].getAttribute('uuid');
-                document.getElementById(soundUUID + '_idx').innerHTML = i + 1;
-            }
-        }
-
-        function getProcessedSoundParameterValuLinToExp(sliderElement){
-            var value = parseFloat(sliderElement.value, 10);
-            if (sliderShouldBehaveExponentially(sliderElement) == true){
-                return linToExp(value/sliderElement.max)*sliderElement.max;
-            } else {
-                return value;
-            }
-        }
-
-        function getProcessedSoundParameterValueExpToLin(sliderElement, valueRaw){
-            if (sliderShouldBehaveExponentially(sliderElement) == true){
-                return expToLin(valueRaw/sliderElement.max)*sliderElement.max;
-            } else {
-                return valueRaw;
-            }
-        }
-
-        // UI generation
-
-        function getMidiControllableParameterNames(){
-            // --> Start auto-generated code B
-            parameterNames = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
-            // --> End auto-generated code B
-            return parameterNames;
-        }
-        
-        function getAllSoundParameterNames(){
-            // --> Start auto-generated code C
-            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
-            // --> End auto-generated code C
-            return parameterNames;
-        }
-
-        function isSoundParameter(parameterName){
-            return getAllSoundParameterNames().indexOf(parameterName) > -1;
-        }
-        
-        function getAllSoundParameterTypes(){
-            // --> Start auto-generated code D
-            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
-            // --> End auto-generated code D
-            return parameterTypes;
-        }
-
-        function getParameterType(parameterName){
-            return getAllSoundParameterTypes()[getAllSoundParameterNames().indexOf(parameterName)];
         }
 
         function addNewMIDIMappingEditor(soundUUID) {
@@ -730,7 +751,7 @@
         }
 
         function updateMIDIMappingEditor(mappingUUID){
-            var mapping = ss.state.querySelector("[uuid='" + mappingUUID + "']");
+            var mapping = ss.getMidiMappingStateFromMappingUUID(mappingUUID);
             var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
             var name = mapping.getAttribute('parameterName');
             var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
@@ -786,10 +807,17 @@
             return html;
         }
 
+        function updateAllSoundCardNumbers() {
+            var sounds = ss.getSounds();
+            for (i=0; i<sounds.length; i++) {
+                var soundUUID = sounds[i].getAttribute('uuid');
+                document.getElementById(soundUUID + '_idx').innerHTML = i + 1;
+            }
+        }
+
         function createCardForSound(sound){ //sound = xml element from state
             var soundUUID = sound.getAttribute('uuid');
-            var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
-            // TODO: use soundUUID as id and not the complex one
+            var soundID = ss.getFirstSoundSampleSound(sound).getAttribute('soundId');
             html = '<div class="controls_card" id="' + soundUUID + '" data-sound-sample-sound-id="' + soundID + '">';
             html += '<div id="soundCardInfo_' + soundUUID + '"></div>';
             html += '<div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
@@ -801,16 +829,17 @@
         }
     
         function updateCardForSound(soundUUID){
-            var sound = ss.state.querySelector("[uuid='" + soundUUID + "']");
+            var sound = ss.getSoundStateFromSoundUUID(soundUUID);
+            var sampleSound = ss.getFirstSoundSampleSound(sound);
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
-            var downloadProgress = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('downloadProgress');
-            var soundID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('soundId');
-            var sourceSamplerSoundUUID = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('uuid');
+            var downloadProgress = sampleSound.getAttribute('downloadProgress');
+            var soundID = sampleSound.getAttribute('soundId');
+            var sourceSamplerSoundUUID = sampleSound.getAttribute('uuid');
             if (sound.getAttribute("allSoundsLoaded") == "1"){
                 drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
             }
-            var soundName = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
-            var licenseURL = sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('name');
+            var soundName = sampleSound.getAttribute('name');
+            var licenseURL = sampleSound.getAttribute('name');
             if ((downloadProgress != 100) && (soundID != -1)){
                 // Sound not yet loaded, show download progress
                 idx = 
@@ -832,7 +861,7 @@
                     else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
                     else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
                     else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-                    html += parseFloat(sound.getElementsByTagName('SOUND_SAMPLE')[0].getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+                    html += parseFloat(sampleSound.getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
                     soundInfoElement.innerHTML = html;
                 }
                 
@@ -850,7 +879,7 @@
 
         function updateSoundParameter(soundUUID, parameterName, parameterValue){
             if (parameterValue === undefined){
-                var sound = ss.state.querySelector("[uuid='" + soundUUID + "']");
+                var sound =  ss.getSoundStateFromSoundUUID(soundUUID);
                 parameterValue = sound.getAttribute(parameterName);
             }
             
@@ -880,13 +909,13 @@
             document.getElementById('0_freezeMode').value = presetState.getAttribute('reverbFreezeMode');
         }
 
-        function syncUISoundsSectionWithState(){
+        function updateSoundsSectionUI(){
             // Create individual sound cards
-            var soundElements = ss.state.getElementsByTagName('SOUND');
+            var sounds = ss.getSounds();
             var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
             individualSoundEditorsElement.innerHTML = '';
-            for (var i = 0; i < soundElements.length; i++) {
-                var sound = soundElements[i];
+            for (var i = 0; i < sounds.length; i++) {
+                var sound = sounds[i];
                 var soundUUID = sound.getAttribute('uuid');
                 
                 // Create "empty sound cards"
@@ -904,7 +933,7 @@
                 }
 
                 // Update MIDI CC mappings
-                var samplerSoundMappings = sound.getElementsByTagName('MIDI_CC_MAPPING');
+                var samplerSoundMappings = ss.getSoundMidiMappings(sound);
                 var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
                 for (var j = 0; j < samplerSoundMappings.length; j++) {
                     var mapping = samplerSoundMappings[j];
@@ -915,16 +944,21 @@
             } 
         }
         
-
-        function syncUIWithState(){
-            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
-            
+        function updateFullUI(){
             // Set the main preset parameters to the values form the state
             updateMainPresetParameters();
-            syncUISoundsSectionWithState();
+
+            // Add the "all sounds" sound card
+            document.getElementById('allSoundsEditor').innerHTML = '<h4>All sounds</h4><p style="margin-bottom: 19px;">Editing these contorls will affect all loaded sounds</p>' + generateSoundEditControls("");
+
+            // Update all the section with individual sound cards
+            updateSoundsSectionUI();
         }
 
-        function syncUIWithVolatileState(){
+        function updateVolatileUI(){
+            // Update the audio meters and the voice allocation section
+            // Also update other things like query status
+
             var VolatileState = ss.volatileState.getElementsByTagName('VOLATILE_STATE')[0];
             
             var isQuerying = VolatileState.getAttribute('isQuerying') != "0";
