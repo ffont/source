@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 
 from system_stats import system_stats
-from helpers import get_platform, StateNames, Timer, START_ANIMATION_DURATION, frame_from_start_animation
+from helpers import get_platform, PlStateNames, Timer, START_ANIMATION_DURATION, frame_from_start_animation
 try:
     from elkpy import sushicontroller as sc
     from elkpy import midicontroller as mc
@@ -11,10 +11,11 @@ except ImportError:
     # Not running in ELK platform, no problem as ELK-specific code won't be run
     pass
 try:
-    from elk_ui_custom import ElkUIController, N_LEDS
+    from elk_ui_custom import ElkUIController, N_LEDS, N_FADERS
 except ModuleNotFoundError:
     # Not running in ELK platform, no problem as ELK-specific code won't be run
     N_LEDS = 9
+    N_FADERS = 4
 
 
 SOURCE_TRACK_ID = 0
@@ -276,15 +277,15 @@ class ElkBridge(object):
         source_extra_state = {}
 
         # Check plugin connection status
-        source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK] = not self.source_plugin_interface.sss.plugin_may_be_down()
-        if not source_extra_state[StateNames.CONNECTION_WITH_PLUGIN_OK]:
+        source_extra_state[PlStateNames.CONNECTION_WITH_PLUGIN_OK] = not self.source_plugin_interface.sss.plugin_may_be_down()
+        if not source_extra_state[PlStateNames.CONNECTION_WITH_PLUGIN_OK]:
             self.ui_state_manager.show_global_message("Pl. disconnected :(")
 
         # Check network connection status
-        source_extra_state[StateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
+        source_extra_state[PlStateNames.NETWORK_IS_CONNECTED] = '(R)' not in system_stats.get("network_ssid", "-") and system_stats.get("network_ssid", "-").lower() != 'no network'
 
         # Add other system stats
-        source_extra_state[StateNames.SYSTEM_STATS] = system_stats
+        source_extra_state[PlStateNames.SYSTEM_STATS] = system_stats
 
         # Send processed state to state manager
         self.source_plugin_interface.update_source_extra_state(source_extra_state)

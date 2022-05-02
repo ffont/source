@@ -1,7 +1,9 @@
+import os
+
 from collections import defaultdict
 
 from state_synchronizer import SourceStateSynchronizer
-from helpers import StateNames, state_names_source_state_hierarchy_map, sound_parameters_info_dict
+from helpers import PlStateNames, state_names_source_state_hierarchy_map, sound_parameters_info_dict
 
 
 class SourcePluginInterface(object):
@@ -23,7 +25,7 @@ class SourcePluginInterface(object):
 
     def get_source_sound_idx_from_source_sampler_sound_uuid(self, source_sampler_sound_uuid):
         for sound_idx, sound in enumerate(self.sss.state_soup.find_all("SOUND".lower())):
-            if self.get_sound_property(sound_idx, StateNames.SOURCE_SAMPLER_SOUND_UUID, "") == source_sampler_sound_uuid:
+            if self.get_sound_property(sound_idx, PlStateNames.SOURCE_SAMPLER_SOUND_UUID, "") == source_sampler_sound_uuid:
                 return sound_idx
         return -1
    
@@ -48,10 +50,10 @@ class SourcePluginInterface(object):
         hierarchy_location = state_names_source_state_hierarchy_map.get(property_name, 'sound')
 
         if 'name_' in property_name:
-            property_name = StateNames.NAME
+            property_name = PlStateNames.NAME
 
         if 'uuid_' in property_name:
-            property_name = StateNames.UUID
+            property_name = PlStateNames.UUID
 
         source_state = self.sss.state_soup
         try:
@@ -87,16 +89,16 @@ class SourcePluginInterface(object):
             return return_with_type(sound_sample_state.get(property_name.lower(), default))
         
         elif hierarchy_location == 'computed':
-            if property_name == StateNames.NUM_SOUNDS:
+            if property_name == PlStateNames.NUM_SOUNDS:
                 return len(sounds_state)
             
-            elif property_name == StateNames.NUM_SOUNDS_DOWNLOADING:
-                return len([sound for sound in sounds_state if float(sound.find_all("SOUND_SAMPLE".lower())[0].get(StateNames.SOUND_DOWNLOAD_PROGRESS.lower(), 100)) < 100])
+            elif property_name == PlStateNames.NUM_SOUNDS_DOWNLOADING:
+                return len([sound for sound in sounds_state if float(sound.find_all("SOUND_SAMPLE".lower())[0].get(PlStateNames.SOUND_DOWNLOAD_PROGRESS.lower(), 100)) < 100])
             
-            elif property_name == StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER:
-                return len([sound for sound in sounds_state if sound.get(StateNames.SOUND_LOADED_IN_SAMPLER.lower(), '1') == '1'])
+            elif property_name == PlStateNames.NUM_SOUNDS_LOADED_IN_SAMPLER:
+                return len([sound for sound in sounds_state if sound.get(PlStateNames.SOUND_LOADED_IN_SAMPLER.lower(), '1') == '1'])
             
-            elif property_name == StateNames.SOUND_SLICES:
+            elif property_name == PlStateNames.SOUND_SLICES:
                 slices = []
                 try:
                     analysis_onsets = sound_sample_state.find_all("ANALYSIS".lower())[0].find_all("onsets".lower())[0]
@@ -106,7 +108,7 @@ class SourcePluginInterface(object):
                     pass
                 return slices
             
-            elif property_name == StateNames.REVERB_SETTINGS:
+            elif property_name == PlStateNames.REVERB_SETTINGS:
                 return [
                     float(preset_state.get('reverbRoomSize'.lower(), 0.0)),
                     float(preset_state.get('reverbDamping'.lower(), 0.0)),
@@ -116,7 +118,7 @@ class SourcePluginInterface(object):
                     float(preset_state.get('reverbFreezeMode'.lower(), 0.0)),
                 ]
 
-            elif property_name == StateNames.SOUND_MIDI_CC_ASSIGNMENTS:
+            elif property_name == PlStateNames.SOUND_MIDI_CC_ASSIGNMENTS:
                 # Concoslidate MIDI CC mapping data into a dict
                 # NOTE: We use some complex logic here in order to allow several mappings with the same CC#/Parameter name
                 processed_sound_midi_cc_info = {}
@@ -127,14 +129,14 @@ class SourcePluginInterface(object):
                     parameter_name = midi_cc['parameterName'.lower()]
                     label = 'CC#{}->{}'.format(cc_number, sound_parameters_info_dict[parameter_name][2])  # Be careful, if sound_parameters_info_dict structure changes, this won't work
                     processed_sound_midi_cc_info_list_aux.append((label, {
-                        StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
-                        StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
-                        StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['minRange'.lower()]),
-                        StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['maxRange'.lower()]),
-                        StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: midi_cc['uuid'.lower()],
+                        PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: parameter_name,
+                        PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: cc_number,
+                        PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: float(midi_cc['minRange'.lower()]),
+                        PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: float(midi_cc['maxRange'.lower()]),
+                        PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: midi_cc['uuid'.lower()],
                     }))
                 # Sort by assignment random ID and then for label. In this way the sorting will be always consistent
-                processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])
+                processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[1][PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID])
                 processed_sound_midi_cc_info_list_aux = sorted(processed_sound_midi_cc_info_list_aux, key=lambda x:x[0])
                 assignment_labels = [label for label, _ in processed_sound_midi_cc_info_list_aux]
                 added_labels_count = defaultdict(int)
@@ -145,7 +147,6 @@ class SourcePluginInterface(object):
                     processed_sound_midi_cc_info[assignment_label] = assignment_data
                 
                 return processed_sound_midi_cc_info
-                
  
         elif hierarchy_location == 'volatile':
             return self.sss.volatile_state.get(property_name, default)
@@ -157,3 +158,31 @@ class SourcePluginInterface(object):
         if not self.has_state():
             return 0
         return len(self.sss.state_soup.find_all("SOUND".lower()))
+
+    def get_local_audio_files_path(self):
+        if self.has_state():
+            base_path = self.get_property(PlStateNames.SOURCE_DATA_LOCATION, None)
+            if base_path is not None:
+                base_path = os.path.join(base_path, 'local_files')
+                if not os.path.exists(base_path):
+                    os.makedirs(base_path)
+                return base_path
+        return None
+
+    def get_sound_audio_files_path(self):
+        if self.has_state():
+            base_path = self.get_property(PlStateNames.SOUNDS_DATA_LOCATION, None)
+            if base_path is not None:
+                if not os.path.exists(base_path):
+                    os.makedirs(base_path)
+                return base_path
+        return None
+
+    def get_preset_files_path(self):
+        if self.has_state():
+            base_path = self.get_property(PlStateNames.PRESETS_DATA_LOCATION, None)
+            if base_path is not None:
+                if not os.path.exists(base_path):
+                    os.makedirs(base_path)
+                return base_path
+        return None

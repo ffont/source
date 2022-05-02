@@ -130,6 +130,10 @@ def find_sound_by_similarity(sound_id):
         return None
 
 
+def find_sound_by_id(sound_id):
+    return find_sound_by_query(query=sound_id, max_length=99999999999, page_size=1)
+
+
 bookmarks_category_name = "SourceSampler"
 
 def bookmark_sound(sound_id):

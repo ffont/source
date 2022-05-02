@@ -1,6 +1,6 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
-from helpers import StateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state
+from helpers import PlStateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state
 import threading
 import asyncio
 from bs4 import BeautifulSoup
@@ -286,19 +286,19 @@ class SourceStateSynchronizer(object):
         is_querying, midi_received, last_cc_received, last_note_received, voice_activations, voice_sound_idxs, voice_play_positions, audio_levels = volatile_state_string.split(';')
         
         # Is plugin currently querying and downloading?
-        self.volatile_state[StateNames.IS_QUERYING] = is_querying != "0"
+        self.volatile_state[PlStateNames.IS_QUERYING] = is_querying != "0"
 
         # More volatile state stuff
-        self.volatile_state[StateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
-        self.volatile_state[StateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
-        self.volatile_state[StateNames.MIDI_RECEIVED] = "1" == midi_received
-        self.volatile_state[StateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
-        self.volatile_state[StateNames.LAST_NOTE_MIDI_RECEIVED] = int(last_note_received)
+        self.volatile_state[PlStateNames.VOICE_SOUND_IDXS] = [element for element in voice_sound_idxs.split(',') if element]
+        self.volatile_state[PlStateNames.NUM_ACTIVE_VOICES] = sum([int(element) for element in voice_activations.split(',') if element])
+        self.volatile_state[PlStateNames.MIDI_RECEIVED] = "1" == midi_received
+        self.volatile_state[PlStateNames.LAST_CC_MIDI_RECEIVED] = int(last_cc_received)
+        self.volatile_state[PlStateNames.LAST_NOTE_MIDI_RECEIVED] = int(last_note_received)
 
         # Audio meters
         audio_levels = audio_levels.split(',') 
-        self.volatile_state[StateNames.METER_L] = float(audio_levels[0])
-        self.volatile_state[StateNames.METER_R] = float(audio_levels[1])
+        self.volatile_state[PlStateNames.METER_L] = float(audio_levels[0])
+        self.volatile_state[PlStateNames.METER_R] = float(audio_levels[1])
 
     def apply_update(self, update_id, update_type, update_data):
         if self.state_soup is not None:

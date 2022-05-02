@@ -17,6 +17,9 @@ from PIL import ImageFont, Image, ImageDraw
 
 # -- Various
 
+ALLOWED_AUDIO_FILE_EXTENSIONS = ['ogg', 'wav', 'aiff', 'mp3', 'flac']
+
+
 def get_platform():
     if sys.platform == "linux" or sys.platform == "linux2":
         platform = "ELK"
@@ -31,7 +34,7 @@ def get_command_output(command):
 
 # -- Porcessed state names
 
-class StateNames():
+class PlStateNames():
 
     SYSTEM_STATS = 'SYSTEM_STATS'
     CONNECTION_WITH_PLUGIN_OK = 'CONNECTION_WITH_PLUGIN_OK'
@@ -99,65 +102,65 @@ class StateNames():
 
 
 state_names_source_state_hierarchy_map = {
-    StateNames.SYSTEM_STATS: 'extra_state',
-    StateNames.CONNECTION_WITH_PLUGIN_OK: 'extra_state',
-    StateNames.NETWORK_IS_CONNECTED: 'extra_state',
+    PlStateNames.SYSTEM_STATS: 'extra_state',
+    PlStateNames.CONNECTION_WITH_PLUGIN_OK: 'extra_state',
+    PlStateNames.NETWORK_IS_CONNECTED: 'extra_state',
 
-    StateNames.SOURCE_DATA_LOCATION: 'source_state',
-    StateNames.SOUNDS_DATA_LOCATION: 'source_state',
-    StateNames.PRESETS_DATA_LOCATION: 'source_state',
-    StateNames.TMP_DATA_LOCATION: 'source_state',
+    PlStateNames.SOURCE_DATA_LOCATION: 'source_state',
+    PlStateNames.SOUNDS_DATA_LOCATION: 'source_state',
+    PlStateNames.PRESETS_DATA_LOCATION: 'source_state',
+    PlStateNames.TMP_DATA_LOCATION: 'source_state',
 
-    StateNames.PLUGIN_VERSION: 'source_state',
-    StateNames.USE_ORIGINAL_FILES_PREFERENCE: 'source_state',
-    StateNames.MIDI_IN_CHANNEL: 'source_state',
+    PlStateNames.PLUGIN_VERSION: 'source_state',
+    PlStateNames.USE_ORIGINAL_FILES_PREFERENCE: 'source_state',
+    PlStateNames.MIDI_IN_CHANNEL: 'source_state',
 
-    StateNames.LOADED_PRESET_NAME: 'preset',
-    StateNames.LOADED_PRESET_INDEX: 'source_state',
-    StateNames.NUM_VOICES: 'preset',
-    StateNames.NOTE_LAYOUT_TYPE: 'preset',
+    PlStateNames.LOADED_PRESET_NAME: 'preset',
+    PlStateNames.LOADED_PRESET_INDEX: 'source_state',
+    PlStateNames.NUM_VOICES: 'preset',
+    PlStateNames.NOTE_LAYOUT_TYPE: 'preset',
     
-    StateNames.NUM_SOUNDS: 'computed',
-    StateNames.NUM_SOUNDS_DOWNLOADING: 'computed',
-    StateNames.NUM_SOUNDS_LOADED_IN_SAMPLER: 'computed',
+    PlStateNames.NUM_SOUNDS: 'computed',
+    PlStateNames.NUM_SOUNDS_DOWNLOADING: 'computed',
+    PlStateNames.NUM_SOUNDS_LOADED_IN_SAMPLER: 'computed',
     
-    StateNames.SOUND_NAME: 'sound_sample',
-    StateNames.SOUND_UUID: 'sound',
+    PlStateNames.SOUND_NAME: 'sound_sample',
+    PlStateNames.SOUND_UUID: 'sound',
     
-    StateNames.SOURCE_SAMPLER_SOUND_UUID: 'sound_sample', 
-    StateNames.SOUND_ID: 'sound_sample',
-    StateNames.SOUND_LICENSE: 'sound_sample',
-    StateNames.SOUND_AUTHOR: 'sound_sample',
-    StateNames.SOUND_DURATION: 'sound_sample',
-    StateNames.SOUND_DOWNLOAD_PROGRESS: 'sound_sample',
-    StateNames.SOUND_DOWNLOAD_COMPLETED: 'sound_sample',
-    StateNames.SOUND_OGG_URL: 'sound_sample',
-    StateNames.SOUND_LOCAL_FILE_PATH: 'sound_sample',
-    StateNames.SOUND_TYPE: 'sound_sample',
-    StateNames.SOUND_FILESIZE: 'sound_sample',
-    StateNames.SOUND_LOADED_PREVIEW_VERSION: 'sound_sample',
+    PlStateNames.SOURCE_SAMPLER_SOUND_UUID: 'sound_sample', 
+    PlStateNames.SOUND_ID: 'sound_sample',
+    PlStateNames.SOUND_LICENSE: 'sound_sample',
+    PlStateNames.SOUND_AUTHOR: 'sound_sample',
+    PlStateNames.SOUND_DURATION: 'sound_sample',
+    PlStateNames.SOUND_DOWNLOAD_PROGRESS: 'sound_sample',
+    PlStateNames.SOUND_DOWNLOAD_COMPLETED: 'sound_sample',
+    PlStateNames.SOUND_OGG_URL: 'sound_sample',
+    PlStateNames.SOUND_LOCAL_FILE_PATH: 'sound_sample',
+    PlStateNames.SOUND_TYPE: 'sound_sample',
+    PlStateNames.SOUND_FILESIZE: 'sound_sample',
+    PlStateNames.SOUND_LOADED_PREVIEW_VERSION: 'sound_sample',
 
-    StateNames.SOUND_SLICES: 'computed',
-    StateNames.SOUND_ASSIGNED_NOTES: 'sound_sample',
-    StateNames.SOUND_LOADED_IN_SAMPLER: 'sound',
+    PlStateNames.SOUND_SLICES: 'computed',
+    PlStateNames.SOUND_ASSIGNED_NOTES: 'sound_sample',
+    PlStateNames.SOUND_LOADED_IN_SAMPLER: 'sound',
     
-    StateNames.SOUND_MIDI_CC_ASSIGNMENTS: 'computed',
-    StateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: None,
-    StateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: None,
-    StateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: None,
-    StateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: None,
-    StateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: None,
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENTS: 'computed',
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_CC_NUMBER: None,
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_PARAM_NAME: None,
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_MIN_RANGE: None,
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_MAX_RANGE: None,
+    PlStateNames.SOUND_MIDI_CC_ASSIGNMENT_UUID: None,
 
-    StateNames.REVERB_SETTINGS: 'computed',
+    PlStateNames.REVERB_SETTINGS: 'computed',
 
-    StateNames.METER_L: 'volatile',
-    StateNames.METER_R: 'volatile',   
-    StateNames.IS_QUERYING: 'volatile',
-    StateNames.VOICE_SOUND_IDXS: 'volatile',
-    StateNames.NUM_ACTIVE_VOICES: 'volatile',
-    StateNames.MIDI_RECEIVED: 'volatile',
-    StateNames.LAST_CC_MIDI_RECEIVED: 'volatile',
-    StateNames.LAST_NOTE_MIDI_RECEIVED: 'volatile',
+    PlStateNames.METER_L: 'volatile',
+    PlStateNames.METER_R: 'volatile',   
+    PlStateNames.IS_QUERYING: 'volatile',
+    PlStateNames.VOICE_SOUND_IDXS: 'volatile',
+    PlStateNames.NUM_ACTIVE_VOICES: 'volatile',
+    PlStateNames.MIDI_RECEIVED: 'volatile',
+    PlStateNames.LAST_CC_MIDI_RECEIVED: 'volatile',
+    PlStateNames.LAST_NOTE_MIDI_RECEIVED: 'volatile',
 }
 
 
@@ -685,13 +688,13 @@ class SoundUsageLogManager(object):
             self.sound_usage_log = json.load(open(self.today_sound_usage_log_path, 'r'))
 
     def log_sound(self, sound):
-        if sound[StateNames.SOUND_ID] not in self.sound_usage_log:
-            self.sound_usage_log[sound[StateNames.SOUND_ID]] = {
-                'name': sound[StateNames.SOUND_NAME],
-                'url': 'https://freesound.org/s/{}'.format(sound[StateNames.SOUND_ID]),
-                'username': sound[StateNames.SOUND_AUTHOR],
-                'license': sound[StateNames.SOUND_LICENSE],
-                'id': sound[StateNames.SOUND_ID],
+        if sound[PlStateNames.SOUND_ID] not in self.sound_usage_log:
+            self.sound_usage_log[sound[PlStateNames.SOUND_ID]] = {
+                'name': sound[PlStateNames.SOUND_NAME],
+                'url': 'https://freesound.org/s/{}'.format(sound[PlStateNames.SOUND_ID]),
+                'username': sound[PlStateNames.SOUND_AUTHOR],
+                'license': sound[PlStateNames.SOUND_LICENSE],
+                'id': sound[PlStateNames.SOUND_ID],
                 'time_loaded': str(datetime.datetime.today()) 
             }
             json.dump(self.sound_usage_log, open(self.today_sound_usage_log_path, 'w'), indent=4)
