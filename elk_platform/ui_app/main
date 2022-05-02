@@ -193,7 +193,7 @@ def simulator_get_display():
     for f in files:
         os.remove(f)
     path = os.path.join(current_frame_directory, 'frame{0}.jpg'.format(random.randint(0, 9999999)))
-    if elk_bridge.current_frame is not None:
+    if elk_bridge is not None and elk_bridge.current_frame is not None:
         elk_bridge.current_frame.save(path)
         return path
     else:

@@ -458,7 +458,7 @@ void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destDa
     // Save current state information to memory block
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     DBG("> Running getStateInformation");
-    DBG(xml->toString()); // Print state for debugging purposes
+    DBG(xml->toString()); // Print state for debugging purposes (print it nicely indented)
     copyXmlToBinary (*xml, destData);
 }
 
@@ -853,7 +853,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         if (stateType == "full"){
             juce::OSCMessage message = juce::OSCMessage("/full_state");
             message.addInt32(stateUpdateID);
-            message.addString(state.toXmlString());
+            message.addString(state.toXmlString(juce::XmlElement::TextFormat().singleLine()));
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
@@ -867,7 +867,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             serverInterface.sendMessageToWebSocketClients(message);
         } else if (stateType == "volatile"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state");
-            message.addString(collectVolatileStateInformation().toXmlString());
+            message.addString(collectVolatileStateInformation().toXmlString(juce::XmlElement::TextFormat().singleLine()));
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
@@ -991,7 +991,7 @@ void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
     // Trigger the deletion of the sound by disabling it
     // Once disabled, all playing notes will be stopped and the sound removed a while after that
     const juce::ScopedLock sl (soundDeleteLock);
-    sounds->getSoundWithUUID(soundUUID)->disableSound();
+    sounds->getSoundWithUUID(soundUUID)->scheduleSoundDeletion();
 }
 
 void SourceSamplerAudioProcessor::removeAllSounds()
@@ -1000,7 +1000,7 @@ void SourceSamplerAudioProcessor::removeAllSounds()
     // Once disabled, all playing notes will be stopped and the sounds removed a while after that
     const juce::ScopedLock sl (soundDeleteLock);
     for (auto* sound: sounds->objects){
-        sound->disableSound();
+        sound->scheduleSoundDeletion();
     }
 }
 
@@ -1129,7 +1129,7 @@ double SourceSamplerAudioProcessor::getStartTime(){
 void SourceSamplerAudioProcessor::timerCallback()
 {
     // Delete sounds that should be deleted
-    //const ScopedLock sl (soundDeleteLock);
+    const juce::ScopedLock sl (soundDeleteLock);
     for (int i=sounds->objects.size() - 1; i>=0 ; i--){
         auto* sound = sounds->objects[i];
         if (sound->shouldBeDeleted()){
@@ -1267,7 +1267,7 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     message.addString(parentTree[IDs::uuid].toString());
     message.addString(parentTree.getType().toString());
     message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
-    message.addString(childWhichHasBeenAdded.toXmlString());
+    message.addString(childWhichHasBeenAdded.toXmlString(juce::XmlElement::TextFormat().singleLine()));
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif

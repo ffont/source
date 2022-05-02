@@ -76,7 +76,7 @@ void SourceSamplerSound::writeBufferToDisk()
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
 {
     // If sound is disabled, return false so new notes are not triggered
-    return sourceSoundPointer->isEnabled() && getMappedMidiNotes()[midiNoteNumber];
+    return !sourceSoundPointer->isScheduledForDeletion() && getMappedMidiNotes()[midiNoteNumber];
 }
 
 bool SourceSamplerSound::appliesToChannel (int midiChannel)
@@ -186,7 +186,7 @@ SourceSound::~SourceSound ()
 void SourceSound::bindState ()
 {
     name.referTo(state, IDs::name, nullptr);
-    enabled.referTo(state, IDs::enabled, nullptr);
+    willBeDeleted.referTo(state, IDs::willBeDeleted, nullptr);
     allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
     
     // --> Start auto-generated code C
@@ -262,26 +262,24 @@ juce::String SourceSound::getUUID() {
     return state.getProperty(IDs::uuid).toString();
 }
 
-bool SourceSound::isEnabled() {
-    return enabled.get();
+bool SourceSound::isScheduledForDeletion() {
+    return willBeDeleted.get();
 }
 
-void SourceSound::disableSound(){
+void SourceSound::scheduleSoundDeletion(){
     // Trigger stop all currently active notes for that sound and set timestamp so sound gets deleted async
     // If sound already disabled, don't trigger deletion again
-    if (enabled) {
-        enabled = false;
-        disabledTime = juce::Time::getMillisecondCounterHiRes();
-        
-        // Stop all notes currently being played from that sound
-        for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
-            auto* voice = getGlobalContext().sampler->getVoice(i);
-            if (voice != nullptr){
-                if (voice->isVoiceActive()){
-                    auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
-                    if (currentlyPlayingSound->getSourceSound()->getUUID() == getUUID()){
-                        voice->stopNote(0.0f, false);
-                    }
+    willBeDeleted = true;
+    scheduledForDeletionTime = juce::Time::getMillisecondCounterHiRes();
+    
+    // Stop all notes currently being played from that sound
+    for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
+        auto* voice = getGlobalContext().sampler->getVoice(i);
+        if (voice != nullptr){
+            if (voice->isVoiceActive()){
+                auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
+                if (currentlyPlayingSound->getSourceSound()->getUUID() == getUUID()){
+                    voice->stopNote(0.0f, false);
                 }
             }
         }
@@ -289,7 +287,7 @@ void SourceSound::disableSound(){
 }
 
 bool SourceSound::shouldBeDeleted(){
-    return !isEnabled() && ((juce::Time::getMillisecondCounterHiRes() - disabledTime) > SAFE_SOUND_DELETION_TIME_MS);
+    return isScheduledForDeletion() && ((juce::Time::getMillisecondCounterHiRes() - scheduledForDeletionTime) > SAFE_SOUND_DELETION_TIME_MS);
 }
 
 // --------------------------------------------------------------------------------------------

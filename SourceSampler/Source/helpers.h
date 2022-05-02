@@ -123,7 +123,7 @@ namespace Helpers
     {
         juce::ValueTree sound (IDs::SOUND);
         Helpers::createUuidProperty (sound);
-        sound.setProperty (IDs::enabled, true, nullptr);
+        sound.setProperty (IDs::willBeDeleted, false, nullptr);
         sound.setProperty (IDs::allSoundsLoaded, false, nullptr);
         // --> Start auto-generated code A
         sound.setProperty (IDs::launchMode, 0, nullptr);

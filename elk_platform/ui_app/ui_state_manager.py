@@ -1515,7 +1515,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                         # Not a valid preset file
                         continue
                     file_contents = open(os.path.join(presets_folder, filename), 'r').read()
-                    preset_name = file_contents.split('SourcePresetState presetName="')[1].split('"')[0]
+                    preset_name = file_contents.split(' name="')[1].split('"')[0]
                     preset_names[preset_id] = preset_name
         return preset_names
 

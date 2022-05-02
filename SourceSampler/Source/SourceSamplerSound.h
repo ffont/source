@@ -129,8 +129,8 @@ public:
     SourceSamplerSound* getFirstLinkedSourceSamplerSound();
     juce::String getName();
     juce::String getUUID();
-    bool isEnabled();
-    void disableSound();
+    bool isScheduledForDeletion();
+    void scheduleSoundDeletion();
     bool shouldBeDeleted();
     
     std::function<GlobalContextStruct()> getGlobalContext;
@@ -196,7 +196,7 @@ public:
 private:
     // Sound properties
     juce::CachedValue<juce::String> name;
-    juce::CachedValue<bool> enabled;
+    juce::CachedValue<bool> willBeDeleted;
     juce::CachedValue<bool> allSoundsLoaded;
     
     std::unique_ptr<MidiCCMappingList> midiCCmappings;
@@ -242,7 +242,7 @@ private:
     // Other
     std::vector<std::unique_ptr<juce::URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
-    double disabledTime = 0.0;
+    double scheduledForDeletionTime = 0.0;
     
     JUCE_LEAK_DETECTOR (SourceSound)
 };

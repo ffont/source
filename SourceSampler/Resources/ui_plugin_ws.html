@@ -248,7 +248,7 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        const autoUIUpdateInterval = 0; // 3000
+        const autoUIUpdateInterval = 3000; // 3000
         let lastUIAction = 0;
 
 
@@ -346,11 +346,13 @@
 
                                 // If property was found, trigger corresponding UI updates
                                 if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
-                                    // If what changed is a property of a sound or sound sample, then update the card for the sound                                    
-                                    updateCardForSound(treeUUID);
+                                    // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                    var sound = ss.getSoundFromSoundUUIDOrSoundSampleUUID(treeUUID);                               
+                                    updateSoundCard(sound);
 
                                     // If the property name is that of a slider (sound parameter), then update the slider as well
                                     if (isSoundParameter(propertyName)){
+                                        // NOTE: in that case, treeUUID will always correspond to a SOUND element
                                         updateSoundParameter(treeUUID, propertyName, propertyValue);
                                     }
                                 } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
@@ -441,13 +443,22 @@
                 return this.getSoundSamplerSounds(sound)[0];
             }
 
-            getSoundStateFromSoundUUID(soundUUID){
+            getSoundFromSoundUUID(soundUUID){
                 return ss.state.querySelector("SOUND[uuid='" + soundUUID + "']");
             }
 
-            getSoundStateFromSoundSampleUUID(soundSampleUUID){
+            getSoundFromSoundSampleUUID(soundSampleUUID){
                 const soundSample = ss.state.querySelector("SOUND_SAMPLE[uuid='" + soundSampleUUID + "']");
                 return soundSample.parentNode;
+            }
+
+            getSoundFromSoundUUIDOrSoundSampleUUID(soundUUIDorSoundSampleUUID){
+                const element = ss.state.querySelector("[uuid='" + soundUUIDorSoundSampleUUID + "']");
+                if (element.tagName === 'SOUND_SAMPLE'){
+                    return ss.getSoundFromSoundSampleUUID(soundUUIDorSoundSampleUUID);
+                } else {
+                    return ss.getSoundFromSoundUUID(soundUUID);
+                }
             }
 
             getMidiMappingStateFromMappingUUID(mappingUUID){
@@ -698,6 +709,9 @@
                         ss.requestFullState();
                     }
                 }, autoUIUpdateInterval);
+
+                // Avoid auto re-creating sound cards while scrolling
+                document.addEventListener('scroll', () => {saveCurrentUserActionTime()});
             }
         });
 
@@ -908,51 +922,48 @@
                 var soundUUID = sounds[i].getAttribute('uuid');
                 var soundCard = document.getElementById(soundUUID + '_idx');
                 if (soundCard !== null){
-                    soundCard.innerHTML =  i + 1;
+                    soundCard.innerHTML =  soundCard.dataset.soundIdx;
                 }
             }
         }
 
-        function createCardForSound(sound){ //sound = xml element from state
+        function createSoundCard(sound){  //sound = xml element from state
             var soundUUID = sound.getAttribute('uuid');
-            var soundID = ss.getFirstSoundSampleSound(sound).getAttribute('soundId');
-            html = '<div class="controls_card" id="' + soundUUID + '" data-sound-sample-sound-id="' + soundID + '">';
-            html += '<div id="soundCardInfo_' + soundUUID + '"></div>';
+            
+            // Create sound card element
+            var element = document.createElement('div');
+            element.id = soundUUID;
+            element.classList = 'controls_card';
+
+            // Create inner html of sound card element
+            var html = '<div id="soundCardInfo_' + soundUUID + '"></div>';
             html += '<div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
             html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
             html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
-            html += '</div></div>';
-            return html;
+            html += '</div>';
+
+            element.innerHTML = html;
+            return element;
         }
     
-        function updateCardForSound(soundUUIDorSoundSampleUUID){
-            // This method can tak as input a SOUND uuid or a SOUND_SAMPLE UUID. If the latter, first we need to retrieve the
-            // corresponding SOUND object
-            var sound, soundUUID;
-            const element = ss.state.querySelector("[uuid='" + soundUUIDorSoundSampleUUID + "']");
-            if (element.tagName === 'SOUND_SAMPLE'){
-                sound = ss.getSoundStateFromSoundSampleUUID(soundUUIDorSoundSampleUUID);
-                soundUUID = sound.getAttribute('uuid');
-            } else {
-                soundUUID = soundUUIDorSoundSampleUUID;
-                sound = ss.getSoundStateFromSoundUUID(soundUUID);
-            }
+        function updateSoundCard(sound){  //sound = xml element from state
+            soundUUID = sound.getAttribute('uuid');
             var sampleSound = ss.getFirstSoundSampleSound(sound);
+            var soundCard = document.getElementById(soundUUID);
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
-            if (soundInfoElement === null){
-                return;
-            }
             var downloadProgress = sampleSound.getAttribute('downloadProgress');
             var soundID = sampleSound.getAttribute('soundId');
             var sourceSamplerSoundUUID = sampleSound.getAttribute('uuid');
             var soundName = sampleSound.getAttribute('name');
             var licenseURL = sampleSound.getAttribute('name');
 
+            var soundIdx = soundCard.dataset.soundIdx;
+
             if ((sound.getAttribute("allSoundsLoaded") === "1") || (sampleSound.getAttribute("downloadCompleted") === "1")){
                 // Sound already loaded, show all info (if it has not been already shown)
                 html = '<div class="transportSoundButtons"><button onclick="ss.playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="ss.stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="ss.removeSound(\'' + soundUUID + '\')">x</button></div>';
-                html += '<h4><span id="' + soundUUID + '_idx">' + ss.findSoundIdxFromSoundUUID(soundUUID) + "</span> - " + soundID + '</h4>';
+                html += '<h4><span id="' + soundUUID + '_idx">' + soundIdx + "</span> - " + soundID + '</h4>';
                 html += soundName + '<br>';
                 var licenseName = "-";
                 if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
@@ -975,11 +986,12 @@
                 drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
             } else {
                 // Sound not yet loaded, show download progress
-                html = '<h4>' + ss.findSoundIdxFromSoundUUID(soundUUID) + " - " + soundID + '</h4>';
+                html = '<h4><span id="' + soundUUID + '_idx">' + soundIdx + " - " + soundID + '</h4>';
                 if (downloadProgress == null){
                     downloadProgress = 0;
                 }
-                html += 'Downloading: ' + downloadProgress + '%';
+                html += soundName + '<br>';
+                html += 'Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '%';
                 soundInfoElement.innerHTML = html;
             }
         }
@@ -990,7 +1002,7 @@
                 return;
             }
             if (parameterValue === undefined){
-                var sound =  ss.getSoundStateFromSoundUUID(soundUUID);
+                var sound =  ss.getSoundFromSoundUUID(soundUUID);
                 parameterValue = sound.getAttribute(parameterName);
             }
             const parameterType = getParameterType(parameterName);
@@ -1019,29 +1031,53 @@
         }
 
         function updateSoundsSectionUI(){
-            // Create individual sound cards
+
+            var soundCardsContainer = document.getElementById('individualSoundEditors');
+            var existingSoundCardsUUIDs = Object.values(soundCardsContainer.childNodes).map(x => x.id);
             var sounds = ss.getSounds();
-            var individualSoundEditorsElement = document.getElementById('individualSoundEditors');
-            individualSoundEditorsElement.innerHTML = '';
+
+            // Create individual sound cards if they do not exist
+            var newChildrenList = [];
+            var numScheduledToDelete = 0;
+            for (var i = 0; i < sounds.length; i++) {
+                var sound = sounds[i];
+                //if (sound.getAttribute('willBeDeleted') !== "1") {
+                    // If sound is not scheduled for deletion, add a card for it
+                    var soundUUID = sound.getAttribute('uuid');
+                    if (existingSoundCardsUUIDs.indexOf(soundUUID) === -1){
+                        // If sound card does not exist, create it and insert it
+                        var soundCardElement = createSoundCard(sound);
+                        soundCardElement.dataset.soundIdx = i + 1 - numScheduledToDelete;
+                        newChildrenList.push(soundCardElement);
+                    } else {
+                        // If sound card already exists, just move it to the list of new nodes
+                        var existingElement = document.getElementById(soundUUID);
+                        newChildrenList.push(existingElement);
+                        existingElement.dataset.soundIdx = i + 1 - numScheduledToDelete;
+                    }
+                /*} else {
+                    // If sound scheduled to delete, don't add it to the list
+                    numScheduledToDelete += 1;
+                }*/
+            }
+            soundCardsContainer.replaceChildren(...newChildrenList);
+
+            // Now update all sound cards
             for (var i = 0; i < sounds.length; i++) {
                 var sound = sounds[i];
                 var soundUUID = sound.getAttribute('uuid');
-                
-                // Create "empty sound cards"
-                var soundCardHtml = createCardForSound(sound);  
-                individualSoundEditorsElement.innerHTML += soundCardHtml;
-                
-                // Update basic sound card details
-                updateCardForSound(soundUUID); 
-                
-                // Set parameter values of sound card
+
+                // Update main parameters of the sound card
+                updateSoundCard(sound); 
+
+                // Update sound parameters (sliders) of sound card
                 var soundParameters = getAllSoundParameterNames();
                 for (var j=0; j<soundParameters.length; j++){
                     var parameterName = soundParameters[j];
                     updateSoundParameter(soundUUID, parameterName);                    
                 }
 
-                // Update MIDI CC mappings
+                // Update MIDI CC mappings section of sound card
                 var samplerSoundMappings = ss.getSoundMidiMappings(sound);
                 var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
                 for (var j = 0; j < samplerSoundMappings.length; j++) {
@@ -1050,7 +1086,7 @@
                     samplerSoundMappingsElement.innerHTML += html;
                     updateMIDIMappingEditor(mapping.getAttribute('uuid'));
                 } 
-            } 
+            }
         }
         
         function updateFullUI(){
@@ -1225,7 +1261,7 @@
             <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
         </select><br>
         <button onclick="ss.replaceAllSoundsByQuery()">Search and replace all sounds...</button><br>
-        <button onclick="ss.replaceSoundByQuery()">Search and replace sound #</button><input name="soundIdxToReplace" value="" type="number" placeholder="1"><br>
+        <button onclick="ss.replaceSoundByQuery()">Search and replace sound #</button><input name="soundIdxToReplace" value="1" type="number" placeholder="1"><br>
         <button onclick="ss.addSoundsByQuery()">Search and add sounds...</button>
         
     </div>
