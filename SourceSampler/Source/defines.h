@@ -129,42 +129,47 @@ inline bool midiOutForwardsMidiIn = false;
 inline juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
 inline int midiVelocityLayer = 0;
 inline int midiRootNote = 64;
+inline bool willBeDeleted = false;
+inline bool allSoundsLoaded = false;
+inline juce::String midiNotes = "ffffffffffffffffffffffffffffffff";
+inline int soundId = -1;
+inline juce::String name = "no name";
 
 // --> Start auto-generated code A
 inline int launchMode = 0;
-inline float  startPosition = 0.0f;
-inline float  endPosition = 1.0f;
-inline float  loopStartPosition = 0.0f;
-inline float  loopEndPosition = 1.0f;
+inline float startPosition = 0.0f;
+inline float endPosition = 1.0f;
+inline float loopStartPosition = 0.0f;
+inline float loopEndPosition = 1.0f;
 inline int loopXFadeNSamples = 500;
 inline int reverse = 0;
 inline int noteMappingMode = 0;
 inline int numSlices = 0;
-inline float  playheadPosition = 0.0f;
-inline float  freezePlayheadSpeed = 100.0f;
-inline float  filterCutoff = 20000.0f;
-inline float  filterRessonance = 0.0f;
-inline float  filterKeyboardTracking = 0.0f;
-inline float  filterAttack = 0.01f;
-inline float  filterDecay = 0.0f;
-inline float  filterSustain = 1.0f;
-inline float  filterRelease = 0.01f;
-inline float  filterADSR2CutoffAmt = 1.0f;
-inline float  gain = -10.0f;
-inline float  attack = 0.01f;
-inline float  decay = 0.0f;
-inline float  sustain = 1.0f;
-inline float  release = 0.01f;
-inline float  pan = 0.0f;
-inline float  pitch = 0.0f;
-inline float  pitchBendRangeUp = 12.0f;
-inline float  pitchBendRangeDown = 12.0f;
-inline float  mod2CutoffAmt = 10.0f;
-inline float  mod2GainAmt = 6.0f;
-inline float  mod2PitchAmt = 0.0f;
-inline float  mod2PlayheadPos = 0.0f;
-inline float  vel2CutoffAmt = 0.0f;
-inline float  vel2GainAmt = 0.5f;
+inline float playheadPosition = 0.0f;
+inline float freezePlayheadSpeed = 100.0f;
+inline float filterCutoff = 20000.0f;
+inline float filterRessonance = 0.0f;
+inline float filterKeyboardTracking = 0.0f;
+inline float filterAttack = 0.01f;
+inline float filterDecay = 0.0f;
+inline float filterSustain = 1.0f;
+inline float filterRelease = 0.01f;
+inline float filterADSR2CutoffAmt = 1.0f;
+inline float gain = -10.0f;
+inline float attack = 0.01f;
+inline float decay = 0.0f;
+inline float sustain = 1.0f;
+inline float release = 0.01f;
+inline float pan = 0.0f;
+inline float pitch = 0.0f;
+inline float pitchBendRangeUp = 12.0f;
+inline float pitchBendRangeDown = 12.0f;
+inline float mod2CutoffAmt = 10.0f;
+inline float mod2GainAmt = 6.0f;
+inline float mod2PitchAmt = 0.0f;
+inline float mod2PlayheadPos = 0.0f;
+inline float vel2CutoffAmt = 0.0f;
+inline float vel2GainAmt = 0.5f;
 inline int midiChannel = 0;
 // --> End auto-generated code A
 
@@ -175,7 +180,7 @@ inline float reverbDryLevel = 1.0f;
 inline float reverbWidth = 0.5f;
 inline float reverbFreezeMode = 0.0f;
 
-inline int randomID = -1;
+inline juce::String parameterName = "no name";
 inline int ccNumber = -1;
 inline float minRange = 0.0;
 inline float maxRange = 127.0;
@@ -242,7 +247,6 @@ DECLARE_ID (reverbDryLevel)
 DECLARE_ID (reverbWidth)
 DECLARE_ID (reverbFreezeMode)
 
-DECLARE_ID (randomID)
 DECLARE_ID (ccNumber)
 DECLARE_ID (parameterName)
 DECLARE_ID (minRange)

@@ -133,7 +133,6 @@ public:
     
     std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds();
     SourceSamplerSound* getFirstLinkedSourceSamplerSound();
-    juce::String getName();
     juce::String getUUID();
     bool isScheduledForDeletion();
     void scheduleSoundDeletion();
@@ -201,7 +200,6 @@ public:
     
 private:
     // Sound properties
-    juce::CachedValue<juce::String> name;
     juce::CachedValue<bool> willBeDeleted;
     juce::CachedValue<bool> allSoundsLoaded;
     

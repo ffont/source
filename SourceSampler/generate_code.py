@@ -95,8 +95,8 @@ def generate_code(controls_data_filename):
     # Generate SourceSamplerSound.h code to bind state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
-        current_code += "        {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
-    current_code += '        '
+        current_code += "    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::{name}, Defaults::{name});\n    {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
+    current_code += '    '
     code_dict['Source/SourceSamplerSound.cpp']['C'] = current_code
 
     # Generate defines.h code to define parameter IDs and defaults
@@ -107,7 +107,7 @@ def generate_code(controls_data_filename):
         if control_data['type'] == 'float':
             defaultf = float(control_data['default'])
             control_data.update({'defaultf': defaultf})
-            current_code_a += "inline float  {name} = {defaultf}f;\n".format(**control_data)
+            current_code_a += "inline float {name} = {defaultf}f;\n".format(**control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             control_data.update({'defaulti': defaulti})

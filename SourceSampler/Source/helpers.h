@@ -41,6 +41,34 @@ namespace Helpers
         return v;
     }
 
+    inline void addPropertyWithDefaultValueIfNotExisting(juce::ValueTree& v, juce::Identifier property, bool defaultValue)
+    {
+        if (!v.hasProperty(property)){
+            v.setProperty(property, defaultValue, nullptr);
+        }
+    }
+
+    inline void addPropertyWithDefaultValueIfNotExisting(juce::ValueTree& v, juce::Identifier property, juce::String defaultValue)
+    {
+        if (!v.hasProperty(property)){
+            v.setProperty(property, defaultValue, nullptr);
+        }
+    }
+
+    inline void addPropertyWithDefaultValueIfNotExisting(juce::ValueTree& v, juce::Identifier property, int defaultValue)
+    {
+        if (!v.hasProperty(property)){
+            v.setProperty(property, defaultValue, nullptr);
+        }
+    }
+
+    inline void addPropertyWithDefaultValueIfNotExisting(juce::ValueTree& v, juce::Identifier property, float defaultValue)
+    {
+        if (!v.hasProperty(property)){
+            v.setProperty(property, defaultValue, nullptr);
+        }
+    }
+
     inline juce::ValueTree createNewEmptyState()
     {
         juce::ValueTree state (IDs::SOURCE_STATE);
@@ -63,11 +91,15 @@ namespace Helpers
         return state;
     }
 
+    inline juce::String defaultPresetName(){
+        return juce::Time::getCurrentTime().formatted("%Y%m%d") + " unnamed";
+    }
+
     inline juce::ValueTree createEmptyPresetState()
     {
         juce::ValueTree preset (IDs::PRESET);
         Helpers::createUuidProperty (preset);
-        preset.setProperty (IDs::name, juce::Time::getCurrentTime().formatted("%Y%m%d") + " unnamed", nullptr);
+        preset.setProperty (IDs::name, defaultPresetName(), nullptr);
         preset.setProperty (IDs::noteLayoutType, Defaults::noteLayoutType, nullptr);
         preset.setProperty (IDs::numVoices, Defaults::numVoices, nullptr);
         preset.setProperty (IDs::reverbDamping, Defaults::reverbDamping, nullptr);
@@ -230,9 +262,13 @@ public:
     juce::ValueTree state;
     void bindState ()
     {
+        Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::ccNumber, Defaults::ccNumber);
         ccNumber.referTo(state, IDs::ccNumber, nullptr, Defaults::ccNumber);
+        Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::minRange, Defaults::minRange);
         minRange.referTo(state, IDs::minRange, nullptr, Defaults::minRange);
+        Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::maxRange, Defaults::maxRange);
         maxRange.referTo(state, IDs::maxRange, nullptr, Defaults::maxRange);
+        Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::parameterName, Defaults::parameterName);
         parameterName.referTo(state, IDs::parameterName, nullptr);
     }
     

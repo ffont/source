@@ -87,20 +87,33 @@ void SourceSamplerAudioProcessor::bindState()
     state.setProperty(IDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
     state.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::currentPresetIndex, Defaults::currentPresetIndex);
     currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr, Defaults::currentPresetIndex);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::globalMidiInChannel, Defaults::globalMidiInChannel);
     globalMidiInChannel.referTo(state, IDs::globalMidiInChannel, nullptr, Defaults::globalMidiInChannel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiOutForwardsMidiIn, Defaults::midiOutForwardsMidiIn);
     midiOutForwardsMidiIn.referTo(state, IDs::midiOutForwardsMidiIn, nullptr, Defaults::midiOutForwardsMidiIn);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::useOriginalFilesPreference, Defaults::currentPresetIndex);
     useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
     
     juce::ValueTree preset = state.getChildWithName(IDs::PRESET);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::numVoices, Defaults::numVoices);
     numVoices.referTo(preset, IDs::numVoices, nullptr, Defaults::numVoices);
-    presetName.referTo(preset, IDs::name, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::name, Helpers::defaultPresetName());
+    presetName.referTo(preset, IDs::name, nullptr, Helpers::defaultPresetName());
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::noteLayoutType, Defaults::noteLayoutType);
     noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr, Defaults::noteLayoutType);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbRoomSize, Defaults::reverbRoomSize);
     reverbRoomSize.referTo(preset, IDs::reverbRoomSize, nullptr, Defaults::reverbRoomSize);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbDamping, Defaults::reverbDamping);
     reverbDamping.referTo(preset, IDs::reverbDamping, nullptr, Defaults::reverbDamping);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbWetLevel, Defaults::reverbWetLevel);
     reverbWetLevel.referTo(preset, IDs::reverbWetLevel, nullptr, Defaults::reverbWetLevel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbDryLevel, Defaults::reverbDryLevel);
     reverbDryLevel.referTo(preset, IDs::reverbDryLevel, nullptr, Defaults::reverbDryLevel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbWidth, Defaults::reverbWidth);
     reverbWidth.referTo(preset, IDs::reverbWidth, nullptr, Defaults::reverbWidth);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbFreezeMode, Defaults::reverbFreezeMode);
     reverbFreezeMode.referTo(preset, IDs::reverbFreezeMode, nullptr, Defaults::reverbFreezeMode);
     
     // Swap pointer with oldSound so if there were objects in there still pending to be safely deleted, these will be

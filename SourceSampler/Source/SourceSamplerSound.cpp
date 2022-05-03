@@ -50,9 +50,13 @@ SourceSamplerSound::~SourceSamplerSound()
 
 void SourceSamplerSound::bindState ()
 {
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::name, Defaults::name);
     name.referTo(state, IDs::name, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::soundId, Defaults::soundId);
     soundId.referTo(state, IDs::soundId, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiRootNote, Defaults::midiRootNote);
     midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiVelocityLayer, Defaults::midiVelocityLayer);
     midiVelocityLayer.referTo(state, IDs::midiVelocityLayer, nullptr);
 }
 
@@ -198,48 +202,85 @@ SourceSound::~SourceSound ()
 
 void SourceSound::bindState ()
 {
-    name.referTo(state, IDs::name, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::willBeDeleted, Defaults::willBeDeleted);
     willBeDeleted.referTo(state, IDs::willBeDeleted, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::allSoundsLoaded, Defaults::allSoundsLoaded);
     allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiNotes, Defaults::midiNotes);
     midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
     
     // --> Start auto-generated code C
-        launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
-        startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
-        endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
-        loopStartPosition.referTo(state, IDs::loopStartPosition, nullptr, Defaults::loopStartPosition);
-        loopEndPosition.referTo(state, IDs::loopEndPosition, nullptr, Defaults::loopEndPosition);
-        loopXFadeNSamples.referTo(state, IDs::loopXFadeNSamples, nullptr, Defaults::loopXFadeNSamples);
-        reverse.referTo(state, IDs::reverse, nullptr, Defaults::reverse);
-        noteMappingMode.referTo(state, IDs::noteMappingMode, nullptr, Defaults::noteMappingMode);
-        numSlices.referTo(state, IDs::numSlices, nullptr, Defaults::numSlices);
-        playheadPosition.referTo(state, IDs::playheadPosition, nullptr, Defaults::playheadPosition);
-        freezePlayheadSpeed.referTo(state, IDs::freezePlayheadSpeed, nullptr, Defaults::freezePlayheadSpeed);
-        filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
-        filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
-        filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
-        filterAttack.referTo(state, IDs::filterAttack, nullptr, Defaults::filterAttack);
-        filterDecay.referTo(state, IDs::filterDecay, nullptr, Defaults::filterDecay);
-        filterSustain.referTo(state, IDs::filterSustain, nullptr, Defaults::filterSustain);
-        filterRelease.referTo(state, IDs::filterRelease, nullptr, Defaults::filterRelease);
-        filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
-        gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
-        attack.referTo(state, IDs::attack, nullptr, Defaults::attack);
-        decay.referTo(state, IDs::decay, nullptr, Defaults::decay);
-        sustain.referTo(state, IDs::sustain, nullptr, Defaults::sustain);
-        release.referTo(state, IDs::release, nullptr, Defaults::release);
-        pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
-        pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
-        pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
-        pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
-        mod2CutoffAmt.referTo(state, IDs::mod2CutoffAmt, nullptr, Defaults::mod2CutoffAmt);
-        mod2GainAmt.referTo(state, IDs::mod2GainAmt, nullptr, Defaults::mod2GainAmt);
-        mod2PitchAmt.referTo(state, IDs::mod2PitchAmt, nullptr, Defaults::mod2PitchAmt);
-        mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
-        vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
-        vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
-        midiChannel.referTo(state, IDs::midiChannel, nullptr, Defaults::midiChannel);
-        // --> End auto-generated code C
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::launchMode, Defaults::launchMode);
+    launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::startPosition, Defaults::startPosition);
+    startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::endPosition, Defaults::endPosition);
+    endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopStartPosition, Defaults::loopStartPosition);
+    loopStartPosition.referTo(state, IDs::loopStartPosition, nullptr, Defaults::loopStartPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopEndPosition, Defaults::loopEndPosition);
+    loopEndPosition.referTo(state, IDs::loopEndPosition, nullptr, Defaults::loopEndPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopXFadeNSamples, Defaults::loopXFadeNSamples);
+    loopXFadeNSamples.referTo(state, IDs::loopXFadeNSamples, nullptr, Defaults::loopXFadeNSamples);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::reverse, Defaults::reverse);
+    reverse.referTo(state, IDs::reverse, nullptr, Defaults::reverse);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::noteMappingMode, Defaults::noteMappingMode);
+    noteMappingMode.referTo(state, IDs::noteMappingMode, nullptr, Defaults::noteMappingMode);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::numSlices, Defaults::numSlices);
+    numSlices.referTo(state, IDs::numSlices, nullptr, Defaults::numSlices);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::playheadPosition, Defaults::playheadPosition);
+    playheadPosition.referTo(state, IDs::playheadPosition, nullptr, Defaults::playheadPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::freezePlayheadSpeed, Defaults::freezePlayheadSpeed);
+    freezePlayheadSpeed.referTo(state, IDs::freezePlayheadSpeed, nullptr, Defaults::freezePlayheadSpeed);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterCutoff, Defaults::filterCutoff);
+    filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterRessonance, Defaults::filterRessonance);
+    filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterKeyboardTracking, Defaults::filterKeyboardTracking);
+    filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterAttack, Defaults::filterAttack);
+    filterAttack.referTo(state, IDs::filterAttack, nullptr, Defaults::filterAttack);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterDecay, Defaults::filterDecay);
+    filterDecay.referTo(state, IDs::filterDecay, nullptr, Defaults::filterDecay);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterSustain, Defaults::filterSustain);
+    filterSustain.referTo(state, IDs::filterSustain, nullptr, Defaults::filterSustain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterRelease, Defaults::filterRelease);
+    filterRelease.referTo(state, IDs::filterRelease, nullptr, Defaults::filterRelease);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterADSR2CutoffAmt, Defaults::filterADSR2CutoffAmt);
+    filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::gain, Defaults::gain);
+    gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::attack, Defaults::attack);
+    attack.referTo(state, IDs::attack, nullptr, Defaults::attack);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::decay, Defaults::decay);
+    decay.referTo(state, IDs::decay, nullptr, Defaults::decay);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sustain, Defaults::sustain);
+    sustain.referTo(state, IDs::sustain, nullptr, Defaults::sustain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::release, Defaults::release);
+    release.referTo(state, IDs::release, nullptr, Defaults::release);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pan, Defaults::pan);
+    pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitch, Defaults::pitch);
+    pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitchBendRangeUp, Defaults::pitchBendRangeUp);
+    pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitchBendRangeDown, Defaults::pitchBendRangeDown);
+    pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2CutoffAmt, Defaults::mod2CutoffAmt);
+    mod2CutoffAmt.referTo(state, IDs::mod2CutoffAmt, nullptr, Defaults::mod2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2GainAmt, Defaults::mod2GainAmt);
+    mod2GainAmt.referTo(state, IDs::mod2GainAmt, nullptr, Defaults::mod2GainAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2PitchAmt, Defaults::mod2PitchAmt);
+    mod2PitchAmt.referTo(state, IDs::mod2PitchAmt, nullptr, Defaults::mod2PitchAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2PlayheadPos, Defaults::mod2PlayheadPos);
+    mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::vel2CutoffAmt, Defaults::vel2CutoffAmt);
+    vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::vel2GainAmt, Defaults::vel2GainAmt);
+    vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiChannel, Defaults::midiChannel);
+    midiChannel.referTo(state, IDs::midiChannel, nullptr, Defaults::midiChannel);
+    // --> End auto-generated code C
     
     midiCCmappings = std::make_unique<MidiCCMappingList>(state);
 }
@@ -267,10 +308,6 @@ SourceSamplerSound* SourceSound::getFirstLinkedSourceSamplerSound() {
 }
 
 // --------------------------------------------------------------------------------------------
-
-juce::String SourceSound::getName() {
-    return name.get();
-}
 
 juce::String SourceSound::getUUID() {
     return state.getProperty(IDs::uuid).toString();
