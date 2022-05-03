@@ -57,6 +57,7 @@ public:
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;
     bool appliesToChannel (int midiChannel) override;
+    bool appliesToVelocity (int midiVelocity); // This method is not part of the base class as the base class does not support velocity layers
     
     //==============================================================================
     float getParameterFloat(juce::Identifier identifier);
@@ -75,6 +76,8 @@ public:
     void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
     int getMidiRootNote();
     void setMidiRootNote(int newMidiRootNote);
+    int getMidiVelocityLayer();
+    void setMappedVelocities(juce::BigInteger newMappedVelocities);
     
     //==============================================================================
     void loadOnsetTimesSamplesFromAnalysis();
@@ -91,16 +94,19 @@ private:
     juce::CachedValue<juce::String> name;
     juce::CachedValue<int> soundId;
     juce::CachedValue<int> midiRootNote;
-    juce::CachedValue<juce::String> midiNotesAsString;
+    juce::CachedValue<int> midiVelocityLayer;
 
-    // "Volatile" properties that are created when creating a sound
+    // "Volatile" properties that are not binded in state
     std::unique_ptr<juce::AudioBuffer<float>> data;
-    std::vector<int> onsetTimesSamples = {};
     bool loadedPreviewVersion = false;
     int lengthInSamples = 0;
     double soundSampleRate;
     double pluginSampleRate;
     int pluginBlockSize;
+    std::vector<int> onsetTimesSamples = {};
+    juce::BigInteger midiNotes = 0;
+    juce::BigInteger midiVelocities = 0;
+
     
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
 };
@@ -147,7 +153,7 @@ public:
     juce::BigInteger getMappedMidiNotes();
     int getNumberOfMappedMidiNotes();
     void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
-    int getMidiRootNote();
+    void assignMidiNotesAndVelocityToSourceSamplerSounds();
     void setMidiRootNote(int newMidiRootNote);
     
     // ------------------------------------------------------------------------------------------------
@@ -199,6 +205,7 @@ private:
     juce::CachedValue<bool> willBeDeleted;
     juce::CachedValue<bool> allSoundsLoaded;
     
+    juce::CachedValue<juce::String> midiNotesAsString;
     std::unique_ptr<MidiCCMappingList> midiCCmappings;
 
     // --> Start auto-generated code A

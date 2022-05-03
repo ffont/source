@@ -53,7 +53,7 @@ void SourceSamplerSound::bindState ()
     name.referTo(state, IDs::name, nullptr);
     soundId.referTo(state, IDs::soundId, nullptr);
     midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
-    midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
+    midiVelocityLayer.referTo(state, IDs::midiVelocityLayer, nullptr);
 }
 
 void SourceSamplerSound::writeBufferToDisk()
@@ -77,6 +77,11 @@ bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
 {
     // If sound is disabled, return false so new notes are not triggered
     return !sourceSoundPointer->isScheduledForDeletion() && getMappedMidiNotes()[midiNoteNumber];
+}
+
+bool SourceSamplerSound::appliesToVelocity (int midiVelocity)
+{
+    return midiVelocities[midiVelocity];
 }
 
 bool SourceSamplerSound::appliesToChannel (int midiChannel)
@@ -115,24 +120,32 @@ int SourceSamplerSound::getNumberOfMappedMidiNotes()
 
 juce::BigInteger SourceSamplerSound::getMappedMidiNotes()
 {
-    juce::BigInteger midiNotes;
-    midiNotes.parseString(midiNotesAsString.get(), 16);
     return midiNotes;
 }
 
 void SourceSamplerSound::setMappedMidiNotes(juce::BigInteger newMappedMidiNotes)
 {
-    midiNotesAsString = newMappedMidiNotes.toString(16);
+    midiNotes = newMappedMidiNotes;
 }
 
 int SourceSamplerSound::getMidiRootNote()
 {
-    return midiRootNote;
+    return midiRootNote.get();
 }
 
 void SourceSamplerSound::setMidiRootNote(int newRootNote)
 {
     midiRootNote = newRootNote;
+}
+
+int SourceSamplerSound::getMidiVelocityLayer()
+{
+    return midiVelocityLayer.get();
+}
+
+void SourceSamplerSound::setMappedVelocities(juce::BigInteger newMappedVelocities)
+{
+    midiVelocities = newMappedVelocities;
 }
 
 void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
@@ -188,6 +201,7 @@ void SourceSound::bindState ()
     name.referTo(state, IDs::name, nullptr);
     willBeDeleted.referTo(state, IDs::willBeDeleted, nullptr);
     allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
+    midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
     
     // --> Start auto-generated code C
         launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
@@ -401,48 +415,115 @@ void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
 }
 
 juce::BigInteger SourceSound::getMappedMidiNotes(){
-    // Get the mapped midi notes of the first sound
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-    SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-    if (first != nullptr){
-        return first->getMappedMidiNotes();
-    }
-    juce::BigInteger defaultValue;
-    defaultValue.setRange(0, 127, true);
-    return defaultValue;
+    // Returns the MIDI notes of the Sound (note that individual SourceSamplerSound(s) might have different assingments depending on root note)
+    juce::BigInteger midiNotes;
+    midiNotes.parseString(midiNotesAsString.get(), 16);
+    return midiNotes;
 }
 
 int SourceSound::getNumberOfMappedMidiNotes(){
     // Get the mapped midi notes of the first sound
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
     return getMappedMidiNotes().countNumberOfSetBits();
 }
 
 void SourceSound::setMappedMidiNotes(juce::BigInteger newMappedMidiNotes){
-    // Set the mapped midi notes to all of the sampler sounds
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-    for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
-        sourceSamplerSound->setMappedMidiNotes(newMappedMidiNotes);
-    }
+    // Save the new midi notes in the Sound state
+    midiNotesAsString = newMappedMidiNotes.toString(16);
+    
+    // Recalculate all assigned midi notes for the different SourceSamplerSound based on their root note
+    assignMidiNotesAndVelocityToSourceSamplerSounds();
 }
 
-int SourceSound::getMidiRootNote(){
-    // Get the midi root note of the first sound
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-    SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-    if (first != nullptr){
-        return first->getMidiRootNote();
+int closest(std::vector<int> const& vec, int value) {
+    int minDistancePosition = 0;
+    int minDistance = 9999;
+    for (int i=0; i<vec.size(); i++){
+        int distance = std::abs(vec[i] - value);
+        if (distance < minDistance){
+            minDistancePosition = i;
+            minDistance = distance;
+        }
     }
-    return -1;
+    return vec[minDistancePosition];
+}
+
+void SourceSound::assignMidiNotesAndVelocityToSourceSamplerSounds(){
+    // 1) Assign each of the midi notes of the SourceSound to the closest root note from linked SourceSamplerSound(s)
+    
+    // Collect all available root notes
+    std::vector<int> sourceSamplerSoundRootNotes = {};
+    for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+        sourceSamplerSoundRootNotes.push_back(sourceSamplerSound->getMidiRootNote());
+    }
+    
+    // Iterate SourceSamplerSound(s) and assign midiNotes closer to their root note (only from those notes already assigned to SourceSound)
+    juce::BigInteger sourceSoundMidiNotes = getMappedMidiNotes();
+    for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+        juce::BigInteger midiNotesForSourceSamplerSound = 0;
+        for (int i=0; i<128; i++){
+            if (sourceSoundMidiNotes[i] == true){
+                if (closest(sourceSamplerSoundRootNotes, i) == sourceSamplerSound->getMidiRootNote()){
+                    midiNotesForSourceSamplerSound.setBit(i);
+                }
+            }
+        }
+        sourceSamplerSound->setMappedMidiNotes(midiNotesForSourceSamplerSound);
+    }
+    
+    // 2) Assign midi velocities
+    
+    // For each different root note, see how many velocity layers there are
+    for (auto rootNote: sourceSamplerSoundRootNotes){
+        std::vector<int> rootNoteVelocityLayers = {};  // Will store all distinct velocity layers for every root note
+        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+            if (sourceSamplerSound->getMidiRootNote() == rootNote){
+                int sourceSamplerSoundVelocityLayer = sourceSamplerSound->getMidiVelocityLayer();
+                if (std::find(rootNoteVelocityLayers.begin(), rootNoteVelocityLayers.end(), sourceSamplerSoundVelocityLayer) == rootNoteVelocityLayers.end()) {
+                    // If SourceSamplerSound's velocity layer not yet added to velocityLayers, add it now
+                    rootNoteVelocityLayers.push_back(sourceSamplerSoundVelocityLayer);
+                }
+            }
+        }
+        if (rootNoteVelocityLayers.size() == 1){
+            // If there's only one velocity layer, then the SourceSamplerSound(s) for that root note respond to all velocities (there should be only one)
+            juce::BigInteger midiVelocities = 0;
+            midiVelocities.setRange(0, 128, true);
+            for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+                if (sourceSamplerSound->getMidiRootNote() == rootNote){
+                    sourceSamplerSound->setMappedVelocities(midiVelocities);
+                }
+            }
+        } else {
+            // If there are different velocity layers, then compute different midiVelocities for every SourceSamplerSound/rootNote and assign
+            // velocity layers should be integer numbers starting from 0 and up to the number of available layers
+            std::sort(rootNoteVelocityLayers.begin(), rootNoteVelocityLayers.end());
+            int numLayers = (int)rootNoteVelocityLayers.size();
+            int numVelocitiesPerLayer = 128 / numLayers;
+            for (int i=0; i<numLayers; i++){
+                juce::BigInteger midiVelocities = 0;
+                int bitRangeStart = i * numVelocitiesPerLayer;
+                int bitRangeEnd = juce::jmin(127, (i + 1) * numVelocitiesPerLayer);
+                midiVelocities.setRange(bitRangeStart, bitRangeEnd, true);
+                for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+                    if ((sourceSamplerSound->getMidiRootNote() == rootNote) && (sourceSamplerSound->getMidiVelocityLayer() == rootNoteVelocityLayers[i])){
+                        // Assign the computed midi velocities to SourceSamplerSound(s) with that root note and velocity layer (there should be only one)
+                        sourceSamplerSound->setMappedVelocities(midiVelocities);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void SourceSound::setMidiRootNote(int newMidiRootNote){
-    // Set the midi root note to all of the sampler sounds
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-    for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
-        sourceSamplerSound->setMidiRootNote(newMidiRootNote);
+    // Set the midi root note to sounds' SourceSamplerSound
+    if (getLinkedSourceSamplerSounds().size() > 1){
+        // If the sound has more than one SourceSamplerSound, no root note is updated as we don't know which sound should be updated
+    } else {
+        getFirstLinkedSourceSamplerSound()->setMidiRootNote(newMidiRootNote);
     }
 }
+
 
 // ------------------------------------------------------------------------------------------------
 
@@ -524,6 +605,7 @@ void SourceSound::addSourceSamplerSoundsToSampler()
 {
     std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
     for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
+    assignMidiNotesAndVelocityToSourceSamplerSounds();
     std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
     allSoundsLoaded = true;
 }

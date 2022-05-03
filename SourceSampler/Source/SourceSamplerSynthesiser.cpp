@@ -72,18 +72,16 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
              const float velocity)
 {
     const juce::ScopedLock sl (lock);
+    int velocityInMidiRange = (int)std::round(127.0 * velocity);
     for (auto* sound : sounds)
     {
-        if (sound->appliesToNote (midiNoteNumber) && sound->appliesToChannel (midiChannel))
+        if (sound->appliesToNote (midiNoteNumber) && dynamic_cast<SourceSamplerSound*>(sound)->appliesToVelocity(velocityInMidiRange) && sound->appliesToChannel (midiChannel))
         {
             // If hitting a note that's still ringing, stop it first (it could be
             // still playing because of the sustain or sostenuto pedal).
             for (auto* voice : voices)
                 if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel))
                    stopVoice (voice, 1.0f, true);
-            // NOTE: I commented this lines above so that several notes of the same sound can be played at the
-            // same time. I'm not sure why the default JUCE implementation does not allow that. Maybe I'm
-            // missing something important here?
             auto* voice = findFreeVoice (sound, midiChannel, midiNoteNumber, isNoteStealingEnabled());
             dynamic_cast<SourceSamplerVoice*>(voice)->setModWheelValue(lastModWheelValue);
             startVoice (voice, sound, midiChannel, midiNoteNumber, velocity);

@@ -127,6 +127,8 @@ inline int globalMidiInChannel = 0;
 inline int numVoices = 8;
 inline bool midiOutForwardsMidiIn = false;
 inline juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
+inline int midiVelocityLayer = 0;
+inline int midiRootNote = 64;
 
 // --> Start auto-generated code A
 inline int launchMode = 0;
@@ -219,6 +221,7 @@ DECLARE_ID (onset)
 DECLARE_ID (onsetTime)
 DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
+DECLARE_ID (midiVelocityLayer)
 DECLARE_ID (midiOutForwardsMidiIn)
 DECLARE_ID (allSoundsLoaded)
 

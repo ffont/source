@@ -1020,12 +1020,14 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     int existingSoundIndex = sounds->getIndexOfSoundWithUUID(soundUUID);
     if ((existingSoundIndex > -1) && (midiRootNote ==  -1) && (midiNotes.isZero())){
         // If sound exists for that UUID and midiNotes/midiRootNote are not passed as parameters, use the same parameters from the original sound
+        // so assigned notes and root note are kept. Note that if the sound is a multisample sound, we take the first of the root notes
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         midiNotes = sound->getMappedMidiNotes();
-        midiRootNote = sound->getMidiRootNote();
+        midiRootNote = sound->getFirstLinkedSourceSamplerSound()->getMidiRootNote();
     }
     
-    juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundUUID, soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote);
+    int midiVelocityLayer = 0;
+    juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundUUID, soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
     
     if (existingSoundIndex > -1){
@@ -1096,7 +1098,7 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID,
     auto* sound = sounds->getSoundWithUUID(soundUUID);
     if (sound != nullptr){
         int midiNoteForNormalPitch = 36;
-        midiNoteForNormalPitch = sound->getMidiRootNote();
+        midiNoteForNormalPitch = sound->getFirstLinkedSourceSamplerSound()->getMidiRootNote();
         juce::BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
         if (assignedMidiNotes[midiNoteForNormalPitch] == false){
             // If the root note is not mapped to the sound, find the closest mapped one

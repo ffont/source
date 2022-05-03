@@ -395,7 +395,7 @@
                                 stateElementToRemove.remove();
 
                                 // Trigger corresponding UI updates
-                                const domElementToUpdate = document.querySelector("[id='" + childToRemoveUUID + "']");
+                                const domElementToUpdate = document.getElementById(childToRemoveUUID);
                                 if (domElementToUpdate !== null){
                                     domElementToUpdate.remove();    
                                 }

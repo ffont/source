@@ -92,6 +92,8 @@ namespace Helpers
         ss.setProperty (IDs::filesize, sizeBytes, nullptr);  // This might be -1 if sound is not from freesound
         ss.setProperty (IDs::soundFromFreesound, soundID > -1, nullptr);
         ss.setProperty (IDs::usesPreview, false, nullptr);
+        ss.setProperty (IDs::midiRootNote, Defaults::midiRootNote, nullptr);
+        ss.setProperty (IDs::midiVelocityLayer, Defaults::midiVelocityLayer, nullptr);
         return ss;
     }
 
@@ -176,9 +178,9 @@ namespace Helpers
                                                                                 int sizeBytes,
                                                                                 juce::StringArray slices,
                                                                                 juce::BigInteger midiNotes,
-                                                                                int midiRootNote){
+                                                                                int midiRootNote,
+                                                                                int midiVelocityLayer){
         juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState();
-        
         juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(soundName,
                                                                                    soundID,
                                                                                    previewURL,
@@ -187,14 +189,15 @@ namespace Helpers
                                                                                    localFilePath);
         sourceSamplerSound.setProperty(IDs::username, soundUser, nullptr);
         sourceSamplerSound.setProperty(IDs::license, soundLicense, nullptr);
+        sourceSamplerSound.setProperty(IDs::midiVelocityLayer, midiVelocityLayer, nullptr);
 
         if (midiRootNote >  -1){
             sourceSamplerSound.setProperty(IDs::midiRootNote, midiRootNote, nullptr);
         }
         if (!midiNotes.isZero()){
-            sourceSamplerSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
+            // Note that MIDI notes are stored in Sound (not SourceSamplerSound)
+            sourceSound.setProperty(IDs::midiNotes, midiNotes.toString(16), nullptr);
         }
-        
         if (slices.size() > 0){
             juce::ValueTree soundAnalysis = Helpers::createAnalysisFromSlices(slices);
             sourceSamplerSound.addChild(soundAnalysis, -1, nullptr);
