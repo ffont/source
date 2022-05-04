@@ -101,6 +101,7 @@
             margin:4px;
             vertical-align: top;
             border-radius: 5px;
+            max-width: 330px;
         }
 
         .controls_card_top {
@@ -233,6 +234,12 @@
         .select-css option {
             font-weight:normal;
         }
+
+        .ellipsis {
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
         
     </style>
 
@@ -248,7 +255,7 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        const autoUIUpdateInterval = 3000; // 3000
+        const autoUIUpdateInterval = 0; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
         let lastUIAction = 0;
 
 
@@ -339,28 +346,34 @@
                             const treeType = restOfDataSliced[1];
                             const propertyName = restOfDataSliced[2];
                             const propertyValue = restOfDataSliced[3];
-                            
+
                             const elementToUpdate = self.state.querySelector("[uuid='" + treeUUID + "']");
                             if (elementToUpdate !== null){
                                 elementToUpdate.setAttribute(propertyName, propertyValue);
 
-                                // If property was found, trigger corresponding UI updates
-                                if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
-                                    // If what changed is a property of a sound or sound sample, then update the card for the sound
-                                    var sound = ss.getSoundFromSoundUUIDOrSoundSampleUUID(treeUUID);                               
-                                    updateSoundCard(sound);
+                                // Update corresponding UI sections
+                                // Use a timeout to "give time" to state to update? We observed some inconsistencies reading data from the state immediately after updating the element without this timeout...
+                                setTimeout( () => { 
+                                    // If property was found, trigger corresponding UI updates
+                                    if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
+                                        // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                        var sound = ss.getSoundFromSoundUUIDOrSoundSampleUUID(treeUUID);                         
+                                        triggerRateLimitedUpdateSoundCard(sound);
 
-                                    // If the property name is that of a slider (sound parameter), then update the slider as well
-                                    if (isSoundParameter(propertyName)){
-                                        // NOTE: in that case, treeUUID will always correspond to a SOUND element
-                                        updateSoundParameter(treeUUID, propertyName, propertyValue);
+                                        // If the property name is that of a slider (sound parameter), then update the slider as well
+                                        if (isSoundParameter(propertyName)){
+                                            // NOTE: in that case, treeUUID will always correspond to a SOUND element
+                                            updateSoundParameter(treeUUID, propertyName, propertyValue);
+                                        }
+                                    } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
+                                        // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
+                                        updateMainPresetParameters();
+                                    } else if (treeType === "MIDI_CC_MAPPING"){
+                                        updateMIDIMappingEditor(treeUUID);
                                     }
-                                } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
-                                    // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
-                                    updateMainPresetParameters();
-                                } else if (treeType === "MIDI_CC_MAPPING"){
-                                    updateMIDIMappingEditor(treeUUID);
-                                }
+                                }, 50);
+
+                                
                             }
                             
                         } else if (updateType === 'addedChild'){
@@ -449,7 +462,7 @@
 
             getSoundFromSoundSampleUUID(soundSampleUUID){
                 const soundSample = ss.state.querySelector("SOUND_SAMPLE[uuid='" + soundSampleUUID + "']");
-                return soundSample.parentNode;
+                return ss.getSoundFromSoundUUID(soundSample.parentElement.getAttribute('uuid'));
             }
 
             getSoundFromSoundUUIDOrSoundSampleUUID(soundUUIDorSoundSampleUUID){
@@ -933,6 +946,7 @@
             // Create sound card element
             var element = document.createElement('div');
             element.id = soundUUID;
+            element.dataset.soundIdx = 0;
             element.classList = 'controls_card';
 
             // Create inner html of sound card element
@@ -946,31 +960,77 @@
             element.innerHTML = html;
             return element;
         }
+
+        var rateLimitedTimers = {};
+        var lastTimeFunctionCalled = {};
+        var maxUpdateSoundRate = 100;
+        function triggerRateLimitedUpdateSoundCard(sound){
+            // Use this function to reduce the rate of the calls to updateSoundCard
+            // It can happen that when many properties change, we call updateSoundCard many times. Using this function this will be reduced.
+            soundUUID = sound.getAttribute('uuid');
+            if ((lastTimeFunctionCalled[soundUUID] === undefined) || (Date.now() - lastTimeFunctionCalled[soundUUID] > maxUpdateSoundRate)){
+                updateSoundCard(sound);
+                lastTimeFunctionCalled[soundUUID] = Date.now();
+            }
+
+            if (rateLimitedTimers[soundUUID] !== undefined){
+                // If a timer already set, cancel it
+                clearTimeout(rateLimitedTimers[soundUUID]);
+            }
+            rateLimitedTimers[soundUUID] = setTimeout(() => {
+                updateSoundCard(sound);
+                lastTimeFunctionCalled[soundUUID] = Date.now();
+            }, maxUpdateSoundRate);
+        }
     
         function updateSoundCard(sound){  //sound = xml element from state
-            soundUUID = sound.getAttribute('uuid');
-            var sampleSound = ss.getFirstSoundSampleSound(sound);
+            var soundUUID = sound.getAttribute('uuid');
+            var samplerSounds = ss.getSoundSamplerSounds(sound);
+            var samplerSound = samplerSounds[0];
             var soundCard = document.getElementById(soundUUID);
+            if (soundCard === null){
+                return;
+            }
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
-            var downloadProgress = sampleSound.getAttribute('downloadProgress');
-            var soundID = sampleSound.getAttribute('soundId');
-            var sourceSamplerSoundUUID = sampleSound.getAttribute('uuid');
-            var soundName = sampleSound.getAttribute('name');
-            var licenseURL = sampleSound.getAttribute('name');
+            var downloadProgress = 0.0;  // Calculate download progress, take into account the case in which a sound has multiple source sampler sounds
+            for (var i=0; i<samplerSounds.length; i++){
+                var downloadCompleted = samplerSounds[i].getAttribute('downloadCompleted');
+                var progress = samplerSounds[i].getAttribute('downloadProgress');
+                if ((downloadCompleted === null) || (progress === null)){
+                    downloadProgress += 0;
+                } else {
+                    var progress;
+                    if (samplerSounds[i].getAttribute('downloadCompleted') === '1'){
+                        progress = 100.0;
+                    } else {
+                        progress = parseFloat(samplerSounds[i].getAttribute('downloadProgress'));
+                    }
+                    downloadProgress += progress;
+                }    
+            }
+            downloadProgress = downloadProgress/samplerSounds.length;
+            
+            var soundID = samplerSound.getAttribute('soundId');
+            var sourceSamplerSoundUUID = samplerSound.getAttribute('uuid');
+            var soundName = samplerSound.getAttribute('name');
+            if (samplerSounds.length > 1){
+                soundName = '(' + samplerSounds.length + ' sounds) ' + soundName;
+            }
+            var licenseURL = samplerSound.getAttribute('license');
+            var soundIdx = 0;
+            soundIdx = soundCard.dataset.soundIdx;
 
-            var soundIdx = soundCard.dataset.soundIdx;
-
-            if ((sound.getAttribute("allSoundsLoaded") === "1") || (sampleSound.getAttribute("downloadCompleted") === "1")){
+            if (sound.getAttribute("allSoundsLoaded") === "1"){
                 // Sound already loaded, show all info (if it has not been already shown)
                 html = '<div class="transportSoundButtons"><button onclick="ss.playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="ss.stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="ss.removeSound(\'' + soundUUID + '\')">x</button></div>';
                 html += '<h4><span id="' + soundUUID + '_idx">' + soundIdx + "</span> - " + soundID + '</h4>';
-                html += soundName + '<br>';
+                html += '<div class="ellipsis">' + soundName + '</div>';
                 var licenseName = "-";
                 if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
                 else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
                 else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
                 else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-                html += parseFloat(sampleSound.getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '<br>';
+                html += '<div class="ellipsis">' + parseFloat(samplerSound.getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '</div>';
                 soundInfoElement.innerHTML = html;
                 
                 var soundControlsElement = document.getElementById('soundCardControls_' + soundUUID);
@@ -987,11 +1047,12 @@
             } else {
                 // Sound not yet loaded, show download progress
                 html = '<h4><span id="' + soundUUID + '_idx">' + soundIdx + " - " + soundID + '</h4>';
-                if (downloadProgress == null){
-                    downloadProgress = 0;
+                html += '<div class="ellipsis">' + soundName + '</div>';
+                if (downloadProgress === 100.0){
+                    html += '<div>Loading in sampler...</div>';
+                } else if (downloadProgress >= 0.0) {
+                    html += '<div>Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '% </div>';
                 }
-                html += soundName + '<br>';
-                html += 'Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '%';
                 soundInfoElement.innerHTML = html;
             }
         }
@@ -1041,24 +1102,30 @@
             var numScheduledToDelete = 0;
             for (var i = 0; i < sounds.length; i++) {
                 var sound = sounds[i];
-                //if (sound.getAttribute('willBeDeleted') !== "1") {
-                    // If sound is not scheduled for deletion, add a card for it
-                    var soundUUID = sound.getAttribute('uuid');
-                    if (existingSoundCardsUUIDs.indexOf(soundUUID) === -1){
-                        // If sound card does not exist, create it and insert it
-                        var soundCardElement = createSoundCard(sound);
-                        soundCardElement.dataset.soundIdx = i + 1 - numScheduledToDelete;
-                        newChildrenList.push(soundCardElement);
-                    } else {
-                        // If sound card already exists, just move it to the list of new nodes
-                        var existingElement = document.getElementById(soundUUID);
-                        newChildrenList.push(existingElement);
-                        existingElement.dataset.soundIdx = i + 1 - numScheduledToDelete;
-                    }
-                /*} else {
-                    // If sound scheduled to delete, don't add it to the list
+                if (sound.getAttribute('willBeDeleted') === "1") {
                     numScheduledToDelete += 1;
-                }*/
+                }
+            }
+            for (var i = 0; i < sounds.length; i++) {
+                var sound = sounds[i];
+                
+                // If sound is not scheduled for deletion, add a card for it
+                var soundUUID = sound.getAttribute('uuid');
+                var soundIdx = i + 1 - numScheduledToDelete;
+                if (soundIdx < 0){
+                    soundIdx = 0;
+                }
+                if (existingSoundCardsUUIDs.indexOf(soundUUID) === -1){
+                    // If sound card does not exist, create it and insert it
+                    var soundCardElement = createSoundCard(sound);
+                    soundCardElement.dataset.soundIdx = soundIdx;
+                    newChildrenList.push(soundCardElement);
+                } else {
+                    // If sound card already exists, just move it to the list of new nodes
+                    var existingElement = document.getElementById(soundUUID);
+                    newChildrenList.push(existingElement);
+                    existingElement.dataset.soundIdx = soundIdx;
+                }
             }
             soundCardsContainer.replaceChildren(...newChildrenList);
 
@@ -1068,7 +1135,7 @@
                 var soundUUID = sound.getAttribute('uuid');
 
                 // Update main parameters of the sound card
-                updateSoundCard(sound); 
+                triggerRateLimitedUpdateSoundCard(sound);
 
                 // Update sound parameters (sliders) of sound card
                 var soundParameters = getAllSoundParameterNames();
@@ -1080,6 +1147,7 @@
                 // Update MIDI CC mappings section of sound card
                 var samplerSoundMappings = ss.getSoundMidiMappings(sound);
                 var samplerSoundMappingsElement = document.getElementById('soundCardMappings_' + soundUUID);
+                samplerSoundMappingsElement.innerHTML = '';
                 for (var j = 0; j < samplerSoundMappings.length; j++) {
                     var mapping = samplerSoundMappings[j];
                     html = createMIDIMappingEditor(soundUUID, mapping);

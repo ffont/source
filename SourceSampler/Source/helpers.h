@@ -116,6 +116,8 @@ namespace Helpers
         juce::ValueTree ss (IDs::SOUND_SAMPLE);
         Helpers::createUuidProperty (ss);
         ss.setProperty (IDs::name, soundName, nullptr);
+        ss.setProperty (IDs::downloadProgress, 0, nullptr);
+        ss.setProperty (IDs::downloadCompleted, false, nullptr);
         ss.setProperty (IDs::soundId, soundID, nullptr); // This might be -1 if sound is not from freesound
         ss.setProperty (IDs::format, format, nullptr);
         ss.setProperty (IDs::previewURL, previewURL, nullptr); // This might be "" if sound is not from freesound

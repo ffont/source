@@ -48,10 +48,16 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
         return properties
 
     def draw_display_frame(self):
+        num_sound_samples = self.spi.get_num_source_sampler_sounds_per_sound(self.sound_idx)
+        if (num_sound_samples < 2):
+            name_label = "S{0}: {1}".format(self.sound_idx + 1, self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_NAME))
+        else:
+            name_label = "S{0} ({2} sounds): {1}".format(self.sound_idx + 1, self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_NAME), num_sound_samples)
+        
         lines = [{
             "underline": True,
             "move": True,
-            "text": "S{0}:{1}".format(self.sound_idx + 1, self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_NAME))
+            "text": name_label
         }]
 
         if self.current_page_data == EXTRA_PAGE_1_NAME:

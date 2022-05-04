@@ -86,6 +86,13 @@ class SourcePluginInterface(object):
             return return_with_type(sound_state.get(property_name.lower(), default))
         
         elif hierarchy_location == 'sound_sample':
+            if property_name == PlStateNames.SOUND_DOWNLOAD_PROGRESS:
+                # Special case of download progress, calculate the average over all existing sound sample sounds
+                download_percentage = 0
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    download_percentage += float(ss.get(PlStateNames.SOUND_DOWNLOAD_PROGRESS.lower(), 0.0))
+                download_percentage = download_percentage/len(sound_state.find_all("SOUND_SAMPLE".lower()))
+                return download_percentage
             return return_with_type(sound_sample_state.get(property_name.lower(), default))
         
         elif hierarchy_location == 'computed':
@@ -158,6 +165,12 @@ class SourcePluginInterface(object):
         if not self.has_state():
             return 0
         return len(self.sss.state_soup.find_all("SOUND".lower()))
+
+    def get_source_sampler_sounds_per_sound(self, sound_idx):
+        return self.sss.state_soup.find_all("SOUND".lower())[sound_idx].find_all("SOUND_SAMPLE".lower())
+    
+    def get_num_source_sampler_sounds_per_sound(self, sound_idx):
+        return len(self.get_source_sampler_sounds_per_sound(sound_idx))
 
     def get_local_audio_files_path(self):
         if self.has_state():

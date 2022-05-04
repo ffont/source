@@ -682,11 +682,18 @@ void SourceSound::loadSounds()
     
     allSoundsLoaded = false;
     
+    // Set all download progress/completed properties to 0/false to start from scratch
+    for (int i=0; i<state.getNumChildren(); i++){
+        auto child = state.getChild(i);
+        child.setProperty (IDs::downloadProgress, 0, nullptr);
+        child.setProperty (IDs::downloadCompleted, false, nullptr);
+    }
+    
+    // Iterate thorugh all sampler sounds and trigger downloads if necessary
     bool allAlreadyDownloaded = true;
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
-            
             bool isFromFreesound = child.getProperty(IDs::soundFromFreesound, false);
             juce::String filePath = child.getProperty(IDs::filePath, ""); // Relative file path
             juce::File locationInDisk; // The location in disk where sound should be downloaded/placed
