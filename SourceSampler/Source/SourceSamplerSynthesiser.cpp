@@ -77,6 +77,7 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
     {
         if (sound->appliesToNote (midiNoteNumber) && dynamic_cast<SourceSamplerSound*>(sound)->appliesToVelocity(velocityInMidiRange) && sound->appliesToChannel (midiChannel))
         {
+            //DBG(midiNoteNumber << "," << velocityInMidiRange << ": " << dynamic_cast<SourceSamplerSound*>(sound)->getSoundName());
             // If hitting a note that's still ringing, stop it first (it could be
             // still playing because of the sustain or sostenuto pedal).
             for (auto* voice : voices)

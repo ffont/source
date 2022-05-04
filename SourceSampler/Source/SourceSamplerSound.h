@@ -53,6 +53,7 @@ public:
     
     juce::String getUUID() { return state.getProperty(IDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
+    juce::String getSoundName() { return name.get(); };
 
     //==============================================================================
     bool appliesToNote (int midiNoteNumber) override;

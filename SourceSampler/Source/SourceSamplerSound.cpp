@@ -538,13 +538,19 @@ void SourceSound::assignMidiNotesAndVelocityToSourceSamplerSounds(){
             int numVelocitiesPerLayer = 128 / numLayers;
             for (int i=0; i<numLayers; i++){
                 juce::BigInteger midiVelocities = 0;
-                int bitRangeStart = i * numVelocitiesPerLayer;
-                int bitRangeEnd = juce::jmin(127, (i + 1) * numVelocitiesPerLayer);
-                midiVelocities.setRange(bitRangeStart, bitRangeEnd, true);
+                int bitRangeStart = i * numVelocitiesPerLayer ;
+                int numBitsToSet = numVelocitiesPerLayer;
+                if (i == numLayers - 1){
+                    // If this is the last layer, make sure numBitsToSet is calculated so that we use the full velocity scale (up to 127)
+                    numBitsToSet = 128 - bitRangeStart;
+                }
+                midiVelocities.setRange(bitRangeStart, numBitsToSet, true);
+                int n= 0;
                 for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
                     if ((sourceSamplerSound->getMidiRootNote() == rootNote) && (sourceSamplerSound->getMidiVelocityLayer() == rootNoteVelocityLayers[i])){
                         // Assign the computed midi velocities to SourceSamplerSound(s) with that root note and velocity layer (there should be only one)
                         sourceSamplerSound->setMappedVelocities(midiVelocities);
+                        n+=1;
                     }
                 }
             }

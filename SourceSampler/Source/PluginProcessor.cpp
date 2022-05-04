@@ -1143,12 +1143,19 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
-    // Delete sounds that should be deleted
+    // Delete sounds that should be deleted (delete them both from current sounds list and from
+    // soundsOld copy as ther might still be sounds scheduled for deletion there)
     const juce::ScopedLock sl (soundDeleteLock);
     for (int i=sounds->objects.size() - 1; i>=0 ; i--){
         auto* sound = sounds->objects[i];
         if (sound->shouldBeDeleted()){
             sounds->removeSoundWithUUID(sound->getUUID());
+        }
+    }
+    for (int i=soundsOld->objects.size() - 1; i>=0 ; i--){
+        auto* sound = soundsOld->objects[i];
+        if (sound->shouldBeDeleted()){
+            soundsOld->removeSoundWithUUID(sound->getUUID());
         }
     }
     
