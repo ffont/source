@@ -506,6 +506,10 @@
                 return -1
             }
 
+            getTmpFilesLocation(){
+                return this.state.getElementsByTagName('SOURCE_STATE')[0].getAttribute('tmpFilesLocation');
+            }
+
             // Util methods to change things of the state
 
             setSoundParameter(soundUUID, sliderElement){
@@ -1283,6 +1287,7 @@
                     canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
                     if (httpPort !== undefined){
                         let url = 'http' + (useHttps ? 's':'') + '://' + hostname + ':' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
+                        //let url = ss.getTmpFilesLocation() + '/' + sourceSamplerSoundUUID + '.wav'; // Not supported because of CORS...
                         drawAudio(url);
                     }
                 }
