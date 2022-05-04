@@ -631,13 +631,20 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
             juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
             if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
                 std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
-                SourceSamplerSound* createdSound = new SourceSamplerSound(child,
-                                                                          this,
-                                                                          *reader,
-                                                                          MAX_SAMPLE_LENGTH,
-                                                                          getGlobalContext().sampleRate,
-                                                                          getGlobalContext().samplesPerBlock);
-                sounds.push_back(createdSound);
+                if (reader == NULL){
+                    // If for some reason the reader is NULL (corrupted file for example), don't proceed creating the SourceSamplerSound
+                    // In that case delete the file so it can be re-downloaded
+                    DBG("Skipping loading of possibly corrupted file. Will delete that file so it can be re-downloaded: " << locationInDisk.getFullPathName());
+                    locationInDisk.deleteFile();
+                } else {
+                    SourceSamplerSound* createdSound = new SourceSamplerSound(child,
+                                                                              this,
+                                                                              *reader,
+                                                                              MAX_SAMPLE_LENGTH,
+                                                                              getGlobalContext().sampleRate,
+                                                                              getGlobalContext().samplesPerBlock);
+                    sounds.push_back(createdSound);
+                }
             }
         }
     }
