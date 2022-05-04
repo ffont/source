@@ -198,7 +198,7 @@ SourceSound::~SourceSound ()
     for (int i = 0; i < downloadTasks.size(); i++) {
         downloadTasks.at(i).reset();
     }
-    soundLoaderThread.stopThread(5000);
+    soundLoaderThread.stopThread(20000);
 }
 
 void SourceSound::bindState ()

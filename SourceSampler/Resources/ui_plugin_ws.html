@@ -255,7 +255,7 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        const autoUIUpdateInterval = 0; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
+        const autoUIUpdateInterval = 3000; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
         let lastUIAction = 0;
 
 
@@ -358,7 +358,7 @@
                                     if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
                                         // If what changed is a property of a sound or sound sample, then update the card for the sound
                                         var sound = ss.getSoundFromSoundUUIDOrSoundSampleUUID(treeUUID);                         
-                                        triggerRateLimitedUpdateSoundCard(sound);
+                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
 
                                         // If the property name is that of a slider (sound parameter), then update the slider as well
                                         if (isSoundParameter(propertyName)){
@@ -723,7 +723,15 @@
                         }
                     });
                     if ((noRecentUserActions) && (!enteringNewMidiMapping)){
-                        ss.requestFullState();
+                        //ss.requestFullState();
+                        // Only update sound cards that are still loading
+                        document.getElementById('individualSoundEditors').childNodes.forEach(soundCard => {
+                        if (soundCard.innerHTML.indexOf("Loading in sampler...") > -1){
+                            console.log("Auto updating sound card");
+                            console.log(ss.getSoundFromSoundUUID(soundCard.id))
+                            updateSoundCard(ss.getSoundFromSoundUUID(soundCard.id));
+                        }
+                    });
                     }
                 }, autoUIUpdateInterval);
 
@@ -968,12 +976,11 @@
         var rateLimitedTimers = {};
         var lastTimeFunctionCalled = {};
         var maxUpdateSoundRate = 100;
-        function triggerRateLimitedUpdateSoundCard(sound){
+        function triggerRateLimitedUpdateSoundCard(soundUUID){
             // Use this function to reduce the rate of the calls to updateSoundCard
             // It can happen that when many properties change, we call updateSoundCard many times. Using this function this will be reduced.
-            soundUUID = sound.getAttribute('uuid');
             if ((lastTimeFunctionCalled[soundUUID] === undefined) || (Date.now() - lastTimeFunctionCalled[soundUUID] > maxUpdateSoundRate)){
-                updateSoundCard(sound);
+                updateSoundCard(ss.getSoundFromSoundUUID(soundUUID));
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }
 
@@ -982,7 +989,7 @@
                 clearTimeout(rateLimitedTimers[soundUUID]);
             }
             rateLimitedTimers[soundUUID] = setTimeout(() => {
-                updateSoundCard(sound);
+                updateSoundCard(ss.getSoundFromSoundUUID(soundUUID));
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }, maxUpdateSoundRate);
         }
@@ -1139,7 +1146,7 @@
                 var soundUUID = sound.getAttribute('uuid');
 
                 // Update main parameters of the sound card
-                triggerRateLimitedUpdateSoundCard(sound);
+                triggerRateLimitedUpdateSoundCard(soundUUID);
 
                 // Update sound parameters (sliders) of sound card
                 var soundParameters = getAllSoundParameterNames();

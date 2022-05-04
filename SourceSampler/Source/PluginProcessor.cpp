@@ -436,6 +436,74 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileNa
         if (xmlState.get() != nullptr){
             juce::ValueTree newState = Helpers::createNewStateFromCurrentSatate(state);
             juce::ValueTree presetState = juce::ValueTree::fromXml(*xmlState.get());
+            // Check if preset has old format, and if so transform it to the new format
+            // In old format, root preset node type is "SourcePresetState", in the new one it is "PRESET"
+            if (presetState.getType().toString() == "SourcePresetState"){
+                DBG("Old preset file found, transforming to new format");
+                juce::ValueTree modifiedPresetState = Helpers::createEmptyPresetState();
+                // Preset is of new format, we can add it to the new state without modification
+                modifiedPresetState.setProperty(IDs::name, presetState.getProperty("presetName", "old preset no name"), nullptr);
+                modifiedPresetState.setProperty(IDs::noteLayoutType, presetState.getProperty("noteLayoutType", Defaults::noteLayoutType), nullptr);
+                juce::ValueTree samplerState = presetState.getChildWithName("Sampler");
+                if (samplerState.isValid()){
+                    modifiedPresetState.setProperty(IDs::numVoices, samplerState.getProperty("NumVoices", Defaults::numVoices), nullptr);
+                }
+                juce::ValueTree reverbParamsState = samplerState.getChildWithName("ReverbParameters");
+                if (reverbParamsState.isValid()){
+                    modifiedPresetState.setProperty(IDs::reverbDamping, reverbParamsState.getProperty("reverb_damping", Defaults::reverbDamping), nullptr);
+                    modifiedPresetState.setProperty(IDs::reverbWetLevel, reverbParamsState.getProperty("reverb_wetLevel", Defaults::reverbWetLevel), nullptr);
+                    modifiedPresetState.setProperty(IDs::reverbDryLevel, reverbParamsState.getProperty("reverb_dryLevel", Defaults::reverbDryLevel), nullptr);
+                    modifiedPresetState.setProperty(IDs::reverbWidth, reverbParamsState.getProperty("reverb_width", Defaults::reverbWidth), nullptr);
+                    modifiedPresetState.setProperty(IDs::reverbFreezeMode, reverbParamsState.getProperty("reverb_freezeMode", Defaults::reverbFreezeMode), nullptr);
+                    modifiedPresetState.setProperty(IDs::reverbRoomSize, reverbParamsState.getProperty("reverb_roomSize", Defaults::reverbRoomSize), nullptr);
+                }
+                juce::ValueTree soundsInfoState = presetState.getChildWithName("soundsInfo");
+                for (int i=0; i<soundsInfoState.getNumChildren(); i++){
+                    auto soundInfo = soundsInfoState.getChild(i);
+                    auto samplerSound = soundInfo.getChildWithName("SamplerSound");
+                    juce::BigInteger midiNotes = 0;
+                    midiNotes.parseString(samplerSound.getProperty("midiNotes", Defaults::midiNotes).toString(), 16);
+                    juce::ValueTree sound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties("", (int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
+                    
+                    sound.setProperty(IDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::startPosition, (float)samplerSound.getChildWithProperty("parameter_name", "startPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::endPosition, (float)samplerSound.getChildWithProperty("parameter_name", "endPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::loopStartPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopStartPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::loopEndPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopEndPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::loopXFadeNSamples, (int)samplerSound.getChildWithProperty("parameter_name", "loopXFadeNSamples").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::reverse, (int)samplerSound.getChildWithProperty("parameter_name", "reverse").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::noteMappingMode, (int)samplerSound.getChildWithProperty("parameter_name", "noteMappingMode").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::numSlices, (int)samplerSound.getChildWithProperty("parameter_name", "numSlices").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::playheadPosition, (float)samplerSound.getChildWithProperty("parameter_name", "playheadPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::freezePlayheadSpeed, (float)samplerSound.getChildWithProperty("parameter_name", "freezePlayheadSpeed").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterCutoff, (float)samplerSound.getChildWithProperty("parameter_name", "filterCutoff").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterRessonance, (float)samplerSound.getChildWithProperty("parameter_name", "filterRessonance").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterKeyboardTracking, (float)samplerSound.getChildWithProperty("parameter_name", "filterKeyboardTracking").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterAttack, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.attack").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterDecay, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.decay").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterSustain, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.sustain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterRelease, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.release").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::filterADSR2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::gain, (float)samplerSound.getChildWithProperty("parameter_name", "gain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::attack, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.attack").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::decay, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.decay").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::sustain, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.sustain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::release, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.release").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::pan, (float)samplerSound.getChildWithProperty("parameter_name", "pan").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::pitch, (float)samplerSound.getChildWithProperty("parameter_name", "pitch").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::pitchBendRangeUp, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeUp").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::pitchBendRangeDown, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeDown").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::mod2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::mod2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2GainAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::mod2PitchAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PitchAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::mod2PlayheadPos, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PlayheadPos").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::vel2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(IDs::vel2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2GainAmt").getProperty("parameter_value"), nullptr);
+                    
+                    modifiedPresetState.addChild (sound, -1, nullptr);
+                }
+                presetState = modifiedPresetState;
+            }
             newState.addChild (presetState, -1, nullptr);
             loadPresetFromStateInformation(newState);
             return true;
