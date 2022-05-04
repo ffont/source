@@ -168,11 +168,11 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
-    std::vector<SourceSamplerSound*> createSourceSamplerSounds ();
+    std::vector<SourceSamplerSound*> createSourceSamplerSounds();
     void addSourceSamplerSoundsToSampler();
     void removeSourceSampleSoundsFromSampler();
     
-    void loadSounds();
+    void loadSounds(std::function<bool()> shouldStopLoading);
     bool isSupportedAudioFileFormat(const juce::String& extension);
     bool fileLocationIsSupportedAudioFileFormat(juce::File location);
     juce::File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
@@ -192,7 +192,7 @@ public:
         
         void run() override
         {
-            sound.loadSounds();
+            sound.loadSounds([this]{return threadShouldExit();});
         }
         SourceSound& sound;
     };
@@ -249,6 +249,7 @@ private:
     std::vector<std::unique_ptr<juce::URL::DownloadTask>> downloadTasks;
     bool allDownloaded = false;
     double scheduledForDeletionTime = 0.0;
+    std::function<bool()> shouldStopLoading;
     
     JUCE_LEAK_DETECTOR (SourceSound)
 };

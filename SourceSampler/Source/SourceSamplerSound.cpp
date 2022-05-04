@@ -198,6 +198,7 @@ SourceSound::~SourceSound ()
     for (int i = 0; i < downloadTasks.size(); i++) {
         downloadTasks.at(i).reset();
     }
+    soundLoaderThread.stopThread(5000);
 }
 
 void SourceSound::bindState ()
@@ -626,6 +627,11 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
     audioFormatManager.registerBasicFormats();
     std::vector<SourceSamplerSound*> sounds = {};
     for (int i=0; i<state.getNumChildren(); i++){
+        if (shouldStopLoading()){
+            DBG("Cancelled loading sounds process at sound " << i);
+            // If loading process was cancelled, do an early return
+            return sounds;
+        }
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
             juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
@@ -654,7 +660,14 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
 void SourceSound::addSourceSamplerSoundsToSampler()
 {
     std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
-    for (auto sourceSamplerSound: sourceSamplerSounds) { getGlobalContext().sampler->addSound(sourceSamplerSound); }
+    for (auto sourceSamplerSound: sourceSamplerSounds) {
+        if (shouldStopLoading()){
+            // If loading process was cancelled, do an early return
+            DBG("Cancelled loading sounds process when adding sounds to sampler");
+            return;
+        }
+        getGlobalContext().sampler->addSound(sourceSamplerSound);
+    }
     assignMidiNotesAndVelocityToSourceSamplerSounds();
     std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
     allSoundsLoaded = true;
@@ -682,13 +695,17 @@ void SourceSound::removeSourceSampleSoundsFromSampler()
 
 // ------------------------------------------------------------------------------------------------
 
-void SourceSound::loadSounds()
+void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
 {
+    // Assign funtion that will tell if loading should stop (because loading thread was cancelled) to instance so it can be used in other methods
+    shouldStopLoading = _shouldStopLoading;
+    
     // Load all the  SourceSamplerSound(s) of SourceSound, triggering downloading if needed. This will normally be one single sound except for the
     // case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
     
     allSoundsLoaded = false;
     
+
     // Set all download progress/completed properties to 0/false to start from scratch
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
@@ -699,6 +716,13 @@ void SourceSound::loadSounds()
     // Iterate thorugh all sampler sounds and trigger downloads if necessary
     bool allAlreadyDownloaded = true;
     for (int i=0; i<state.getNumChildren(); i++){
+        
+        if (shouldStopLoading()){
+            DBG("Cancelled loading sounds process");
+            // At every iteration, check if the loading process should be stopped (e.g. because the thread was stopped), and do early return if so
+            return;
+        }
+        
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
             bool isFromFreesound = child.getProperty(IDs::soundFromFreesound, false);
