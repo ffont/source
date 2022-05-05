@@ -738,6 +738,9 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                 child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
                 if (fileAlreadyInDisk(locationInDisk)){
                     // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
+                    if (!locationInDisk.getFullPathName().contains("-original")){
+                        child.setProperty(IDs::usesPreview, true, nullptr);
+                    }
                     child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                     child.setProperty(IDs::downloadCompleted, true, nullptr);
                 } else {
@@ -793,6 +796,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                     }
                 }
             } else {
+                // If sound not from Freesound
                 // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
                 if (filePath != ""){
                     locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
@@ -836,13 +840,17 @@ juce::File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSo
 
 bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
 {
+    // In order for a sound to be downloaded in original quality we need:
+    // - an access token present
+    // - the preference which indiates that original files are wanted (and the file smaller than the max size for original files)
+    // - the sound sample to have the "format" metadata, othewise we don't know the file format and can't download (this can be checked with isSupportedAudioFileFormat)
     if (getGlobalContext().freesoundOauthAccessToken != ""){
         if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
-            return true;
+            return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(IDs::format, ""));
         } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
             // Only return true if sound has a filesize below the threshold
-            if ((int)sourceSamplerSoundState.getProperty(IDs::filesize) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
-                return true;
+            if ((int)sourceSamplerSoundState.getProperty(IDs::filesize, MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD + 1) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(IDs::format, ""));
             }
         }
     }

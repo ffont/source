@@ -74,6 +74,11 @@
             }
         }
 
+        #numResultsIndicator {
+            display: inline-block;
+            margin-right: 3px;
+        }
+
         #queryingIndicator {
             width: 10px;
             height: 10px;
@@ -255,7 +260,7 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        const autoUIUpdateInterval = 3000; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
+        const autoUIUpdateInterval = 0; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
         let lastUIAction = 0;
 
 
@@ -350,6 +355,11 @@
                             const elementToUpdate = self.state.querySelector("[uuid='" + treeUUID + "']");
                             if (elementToUpdate !== null){
                                 elementToUpdate.setAttribute(propertyName, propertyValue);
+
+                                // Check if the change was to notify a query with empty results, and show in ui
+                                if (propertyName === 'numResultsLastQuery'){
+                                    notifyQueryResultsFromLastQuery(parseInt(propertyValue, 0));
+                                }
 
                                 // Update corresponding UI sections
                                 // Use a timeout to "give time" to state to update? We observed some inconsistencies reading data from the state immediately after updating the element without this timeout...
@@ -1062,7 +1072,7 @@
                 if (downloadProgress === 100.0){
                     html += '<div>Loading in sampler...</div>';
                 } else if (downloadProgress >= 0.0) {
-                    html += '<div>Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '% </div>';
+                    html += '<div style="background: linear-gradient(to right, #4eb8a4 ' + downloadProgress + '%, black ' + downloadProgress + '%);">&nbsp;Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '% </div>';
                 }
                 soundInfoElement.innerHTML = html;
             }
@@ -1224,7 +1234,18 @@
             html += "</div>";
             metersStateElement.innerHTML = html;
         }
-        
+
+        function notifyQueryResultsFromLastQuery(numResults){
+            var element = document.getElementById("numResultsIndicator");
+            if (numResults > -1){
+                element.innerHTML = numResults + ' results';
+                setTimeout(() => {
+                    element.innerHTML = '';
+                }, 2000);
+            } else {
+                element.innerHTML = '';
+            }
+        }
         
         function drawSoundWaveform(sourceSamplerSoundUUID, canvasID){
             // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
@@ -1331,7 +1352,7 @@
     </div>
 
     <div class="controls_card controls_card_top">
-        <div class="transportSoundButtons"><div id="queryingIndicator"></div></div>
+        <div class="transportSoundButtons"><div id="numResultsIndicator"></div><div id="queryingIndicator"></div></div>
         <h4>Get new sounds</h4>
         Query:<input name="query" value="" type="text" placeholder="percussion"><br>
         Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>

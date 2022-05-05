@@ -463,7 +463,8 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileNa
                     auto samplerSound = soundInfo.getChildWithName("SamplerSound");
                     juce::BigInteger midiNotes = 0;
                     midiNotes.parseString(samplerSound.getProperty("midiNotes", Defaults::midiNotes).toString(), 16);
-                    juce::ValueTree sound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties("", (int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
+                    juce::ValueTree sound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
+                    sound.getChildWithName(IDs::SOUND_SAMPLE).setProperty(IDs::usesPreview, true, nullptr);
                     
                     sound.setProperty(IDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
                     sound.setProperty(IDs::startPosition, (float)samplerSound.getChildWithProperty("parameter_name", "startPosition").getProperty("parameter_value"), nullptr);
@@ -1008,11 +1009,23 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
     
     FreesoundClient client(FREESOUND_API_KEY);
     isQuerying = true;
-    DBG("Querying new sounds for: " + textQuery);
-    auto filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
-    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, 80, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    state.setProperty(IDs::numResultsLastQuery, -1, nullptr);
+    juce::String filter = "";
+    int pageSize = 0;
+    if ((textQuery != "") && (textQuery.containsOnly("0123456789-"))){
+        DBG("Querying for sound with id: " + textQuery);
+        filter = "id:" + textQuery;
+        pageSize = 1;
+    } else {
+        DBG("Querying new sounds for: " + textQuery);
+        filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
+        pageSize = 100;
+    }
+    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    int numResults = list.getCount();
+    state.setProperty(IDs::numResultsLastQuery, numResults, nullptr);
     isQuerying = false;
-    if (list.getCount() > 0){
+    if (numResults > 0){
         
         // Randmomize results and prepare for iteration
         juce::Array<FSSound> soundsFound = list.toArrayOfSounds();
@@ -1055,11 +1068,11 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
             // Create sound
             // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
             addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote);
-            
-            if (addReplaceOrReplaceSound == "add"){
-                // If the operation was adding sounds, recompute mapping layout as otherwise new sounds might overlap with previous
-                reapplyNoteLayout(noteLayoutType);
-            }
+        }
+        
+        if (addReplaceOrReplaceSound == "add"){
+            // If the operation was adding sounds, recompute mapping layout as otherwise new sounds might overlap with previous
+            reapplyNoteLayout(noteLayoutType);
         }
     } else {
         DBG("Query got no results...");
@@ -1108,7 +1121,7 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
     }
     
     int midiVelocityLayer = 0;
-    juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundUUID, soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
+    juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
     juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
     
     if (existingSoundIndex > -1){

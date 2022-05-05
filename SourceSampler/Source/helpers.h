@@ -201,8 +201,7 @@ namespace Helpers
         return sound;
     }
 
-    inline juce::ValueTree createSourceSoundAndSourceSamplerSoundFromProperties(const juce::String& soundUUID,
-                                                                                int soundID,
+    inline juce::ValueTree createSourceSoundAndSourceSamplerSoundFromProperties(int soundID,
                                                                                 const juce::String& soundName,
                                                                                 const juce::String& soundUser,
                                                                                 const juce::String& soundLicense,

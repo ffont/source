@@ -99,7 +99,6 @@ private:
 
     // "Volatile" properties that are not binded in state
     std::unique_ptr<juce::AudioBuffer<float>> data;
-    bool loadedPreviewVersion = false;
     int lengthInSamples = 0;
     double soundSampleRate;
     double pluginSampleRate;

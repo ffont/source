@@ -252,6 +252,8 @@ DECLARE_ID (parameterName)
 DECLARE_ID (minRange)
 DECLARE_ID (maxRange)
 
+DECLARE_ID (numResultsLastQuery)
+
 // --> Start auto-generated code B
 DECLARE_ID (launchMode)
 DECLARE_ID (startPosition)
