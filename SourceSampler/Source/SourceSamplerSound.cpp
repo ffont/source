@@ -560,14 +560,19 @@ void SourceSound::assignMidiNotesAndVelocityToSourceSamplerSounds(){
 }
 
 void SourceSound::setMidiRootNote(int newMidiRootNote){
-    // Set the midi root note to sounds' SourceSamplerSound
-    if (getLinkedSourceSamplerSounds().size() > 1){
-        // If the sound has more than one SourceSamplerSound, no root note is updated as we don't know which sound should be updated
-    } else {
+    if (getLinkedSourceSamplerSounds().size() == 0){
+        // If sound has not yer any liked SourceSamplerSound objects, set midi property to thge first SOUND_SAMPLE in the sound's state
+        auto firstSourceSamplerSoundState = state.getChild(0);
+        if (firstSourceSamplerSoundState.isValid()){
+            firstSourceSamplerSoundState.setProperty(IDs::midiRootNote, newMidiRootNote, nullptr);
+        }
+    } else if (getLinkedSourceSamplerSounds().size() == 1) {
+        // If sound already has a SourceSamplerSound object created, set the midi root note (to the first only)
         getFirstLinkedSourceSamplerSound()->setMidiRootNote(newMidiRootNote);
+    } else {
+        // If the sound has more than one SourceSamplerSound, no root note is updated as we don't know which sound should be updated
     }
 }
-
 
 // ------------------------------------------------------------------------------------------------
 

@@ -76,7 +76,7 @@ public:
     juce::BigInteger getMappedMidiNotes();
     void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
     int getMidiRootNote();
-    void setMidiRootNote(int newMidiRootNote);
+    void setMidiRootNote(int newRootNote);
     int getMidiVelocityLayer();
     void setMappedVelocities(juce::BigInteger newMappedVelocities);
     
