@@ -14,7 +14,11 @@
 #include "defines.h"
 #include "BinaryData.h"
 #include "httplib.h"
+#if USE_SSL_FOR_HTTP_AND_WS
 #include "server_wss.hpp"
+#else
+#include "server_ws.hpp"
+#endif
 #include <future>
 
 
