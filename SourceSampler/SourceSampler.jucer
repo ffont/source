@@ -5,7 +5,7 @@
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/asio/asio/include/&#10;"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/asio/asio/include/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
@@ -105,7 +105,8 @@
       </MODULEPATHS>
     </XCODE_MAC>
     <LINUX_MAKE targetFolder="Builds/ELKAudioOS" vstLegacyFolder="/code/VST2_SDK"
-                extraCompilerFlags="-lfreetype&#10;-lcurl&#10;-lasound&#10;-ludev">
+                extraCompilerFlags="-lfreetype&#10;-lcurl&#10;-lasound&#10;-ludev"
+                extraLinkerFlags="-lssl &#10;-lcrypto">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="/workdir/sysroots/aarch64-elk-linux/usr/include/freetype2/"
                        libraryPath="/workdir/sysroots/aarch64-elk-linux/usr/lib/" enablePluginBinaryCopyStep="1"/>
