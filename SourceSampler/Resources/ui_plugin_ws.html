@@ -277,10 +277,13 @@
                 this.wsConnection = this.configureWSConnection();
 
                 this.afterStateUpdatesFullStateRequestTimer = undefined;
-                this.afterStateUpdatesFullStateRequestTimerInterval = 250;
+                this.afterStateUpdatesFullStateRequestTimerInterval = 1000;
             }
 
             scheduleExtraFullStateRequestAfterBurstOfMessages () {
+                // Because sometimes there can be state syncing issues if messages arrive in wrong orders or due to
+                // other whings we did not contemplate, once a burst of state update messages has finished, we call request
+                // once more a full state update to make sure everything is perfectly in sync.
                 if (this.afterStateUpdatesFullStateRequestTimer !== undefined){
                     clearTimeout(this.afterStateUpdatesFullStateRequestTimer);
                     this.afterStateUpdatesFullStateRequestTimer = undefined;
