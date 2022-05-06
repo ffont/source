@@ -776,13 +776,13 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
                         # else
                         juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + juce::String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
                         int statusCode = -1;
-                        StringPairArray responseHeaders;
-                        if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
+                        juce::StringPairArray responseHeaders;
+                        if (auto stream = std::unique_ptr<juce::InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
                             MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
                             &responseHeaders, &statusCode))){
-                            String resp = stream->readEntireStreamAsString();
+                            juce::String resp = stream->readEntireStreamAsString();
                             DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
                         } else {
                             DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
@@ -799,13 +799,13 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
                         # else
                         juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
+                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + juce::String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
                         int statusCode = -1;
-                        StringPairArray responseHeaders;
-                        if (auto stream = std::unique_ptr<InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
+                        juce::StringPairArray responseHeaders;
+                        if (auto stream = std::unique_ptr<juce::InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
                             MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
                             &responseHeaders, &statusCode))){
-                            String resp = stream->readEntireStreamAsString();
+                            juce::String resp = stream->readEntireStreamAsString();
                             DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
                         } else {
                             DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
