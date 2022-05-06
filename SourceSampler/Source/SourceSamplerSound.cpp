@@ -574,6 +574,19 @@ void SourceSound::setMidiRootNote(int newMidiRootNote){
     }
 }
 
+int SourceSound::getMidiNoteFromFirstSourceSamplerSound(){
+    // Get the midi root note of the first SourceSamplerSound form the linked object if already exists, or from the state (useful if SourceSamplerSound objects have not yet been created)
+    if (getLinkedSourceSamplerSounds().size() == 0){
+        auto firstSourceSamplerSoundState = state.getChild(0);
+        if (firstSourceSamplerSoundState.isValid()){
+            return firstSourceSamplerSoundState.getProperty(IDs::midiRootNote, Defaults::midiRootNote);
+        }
+    } else {
+        getFirstLinkedSourceSamplerSound()->getMidiRootNote();
+    }
+    return Defaults::midiRootNote;
+}
+
 // ------------------------------------------------------------------------------------------------
 
 void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){

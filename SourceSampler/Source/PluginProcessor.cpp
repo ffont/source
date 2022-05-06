@@ -993,6 +993,12 @@ void SourceSamplerAudioProcessor::setMidiThru(bool doMidiTrhu)
 
 void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
+    /* This function makes a query to Freesound and loads the results in the sammpler. This is only used when running SOURCE as a plugin in Desktop environment (not deployed in ELK
+     hardware stack). In ELK stack, the communication with Freesound happens in the UI application (Python) and the UI tells the plugin which sounds to load (and when). In the future
+     it might be a good idea to move all communication with Freesound to the plugin itself so that it will be easier that the Desktop plugin and the ELK version offer similar
+     functionality and there is less need to duplicate code.
+     */
+    
     if (isQuerying){
         // If already querying, don't run another query
         DBG("Skip query as already querying...");
@@ -1048,21 +1054,28 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
         for (int i=0; i<nSounds; i++){
             
             // Calculate assigned notes
-            int midiRootNote;
-            juce::BigInteger midiNotes;
-            if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-                // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
-                midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
-                midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
+            int midiRootNote = -1;
+            juce::BigInteger midiNotes = 0;
+            
+            if (soundUUIDToReplace == ""){
+                // If no sound is being replaced, calculate the mapping depending to the requested mapping type
+                if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+                    // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
+                    midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
+                    midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
+                } else {
+                    // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
+                    midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
+                    for (int j=midiRootNote; j<128; j=j+nSounds){
+                        midiNotes.setBit(j);  // Map notes in upwards direction
+                    }
+                    for (int j=midiRootNote; j>=0; j=j-nSounds){
+                        midiNotes.setBit(j);  // Map notes in downwards direction
+                    }
+                }
             } else {
-                // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
-                midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
-                for (int j=midiRootNote; j<128; j=j+nSounds){
-                    midiNotes.setBit(j);  // Map notes in upwards direction
-                }
-                for (int j=midiRootNote; j>=0; j=j-nSounds){
-                    midiNotes.setBit(j);  // Map notes in downwards direction
-                }
+                // If a specific sound is being replaced, no need to calcualte any mapping here because it will be copied from the
+                // sound being replaced in addOrReplaceSoundFromBasicSoundProperties
             }
             
             // Create sound
@@ -1117,7 +1130,7 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
         // so assigned notes and root note are kept. Note that if the sound is a multisample sound, we take the first of the root notes
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         midiNotes = sound->getMappedMidiNotes();
-        midiRootNote = sound->getFirstLinkedSourceSamplerSound()->getMidiRootNote();
+        midiRootNote = sound->getMidiNoteFromFirstSourceSamplerSound();
     }
     
     int midiVelocityLayer = 0;

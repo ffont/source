@@ -154,6 +154,7 @@ public:
     void setMappedMidiNotes(juce::BigInteger newMappedMidiNotes);
     void assignMidiNotesAndVelocityToSourceSamplerSounds();
     void setMidiRootNote(int newMidiRootNote);
+    int getMidiNoteFromFirstSourceSamplerSound();
     
     // ------------------------------------------------------------------------------------------------
     
