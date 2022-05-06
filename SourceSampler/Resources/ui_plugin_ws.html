@@ -260,9 +260,8 @@
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
-        const autoUIUpdateInterval = 0; // Don't use auto UI updates as this is bad practice and it looks like this is not needed anymore
         let lastUIAction = 0;
-
+    
 
         class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
 
@@ -276,6 +275,19 @@
                 this.wsPort = wsPort;
                 this.useWss = useWss;
                 this.wsConnection = this.configureWSConnection();
+
+                this.afterStateUpdatesFullStateRequestTimer = undefined;
+                this.afterStateUpdatesFullStateRequestTimerInterval = 250;
+            }
+
+            scheduleExtraFullStateRequestAfterBurstOfMessages () {
+                if (this.afterStateUpdatesFullStateRequestTimer !== undefined){
+                    clearTimeout(this.afterStateUpdatesFullStateRequestTimer);
+                    this.afterStateUpdatesFullStateRequestTimer = undefined;
+                }
+                this.afterStateUpdatesFullStateRequestTimer = setTimeout(() => {
+                    this.requestFullState();
+                }, this.afterStateUpdatesFullStateRequestTimerInterval);
             }
 
             configureWSConnection () {
@@ -361,29 +373,43 @@
                                     notifyQueryResultsFromLastQuery(parseInt(propertyValue, 0));
                                 }
 
-                                // Update corresponding UI sections
-                                // Use a timeout to "give time" to state to update? We observed some inconsistencies reading data from the state immediately after updating the element without this timeout...
-                                setTimeout( () => { 
-                                    // If property was found, trigger corresponding UI updates
-                                    if ((treeType === "SOUND_SAMPLE") || (treeType === "SOUND")){
-                                        // If what changed is a property of a sound or sound sample, then update the card for the sound
-                                        var sound = ss.getSoundFromSoundUUIDOrSoundSampleUUID(treeUUID);                         
+                                // If property was found, trigger corresponding UI updates
+                                if (treeType === "SOUND"){
+                                    // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                    var sound = ss.getSoundFromSoundUUID(treeUUID);
+                                    if (sound !== null){
                                         triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
-
-                                        // If the property name is that of a slider (sound parameter), then update the slider as well
-                                        if (isSoundParameter(propertyName)){
-                                            // NOTE: in that case, treeUUID will always correspond to a SOUND element
-                                            updateSoundParameter(treeUUID, propertyName, propertyValue);
+                                    } else {
+                                        // We might receive property change messages from sounds that are being deleted and that still exist in our state
+                                        // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
+                                        if (propertyName !== "willBeDeleted"){
+                                            console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
                                         }
-                                    } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
-                                        // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
-                                        updateMainPresetParameters();
-                                    } else if (treeType === "MIDI_CC_MAPPING"){
-                                        updateMIDIMappingEditor(treeUUID);
                                     }
-                                }, 50);
 
-                                
+                                    // If the property name is that of a slider (sound parameter), then update the slider as well
+                                    if (isSoundParameter(propertyName)){
+                                        // NOTE: in that case, treeUUID will always correspond to a SOUND element
+                                        updateSoundParameter(treeUUID, propertyName, propertyValue, elementToUpdate);
+                                    }
+                                } else if (treeType === "SOUND_SAMPLE"){
+                                    var sound = ss.getSoundFromSoundSampleUUID(treeUUID);
+                                    if (sound !== null){
+                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
+                                    } else {
+                                        // We might receive property change messages from sounds that are being deleted and that still exist in our state
+                                        // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
+                                        if (propertyName !== "willBeDeleted"){
+                                            console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
+                                        }
+                                    }
+
+                                } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
+                                    // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
+                                    updateMainPresetParameters();
+                                } else if (treeType === "MIDI_CC_MAPPING"){
+                                    updateMIDIMappingEditor(treeUUID);
+                                }
                             }
                             
                         } else if (updateType === 'addedChild'){
@@ -392,7 +418,13 @@
                             const indexInParentChildren = parseInt(restOfDataSliced[2], 10);
                             const childXmlString = restOfDataSliced.slice(3, restOfDataSliced.length).join(';');
                             // Add new child element to the state
-                            const elementToUpdate = self.state.querySelector("[uuid='" + parentTreeUUID + "']");
+                            var elementToUpdate;
+                            if (parentTreeType === "PRESET"){
+                                // If adding child of type preset, add it to the main SOURCE_STATE node regardless of the SOURCE_STATE uuid which some times changes
+                                elementToUpdate = ss.state.childNodes[0];
+                            } else {
+                                elementToUpdate = self.state.querySelector("[uuid='" + parentTreeUUID + "']");
+                            }
                             if (elementToUpdate !== null){
                                 var nodeToAdd = self.parser.parseFromString(childXmlString, "text/xml").childNodes[0];
                                 if (indexInParentChildren < 0){
@@ -428,6 +460,8 @@
                                 }
                             }
                         }
+
+                        self.scheduleExtraFullStateRequestAfterBurstOfMessages();
                     }                
                 };
 
@@ -467,25 +501,16 @@
             }
 
             getSoundFromSoundUUID(soundUUID){
-                return ss.state.querySelector("SOUND[uuid='" + soundUUID + "']");
+                return ss.state.querySelector("[uuid='" + soundUUID + "']");
             }
 
             getSoundFromSoundSampleUUID(soundSampleUUID){
-                const soundSample = ss.state.querySelector("SOUND_SAMPLE[uuid='" + soundSampleUUID + "']");
+                const soundSample = ss.state.querySelector("[uuid='" + soundSampleUUID + "']");
                 return ss.getSoundFromSoundUUID(soundSample.parentElement.getAttribute('uuid'));
             }
 
-            getSoundFromSoundUUIDOrSoundSampleUUID(soundUUIDorSoundSampleUUID){
-                const element = ss.state.querySelector("[uuid='" + soundUUIDorSoundSampleUUID + "']");
-                if (element.tagName === 'SOUND_SAMPLE'){
-                    return ss.getSoundFromSoundSampleUUID(soundUUIDorSoundSampleUUID);
-                } else {
-                    return ss.getSoundFromSoundUUID(soundUUID);
-                }
-            }
-
             getMidiMappingStateFromMappingUUID(mappingUUID){
-                return ss.state.querySelector("MIDI_CC_MAPPING[uuid='" + mappingUUID + "']");
+                return ss.state.querySelector("[uuid='" + mappingUUID + "']");
             }
 
             getSoundMidiMappings(sound){  // sound = sound xml state
@@ -718,36 +743,6 @@
 
             // Start state synchronizer
             ss = new StateSynchronizer(wsPort, useWss);
-
-            // Start auto UI sync timer
-            // This timer triggers re-updates of the UI regularly if there has not been any recent user action
-            // In theory this should not be necessary, but because there might be some sync bugs here and there
-            // I opted to include this "brute force" method to make sure the UI is properly in sync
-            if (autoUIUpdateInterval > 0){
-                setInterval(() => {
-                    const noRecentUserActions = msSinceLastUserAction() > 2000;
-                    let enteringNewMidiMapping = false;
-                    document.querySelectorAll('*[id^="newMappingPlaceholder_"]').forEach(element => {
-                        if (element.innerHTML !== ""){
-                            enteringNewMidiMapping = true;
-                        }
-                    });
-                    if ((noRecentUserActions) && (!enteringNewMidiMapping)){
-                        //ss.requestFullState();
-                        // Only update sound cards that are still loading
-                        document.getElementById('individualSoundEditors').childNodes.forEach(soundCard => {
-                        if (soundCard.innerHTML.indexOf("Loading in sampler...") > -1){
-                            console.log("Auto updating sound card");
-                            console.log(ss.getSoundFromSoundUUID(soundCard.id))
-                            updateSoundCard(ss.getSoundFromSoundUUID(soundCard.id));
-                        }
-                    });
-                    }
-                }, autoUIUpdateInterval);
-
-                // Avoid auto re-creating sound cards while scrolling
-                document.addEventListener('scroll', () => {saveCurrentUserActionTime()});
-            }
         });
 
         // Util methods
@@ -957,7 +952,7 @@
                 var soundUUID = sounds[i].getAttribute('uuid');
                 var soundCard = document.getElementById(soundUUID + '_idx');
                 if (soundCard !== null){
-                    soundCard.innerHTML =  soundCard.dataset.soundIdx;
+                    soundCard.innerHTML =  document.getElementById(soundUUID).dataset.soundIdx;
                 }
             }
         }
@@ -990,7 +985,7 @@
             // Use this function to reduce the rate of the calls to updateSoundCard
             // It can happen that when many properties change, we call updateSoundCard many times. Using this function this will be reduced.
             if ((lastTimeFunctionCalled[soundUUID] === undefined) || (Date.now() - lastTimeFunctionCalled[soundUUID] > maxUpdateSoundRate)){
-                updateSoundCard(ss.getSoundFromSoundUUID(soundUUID));
+                updateSoundCard(soundUUID);
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }
 
@@ -999,17 +994,23 @@
                 clearTimeout(rateLimitedTimers[soundUUID]);
             }
             rateLimitedTimers[soundUUID] = setTimeout(() => {
-                updateSoundCard(ss.getSoundFromSoundUUID(soundUUID));
+                updateSoundCard(soundUUID);
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }, maxUpdateSoundRate);
         }
     
-        function updateSoundCard(sound){  //sound = xml element from state
+        function updateSoundCard(soundUUID){  //sound = xml element from state
+            var sound = ss.getSoundFromSoundUUID(soundUUID);
+            if (sound === null){
+                // Sound can be null if triggering this method in a delayed way and sound does not longer exist
+                return;
+            }
             var soundUUID = sound.getAttribute('uuid');
             var samplerSounds = ss.getSoundSamplerSounds(sound);
             var samplerSound = samplerSounds[0];
             var soundCard = document.getElementById(soundUUID);
             if (soundCard === null){
+                // Also if soundCard has not yet been created, don't continue
                 return;
             }
             var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
@@ -1037,7 +1038,7 @@
             if (samplerSounds.length > 1){
                 soundName = '(' + samplerSounds.length + ' sounds) ' + soundName;
             }
-            var licenseURL = samplerSound.getAttribute('license');
+            var licenseURL = samplerSound.getAttribute('license') || "-";
             var soundIdx = 0;
             soundIdx = soundCard.dataset.soundIdx;
 

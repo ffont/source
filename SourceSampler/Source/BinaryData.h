@@ -8,7 +8,7 @@ namespace BinaryData
     const int           localhost_crtSize = 1066;
 
     extern const char*  ui_plugin_ws_html;
-    const int           ui_plugin_ws_htmlSize = 311895;
+    const int           ui_plugin_ws_htmlSize = 313550;
 
     extern const char*  localhost_key;
     const int           localhost_keySize = 1704;

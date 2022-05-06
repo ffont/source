@@ -83,7 +83,7 @@ namespace Helpers
     inline juce::ValueTree createNewStateFromCurrentSatate(juce::ValueTree currentState)
     {
         juce::ValueTree state (IDs::SOURCE_STATE);
-        Helpers::createUuidProperty (state);
+        state.setProperty (IDs::uuid, currentState.getProperty(IDs::uuid), nullptr); // Keep the main level uuid
         state.setProperty (IDs::currentPresetIndex, currentState.getProperty(IDs::currentPresetIndex), nullptr);
         state.setProperty (IDs::globalMidiInChannel, currentState.getProperty(IDs::globalMidiInChannel), nullptr);
         state.setProperty (IDs::midiOutForwardsMidiIn, currentState.getProperty(IDs::midiOutForwardsMidiIn), nullptr);
