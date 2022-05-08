@@ -6,7 +6,7 @@ ConditionPathExists=/dev/rtdm/audio_rtdm
 [Service]
 Type=simple
 RemainAfterExit=no
-WorkingDirectory=/udata/source/app/
+WorkingDirectory=/udata/source/ui_app/
 ExecStart=python3 main
 User=mind
 Restart=always

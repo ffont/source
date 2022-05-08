@@ -82,7 +82,7 @@ Note that the most interesting bit of SOURCE is it's methods for interacting wit
 
 ## How it works
 
-SOURCE is composed of a number of software processes that run on a hardware solution based on a [Raspberry Pi 4](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/), the [Elk Pi](https://elk.audio/extended-dev-kit) hat for the Raspberry Pi (which provides low-latency multi-channel audio I/O), and the [Elk BLACKBOARD](https://elk.audio/blackboard) controller board (which provides the user interface elements including buttons, faders, a display, and the audio I/O connectors). All software processes run under [Elk Audio OS](https://elk.audio/audio-os), an operative system optimized for low-latency and real-time audio systems. The core of SOURCE is the *sampler engine* which is implemented as a VST plugin and is run by the *sushi* process (a plugin host bundled with Elk Audio OS). The communication with the sensors of the controller board is carried out by the *sensei* process, which is also part of the Elk Audio OS distribution. Finally, a *glue app* is responsible for connecting all the sub-systems together (mostly via Open Sound Control), controlling the state of the user interface, exposing an HTTP endopoint that offers a complementary user interface, and, most importantly, communicating with Freesound to search and download sounds. Below there is a block diagram including all the aforementioned software processes and hardware elements. 
+SOURCE is composed of a number of software processes that run on a hardware solution based on a [Raspberry Pi 4](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/), the [Elk Pi](https://elk.audio/extended-dev-kit) hat for the Raspberry Pi (which provides low-latency multi-channel audio I/O), and the [Elk BLACKBOARD](https://elk.audio/blackboard) controller board (which provides the user interface elements including buttons, faders, a display, and the audio I/O connectors). All software processes run under [Elk Audio OS](https://elk.audio/audio-os), an operative system optimized for low-latency and real-time audio systems. The core of SOURCE is the *sampler engine* which is implemented as a VST plugin and is run by the *sushi* process (a plugin host bundled with Elk Audio OS). The communication with the sensors of the controller board is carried out by the *sensei* process, which is also part of the Elk Audio OS distribution. Finally, a *glue app* is responsible for connecting all the sub-systems together (mostly via Open Sound Control/Websockets), controlling the state of the user interface, exposing an HTTP endopoint that offers a complementary user interface, and, most importantly, communicating with Freesound to search and download sounds. Below there is a block diagram including all the aforementioned software processes and hardware elements. 
 
 <p align="center">
 <img src="docs/SOURCE-main-diagram.png" width="400" />
@@ -92,6 +92,26 @@ SOURCE is composed of a number of software processes that run on a hardware solu
 ## How can I run SOURCE
 
 ### Running SOURCE in the ELK hardware stack
+
+This repository includes a deploy script written in Python (using `fabric`) which will carry out most of the necessary deployment steps automatically. However, there are a couple of *manual steps* that need to be done before running the deploy script.
+
+1. Clone the source code repository (this repository) in your local machine
+2. Configure key-based ssh access to the ELK board form the local machine
+3. Give extra sudo permissions to *mind* user in the ELK board
+4. Download pre-compiled SOURCE binaries for ELK in the local machine platform and copy them to XXX (or compile them locally)
+
+After the above two steps, bla bla
+
+5. Run `fab deploy-elk`
+
+And that's it! While services are running in the ELK board, you can use these utility commands bundled in the deploy script to see the logs of the `sushi` (plugin), `source` (glue app/UI app) and `sensei` (sensors) services. 
+
+```
+fab logs-sushi
+fab logs-source
+fab logs-sensi
+```
+
 
 The run SOURCE in the ELK platform you'll need to configure services to run the `sushi` process with the built sampler engine, the `sensei` process with the BLACKBOARD sensors configuration settings, and finally the `source` process which runs the glue app which connects all systems together, manages the user interface and connects to Freesound (indluding downloading sounds). To do that follow the instructions below. Note that this assumes `ssh` connection to the RPi as described in Elk documentation, and Elk Audio OS 0.7.2 installed. Note that most of the steps are to be run from your local/devleopment computer. This whole process could be simplified with more work on the *deploy scripts*.
 
@@ -138,8 +158,7 @@ Note that to get **MIDI input** you'll need to use a USB MIDI controller or inte
 
 #### Give more sudo permissions to "mind" user
 
-To run SOURCE, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities,
-running `sensei` might also fail. To add sudo capabilities:
+To run SOURCE, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities, running `sensei` might also fail. To add sudo capabilities:
 
  * switch to user `root` (`sudo su`)
  * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.

@@ -783,7 +783,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                             MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
                             &responseHeaders, &statusCode))){
                             juce::String resp = stream->readEntireStreamAsString();
-                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
+                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (juce::String)statusCode + ": " + resp);
                         } else {
                             DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
                         }
@@ -806,7 +806,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                             MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
                             &responseHeaders, &statusCode))){
                             juce::String resp = stream->readEntireStreamAsString();
-                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (String)statusCode + ": " + resp);
+                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (juce::String)statusCode + ": " + resp);
                         } else {
                             DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
                         }

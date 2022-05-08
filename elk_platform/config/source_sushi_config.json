@@ -15,7 +15,7 @@
             ],
             "plugins": [
                 {
-                    "path": "/udata/source/app/SourceSampler.so",
+                    "path": "/udata/source/plugin/SourceSamplerVST2.so",
                     "name": "SourceSampler",
                     "type": "vst2x",
                     "uid": "SourceSampler"

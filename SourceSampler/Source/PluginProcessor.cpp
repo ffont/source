@@ -30,8 +30,10 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     serverInterface ([this]{return getGlobalContext();})
 #endif
 {
+    std::cout << "Creating needed directories" << std::endl;
     createDirectories();
     
+    std::cout << "Configuring app" << std::endl;
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
     
     startTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
@@ -41,19 +43,26 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     sampler.addActionListener(this);
     
     // Start timer to pass state to the UI and run other periodic tasks like deleting sounds that are waiting to be deleted
+    std::cout << "Starting timer" << std::endl;
     startTimerHz(MAIN_TIMER_HZ);
     
     // Load empty session to state
+    std::cout << "Creating default empty state" << std::endl;
     state = Helpers::createDefaultEmptyState();
     
+    std::cout << state.toXmlString() << std::endl;
+    
     // Add state change listener and bind cached properties to state properties (including loaded sounds)
+    std::cout << "Binding state" << std::endl;
     bindState();
     
     // Load global settings and do extra configuration
+    std::cout << "Loading global settings" << std::endl;
     loadGlobalPersistentStateFromFile();
     
     // If on ELK build, start loading preset 0
     #if ELK_BUILD
+    std::cout << "Loading latest loade preset " << (juce::String)latestLoadedPreset << std::endl;
     setCurrentProgram(latestLoadedPreset);
     #endif
     
@@ -62,6 +71,8 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     sendOSCMessage(juce::OSCMessage("/plugin_started"));
     #endif
     serverInterface.sendMessageToWebSocketClients(juce::OSCMessage("/plugin_started"));
+    
+    std::cout << "SOURCE plugin is up and running!" << std::endl;
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()

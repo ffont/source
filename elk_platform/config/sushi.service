@@ -9,7 +9,7 @@ Type=simple
 RemainAfterExit=no
 WorkingDirectory=/udata/
 Environment=LD_LIBRARY_PATH=/usr/xenomai/lib
-ExecStart=/usr/bin/sushi -r --multicore-processing=3 -c /udata/source/app/source_sushi_config.json
+ExecStart=/usr/bin/sushi -r --multicore-processing=3 -c /udata/source/config/source_sushi_config.json
 User=mind
 Restart=always
 RestartSec=3
