@@ -3,9 +3,14 @@ import time
 
 from fabric import task, Connection
 
+
 host = 'mind@source.local'
-remote_dir = '/udata/source/app/'
-remote_vst3_so_dir = '/udata/source/app/SourceSampler.vst3/Contents/aarch64-linux/'
+remote_base_dir = '/udata/source/'
+ui_app_requirements_remote_path = os.path.join(remote_base_dir, 'ui_app', 'requirements.txt')
+local_ui_app_path = 'elk_platform/ui_app'
+local_config_files_path = 'elk_platform/config'
+local_vst2_elk_binary_path = 'SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so'
+
 
 PATH_TO_VST2_SDK_FOR_ELK_CROSS_COMPILATION = '${PWD}/../VST_SDK/VST2_SDK' 
 
@@ -19,7 +24,6 @@ def sudo_install(connection, source, dest, *, owner='root', group='root', mode='
 
     Source: https://github.com/fabric/fabric/issues/1750
     """
-
     mktemp_result = connection.run('mktemp', hide='out')
     assert mktemp_result.ok
 
@@ -32,127 +36,84 @@ def sudo_install(connection, source, dest, *, owner='root', group='root', mode='
         connection.run(f'rm {temp_file}')
 
 
+def copy_local_directory_to_remote(c, local_base_path, remote_base_path, to_ignore=[]):
+    for root, _, files in os.walk(local_base_path):
+        for name in files:
+            local_file_path = os.path.join(root, name)
+            if not to_ignore or not any([pattern in local_file_path for pattern in to_ignore]):
+                remote_file_path =  local_file_path.replace(local_base_path, remote_base_path)
+                c.run('mkdir -p {}'.format(os.path.dirname(remote_file_path)))
+                c.put(local_file_path, remote_file_path)
+                print(local_file_path)
+
+
 @task
-def clean(ctx):
+def deploy_elk(ctx):
+    # NOTE: this expects that key-based ssh access to elk board is already configured
+    # ssh-copy-id - i ~/.ssh/id_rsa.pub mind@source.local
 
-    # Remove all intermediate build files (for ELK build)
-    os.system("rm -r SourceSampler/Builds/ELKAudioOS/build/")
+    # Copy all necessary files to rmeote
+    with Connection(host=host) as c:
+        print('\nDeploying SOURCE to elk board')
+        print('*****************************')
 
-    # Remove all intermediate build files (for macOS build)
-    os.system("rm -r SourceSampler/Builds/MacOSX/build/")
+        c.run('mkdir -p {}'.format(os.path.join(remote_base_dir, 'local_files')))
+        c.run('mkdir -p {}'.format(os.path.join(remote_base_dir, 'sound_usage_log')))
 
+        # Copy UI app files
+        print('\n* Copying UI app files...')
+        ui_app_remote_dir = os.path.join(remote_base_dir, 'ui_app')
+        copy_local_directory_to_remote(c, local_ui_app_path, ui_app_remote_dir, to_ignore=['.pyc', '__pycache__', 'frame', '.idea', 'sound_usage_log', 'recent_queries', 'tokens', 'sm_settings'])
 
-@task
-def send_elk(ctx, include_config_files=False, include_plugin_files=True, include_systemd_files=False):
+        # Copy sucshi and sensei config files
+        print('\n* Copying sushi and sensei config files...') 
+        config_files_remote_dir = os.path.join(remote_base_dir, 'config')
+        copy_local_directory_to_remote(c, local_config_files_path, config_files_remote_dir, to_ignore=['.service'])
 
-    # Copy compiled file and sushi configuration to board
-    # NOTE: note that the architecture folder name of the generated VST3 build (arm64-linux) is in fact wrong,
-    # and it should really be "aarch64-linux". The fabric script copies it to the reight directory on the ELK board,
-    # but the paths here might need to be updated if the cross compilation toolchain is updated to generate the
-    # compiled plugin in the right directory.
-    print('\nSending SourceSamler to board...')
-    print('********************************\n')
-    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+        # Installing python requirements
+        print('\n* Installing python requirements...')
+        c.run(f'pip3 install -r {ui_app_requirements_remote_path}')
 
-        # Copy config and/or plugin files
+        # Copy VST 2plugin files
+        print('\n* Copying plugin files...')
+        vst2_plugin_remote_path = os.path.join(remote_base_dir, 'plugin', 'SourceSamplerVST2.so')
+        c.run('mkdir -p {}'.format(os.path.dirname(vst2_plugin_remote_path)))
+        c.put(local_vst2_elk_binary_path, vst2_plugin_remote_path)
+        print(local_vst2_elk_binary_path)
 
-        c.run('mkdir -p {}'.format(remote_dir))
-        c.run('mkdir -p {}'.format(remote_vst3_so_dir))
+        # Copy and install source, suchi, sensei systemd services
+        print('\n* Installing systemd sensei, sushi and source services')
+        sudo_install(c, os.path.join(local_config_files_path, "sensei.service"), "/lib/systemd/system/sensei.service", mode='0644')
+        sudo_install(c, os.path.join(local_config_files_path, "sushi.service"), "/lib/systemd/system/sushi.service", mode='0644')
+        sudo_install(c, os.path.join(local_config_files_path, "source.service"), "/lib/systemd/system/source.service", mode='0644')
 
-        os.system('git log -1 --pretty=format:"%h %ci" > elk_platform/ui_app/last_commit_info')
+        # Reload config files in systemd daemon (so new service files are loaded)
+        c.run('sudo systemctl daemon-reload')    
 
-        config_files = [
-            ("elk_platform/config/source_sushi_config.json", remote_dir),
-            ("elk_platform/config/source_sensei_config.json", remote_dir),
-            ("elk_platform/ui_app/html/index.html", remote_dir),
-            ("elk_platform/ui_app/html/sound_usage_log.html", remote_dir),
-            ("elk_platform/ui_app/html/simulator.html", remote_dir),
-            ("elk_platform/ui_app/requirements.txt", remote_dir),
-            ("elk_platform/ui_app/main", remote_dir),
-            ("elk_platform/ui_app/elk_ui_custom.py", remote_dir),
-            ("elk_platform/ui_app/source_states.py", remote_dir),
-            ("elk_platform/ui_app/helpers.py", remote_dir),
-            ("elk_platform/ui_app/freesound_interface.py", remote_dir),
-            ("elk_platform/ui_app/freesound_api_key.py", remote_dir),
-            ("elk_platform/ui_app/resources/LiberationMono-Regular.ttf", remote_dir),
-            ("elk_platform/ui_app/resources/FuturaHeavyfont.ttf", remote_dir),
-            ("elk_platform/ui_app/resources/logo_oled_upf.png", remote_dir),
-            ("elk_platform/ui_app/resources/logo_oled_ra.png", remote_dir),
-            ("elk_platform/ui_app/resources/logo_oled_ra_b.png", remote_dir),
-            ("elk_platform/ui_app/resources/logo_oled_fs.png", remote_dir),
-            ("elk_platform/ui_app/last_commit_info", remote_dir),
-        ]
-
-        plugin_files = [            
-            ("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so", remote_dir + 'SourceSampler.so'),
-            #("SourceSampler/Builds/ELKAudioOS/build/SourceSampler.vst3/Contents/arm64-linux/SourceSampler.so", remote_vst3_so_dir)
-        ]
-
-        files_to_send = []
-        if include_config_files:
-            files_to_send += config_files
-        if include_plugin_files:
-            files_to_send += plugin_files
-
-        for local_file, destination_dir in files_to_send:
-            print('- Copying {0} to {1}'.format(local_file, destination_dir))
-            c.put(local_file, destination_dir)
-
-        # Copy systemd files
-        if include_systemd_files:
-            print('- Sending systemd config files and reloading systemd daemon')
-            sudo_install(c, "elk_platform/config/sensei.service", "/lib/systemd/system/sensei.service", mode='0644')
-            sudo_install(c, "elk_platform/config/sushi.service", "/lib/systemd/system/sushi.service", mode='0644')
-            sudo_install(c, "elk_platform/config/source.service", "/lib/systemd/system/source.service", mode='0644')
-            c.run('sudo systemctl daemon-reload')    
-
-        print('Now restarting "sensei", "sushi" and "source" services in board...')
+        # Restart 
+        print('\n* Restarting sensei, suchi and source services...')
         c.run('sudo systemctl restart sensei')
         time.sleep(1)
         c.run('sudo systemctl restart source')
         time.sleep(1)
         c.run('sudo systemctl restart sushi')
-        
-
-    print('DONE!')
-    print('\n')
-
-
-@task
-def send_elk_all(ctx):
-    send_elk(ctx, include_config_files=True, include_plugin_files=True, include_systemd_files=True)
-
-
-@task
-def send_elk_config(ctx):
-    send_elk(ctx, include_config_files=True, include_plugin_files=False, include_systemd_files=False)
-
-
-@task
-def send_elk_plugin(ctx):
-    send_elk(ctx, include_config_files=False, include_plugin_files=True, include_systemd_files=False)
-
-
-@task
-def send_elk_systemd(ctx):
-    send_elk(ctx, include_config_files=False, include_plugin_files=False, include_systemd_files=True)
 
 
 @task
 def logs_sushi(ctx):
-    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+    with Connection(host=host) as c:
         c.run('sudo journalctl -fu sushi')
 
 
 @task
 def logs_sensei(ctx):
-    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+    with Connection(host=host) as c:
         c.run('sudo journalctl -fu sensei')
 
 
 @task
 def logs_source(ctx):
-    with Connection(host=host, connect_kwargs={'password': 'elk'}) as c:
+    with Connection(host=host) as c:
         c.run('sudo journalctl -fu source')
 
 
@@ -243,6 +204,16 @@ def compile_binary_builder_macos(ctx):
     os.system("cd SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
 
     print('\nAll done!')
+
+
+@task
+def clean(ctx):
+
+    # Remove all intermediate build files (for ELK build)
+    os.system("rm -r SourceSampler/Builds/ELKAudioOS/build/")
+
+    # Remove all intermediate build files (for macOS build)
+    os.system("rm -r SourceSampler/Builds/MacOSX/build/")
 
 
 @task
