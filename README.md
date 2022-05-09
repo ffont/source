@@ -24,6 +24,7 @@ Table of Contents
             * [Deploying SOURCE in the Elk board](#deploying-source-in-the-elk-board)
          * [Note about JUCE version used for SOURCE](#note-about-juce-version-used-for-source)
       * [Using the BLACKBOARD simulator in development](#using-the-blackboard-simulator-in-development)
+      * [Working on the desktop plugin UI](#working-on-the-desktop-plugin-ui)
    * [License](#license)
 
 
@@ -250,6 +251,15 @@ pip install -r requirements.txt
 pyhon main
 ```
 3. Point your browser to `http://localhost:8123/simulator` and use the buttons on screen to interact with the plugin as if interactions came from the hardware BLACKBOARD.
+
+
+## Working on the desktop plugin UI
+
+The desktop version of the plugin has its own UI which is implemented using HTML/Javascript and is loaded in the plugin using JUCE's *WebComponent*. Here is the code for the desktop plugin UI https://github.com/ffont/source/blob/master/SourceSampler/Resources/ui_plugin_ws.html. The plugin embeds a WebSockets server to implement bi-directional communication with the plugin HTML/Javascript UI. The plugin also embeds an HTML server which is used for serving sound files to the UI so that waveforms can bw shown.
+
+The `ui_plugin_ws.html` file conataining the desktop UI is embedded in the plugin binary at compile time, therefore if changed need to be done to the UI the whole plugin needs to be re-comiled for these changes to take effect in the plugin (or standalone app). However, if while the plugin is running (in Debug mode), the `ui_plugin_ws.html` is opened with a standard web browser, then the interface is rendered in the browser and it can also connect to the running plugin instance. Now, the borwser console can be used to instpect the state of the UI, and the HTML file can be edited with your editor of choice and the browser page reloaded in the browser for any changes to take effect (without the need of recompiling the whole plugin). This tick is very conveinent when working on the UI :)
+
+Also note that this desktop UI can also be used when the plugin is running in the Elk board by simply configuring the WebSockets host and port to that of the plugin instance running in the Elk board.
 
         
 # License
