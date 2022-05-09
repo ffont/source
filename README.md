@@ -12,16 +12,16 @@ Table of Contents
       * [Features](#features)
       * [How it works](#how-it-works)
       * [How can I run SOURCE](#how-can-i-run-source)
-         * [Running SOURCE in the ELK hardware stack](#running-source-in-the-elk-hardware-stack)
-         * [Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS](#running-source-as-an-audio-plugin-or-standalone-app-in-desktoplaptop-computers-with-linuxmacos)
+         * [Running SOURCE in the Elk hardware stack](#running-source-in-the-elk-hardware-stack)
+         * [Running SOURCE as an audio plugin or standalone app in desktop/laptop computers](#running-source-as-an-audio-plugin-or-standalone-app-in-desktoplaptop-computers)
    * [Instructions for developers](#instructions-for-developers)
       * [Building SOURCE sampler engine](#building-source-sampler-engine)
          * [Build standalone/plugin for desktop (macOS)](#build-standaloneplugin-for-desktop-macos)
-         * [Build plugin for ELK platform](#build-plugin-for-elk-platform)
-            * [Prepare ELK development SDK](#prepare-elk-development-sdk)
+         * [Build plugin for Elk platform](#build-plugin-for-elk-platform)
+            * [Prepare Elk development SDK](#prepare-elk-development-sdk)
             * [Prepare VST2 SDK](#prepare-vst2-sdk)
             * [Do the cross-compilation](#do-the-cross-compilation)
-            * [Loading the built plugin in the ELK board](#loading-the-built-plugin-in-the-elk-board)
+            * [Deploying SOURCE in the Elk board](#deploying-source-in-the-elk-board)
          * [Note about JUCE version used for SOURCE](#note-about-juce-version-used-for-source)
       * [Using the BLACKBOARD simulator in development](#using-the-blackboard-simulator-in-development)
    * [License](#license)
@@ -39,7 +39,7 @@ SOURCE is designed to run as a stand-alone device on a hardware solution based o
 </p>
 
 To see SOURCE in action you can check out this **demo video**: https://youtu.be/7EXMY0AvBxo
-Also, I published a paper about source in the **2nd International Workshop on the Internet of Sounds**, part of the **Audio Mostly 2021** conference. I'm happy to say that SOURCE got the the **Best Demo Award** and the **Industry Award** (awared by ELK) in Audio Mostly 2021. Here is the citation information for the paper (and the [PDF](https://repositori.upf.edu/bitstream/handle/10230/48719/font_am21_source.pdf?sequence=1&isAllowed=y)):
+Also, I published a paper about source in the **2nd International Workshop on the Internet of Sounds**, part of the **Audio Mostly 2021** conference. I'm happy to say that SOURCE got the the **Best Demo Award** and the **Industry Award** (awared by Elk) in Audio Mostly 2021. Here is the citation information for the paper (and the [PDF](https://repositori.upf.edu/bitstream/handle/10230/48719/font_am21_source.pdf?sequence=1&isAllowed=y)):
 
 ```
 Font F. "SOURCE: a Freesound community music sampler." In: Audio mostly, A conference on interaction with sound. Proceedings of the 16th International Audio Mostly Conference AM’ 21; 2021 Sep 1-3; Trento, Italy. New York: Association for Computing Machinery; 2021. p. 182-7. DOI: 10.1145/3478384.3478388 
@@ -91,20 +91,46 @@ SOURCE is composed of a number of software processes that run on a hardware solu
 
 ## How can I run SOURCE
 
-### Running SOURCE in the ELK hardware stack
+### Running SOURCE in the Elk hardware stack
 
-This repository includes a deploy script written in Python (using `fabric`) which will carry out most of the necessary deployment steps automatically. However, there are a couple of *manual steps* that need to be done before running the deploy script.
+This repository includes a deploy script written in Python3 (using the [`fabric`](http://www.fabfile.org) package) which will carry out most of the necessary deployment steps for running SOURCE in the Elk hardware stack. However, a number of things need to be done before running the deploy script. The steps below assume that you have a Rasoberry Pi with an Elk Pi hat and the Elk BLACKBOARD with Elk Audio OS (>=0.7.2) up and running and that you can access it through `ssh` using the default user `mind` created by the Elk Auiod OS installation. If you're looking at running SOURCE as an audio plugin in a desktop computer, see the [instructions below](#running-source-as-an-audio-plugin-or-standalone-app-in-desktoplaptop-computers).
 
-1. Clone the source code repository (this repository) in your local machine
-2. Configure key-based ssh access to the ELK board form the local machine
-3. Give extra sudo permissions to *mind* user in the ELK board
-4. Download pre-compiled SOURCE binaries for ELK in the local machine platform and copy them to XXX (or compile them locally)
 
-After the above two steps, bla bla
+1. Clone the source code repository in your local computer
 
-5. Run `fab deploy-elk`
+```
+git clone https://github.com/ffont/source.git && cd source && git submodule update --init
+```
 
-And that's it! While services are running in the ELK board, you can use these utility commands bundled in the deploy script to see the logs of the `sushi` (plugin), `source` (glue app/UI app) and `sensei` (sensors) services. 
+2. Get a Freesound API key from https://freesound.org/apiv2/apply, and create a file named `freesound_api_key.py` inside the `elk_platform/ui_app` folder of the cloned repository with the contents:
+
+```
+FREESOUND_API_KEY = "YOUR FREESOUND API KEY"
+FREESOUND_CLIENT_ID = "YOUR FREESOUND CLIENT ID"
+```
+
+3. Install Python3 depencies of the deploy script in your local computer
+
+```
+pip install -r requirements_fabfile.txt
+```
+
+4. Download the *pre-compiled binaries* of the latest release of SOURCE sampler engine for the Elk platform (or [build them locally following the instructions in sections below](#build-plugin-for-elk-platform)). Copy `SourceSampler.so` to `SourceSampler/Builds/ElkAudioOS/build/SourceSampler.so` (you might need to create intermediate folders). Note that this path is relative to the root of the cloned repository. 
+
+5. Configure key-based ssh access to the Elk board form the local machine. If you already have ssh keys created in your local computer, you can install them in the Elk board running something like `ssh-copy-id - i ~/.ssh/id_rsa.pub mind@your-elk-board-hostname`.
+
+6. Give extra sudo permissions to `mind` user in the Elk board. Follow these steps:
+
+   * ssh into the Elk board and run `sudo su` to switch to `root` user 
+   * rdit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`.
+
+7. Edit the file named `fabfile.py` and set the `host` varialbe in line 7 to match the host of your Elk board.
+
+After the above steps, you can run the SOURCE deploy script using the command below. This will copy all the necessary app files to the board, configure the `systemd` services `sushi` (the audio plugin), `source` (the glue app/UI app) and `sensei` (the inerface with physical sensors), and start them. This will also configure the services to auto start on boot.
+
+8. Run `fab deploy-elk`
+
+And that's it! While the above mentioned services are running in the Elk board, you can use these utility commands bundled in the deploy script to see their logs:
 
 ```
 fab logs-sushi
@@ -112,84 +138,43 @@ fab logs-source
 fab logs-sensi
 ```
 
-
-The run SOURCE in the ELK platform you'll need to configure services to run the `sushi` process with the built sampler engine, the `sensei` process with the BLACKBOARD sensors configuration settings, and finally the `source` process which runs the glue app which connects all systems together, manages the user interface and connects to Freesound (indluding downloading sounds). To do that follow the instructions below. Note that this assumes `ssh` connection to the RPi as described in Elk documentation, and Elk Audio OS 0.7.2 installed. Note that most of the steps are to be run from your local/devleopment computer. This whole process could be simplified with more work on the *deploy scripts*.
-
-
- 1. Clone the source code repository in your local computer
-
-```
-git clone https://github.com/ffont/source.git && cd source && git submodule update --init
-```
-
- 2. Get a Freesound API key (https://freesound.org/apiv2/apply) and create a file named `freesound_api_key.py` inside the `elk_platform` folder of the cloned repository with the contents:
-
-```
-FREESOUND_API_KEY = "YOUR FREESOUND API KEY"
-FREESOUND_CLIENT_ID = "YOUR FREESOUND CLIENT ID"
-```
-
- 3. Download the *pre-compiled binaries* of the latest release of SOURCE sampler engine for the ELK platform (or [build them locally following the instructions in sections below](#build-plugin-for-elk-platform)). Copy `SourceSampler.so` to `SourceSampler/Builds/ELKAudioOS/build/SourceSampler.so` (you might need to create intermediate folders). Note that this path is relative to the root of the cloned repository. 
- 4. In your local machine, install `fabric` Python dependency with `pip install fabric>=2.6.0`. This is needed in the following steps to run the scripts that partially automate the deployment of SOURCE in the RPi board.
- 5. In the RPi, create the folder `/udata/source/app/` (and intermediate folders if needed).
- 6. Modify the `host` variable in `fabfile.py` to match the host name of your RPi board. If you did not modify the host name of the RPi, you should use `mind@elk-pi.local`, but note that `fabfile.py` has a customized host name.
- 7. From your local machine and located in the root of the source code repository, run `fab send-elk-all` to copy necessary files to the RPi board for SOURCE to run. This will also try to run some things and you might see some errors on screen, but it is fine at this point.
- 8. From the RPi board, install Python dependencies with `cd /udata/source/app/; pip3 install -r requirements.txt` (need to use the Python 3 installation present in Elk Audio OS).
- 9. From the RPi board, give more permissons to `mind` user as [described below](#give-more-sudo-permissions-to-mind-user).
- 10. From the RPi board, enable the installed `systemd` services for SOURCE:
-
-```
-sudo systemctl enable sushi
-sudo systemctl enable sensei
-sudo systemctl enable source
-```
-
- 11. From the local computer, run again `fab send-elk-all`. This should restart all the SOURCE related services and you should get SOURCE up and running after that.
-
-Once these steps are finished, SOURCE should automatically be run at startup. You can check the logs of the individual processes like you'd do with other processes managed by `systemd`:
-
-```
-sudo journalctl -fu sushi
-sudo journalctl -fu sensei
-sudo journalctl -fu source
-```
-
-Note that to get **MIDI input** you'll need to use a USB MIDI controller or interface, and might need to [edit this line of code](https://github.com/ffont/source/blob/7fd268d3dfa7daf2e65182c67faadf598d4d196f/elk_platform/main#L144) and set the id of the USB MIDI controller/interface.
-
-#### Give more sudo permissions to "mind" user
-
-To run SOURCE, user `mind` needs to have `sudo` control without entering password. This is mainly because of the `collect_system_stats` routine called in the `main` glue app. However, it looks like wihtout having sudo capabilities, running `sensei` might also fail. To add sudo capabilities:
-
- * switch to user `root` (`sudo su`)
- * edit `/etc/sudoers` to add the line `mind ALL=(ALL) NOPASSWD: ALL` in the *User privilege specification* AND comment the line `# %sudo ALL=(ALL) ALL`. **NOTE**: this gives too many permissions to `mind` user and should be fixed to give only what is needed.
+Note that to get **MIDI input** working you'll need to use a USB MIDI controller or interface, and might need to [edit this line of code](https://github.com/ffont/source/blob/b0b82a9712341e3280e45053239df48b8dbe8a5f/elk_platform/ui_app/main#L285) and set the id of the USB MIDI controller/interface (you can get a list of MIDI devices ids in the Elk board running `aconnect -l`).
 
 
-### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers with Linux/macOS
+### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers
 
-In order to run SOURCE as an audio plugin in a desktop or laptop computer with Linux or macOS, you can simply download the binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to copy `SourceSampler.component` and/or `SourceSampler.vst3` files for macOS,  and `SourceSampler.so` and/or `SourceSampler.vst3` for Linux). On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle. Note that **the audio plugin version of SOURCE has limited functionality**, as the *glue app* is not running and only very basic interaction with Freesound and control of the sampler engine is provided. Below is a screenshot of the SOURCE user interface when running as an audio plugin.
+SOURCE can also be run as a desktop audio plugin. This version of SOURCE lacks some functionality with respect to the hardware version, but it is perfectly usable and has its own graphical UI.
 
 <p align="center">
-<img src="docs/SOURCE-complementary-UI.png" width="500" />
+<img src="docs/SOURCE-complementary-UI.png" width="700" />
 </p>
+
+**macOS**
+
+To use SOURCE as an audio plugin in macOS you can simply download the pre-compiled binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to download the latest release fiels and copy `SourceSampler.component` to `/Library/Audio/Plug-Ins/Components` and/or copy `SourceSampler.vst3` to /`Library/Audio/Plug-Ins/VST3`).
+
+On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle included in the release files.
+
+**linux and windows**
+
+We don't include pre-compiled binaries for linux and windows operative systems in the releases so SOURCE must be compiled from source in order to run on linux or windows. However, because the engine of SOURCE is implemented as a JUCE audio plug-in, it should not be complicated to add exporters for linux and windows to the Projucer file and compile. In the future I might consider including pre-built binaries for linux and windows as well.
 
 
 # Instructions for developers
 
-
 ## Building SOURCE sampler engine
 
-The sampler engine of source SOURCE is implemented as a JUCE audio plug-in and can be edited and built using standard JUCE workflows. The first step is to clone this repository and init the submodules. Then, different steps apply to build SOURCE for desktop computers or for the ELK platform (see below).
+The sampler engine of source SOURCE is implemented as a JUCE audio plug-in and can be edited and built using standard JUCE workflows. The first step is to clone this repository and init the submodules. Then, different steps apply to build SOURCE for desktop computers or for the Elk platform (see below).
 
 ```
 git clone https://github.com/ffont/source.git && cd source && git submodule update --init
 ```
 
-
 ### Build standalone/plugin for desktop (macOS)
 
-For development purposes (or to run SOURCE in a desktop computer insead of the ELK platform), you can use the XCode project files generated by Projucer. You can also generate exporters for other platforms using Projucer, but I only tested macOS.
+For development purposes (or to run SOURCE in a desktop computer insead of the Elk platform), you can use the XCode project files generated by Projucer. You can also generate exporters for other platforms using Projucer, but I only tested macOS.
 
-Alternatively, you can also use the Python *Fabric 2* script (see below) provided im the `scripts` folder. Do it like that:
+Alternatively, you can also use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
 
 ```
 fab compile-macos
@@ -203,31 +188,27 @@ This will create *Release* versions of SOURCE (VST3, VST2, AU and Standalone) re
 
 **NOTE 3**: SOURCE requires a Freesound API key to connect to Freesound. You should make an account in Freesound (if you don't have one) and go to [this URL to generate an APi key](https://freesound.org/apiv2/apply). Then you should edit the file `/source/SourceSampler/Source/api_key.example.h`, add your key, and then then save and rename the file to `/source/SourceSampler/Source/api_key.h`.
 
-**NOTE 4**: For development you might need to edit the `SourceSampler.jucer` Projucer file. To do that, you need a compatible version of Projucer installed. You can compile it (for macOS) from JUCE source files using a the *Fabric 2* Python script running: `fab compile-projucer-macos`. The generated executable will be in `/source/SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/build/Release/Projucer.app`.
+**NOTE 4**: For development you might need to edit the `SourceSampler.jucer` Projucer file. To do that, you need a compatible version of Projucer installed. You can compile it (for macOS) from JUCE source files using a the deploy script running: `fab compile-projucer-macos`. The generated executable will be in `/source/SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/build/Release/Projucer.app`.
 
-**NOTE 5**: It should be very easy to adapt these instructions for Windows or Linux. You'll basically need to create an exporter for these other platforms an make small changes to compile `BinaryBuilder`, `Projucer` and install/link the dependencies.
-
-**NOTE 6**: SOURCE is configured to build a VST2 version of the plugin (together with VST3, AudioUnit and StandAlone). VST2 is currently only needed for the ELK build as there still seem to be some issues with JUCE6 + VST3 in linux. However, VST is not really needed for the macOS compilation. If you don't have the VST2 SDK, just open `SourceSampler.jucer` and untick `VST Legacy` option.
+**NOTE 5**: SOURCE is configured to build a VST2 version of the plugin (together with VST3, AudioUnit and StandAlone). VST2 is currently only needed for the Elk build as there still seem to be some issues with JUCE6 + VST3 in linux. However, VST is not really needed for the macOS compilation. If you don't have the VST2 SDK available, just open `SourceSampler.jucer` (you'll need to compile Projucer first as described in the previous step) and untick `VST Legacy` option.
 
 
-### Build plugin for ELK platform
+### Build plugin for Elk platform
 
-To build SOURCE for ELK Audio OS you need to cross-compile it from your development computer. To do that, I use a Docker-based solution on macOS. The instructions here are therefore for cross-compiling from macOS and using Docker. For cross-compilation from Linux it should be simpler and you should refer to the ELK docs.
-
-To do the cross compilation (and also deployment to the board) I prepared a Python script using [Fabric 2](http://www.fabfile.org) so I assume you have a Python 3 interpreter installed in your system with the Fabric 2 package installed (`pip install fabric` should do it).
+To build SOURCE for Elk Audio OS you need to cross-compile it from your development computer. To do that, I use a Docker-based solution on macOS. The instructions here are therefore for cross-compiling from macOS and using Docker. For cross-compilation from Linux it should be simpler and you should refer to the Elk docs. The python deploy script bundled in this repository will automate most of the steps for compiling SOURCE for the Elk platform. To run that script you'll need to install the required Python3 dependencies by running `pip install -r requirements_fabfile.txt`. The sections below guide you through the process of preparing your dev environment for compiling SOURCE for the Elk platform and show how to do th actual compilation.
 
 
-#### Prepare ELK development SDK
+#### Prepare Elk development SDK
 
-The first thing to do is to prepare the ELK development SDK Docker image following the [instrucitons here](https://github.com/elk-audio/elkpi-sdk/blob/master/running_docker_container_on_macos.md). You need to run steps 1 to 3, no need to run the toolchain when everything installed.
+The first thing to do is to prepare the Elk development SDK Docker image following the [instrucitons here](https://github.com/elk-audio/elkpi-sdk/blob/master/running_docker_container_on_macos.md). You need to run steps 1 to 3, no need to run the toolchain when everything installed.
 
 #### Prepare VST2 SDK
 
-Even though JUCE 6 has support for VST3 plugins in Linux, I've had some issues with VST3 versions of plugins in Linux and therefore SOURCE is still being built as VST2. This means that you need the VST2 SDK installed in your computer to compile SOURCE. Make sure that the `PATH_TO_VST2_SDK` variable in `fabfile.py` points to a valid distribution of the VST2 SDK. This will be mounted in the Docker container that does the cross-compilation.
+Even though JUCE 6 has support for VST3 plugins in Linux, I've had some issues with VST3 versions of plugins in Linux and therefore SOURCE is still being built as VST2. This means that you need the VST2 SDK installed in your computer to compile SOURCE. Make sure that the `PATH_TO_VST2_SDK` variable in `fabfile.py` points to a valid distribution of the VST2 SDK. This will be mounted in the Docker container that does the cross-compilation. Of course you also need to get the VST2 SDK files from somewhere.
 
 #### Do the cross-compilation
 
-With all this in place, you should be able to cross-compile SOURCE for ELK in a very similar way as you would do it for the desktop, using the Fabric script:
+With all this in place, you should be able to cross-compile SOURCE for Elk in a very similar way as you would do it for the desktop version, using the deploy script:
 
 ```
 fab compile-elk
@@ -235,40 +216,49 @@ fab compile-elk
 
 (if you need a *Debug* build, you can use `fab compile-elk-debug`)
 
-This will take a while, specially the first time it runs. When it finishes, it should have generated a `SourceSampler.so` file in `source/Builds/ELKAudioOS/build/` which is the VST2 plugin that you can run in the ELK platform. It also generates a VST3 in `source/Builds/ELKAudioOS/build/SourceSampler.vst3` which should also compatible with the ELK platform but as I mentioend before it does not seem to work properly.
+This will take a while, specially the first time it runs. When it finishes, it should have generated a `SourceSampler.so` file in `source/Builds/ElkAudioOS/build/` which is the VST2 plugin that you can run in the Elk platform. It also generates a VST3 in `source/Builds/ElkAudioOS/build/SourceSampler.vst3` which should also compatible with the Elk platform but there still seem to be issues with the VST3 version so it is not really used.
 
-**NOTE**: The build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that using the project files you'll find in `/source/SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/` or by running `fab compile-binary-builder-macos`.
+**NOTE**: The build script for the cross compilation includes a step which generates the `BinaryData.h/.cpp` files needed for the plugin to include up-to-date resources (mainly `index.html`). This is run in the host machine and not in the Docker container. For this step to succeed, you need to compile the  `BinaryBuilder` util provided by JUCE. You can compile that by running `fab compile-binary-builder-macos`.
 
 
-#### Loading the built plugin in the ELK board
+#### Deploying SOURCE in the Elk board
 
-You can send the plugin to the board using the command:
-
-```
-fab send-elk
-```
-
-This will send both the generated plugin files and other SOURCE configuration files.
+Once the plugin is compiled for the Elk architecture, you can install it in the Elk board by following the steps for [Running SOURCE in the Elk hardware stack](#running-source-in-the-elk-hardware-stack).
 
 
 ### Note about JUCE version used for SOURCE
 
-The current version of SOURCE uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of SOURCE, we don't need any patched version of JUCE and we can simply use the official release :) However, there still seem to be problems with VST3 and Linux, so we use VST2 
-builds.
+The current version of SOURCE uses JUCE 6 which has native support for VST3 plugins in Linux and for headless plugins. Therefore, unlike previous version of SOURCE, we don't need any patched version of JUCE and we can simply use the official release :) However, there still seem to be problems with VST3 and Linux related with timers, so we use VST2 builds.
 
  
 ## Using the BLACKBOARD simulator in development
 
-TODO...
-    
-    
+In order to facilitate development of the *hardware* version of SOURCE when the Elk tech stack is not available, the *glue app* implemented in Python3 can also be run from your local computer and includes a web simulator of the BLACKBOARD hardware that can be used as user interface. The glue app will communicate with the plugin, which must be running also in your local computer as a standalone app and must have been compiled in Debug mode, and you can point your browser at `http://localhost:8123/simulator` to see the BLACKBOARD simulator that looks like this:
+
+<p align="center">
+<img src="docs/simulator.png" width="700" />
+</p>
+
+These are the steps to get the simulator up and running:
+
+1. Compile the desktop version of the plugin in Debug mode and run it as a Standalone app (or as a plugin inside a DAW)
+2. Install python dependencies for the glue app, and run the glue app
+
+```
+cd elk_platform/ui_app
+pip install -r requirements.txt
+pyhon main
+```
+3. Point your browser to `http://localhost:8123/simulator` and use the buttons on screen to interact with the plugin as if interactions came from the hardware BLACKBOARD.
+
+        
 # License
 
 SOURCE is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/source/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
 
 * [juce](https://juce.com), available under GPLv3 license ([@2f98020](https://github.com/juce-framework/JUCE/commit/2f980209cc4091a4490bb1bafc5d530f16834e58), v6.1.6)
 * [cpp-httplib](https://github.com/yhirose/cpp-httplib), available under MIT license ([@3da4a0a](https://github.com/yhirose/cpp-httplib/tree/3da4a0a))
-* [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@711ee87](https://github.com/ffont/ff_meters/tree/711ee87862e1c2485536e977ab57b1f78b84667f), I use a fork I made with a small patch for compatibility with ELK)
+* [ff_meters](https://github.com/ffAudio/ff_meters), available under BSD 3 clause license ([@711ee87](https://github.com/ffont/ff_meters/tree/711ee87862e1c2485536e977ab57b1f78b84667f), I use a fork I made with a small patch for compatibility with Elk)
 * [twine](https://github.com/elk-audio/twine), available under GPLv3 license ([@1257d93](https://github.com/elk-audio/twine/tree/1257d93882cf9fd120539a2ce5497fcbef22af82))
 * [asio](https://github.com/chriskohlhoff/asio), available under Boost Sofrware License] ([@f0a1e1c](https://github.com/chriskohlhoff/asio/tree/f0a1e1c7c0387ad16358c81eb52528f190df625c))
 * [Simple-WebSocket-Server](https://gitlab.com/eidheim/Simple-WebSocket-Server), available under MIT license ([@a091e7c](https://gitlab.com/eidheim/Simple-WebSocket-Server/-/tree/a091e7cfb1587e3c0340bc7d2d850a4e44c03e11))
