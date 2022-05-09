@@ -1319,14 +1319,18 @@
             if (canvas !== null){
                 if (canvas.dataset.loadedUUID !== sourceSamplerSoundUUID){
                     canvas.dataset.loadedUUID = sourceSamplerSoundUUID;
-                    if (httpPort !== undefined){
+                    if ((loadingWaveforms.indexOf(sourceSamplerSoundUUID) === -1) && (httpPort !== undefined)){
+                        loadingWaveforms.push(sourceSamplerSoundUUID);
                         let url = 'http' + (useHttps ? 's':'') + '://' + hostname + ':' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
                         //let url = ss.getTmpFilesLocation() + '/' + sourceSamplerSoundUUID + '.wav'; // Not supported because of CORS...
+                        console.log("Getting waveform for", url);
                         drawAudio(url);
                     }
                 }
             }
         }
+
+        var loadingWaveforms = [];
         
     </script>
 </head>

@@ -314,8 +314,8 @@ void HTTPServer::run() {
             class FileServer {
             public:
               static void read_and_send(const std::shared_ptr<HttpServer::Response> &response, const std::shared_ptr<std::ifstream> &ifs) {
-                // Read and send 128 KB at a time
-                static std::vector<char> buffer(131072); // Safe when server is running on one thread
+                // Read and send 128 KB at a time, safe when server is running on one thread
+                static std::vector<char> buffer(128 * 1024);
                   std::streamsize read_length;
                 if((read_length = ifs->read(&buffer[0], static_cast<std::streamsize>(buffer.size())).gcount()) > 0) {
                   response->write(&buffer[0], read_length);
