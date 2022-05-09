@@ -31,8 +31,12 @@ class SourcePluginInterface(object):
    
     def get_property(self, property_name, default=None, sound_idx=None):
         
-        def return_with_type(value):
+        def return_with_type(value, property_name=None):
             # if value is integer or float, return with correct type, otherwise return as is (as string)
+            # also if value is in exceptions list, return it without transformation
+            if property_name.lower() in [PlStateNames.SOUND_ASSIGNED_NOTES.lower()]:
+                return value
+
             if value is None or type(value) != str:
                 return value
             
@@ -69,21 +73,24 @@ class SourcePluginInterface(object):
         sound_state = None
         sound_sample_state = None
         if sound_idx is not None:
-            sounds_state = preset_state.find_all("SOUND".lower())
-            sound_state = sounds_state[sound_idx]
-            sound_sample_state = sound_state.find_all("SOUND_SAMPLE".lower())[0]
+            try:
+                sounds_state = preset_state.find_all("SOUND".lower())
+                sound_state = sounds_state[sound_idx]
+                sound_sample_state = sound_state.find_all("SOUND_SAMPLE".lower())[0]
+            except IndexError:
+                return default
 
         if hierarchy_location == 'extra_state':
             return self.extra_source_state.get(property_name, default)
         
         elif hierarchy_location == 'source_state':
-            return return_with_type(source_state.get(property_name.lower(), default))
+            return return_with_type(source_state.get(property_name.lower(), default), property_name)
         
         elif hierarchy_location == 'preset':
-            return return_with_type(preset_state.get(property_name.lower(), default))
+            return return_with_type(preset_state.get(property_name.lower(), default), property_name)
        
         elif hierarchy_location == 'sound':
-            return return_with_type(sound_state.get(property_name.lower(), default))
+            return return_with_type(sound_state.get(property_name.lower(), default), property_name)
         
         elif hierarchy_location == 'sound_sample':
             if property_name == PlStateNames.SOUND_DOWNLOAD_PROGRESS:
@@ -93,7 +100,7 @@ class SourcePluginInterface(object):
                     download_percentage += float(ss.get(PlStateNames.SOUND_DOWNLOAD_PROGRESS.lower(), 0.0))
                 download_percentage = download_percentage/len(sound_state.find_all("SOUND_SAMPLE".lower()))
                 return download_percentage
-            return return_with_type(sound_sample_state.get(property_name.lower(), default))
+            return return_with_type(sound_sample_state.get(property_name.lower(), default), property_name)
         
         elif hierarchy_location == 'computed':
             if property_name == PlStateNames.NUM_SOUNDS:

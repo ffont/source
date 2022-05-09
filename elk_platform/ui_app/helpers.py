@@ -141,7 +141,7 @@ state_names_source_state_hierarchy_map = {
     PlStateNames.SOUND_LOADED_PREVIEW_VERSION: 'sound_sample',
 
     PlStateNames.SOUND_SLICES: 'computed',
-    PlStateNames.SOUND_ASSIGNED_NOTES: 'sound_sample',
+    PlStateNames.SOUND_ASSIGNED_NOTES: 'sound',
     PlStateNames.SOUND_LOADED_IN_SAMPLER: 'sound',
     
     PlStateNames.SOUND_MIDI_CC_ASSIGNMENTS: 'computed',

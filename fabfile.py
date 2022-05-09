@@ -81,7 +81,7 @@ def deploy_elk(ctx):
         c.put(local_vst2_elk_binary_path, vst2_plugin_remote_path)
         print(local_vst2_elk_binary_path)
 
-        # Copy and install source, suchi, sensei systemd services
+        # Copy and install source, sushi, sensei systemd services
         print('\n* Installing systemd sensei, sushi and source services')
         sudo_install(c, os.path.join(local_config_files_path, "sensei.service"), "/lib/systemd/system/sensei.service", mode='0644')
         sudo_install(c, os.path.join(local_config_files_path, "sushi.service"), "/lib/systemd/system/sushi.service", mode='0644')
@@ -91,7 +91,7 @@ def deploy_elk(ctx):
         c.run('sudo systemctl daemon-reload')    
 
         # Restart 
-        print('\n* Restarting sensei, suchi and source services...')
+        print('\n* Restarting sensei, sushi and source services...')
         c.run('sudo systemctl restart sensei')
         time.sleep(1)
         c.run('sudo systemctl restart source')

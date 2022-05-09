@@ -17,14 +17,16 @@ class SoundDownloaderProgress:
 
     def download_progress_hook(self, count, blockSize, totalSize):
         percent = count * blockSize * 100 / totalSize
+        if percent > 100.0:
+            percent = 100.0
         if percent > self.old_percent:
             self.old_percent = percent
             self.source_plugin_interface.send_msg_to_plugin(
                 '/downloading_sound_progress', [self.sound_uuid, self.outfile, percent])
-        if percent >= 100:
+        if percent >= 100.0:
             os.rename(self.outfile + '.tmp', self.outfile)
             self.source_plugin_interface.send_msg_to_plugin(
-                '/finished_downloading_sound', [self.sound_uuid, self.outfile, True])
+                '/finished_downloading_sound', [self.sound_uuid, self.outfile, 1])
             n_seconds = time.time() - self.time_started
             kbytes_per_second = count * blockSize / n_seconds / 1000
             print('- Finished downloading {} ({} at {:.0f}kbps)'.format(

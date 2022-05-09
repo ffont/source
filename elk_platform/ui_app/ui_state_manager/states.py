@@ -716,6 +716,8 @@ class SoundAssignedNotesEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPress
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sound_idx = kwargs.get('sound_idx', -1)
+
+    def on_activating_state(self):
         if self.sound_idx > -1:
             sound_assigned_notes = self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_ASSIGNED_NOTES)
             if sound_assigned_notes is not None:

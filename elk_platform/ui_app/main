@@ -37,7 +37,7 @@ system_stats_thread = None
 elk_bridge = None
 elk_bridge_thread = None
 
-http_server = Flask(__name__, template_folder='/udata/source/app/' if get_platform() == "ELK" else 'html/')
+http_server = Flask(__name__, template_folder='/udata/source/ui_app/html/' if get_platform() == "ELK" else 'html/')
 
 if get_platform() != "ELK":
     # Copy main ui html file to template folder so it can also be served directly from there
