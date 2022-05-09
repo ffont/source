@@ -1,9 +1,6 @@
 [submodule "SourceSampler/3rdParty/JUCE"]
 	path = SourceSampler/3rdParty/JUCE
 	url = https://github.com/juce-framework/JUCE
-[submodule "SourceSampler/3rdParty/cpp-httplib"]
-	path = SourceSampler/3rdParty/cpp-httplib
-	url = https://github.com/yhirose/cpp-httplib
 [submodule "SourceSampler/3rdParty/twine"]
 	path = SourceSampler/3rdParty/twine
 	url = https://github.com/elk-audio/twine
