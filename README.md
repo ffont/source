@@ -25,6 +25,7 @@ Table of Contents
          * [Note about JUCE version used for SOURCE](#note-about-juce-version-used-for-source)
       * [Using the BLACKBOARD simulator in development](#using-the-blackboard-simulator-in-development)
       * [Working on the desktop plugin UI](#working-on-the-desktop-plugin-ui)
+      * [Updating available sound parameters](#updating-available-sound-parameters)
    * [License](#license)
 
 
@@ -260,6 +261,19 @@ The desktop version of the plugin has its own UI which is implemented using HTML
 The `ui_plugin_ws.html` file conataining the desktop UI is embedded in the plugin binary at compile time, therefore if changed need to be done to the UI the whole plugin needs to be re-comiled for these changes to take effect in the plugin (or standalone app). However, if while the plugin is running (in Debug mode), the `ui_plugin_ws.html` is opened with a standard web browser, then the interface is rendered in the browser and it can also connect to the running plugin instance. Now, the borwser console can be used to instpect the state of the UI, and the HTML file can be edited with your editor of choice and the browser page reloaded in the browser for any changes to take effect (without the need of recompiling the whole plugin). This tick is very conveinent when working on the UI :)
 
 Also note that this desktop UI can also be used when the plugin is running in the Elk board by simply configuring the WebSockets host and port to that of the plugin instance running in the Elk board.
+
+
+## Updating available sound parameters
+
+The SOURCE sampler engine has a many editable sound parameters including things like *start position*, *end position*, *pitch*, *filter cutoff*, etc. Because there are many of these parameters and there is a lot of "repeated" code for setting up the parameters and doing some stuff witht them, this repository includes a python script that auto-generates most of the code needed for deadling with such parameters (for implementing getters, setters, etc). The script can be found here https://github.com/ffont/source/blob/master/SourceSampler/generate_code.py and has no special python dependencies.
+
+To edit existing sound parameters or add/remove new ones, you can do that by editing the [data_for_code_gen.csv](https://github.com/ffont/source/blob/master/SourceSampler/data_for_code_gen.csv) CSV file (in which you have information about the parameter names, min/max/default values and other potentialy relevant things), and then run:
+
+```
+cd SourceSampler
+python geneate_code.py -i
+
+After that the parameters will be available in your `SourceSound` objects, and will also be automatically added to the desktop UI of the plugin.
 
         
 # License
