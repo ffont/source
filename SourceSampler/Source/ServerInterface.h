@@ -176,6 +176,10 @@ public:
     
     void sendMessageToWebSocketClients(const juce::OSCMessage& message)
     {
+        if (wsServer.serverPtr == nullptr){
+            // If ws server is not yet running, don't try to send any message
+            return;
+        }
         // Takes a OSC message object and serializes in a way that can be sent to WebSockets conencted clients
         for(auto &a_connection : wsServer.serverPtr->get_connections()){
             juce::String serializedMessage = serliaizeOSCMessage(message);
