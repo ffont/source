@@ -272,6 +272,7 @@ To edit existing sound parameters or add/remove new ones, you can do that by edi
 ```
 cd SourceSampler
 python geneate_code.py -i
+```
 
 After that the parameters will be available in your `SourceSound` objects, and will also be automatically added to the desktop UI of the plugin.
 
