@@ -971,7 +971,7 @@
 
             // Create inner html of sound card element
             var html = '<div id="soundCardInfo_' + soundUUID + '"></div>';
-            html += '<div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
+            html += '<div><div id="waveformLoadingIndicator_' + soundUUID + '"></div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
             html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
             html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
@@ -1068,7 +1068,7 @@
                     soundMappingsWrapperElement.style.display = "block";
                 }
 
-                drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID);
+                drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID, 'waveformLoadingIndicator_' + soundUUID);
             } else {
                 // Sound not yet loaded, show download progress
                 html = '<h4><span id="' + soundUUID + '_idx">' + soundIdx + " - " + soundID + '</h4>';
@@ -1251,14 +1251,16 @@
             }
         }
         
-        function drawSoundWaveform(sourceSamplerSoundUUID, canvasID){
+        function drawSoundWaveform(sourceSamplerSoundUUID, canvasID, loadingIndicatorID){
             // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
             const drawAudio = url => {
+              document.getElementById(loadingIndicatorID).innerHTML = 'Loading waveform...';
               const request = new XMLHttpRequest();
               request.open("GET", url);
               request.responseType = "arraybuffer";
               request.onload = function() {
                 let undecodedAudio = request.response;
+                document.getElementById(loadingIndicatorID).innerHTML = '';
                 audioContext.decodeAudioData(undecodedAudio, (data) => draw(normalizeData(filterData(data))), (error) => console.log(error));
               };
               request.send();

@@ -5,7 +5,7 @@
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/cpp-httplib/&#10;../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/asio/asio/include/"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">

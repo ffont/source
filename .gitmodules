@@ -16,3 +16,6 @@
 [submodule "SourceSampler/3rdParty/asio"]
 	path = SourceSampler/3rdParty/asio
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "SourceSampler/3rdParty/Simple-Web-Server"]
+	path = SourceSampler/3rdParty/Simple-Web-Server
+	url = https://gitlab.com/eidheim/Simple-Web-Server.git

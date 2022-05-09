@@ -13,13 +13,15 @@
 #include <JuceHeader.h>
 #include "defines.h"
 #include "BinaryData.h"
-#include "httplib.h"
 #if USE_SSL_FOR_HTTP_AND_WS
 #include "server_wss.hpp"
+#include "server_https.hpp"
 #else
 #include "server_ws.hpp"
+#include "server_http.hpp"
 #endif
 #include <future>
+#include <fstream>
 
 
 class ServerInterface;  // Forward delcaration
@@ -86,6 +88,12 @@ public:
     
 };
 
+#if USE_SSL_FOR_HTTP_AND_WS
+using HttpServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
+#else
+using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+#endif
+
 
 class HTTPServer: public juce::Thread
 {
@@ -101,18 +109,15 @@ public:
     }
     
     void setInterfacePointer(ServerInterface* _interface){
-        interface.reset(_interface);
+        interfacePtr = _interface;
     }
     
     inline void run(); // Implemented after ServerInterface is defined
     
-    #if USE_SSL_FOR_HTTP_AND_WS
-    std::unique_ptr<httplib::SSLServer> serverPtr;
-    #else
-    std::unique_ptr<httplib::Server> serverPtr;
-    #endif
-    int port = 0;
-    std::unique_ptr<ServerInterface> interface;
+    
+    int assignedPort = -1;
+    ServerInterface* interfacePtr;
+    std::unique_ptr<HttpServer> serverPtr;
 };
 
 
@@ -139,12 +144,11 @@ public:
     ~ServerInterface ()
     {
         if (wsServer.serverPtr != nullptr){
-            wsServer.serverPtr->stop(); // some other method
+            wsServer.serverPtr->stop();
         }
         wsServer.stopThread(5000);  // Give it enough time to stop the websockets server...
         
         #if USE_HTTP_SERVER
-        httpServer.interface.release();
         if (httpServer.serverPtr != nullptr){
             httpServer.serverPtr->stop();
         }
@@ -257,7 +261,6 @@ void WebSocketsServer::run()
 
 void HTTPServer::run() {
     #if USE_SSL_FOR_HTTP_AND_WS
-    // Write bundled binary SSL cert/key files server can load them
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
@@ -266,33 +269,82 @@ void HTTPServer::run() {
     certFile.replaceWithData(BinaryData::localhost_crt, BinaryData::localhost_crtSize);
     juce::File keyFile = baseLocation.getChildFile("localhost").withFileExtension("key");
     keyFile.replaceWithData(BinaryData::localhost_key, BinaryData::localhost_keySize);
-    httplib::SSLServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
+    HttpServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
-    httplib::Server server;
+    HttpServer server;
     #endif
-        
-    juce::File tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
-    auto ret = server.set_mount_point("/sounds_data", static_cast<const char*> (tmpFilesLocation.getFullPathName().toUTF8()));
-    if (!ret) {
-        DBG("Can't serve sound files from directory as directory does not exist");
-    }
-    
-    server.set_file_request_handler([](const auto& req, auto& res) {
-        DBG("Adding CORS header to requested file: " << req.path);
-        res.set_header("Access-Control-Allow-Origin", "*");
-    });
-    
-    #if !JUCE_DEBUG
-    // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
-    port = server.bind_to_any_port("0.0.0.0");
+
+    #if !ELK_BUILD
+        #if !JUCE_DEBUG
+        // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
+        server.config.port = 0;
+        #else
+        // In debug builds we also want a known port so it is easy to test from browser
+        server.config.port = HTTP_SERVER_PORT;
+        #endif
     #else
-    // In debug builds we also want a known port so it is easy to test from browser
-    port = HTTP_SERVER_PORT;
-    server.bind_to_port("0.0.0.0", port);
+    server.config.port = HTTP_SERVER_PORT;  // Use a known port so python UI can connect to it
     #endif
     serverPtr.reset(&server);
-    DBG("Started HTTP server, listening at 0.0.0.0:" + (juce::String)(port));
-    server.listen_after_bind();
+    
+    // Configure serving WAV files from the tmp folder statically (this is where the sound files are placed)
+    auto tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp").getFullPathName();
+    server.resource["^/sounds_data/.*$"]["GET"] = [tmpFilesPathName](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
+        try {
+          juce::String path = (juce::String)request->path;
+          path = tmpFilesPathName + path.replace("/sounds_data/", "/");
+          
+          SimpleWeb::CaseInsensitiveMultimap header;
+
+          auto ifs = std::make_shared<std::ifstream>();
+          ifs->open(path.toStdString(), std::ifstream::in | std::ios::binary | std::ios::ate);
+            
+          DBG("Serving file from HTTP server: " << path);
+
+          if(*ifs) {
+            auto length = ifs->tellg();
+            ifs->seekg(0, std::ios::beg);
+
+            header.emplace("Content-Length", std::to_string(length));
+            header.emplace("Content-Type", "audio/wave");
+            header.emplace("Access-Control-Allow-Origin", "*");
+            response->write(header);
+
+            // Trick to define a recursive function within this scope (for example purposes)
+            class FileServer {
+            public:
+              static void read_and_send(const std::shared_ptr<HttpServer::Response> &response, const std::shared_ptr<std::ifstream> &ifs) {
+                // Read and send 128 KB at a time
+                static std::vector<char> buffer(131072); // Safe when server is running on one thread
+                  std::streamsize read_length;
+                if((read_length = ifs->read(&buffer[0], static_cast<std::streamsize>(buffer.size())).gcount()) > 0) {
+                  response->write(&buffer[0], read_length);
+                  if(read_length == static_cast<std::streamsize>(buffer.size())) {
+                    response->send([response, ifs](const SimpleWeb::error_code &ec) {
+                      if(!ec)
+                        read_and_send(response, ifs);
+                      else
+                        std::cerr << "Connection interrupted" << std::endl;
+                    });
+                  }
+                }
+              }
+            };
+            FileServer::read_and_send(response, ifs);
+          }
+          else
+            throw std::invalid_argument("could not read file");
+        }
+        catch(const std::exception &e) {
+          response->write(SimpleWeb::StatusCode::client_error_bad_request, "Could not open path " + request->path + ": " + e.what());
+        }
+    };
+
+    server.start([this](unsigned short port) {
+        assignedPort = port;
+        DBG("Started HttpServer Server listening at 0.0.0.0:" << port);
+    });
+
 }
 
 

@@ -1047,8 +1047,8 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
         // Randmomize results and prepare for iteration
         juce::Array<FSSound> soundsFound = list.toArrayOfSounds();
         DBG("Query got " + (juce::String)list.getCount() + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-        std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
+        //unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        //std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
         soundsFound.resize(juce::jmin(numSounds, list.getCount()));
         int nSounds = soundsFound.size();
         
@@ -1280,7 +1280,7 @@ void SourceSamplerAudioProcessor::timerCallback()
 int SourceSamplerAudioProcessor::getServerInterfaceHttpPort()
 {
     #if USE_HTTP_SERVER
-    return serverInterface.httpServer.port;
+    return serverInterface.httpServer.assignedPort;
     #else
     return 0;
     #endif

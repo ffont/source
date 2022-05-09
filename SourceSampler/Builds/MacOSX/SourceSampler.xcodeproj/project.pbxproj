@@ -994,10 +994,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1008,7 +1008,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1152,10 +1152,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1164,7 +1164,7 @@
 				INFOPLIST_PREPROCESS = NO;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1212,10 +1212,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1223,7 +1223,7 @@
 				INSTALL_PATH = "@executable_path/../Frameworks";
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1274,10 +1274,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1287,7 +1287,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/VST3/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1338,10 +1338,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1351,7 +1351,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/Components/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1403,10 +1403,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1416,7 +1416,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/VST/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1467,10 +1467,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1481,7 +1481,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1539,17 +1539,17 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
 				INSTALL_PATH = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1597,10 +1597,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1608,7 +1608,7 @@
 				INFOPLIST_FILE = Info-Standalone_Plugin.plist;
 				INFOPLIST_PREPROCESS = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1666,10 +1666,10 @@
 					"$(SRCROOT)/../../../../VST_SDK/VST2_SDK",
 					"$(SRCROOT)/../../JuceLibraryCode",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules",
-					"$(SRCROOT)/../../3rdParty/cpp-httplib/",
 					"$(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/",
 					"$(SRCROOT)/../../3rdParty/twine/include/",
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
+					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
@@ -1680,7 +1680,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/cpp-httplib/ $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
