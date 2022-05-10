@@ -183,8 +183,7 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
 
     def move_to_choose_preset_name_state(self, preset_idx_name):
         preset_idx = int(preset_idx_name.split(':')[0])
-        current_preset_name = current_preset_index = self.spi.get_property(PlStateNames.LOADED_PRESET_NAME,
-                                                                      "")  # preset_idx_name.split(':')[1]
+        current_preset_name = self.spi.get_property(PlStateNames.LOADED_PRESET_NAME, "") 
         self.sm.move_to(EnterTextViaHWOrWebInterfaceState(
             title="Preset name",
             web_form_id="enterName",

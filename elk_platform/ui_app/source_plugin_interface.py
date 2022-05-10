@@ -34,7 +34,7 @@ class SourcePluginInterface(object):
         def return_with_type(value, property_name=None):
             # if value is integer or float, return with correct type, otherwise return as is (as string)
             # also if value is in exceptions list, return it without transformation
-            if property_name.lower() in [PlStateNames.SOUND_ASSIGNED_NOTES.lower()]:
+            if property_name.lower() in [PlStateNames.SOUND_ASSIGNED_NOTES.lower(), PlStateNames.NAME.lower()]:
                 return value
 
             if value is None or type(value) != str:

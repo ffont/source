@@ -234,6 +234,7 @@ class SoundSelectedState(GoBackOnEncoderLongPressedStateMixin, PaginatedState):
 
 
 class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
+    OPTION_RELOAD = "Reload sound..."
     OPTION_REPLACE = "Replace by..."
     OPTION_ASSIGNED_NOTES = "Assigned notes..."
     OPTION_PRECISION_EDITOR = "Slices editor..."
@@ -246,7 +247,7 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
     MIDI_CC_ADD_NEW_TEXT = "Add new..."
 
     sound_idx = -1
-    items = [OPTION_REPLACE, OPTION_MIDI_CC, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_OPEN_IN_FREESOUND,
+    items = [OPTION_RELOAD, OPTION_REPLACE, OPTION_ASSIGNED_NOTES, OPTION_PRECISION_EDITOR, OPTION_MIDI_CC, OPTION_OPEN_IN_FREESOUND,
              OPTION_DELETE, OPTION_GO_TO_SOUND]
     page_size = 4
 
@@ -292,7 +293,13 @@ class SoundSelectedContextualMenuState(GoBackOnEncoderLongPressedStateMixin, Men
         return frame_from_lines([self.get_default_header_line()] + lines)
 
     def perform_action(self, action_name):
-        if action_name == self.OPTION_REPLACE:
+        if action_name == self.OPTION_RELOAD:
+            selected_sound_id = self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_ID, '-')
+            selected_sound_uuid = self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_UUID, '-')
+            if selected_sound_id != '-' and selected_sound_uuid != '-':
+                self.add_or_replace_sound_by_query(sound_uuid=selected_sound_uuid, query='id:{}'.format(selected_sound_id))
+            self.sm.go_back(n_times=1)
+        elif action_name == self.OPTION_REPLACE:
             self.sm.move_to(ReplaceByOptionsMenuState(sound_idx=self.sound_idx))
         elif action_name == self.OPTION_DELETE:
             self.remove_sound(self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_UUID, '-'))
