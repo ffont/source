@@ -112,16 +112,16 @@ class State(object):
             preset_idx = int(preset_idx.split(':')[0])  # This is because we're passing preset_idx:preset_name format (some callbacks might use it)
         self.spi.send_msg_to_plugin("/load_preset", [int(preset_idx)])
         if preset_name:
-            self.sm.show_global_message("Loading {}\n{}...".format(preset_idx, preset_name), duration=5)
+            self.sm.show_global_message("Loading {}\n{}...".format(preset_idx, preset_name), duration=2)
         else:
-            self.sm.show_global_message("Loading {}...".format(preset_idx), duration=5)
+            self.sm.show_global_message("Loading {}...".format(preset_idx), duration=2)
 
     def reload_current_preset(self):
         current_preset_index = self.spi.get_property(PlStateNames.LOADED_PRESET_INDEX, -1)
         current_preset_name = self.spi.get_property(PlStateNames.LOADED_PRESET_NAME, "unnamed")
         if current_preset_index > -1:
             self.spi.send_msg_to_plugin("/load_preset", [int(current_preset_index)])
-            self.sm.show_global_message("Loading {}\n{}...".format(current_preset_index, current_preset_name), duration=5)
+            self.sm.show_global_message("Loading {}\n{}...".format(current_preset_index, current_preset_name), duration=2)
 
     def reapply_note_layout(self, layout_type):
         self.spi.send_msg_to_plugin("/reapply_layout", [['Contiguous', 'Interleaved'].index(layout_type)])
@@ -781,7 +781,7 @@ class EnterTextViaHWOrWebInterfaceState(ShowHelpPagesMixin, EnterDataViaWebInter
     max_length = 100
     current_text = []
     cursor_position = 0
-    available_chars = [char for char in " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"]
+    available_chars = [char for char in " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:"]
     char_position = 1
     store_recent = True
     frame_count = 0

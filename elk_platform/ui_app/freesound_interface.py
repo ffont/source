@@ -61,12 +61,16 @@ def find_sounds_by_query(query, n_sounds=15, min_length=0, max_length=300, page_
     if license is not None:
         query_filter += " {}".format(license_to_filter[license])
 
-    if query.isdigit():
-        # If the query contains only a single number, we assume user is looking for a sound in particular and therefore
-        # we remove the filters to make sure the sound is not filtered out in the query
-        query_filter_param = ''
-    else:
-        query_filter_param = '&filter={}'.format(query_filter)
+    if 'id:' in query:
+        # If the query contains the characters 'id:XXXX' we assume users is looking for a specifc sound ID from freesound and we
+        # add a filter to match that sound (removing other existing filters). Also we set some parameters to reduce the size of
+        # the query
+        query_filter = query
+        query = ''
+        page_size = 1
+        n_sounds = 1
+    
+    query_filter_param = '&filter={}'.format(query_filter)
 
     url = 'https://freesound.org/apiv2/search/text/?query="{}"{}&fields={}&page_size={}&descriptors={}&group_by_pack=1&token={}'.format(query, query_filter_param, fields_param, page_size, descriptor_names, FREESOUND_API_KEY)
     print(url)
@@ -131,7 +135,7 @@ def find_sound_by_similarity(sound_id):
 
 
 def find_sound_by_id(sound_id):
-    return find_sound_by_query(query=sound_id, max_length=99999999999, page_size=1)
+    return find_sound_by_query(query='id:{}'.format(sound_id))
 
 
 bookmarks_category_name = "SourceSampler"

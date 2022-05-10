@@ -20,7 +20,7 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
 #else
     #define USE_HTTP_SERVER 1  // Use embedded http server to serve audio files to plugin UI
-    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // Don't use external HTTP server for downloads, download them from the plugin
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)

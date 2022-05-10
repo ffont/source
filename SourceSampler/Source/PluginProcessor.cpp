@@ -1027,18 +1027,22 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
     FreesoundClient client(FREESOUND_API_KEY);
     isQuerying = true;
     state.setProperty(IDs::numResultsLastQuery, -1, nullptr);
+    juce::String query = "";
     juce::String filter = "";
     int pageSize = 0;
-    if ((textQuery != "") && (textQuery.containsOnly("0123456789-"))){
-        DBG("Querying for sound with id: " + textQuery);
-        filter = "id:" + textQuery;
+    if (textQuery.contains("id:")){
+        // Assume user is looking for a specific sound with id
+        filter = textQuery;
+        DBG("Querying for sound with " + filter);
+        query = "";
         pageSize = 1;
     } else {
         DBG("Querying new sounds for: " + textQuery);
         filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
+        query = textQuery;
         pageSize = 100;
     }
-    SoundList list = client.textSearch(textQuery, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     int numResults = list.getCount();
     state.setProperty(IDs::numResultsLastQuery, numResults, nullptr);
     isQuerying = false;
