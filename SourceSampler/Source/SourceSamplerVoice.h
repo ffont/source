@@ -54,6 +54,7 @@ private:
     int currentlyPlayedNoteIndex = 0;
     
     int currentModWheelValue = 0; // Configured on noteONn and updated when modwheel is moved. This is needed to make modWheel modulationm persist across voices
+    float currentNoteVelocity = 1.0;
     
     //==============================================================================
     // Sample reading and rendering
@@ -82,7 +83,6 @@ private:
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
     float filterCutoffMod = 0.0f;  // For aftertouch, modulation wheel
-    float filterCutoffVelMod = 0.0f;  // For aftertouch, modulation wheel
     float gainMod = 1.0f;  // For aftertouch, modulation wheel
     int startPositionSample = 0;
     int endPositionSample = 0;

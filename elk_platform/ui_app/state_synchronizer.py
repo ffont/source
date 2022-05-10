@@ -1,6 +1,6 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
-from helpers import PlStateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state
+from helpers import PlStateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state, log_sound_used
 import threading
 import asyncio
 from bs4 import BeautifulSoup
@@ -278,6 +278,12 @@ class SourceStateSynchronizer(object):
         self.should_request_full_state = False
         self.ui_state_manager.current_state.on_source_state_update()
 
+        # Update sound usage log with all the sounds received in this full state
+        # Note that sounds already loaded in this session will be ignored in the usage log
+        for sound_element in self.state_soup.findAll("sound"):
+            for sound_sample_element in sound_element.findAll("sound_sample"):
+                log_sound_used(sound_sample_element)
+
         # Configure some stuff that requires the data paths to be known
         configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
 
@@ -321,6 +327,15 @@ class SourceStateSynchronizer(object):
                     if self.verbose:
                         print('Unexpected number of results ({})'.format(len(results)))
                     self.should_request_full_state = True
+
+                # 
+                if property_name == "allsoundsloaded":
+                    sounds_state = self.state_soup.findAll('sound')
+                    num_sounds_loaded = len([sound for sound in sounds_state if sound.get(PlStateNames.SOUND_LOADED_IN_SAMPLER.lower(), '1') == '1'])
+                    if num_sounds_loaded == len(sounds_state):
+                        # If all sounds have been loaded, disable any "Loading..." global message that might be active unnecesarily
+                        if self.ui_state_manager is not None:
+                            self.ui_state_manager.show_global_message('', only_if_current_message_matches="Loading")
             
             elif update_type == "addedChild":
                 parent_tree_uuid = update_data[0]
@@ -337,6 +352,11 @@ class SourceStateSynchronizer(object):
                         results[0].append(child_soup)
                     else:
                         results[0].insert(index_in_parent_childs, child_soup)
+
+                    # If the new child added is of type sound, add all corresponding sound samples to the sound usage log
+                    if child_soup.name == "sound":
+                        for sound_sample_element in child_soup.findAll("sound_sample"):
+                            log_sound_used(sound_sample_element)
                     
                 else:
                     # Should never return more than one, request a full state as there will be sync issues

@@ -85,8 +85,17 @@ class UIStateManager(object):
 
         return frame
 
-    def show_global_message(self, text, duration=1):
-        self.global_message = (text, time.time(), duration)
+    def show_global_message(self, text, duration=1, only_if_current_message_matches=None):
+        if only_if_current_message_matches is None:
+            show_message = True
+        else:
+            if self.global_message is None:
+                show_message = True
+            else:
+                show_message = only_if_current_message_matches in self.global_message[0]
+        if show_message:
+            self.global_message = (text, time.time(), duration)
+        
 
     def move_to(self, new_state, replace_current=False):
         new_state.spi = spi

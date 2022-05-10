@@ -150,7 +150,7 @@ class State(object):
                         # This can happen because when there's only one onset, FS api returns it as a number instead of a list of one element
                         sound_onsets_list = [sound_onsets_list]
         # Don't send more than 128 onsets because these won't be mapped anyway
-        # Sending too many onsets might render the UPD OSC message too long
+        # Sending too many onsets might render the message too long
         sound_onsets_list = sound_onsets_list[:128]  
 
         self.spi.send_msg_to_plugin("/add_or_replace_sound", [

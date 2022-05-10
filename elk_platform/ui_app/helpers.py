@@ -688,13 +688,14 @@ class SoundUsageLogManager(object):
             self.sound_usage_log = json.load(open(self.today_sound_usage_log_path, 'r'))
 
     def log_sound(self, sound):
-        if sound[PlStateNames.SOUND_ID] not in self.sound_usage_log:
-            self.sound_usage_log[sound[PlStateNames.SOUND_ID]] = {
-                'name': sound[PlStateNames.SOUND_NAME],
-                'url': 'https://freesound.org/s/{}'.format(sound[PlStateNames.SOUND_ID]),
-                'username': sound[PlStateNames.SOUND_AUTHOR],
-                'license': sound[PlStateNames.SOUND_LICENSE],
-                'id': sound[PlStateNames.SOUND_ID],
+        sound_id = sound.get(PlStateNames.SOUND_ID.lower(), None)
+        if sound_id is not None and sound_id not in self.sound_usage_log:
+            self.sound_usage_log[sound_id] = {
+                'name': sound.get("name", '-'),
+                'url': 'https://freesound.org/s/{}'.format(sound_id),
+                'username': sound.get(PlStateNames.SOUND_AUTHOR.lower(), '-'),
+                'license': sound.get(PlStateNames.SOUND_LICENSE.lower(), '-'),
+                'id': sound_id,
                 'time_loaded': str(datetime.datetime.today()) 
             }
             json.dump(self.sound_usage_log, open(self.today_sound_usage_log_path, 'w'), indent=4)

@@ -218,7 +218,11 @@ public:
 void WebSocketsServer::run()
 {
     #if USE_SSL_FOR_HTTP_AND_WS
+    #if ELK_BUILD
+    juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
+    #else
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
     }
@@ -261,7 +265,11 @@ void WebSocketsServer::run()
 
 void HTTPServer::run() {
     #if USE_SSL_FOR_HTTP_AND_WS
+    #if ELK_BUILD
+    juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
+    #else
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
     }
@@ -288,7 +296,11 @@ void HTTPServer::run() {
     serverPtr.reset(&server);
     
     // Configure serving WAV files from the tmp folder statically (this is where the sound files are placed)
-    auto tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp").getFullPathName();
+    #if ELK_BUILD
+    juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
+    #else
+    juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp").getFullPathName();
+    #endif
     server.resource["^/sounds_data/.*$"]["GET"] = [tmpFilesPathName](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
         try {
           juce::String path = (juce::String)request->path;

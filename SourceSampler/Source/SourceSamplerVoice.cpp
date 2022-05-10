@@ -87,6 +87,8 @@ int findNearestPositiveZeroCrossing (int position, const float* const signal, in
 
 void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound* s, int /*currentPitchWheelPosition*/)
 {
+    currentNoteVelocity = velocity;
+    
     // This is called when note on is received
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
@@ -117,13 +119,7 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
         adsr.setSampleRate (pluginSampleRate);
         // TODO: what should really be the sample rate below?
         adsrFilter.setSampleRate (sound->soundSampleRate/sound->pluginBlockSize); // Lower sample rate because we only update filter cutoff once per processing block...
-        
-        // Compute velocity modulations (only relevant at start of note)
-        filterCutoffVelMod = velocity * sound->gpf(IDs::filterCutoff) * sound->gpf(IDs::vel2CutoffAmt);
-        float velocityGain = (sound->gpf(IDs::vel2GainAmt) * velocity) + (1 - sound->gpf(IDs::vel2GainAmt));
-        lgain = velocityGain;
-        rgain = velocityGain;
-        
+       
         // Update the rest of parameters (that will be udpated at each block)
         updateParametersFromSourceSamplerSound(sound);
         
@@ -176,7 +172,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         // unintuitively because the notes in the "blank" region in the middle won't be counted
         // If this behaviour becomes a problem it could be turned into a sound parameter
         int distanceToRootNote = getNoteIndex(currenltlyPlayingNote) - getNoteIndex(sound->getMidiRootNote());
-        double currentNoteFrequency = std::pow (2.0, (sound->getParameterFloat("pitch") + distanceToRootNote) / 12.0);
+        double currentNoteFrequency = std::pow (2.0, (sound->gpf(IDs::pitch) + distanceToRootNote) / 12.0);
         pitchRatio = currentNoteFrequency * sound->soundSampleRate / sound->pluginSampleRate;
         
         // Set start/end and loop start/end settings
@@ -185,8 +181,8 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
         if ((sound->gpi(IDs::noteMappingMode) == NOTE_MAPPING_MODE_SLICE) || (sound->gpi(IDs::noteMappingMode) == NOTE_MAPPING_MODE_BOTH)){
             // If note mapping by slice is enabled, we find the start/end positions corresponding to the current slice and set them to these
             // Also, loop start/end positions are ignored and set to the same slice start/end positions
-            int globalStartPositionSample = (int)(sound->getParameterFloat("startPosition") * soundLengthInSamples);
-            int globalEndPositionSample = (int)(sound->getParameterFloat("endPosition") * soundLengthInSamples);
+            int globalStartPositionSample = (int)(sound->gpf(IDs::startPosition) * soundLengthInSamples);
+            int globalEndPositionSample = (int)(sound->gpf(IDs::endPosition) * soundLengthInSamples);
             int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
             if (sound->gpi(IDs::numSlices) != SLICE_MODE_AUTO_ONSETS){
                 // if not in slice by onsets mode, divide the sound in N equal slices
@@ -277,21 +273,25 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     adsrFilter.setParameters (filterADSRParams);
     
     // Filter
+    
+    // Compute velocity modulations (only relevant at start of note)
     filterCutoff = sound->gpf(IDs::filterCutoff); // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = sound->gpf(IDs::filterRessonance);
+    float filterCutoffVelMod = currentNoteVelocity * sound->gpf(IDs::filterCutoff) * sound->gpf(IDs::vel2CutoffAmt);
     float newFilterCutoffMod = filterCutoffMod + (currentModWheelValue/127.0) * filterCutoff * sound->gpf(IDs::mod2CutoffAmt);  // Add mod wheel modulation and aftertouch here
     float filterADSRMod = adsrFilter.getNextSample() * filterCutoff * sound->gpf(IDs::filterADSR2CutoffAmt);
-    auto& filter = processorChain.get<filterIndex>();
     float computedCutoff = (1.0 - sound->gpf(IDs::filterKeyboardTracking)) * filterCutoff + sound->gpf(IDs::filterKeyboardTracking) * filterCutoff * std::pow(2, (getCurrentlyPlayingNote() - sound->getMidiRootNote())/12) + // Base cutoff and kb tracking
                            filterCutoffVelMod + // Velocity mod to cutoff
                            newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
                            filterADSRMod; // ADSR mod
+    auto& filter = processorChain.get<filterIndex>();
     filter.setCutoffFrequencyHz (juce::jmax(0.001f, computedCutoff));
-    //std::cout << " vel:" << filterCutoffVelMod << " mod:" << newFilterCutoffMod << " adsr:" << filterADSRMod << std::endl;
-    //std::cout << filterCutoff << " to " << jmax(0.001f, computedCutoff) << std::endl;
     filter.setResonance (filterRessonance);
     
     // Amp and pan
+    float velocityGain = (sound->gpf(IDs::vel2GainAmt) * currentNoteVelocity) + (1 - sound->gpf(IDs::vel2GainAmt));
+    lgain = velocityGain;
+    rgain = velocityGain;
     pan = sound->gpf(IDs::pan);
     auto& gain = processorChain.get<masterGainIndex>();
     float newGainMod;

@@ -17,7 +17,11 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     : AudioProcessorEditor (&p), processor (p)
 {
     // Copy bundled HTML plugin file to dcuments folder so we can load it
+    #if ELK_BUILD
+    juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
+    #else
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
     }

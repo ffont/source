@@ -47,6 +47,6 @@ def download_sound(url, outfile, sound_uuid, use_header, source_plugin_interface
         urllib.request.install_opener(opener)
     try:
         urllib.request.urlretrieve(url, outfile + '.tmp', reporthook=progress.download_progress_hook)
-    except urllib.error.ContentTooShortError as e:
+    except Exception as e:
         print('ERROR DOWNLOADING AFTER {:.2f} seconds: {}'.format(time.time()-progress.time_started, progress.url))
         print(e)

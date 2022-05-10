@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 
 from state_synchronizer import SourceStateSynchronizer
-from helpers import PlStateNames, state_names_source_state_hierarchy_map, sound_parameters_info_dict
+from helpers import PlStateNames, state_names_source_state_hierarchy_map, sound_parameters_info_dict, translate_cc_license_url
 
 
 class SourcePluginInterface(object):
@@ -100,6 +100,60 @@ class SourcePluginInterface(object):
                     download_percentage += float(ss.get(PlStateNames.SOUND_DOWNLOAD_PROGRESS.lower(), 0.0))
                 download_percentage = download_percentage/len(sound_state.find_all("SOUND_SAMPLE".lower()))
                 return download_percentage
+            elif property_name == PlStateNames.SOUND_DURATION:
+                total_duration = 0
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    total_duration += float(ss.get(PlStateNames.SOUND_DURATION.lower(), 0.0))
+                return total_duration
+            elif property_name == PlStateNames.SOUND_FILESIZE:
+                total_size = 0
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    total_size += float(ss.get(PlStateNames.SOUND_FILESIZE.lower(), 0.0))
+                return total_size
+            elif property_name == PlStateNames.SOUND_LICENSE:
+                licenses = []
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    licenses.append(ss.get(PlStateNames.SOUND_LICENSE.lower(), None))
+                licenses = list(set([translate_cc_license_url(l) for l in licenses if l is not None]))
+                if len(licenses) > 1:
+                    return 'multiple'
+                elif len(licenses) ==  1:
+                    return licenses[0]
+                else:
+                    return '-'
+            elif property_name == PlStateNames.SOUND_AUTHOR:
+                authors = []
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    authors.append(ss.get(PlStateNames.SOUND_AUTHOR.lower(), None))
+                authors = list(set([a for a in authors if a is not None]))
+                if len(authors) > 1:
+                    return 'multiple'
+                elif len(authors) ==  1:
+                    return authors[0]
+                else:
+                    return '-'
+            elif property_name == PlStateNames.SOUND_TYPE:
+                types = []
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    types.append(ss.get(PlStateNames.SOUND_TYPE.lower(), None))
+                types = list(set([t for t in types if t is not None]))
+                if len(types) > 1:
+                    return 'multiple'
+                elif len(types) ==  1:
+                    return types[0]
+                else:
+                    return '-'
+            elif property_name == PlStateNames.SOUND_ID:
+                ids = []
+                for ss in sound_state.find_all("SOUND_SAMPLE".lower()):
+                    ids.append(ss.get(PlStateNames.SOUND_ID.lower(), None))
+                ids = list(set([t for t in ids if t is not None]))
+                if len(ids) > 1:
+                    return 'multiple'
+                elif len(ids) ==  1:
+                    return int(ids[0])
+                else:
+                    return -1
             return return_with_type(sound_sample_state.get(property_name.lower(), default), property_name)
         
         elif hierarchy_location == 'computed':

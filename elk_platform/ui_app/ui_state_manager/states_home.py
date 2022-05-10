@@ -19,7 +19,7 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         n_sounds = self.spi.get_num_loaded_sounds()
         n_sounds_loaded_in_sampler = self.spi.get_property(PlStateNames.NUM_SOUNDS_LOADED_IN_SAMPLER, 0)
 
-        text = "{0} sounds".format(n_sounds)
+        text = "{0} sound{1}".format(n_sounds, "" if n_sounds == 1 else "s")
         if n_sounds_loaded_in_sampler < n_sounds:
             text += " ({} loading)".format(n_sounds - n_sounds_loaded_in_sampler)
         lines = [{

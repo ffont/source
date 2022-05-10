@@ -532,33 +532,31 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
 
     def on_activating_state(self):
         if self.sound_idx > -1:
-            sound_id = self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_ID)
-            if sound_id is not None:
-                # The plugin saves .wav versions of all the loaded sounds in a TMP location and with a known filename
-                # Here we use these files to load them directly in the slice editor and there is no need to send the
-                # files over the websockets or osc connection
-                path = os.path.join(self.spi.get_property(PlStateNames.TMP_DATA_LOCATION, ''),
-                                    self.spi.get_sound_property(self.sound_idx,
-                                                           PlStateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav')
-                if os.path.exists(path):
-                    self.sm.show_global_message('Loading\nwaveform...', duration=10)
-                    self.sound_sr, self.sound_data_array = wavfile.read(path)
-                    if len(self.sound_data_array.shape) > 1:
-                        self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
-                    self.sound_data_array = self.sound_data_array / abs(
-                        max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
-                    self.slices = [int(s * self.sound_sr) for s in
-                                   self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_SLICES, default=[])]
-                    self.sound_length = self.sound_data_array.shape[0]
-                    self.min_zoom = (self.sound_length // self.display_width) + 1
-                    self.current_zoom = self.min_zoom
-                    audio_mean_value = numpy.absolute(self.sound_data_array).mean()
-                    if audio_mean_value < 0.01:
-                        # If the file contains very low energy, auto-scale it a bit
-                        self.scale = 10
-                    self.sm.show_global_message('', duration=0)
-                else:
-                    self.sm.show_global_message('File not found')
+            # The plugin saves .wav versions of all the loaded sounds in a TMP location and with a known filename
+            # Here we use these files to load them directly in the slice editor and there is no need to send the
+            # files over the websockets or osc connection
+            path = os.path.join(self.spi.get_property(PlStateNames.TMP_DATA_LOCATION, ''),
+                                self.spi.get_sound_property(self.sound_idx,
+                                                        PlStateNames.SOURCE_SAMPLER_SOUND_UUID) + '.wav')
+            if os.path.exists(path):
+                self.sm.show_global_message('Loading\nwaveform...', duration=10)
+                self.sound_sr, self.sound_data_array = wavfile.read(path)
+                if len(self.sound_data_array.shape) > 1:
+                    self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
+                self.sound_data_array = self.sound_data_array / abs(
+                    max(self.sound_data_array.min(), self.sound_data_array.max(), key=abs))  # Normalize
+                self.slices = [int(s * self.sound_sr) for s in
+                                self.spi.get_sound_property(self.sound_idx, PlStateNames.SOUND_SLICES, default=[])]
+                self.sound_length = self.sound_data_array.shape[0]
+                self.min_zoom = (self.sound_length // self.display_width) + 1
+                self.current_zoom = self.min_zoom
+                audio_mean_value = numpy.absolute(self.sound_data_array).mean()
+                if audio_mean_value < 0.01:
+                    # If the file contains very low energy, auto-scale it a bit
+                    self.scale = 10
+                self.sm.show_global_message('', duration=0)
+            else:
+                self.sm.show_global_message('File not found')
 
     def draw_display_frame(self):
         self.frame_count += 1

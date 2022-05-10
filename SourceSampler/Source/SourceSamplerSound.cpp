@@ -65,8 +65,12 @@ void SourceSamplerSound::writeBufferToDisk()
     juce::AudioBuffer<float>* buffer = getAudioData();
     juce::WavAudioFormat format;
     std::unique_ptr<juce::AudioFormatWriter> writer;
-    
+    #if ELK_BUILD
+    juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
+    juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    #else
     juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    #endif
     writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
                                           soundSampleRate,
                                           1,  // Write mono files for visualization (will probably only take the first channel)
