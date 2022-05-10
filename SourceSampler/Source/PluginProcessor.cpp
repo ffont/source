@@ -561,7 +561,7 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     DBG("> Running setStateInformation");
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
-        //loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
+        loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
     }
 }
 
