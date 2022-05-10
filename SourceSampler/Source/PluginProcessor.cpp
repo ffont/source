@@ -50,21 +50,12 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     std::cout << "Creating default empty state" << std::endl;
     state = Helpers::createDefaultEmptyState();
     
-    std::cout << state.toXmlString() << std::endl;
-    
     // Add state change listener and bind cached properties to state properties (including loaded sounds)
-    std::cout << "Binding state" << std::endl;
     bindState();
     
     // Load global settings and do extra configuration
     std::cout << "Loading global settings" << std::endl;
     loadGlobalPersistentStateFromFile();
-    
-    // If on ELK build, start loading preset 0
-    #if ELK_BUILD
-    std::cout << "Loading latest loade preset " << (juce::String)latestLoadedPreset << std::endl;
-    setCurrentProgram(latestLoadedPreset);
-    #endif
     
     // Notify that plugin is running
     #if SYNC_STATE_WITH_OSC
@@ -317,6 +308,15 @@ void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesP
     
     // Configure level measurer
     lms.resize(getTotalNumOutputChannels(), 200 * 0.001f * sampleRate / samplesPerBlock); // 200ms average window
+    
+    // Loaded the last loaded preset (only in ELK platform)
+    # if ELK_BUILD
+    if (!loadedPresetAtElkStartup){
+        std::cout << "Loading latest loaded preset " << (juce::String)latestLoadedPreset << std::endl;
+            setCurrentProgram(latestLoadedPreset);
+        loadedPresetAtElkStartup = true;
+    }
+    # endif
 }
 
 void SourceSamplerAudioProcessor::releaseResources()
@@ -557,10 +557,11 @@ void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destDa
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    // Called by the plugin host to load state stored in host into plugin
     DBG("> Running setStateInformation");
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
-        loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
+        //loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
     }
 }
 
@@ -1255,16 +1256,20 @@ void SourceSamplerAudioProcessor::timerCallback()
     // Delete sounds that should be deleted (delete them both from current sounds list and from
     // soundsOld copy as ther might still be sounds scheduled for deletion there)
     const juce::ScopedLock sl (soundDeleteLock);
-    for (int i=sounds->objects.size() - 1; i>=0 ; i--){
-        auto* sound = sounds->objects[i];
-        if (sound->shouldBeDeleted()){
-            sounds->removeSoundWithUUID(sound->getUUID());
+    if (sounds != nullptr){
+        for (int i=sounds->objects.size() - 1; i>=0 ; i--){
+            auto* sound = sounds->objects[i];
+            if (sound->shouldBeDeleted()){
+                sounds->removeSoundWithUUID(sound->getUUID());
+            }
         }
     }
-    for (int i=soundsOld->objects.size() - 1; i>=0 ; i--){
-        auto* sound = soundsOld->objects[i];
-        if (sound->shouldBeDeleted()){
-            soundsOld->removeSoundWithUUID(sound->getUUID());
+    if (soundsOld != nullptr){
+        for (int i=soundsOld->objects.size() - 1; i>=0 ; i--){
+            auto* sound = soundsOld->objects[i];
+            if (sound->shouldBeDeleted()){
+                soundsOld->removeSoundWithUUID(sound->getUUID());
+            }
         }
     }
     
