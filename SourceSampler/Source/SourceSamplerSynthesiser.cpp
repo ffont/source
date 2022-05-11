@@ -81,7 +81,7 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
             // If hitting a note that's still ringing, stop it first (it could be
             // still playing because of the sustain or sostenuto pedal).
             for (auto* voice : voices)
-                if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel) && dynamic_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound()->getUUID() == dynamic_cast<SourceSamplerSound*>(sound)->getUUID())
+                if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel) && dynamic_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound()->getSourceSound()->getUUID() == dynamic_cast<SourceSamplerSound*>(sound)->getSourceSound()->getUUID())
                    stopVoice (voice, 1.0f, true);  // Only allow one single instance of SourceSamplerSound type per voice
             auto* voice = findFreeVoice (sound, midiChannel, midiNoteNumber, isNoteStealingEnabled());
             dynamic_cast<SourceSamplerVoice*>(voice)->setModWheelValue(lastModWheelValue);
