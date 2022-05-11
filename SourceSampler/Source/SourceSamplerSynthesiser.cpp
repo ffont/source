@@ -137,24 +137,7 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
         for (auto* s : sounds)
         {
             if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
-                int globalMidiChannel = sound->getSourceSound()->getGlobalContext().midiInChannel;
-                int soundMidiChannel = sound->getParameterInt(IDs::midiChannel);
-                bool appliesToChannel = false;
-                if (soundMidiChannel == 0){
-                    // Check with global
-                    appliesToChannel = (globalMidiChannel == 0) || (globalMidiChannel == channel);
-                } else {
-                    // Check with sound channel
-                    appliesToChannel = soundMidiChannel == channel;
-                }
-                if (appliesToChannel){
-                    std::vector<MidiCCMapping*> mappings = sound->getSourceSound()->getMidiMappingsForCcNumber(number);
-                    for (int i=0; i<mappings.size(); i++){
-                        float normInputValue = (float)value/127.0;  // This goes from 0 to 1
-                        float value = juce::jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
-                        sound->getSourceSound()->setParameterByNameFloat(mappings[i]->parameterName.get(), value, true);
-                    }
-                }
+                sound->getSourceSound()->applyMidiCCModulations(channel, number, value);
             }
         }
     }

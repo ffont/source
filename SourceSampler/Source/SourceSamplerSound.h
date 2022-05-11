@@ -183,6 +183,7 @@ public:
     void addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange);
     std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber);
     void removeMidiMapping(juce::String uuid);
+    void applyMidiCCModulations(int channel, int number, int value);
     
     // ------------------------------------------------------------------------------------------------
     
@@ -273,6 +274,7 @@ private:
     double scheduledForDeletionTime = 0.0;
     std::function<bool()> shouldStopLoading;
     juce::CriticalSection samplerSoundCreateDeleteLock;
+    juce::CriticalSection midiMappingCreateDeleteLock;
     JUCE_LEAK_DETECTOR (SourceSound)
 };
 

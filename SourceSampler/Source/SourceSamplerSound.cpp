@@ -678,6 +678,7 @@ void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 // ------------------------------------------------------------------------------------------------
 
 void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange){
+    const juce::ScopedLock sl (midiMappingCreateDeleteLock);
     
     juce::ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
     if (existingMapping.isValid()) {
@@ -695,7 +696,6 @@ void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::St
 }
 
 std::vector<MidiCCMapping*> SourceSound::getMidiMappingsForCcNumber(int ccNumber){
-    // TODO: transofrm to use pointer
     std::vector<MidiCCMapping*> toReturn = {};
     for (auto* midiCCmapping: midiCCmappings->objects){
         if (midiCCmapping->ccNumber == ccNumber){
@@ -706,8 +706,32 @@ std::vector<MidiCCMapping*> SourceSound::getMidiMappingsForCcNumber(int ccNumber
 }
 
 void SourceSound::removeMidiMapping(juce::String uuid){
+    const juce::ScopedLock sl (midiMappingCreateDeleteLock);
     midiCCmappings->removeMidiCCMappingWithUUID(uuid);
 }
+
+void SourceSound::applyMidiCCModulations(int channel, int number, int value) {
+    const juce::ScopedLock sl (midiMappingCreateDeleteLock);
+    
+    int globalMidiChannel = getGlobalContext().midiInChannel;
+    int soundMidiChannel = midiChannel.get();
+    bool appliesToChannel = false;
+    if (soundMidiChannel == 0){
+        // Check with global
+        appliesToChannel = (globalMidiChannel == 0) || (globalMidiChannel == channel);
+    } else {
+        // Check with sound channel
+        appliesToChannel = soundMidiChannel == channel;
+    }
+    if (appliesToChannel){
+        std::vector<MidiCCMapping*> mappings = getMidiMappingsForCcNumber(number);
+        for (int i=0; i<mappings.size(); i++){
+            float normInputValue = (float)value/127.0;  // This goes from 0 to 1
+            float value = juce::jmap(normInputValue, mappings[i]->minRange.get(), mappings[i]->maxRange.get());
+            setParameterByNameFloat(mappings[i]->parameterName.get(), value, true);
+        }
+    }
+};
 
 // ------------------------------------------------------------------------------------------------
 
