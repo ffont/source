@@ -770,7 +770,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         int numSounds = parameters[2].getIntValue();
         float minSoundLength = parameters[3].getFloatValue();
         float maxSoundLength = parameters[4].getFloatValue();
-        int noteMappingType = parameters[5].getFloatValue();
+        int noteMappingType = parameters[5].getIntValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         
         // Trigger query in a separate thread so that we don't block UI
@@ -785,6 +785,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         juce::String soundUUID = parameters[0];
         juce::String samplerSoundUUID = parameters[1];
         removeSamplerSound(soundUUID, samplerSoundUUID);
+        
+    } else if (actionName == ACTION_SET_SAMPLER_SOUND_PARAMETERS){
+        juce::String soundUUID = parameters[0];
+        juce::String samplerSoundUUID = parameters[1];
+        float startPosition = parameters[2].getFloatValue();
+        float endPosition = parameters[3].getFloatValue();
+        float loopStartPosition = parameters[4].getFloatValue();
+        float loopEndPosition = parameters[5].getFloatValue();
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            auto* sourceSamplerSound = sound->getLinkedSourceSamplerSoundWithUUID(samplerSoundUUID);
+            if (sourceSamplerSound != nullptr){
+                sourceSamplerSound->setSampleStartEndAndLoopPositions(startPosition, endPosition, loopStartPosition, loopEndPosition);
+            }
+        }
         
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
         juce::String soundUUID = parameters[0];
@@ -1179,9 +1194,19 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
         }
         
         juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
+        
         juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
         if (existingSoundIndex > -1){
-            // If a sound exists for that UUID, remove the sound with that UUID and replace it by the new sound
+            // If replacing an existing sound, copy as well the midi mappings
+            juce::ValueTree soundToReplaceState = presetState.getChildWithProperty(IDs::uuid, soundUUID);
+            for (int i=0; i<soundToReplaceState.getNumChildren(); i++){
+                auto child = soundToReplaceState.getChild(i);
+                if (child.hasType(IDs::MIDI_CC_MAPPING)){
+                    juce::ValueTree copyChild = child.createCopy();
+                    sourceSound.addChild(copyChild, -1, nullptr);
+                }
+            }
+            // Now remove the sound with that UUID and replace it by the new sound
             presetState.removeChild(existingSoundIndex, nullptr);
             presetState.addChild(sourceSound, existingSoundIndex, nullptr);
         } else {

@@ -84,6 +84,7 @@
 #define ACTION_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
 #define ACTION_REMOVE_SOUND "/remove_sound"
 #define ACTION_REMOVE_SAMPLER_SOUND "/remove_sampler_sound"
+#define ACTION_SET_SAMPLER_SOUND_PARAMETERS "/set_sampler_sound_parameters"
 #define ACTION_PLAY_SOUND "/play_sound"
 #define ACTION_STOP_SOUND "/stop_sound"
 #define ACTION_SOUND_READY_TO_LOAD "/sound_ready_to_load"

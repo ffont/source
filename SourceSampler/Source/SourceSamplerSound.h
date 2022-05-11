@@ -105,10 +105,10 @@ private:
     juce::CachedValue<int> soundId;
     juce::CachedValue<int> midiRootNote;
     juce::CachedValue<int> midiVelocityLayer;
-    juce::CachedValue<int> sampleStartPosition;
-    juce::CachedValue<int> sampleEndPosition;
-    juce::CachedValue<int> sampleLoopStartPosition;
-    juce::CachedValue<int> sampleLoopEndPosition;
+    juce::CachedValue<float> sampleStartPosition;
+    juce::CachedValue<float> sampleEndPosition;
+    juce::CachedValue<float> sampleLoopStartPosition;
+    juce::CachedValue<float> sampleLoopEndPosition;
 
     // "Volatile" properties that are not binded in state
     std::unique_ptr<juce::AudioBuffer<float>> data;
