@@ -58,6 +58,15 @@ void SourceSamplerSound::bindState ()
     midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
     Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiVelocityLayer, Defaults::midiVelocityLayer);
     midiVelocityLayer.referTo(state, IDs::midiVelocityLayer, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleStartPosition, Defaults::sampleStartPosition);
+    sampleStartPosition.referTo(state, IDs::sampleStartPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleEndPosition, Defaults::sampleEndPosition);
+    sampleEndPosition.referTo(state, IDs::sampleEndPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleLoopStartPosition, Defaults::sampleLoopStartPosition);
+    sampleLoopStartPosition.referTo(state, IDs::sampleLoopStartPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleLoopEndPosition, Defaults::sampleLoopEndPosition);
+    sampleLoopEndPosition.referTo(state, IDs::sampleLoopEndPosition, nullptr);
+    checkSampleSampleStartEndAndLoopPositions();
 }
 
 void SourceSamplerSound::writeBufferToDisk()
@@ -106,11 +115,50 @@ bool SourceSamplerSound::appliesToChannel (int midiChannel)
 }
 
 float SourceSamplerSound::getParameterFloat(juce::Identifier identifier){
+    // Return parameters from the corresponding SourceSound object
+    // For some parameters, first check if the SourceSamplerSound object has a special "override"
+    if ((identifier == IDs::startPosition) && (sampleStartPosition >= 0.0)){
+        return sampleStartPosition;
+    } else if ((identifier == IDs::endPosition) && (sampleEndPosition >= 0.0)){
+        return sampleEndPosition;
+    } else if ((identifier == IDs::loopStartPosition) && (sampleLoopStartPosition >= 0.0)){
+        return sampleLoopStartPosition;
+    } else if ((identifier == IDs::loopEndPosition) && (sampleLoopEndPosition >= 0.0)){
+        return sampleLoopEndPosition;
+    }
     return sourceSoundPointer->getParameterFloat(identifier, false);
 }
 
 int SourceSamplerSound::getParameterInt(juce::Identifier identifier){
     return sourceSoundPointer->getParameterInt(identifier);
+}
+
+void SourceSamplerSound::setSampleStartEndAndLoopPositions(float start, float end, float loopStart, float loopEnd){
+    sampleStartPosition = start;
+    sampleEndPosition = end;
+    sampleLoopStartPosition = loopStart;
+    sampleLoopEndPosition = loopEnd;
+    checkSampleSampleStartEndAndLoopPositions();
+}
+
+void SourceSamplerSound::checkSampleSampleStartEndAndLoopPositions(){
+    // Check that start/end/loop times are "in order". Because these parameters are optional and can be set to -1.0 if the global
+    // SourceSound value should be taken instead of the "local" sample value, we can not ensure 100% that parameters will always be
+    // "in order" as we should compare also with SourceSound's values. Doing that would complicate the logic too much so we decided
+    // not to do it. In worst case scenario, badly configured sample start/end/loop times will result in sound not being audible (which
+    // also kind of makes sense)
+    if ((sampleEndPosition >= 0.0) && (sampleStartPosition >= 0.0) && (sampleEndPosition < sampleStartPosition)) {
+        sampleEndPosition = sampleStartPosition.get();
+    }
+    if ((sampleLoopStartPosition >= 0.0) && (sampleStartPosition >= 0.0) && (sampleLoopStartPosition < sampleStartPosition)){
+        sampleLoopStartPosition = sampleStartPosition.get();
+    }
+    if ((sampleLoopEndPosition >= 0.0) && (sampleEndPosition >= 0.0) && (sampleLoopEndPosition > sampleEndPosition)){
+        sampleLoopEndPosition = sampleEndPosition.get();
+    }
+    if ((sampleLoopStartPosition >= 0.0) && (sampleLoopEndPosition >= 0.0) && (sampleLoopStartPosition > sampleLoopEndPosition)){
+        sampleLoopStartPosition = sampleLoopEndPosition.get();
+    }
 }
 
 int SourceSamplerSound::getLengthInSamples(){
@@ -640,10 +688,10 @@ void SourceSound::removeMidiMapping(juce::String uuid){
 
 std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
 {
-    // Generate all the SourceSamplerSound objects corresponding to this sound
-    // In most of the cases this will be a single sound, but it could be that
-    // some sounds have more than one SourceSamplerSound (multi-layered sounds
-    // for example)
+    // Generate all the SourceSamplerSound objects corresponding to this sound .In most of the cases this will be a single sound, but
+    // it could be that some sounds have more than one SourceSamplerSound (multi-layered sounds for example). If a SourceSamplerSound
+    // already exists, skip creation. This could happen if new sample sounds are added to the sound and this method is called again
+    // to create SourceSamplerSound(s) for the newly added sample sounds.
     
     juce::AudioFormatManager audioFormatManager;
     audioFormatManager.registerBasicFormats();
@@ -656,22 +704,25 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
         }
         auto child = state.getChild(i);
         if (child.hasType(IDs::SOUND_SAMPLE)){
-            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
-            if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
-                std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
-                if (reader == NULL){
-                    // If for some reason the reader is NULL (corrupted file for example), don't proceed creating the SourceSamplerSound
-                    // In that case delete the file so it can be re-downloaded
-                    DBG("Skipping loading of possibly corrupted file. Will delete that file so it can be re-downloaded: " << locationInDisk.getFullPathName());
-                    locationInDisk.deleteFile();
-                } else {
-                    SourceSamplerSound* createdSound = new SourceSamplerSound(child,
-                                                                              this,
-                                                                              *reader,
-                                                                              MAX_SAMPLE_LENGTH,
-                                                                              getGlobalContext().sampleRate,
-                                                                              getGlobalContext().samplesPerBlock);
-                    sounds.push_back(createdSound);
+            bool alreadyCreated = sourceSamplerSoundWithUUIDAlreadyCreated(child.getProperty(IDs::uuid, "").toString());
+            if (!alreadyCreated){
+                juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+                if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
+                    std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
+                    if (reader == NULL){
+                        // If for some reason the reader is NULL (corrupted file for example), don't proceed creating the SourceSamplerSound
+                        // In that case delete the file so it can be re-downloaded
+                        DBG("Skipping loading of possibly corrupted file. Will delete that file so it can be re-downloaded: " << locationInDisk.getFullPathName());
+                        locationInDisk.deleteFile();
+                    } else {
+                        SourceSamplerSound* createdSound = new SourceSamplerSound(child,
+                                                                                  this,
+                                                                                  *reader,
+                                                                                  MAX_SAMPLE_LENGTH,
+                                                                                  getGlobalContext().sampleRate,
+                                                                                  getGlobalContext().samplesPerBlock);
+                        sounds.push_back(createdSound);
+                    }
                 }
             }
         }
@@ -679,8 +730,20 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
     return sounds;
 }
 
+
+bool SourceSound::sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& sourceSamplerSoundUUID)
+{
+    for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+        if (sourceSamplerSound->getUUID() == sourceSamplerSoundUUID){
+            return true;
+        }
+    }
+    return false;
+}
+
 void SourceSound::addSourceSamplerSoundsToSampler()
 {
+    const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
     std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
     for (auto sourceSamplerSound: sourceSamplerSounds) {
         if (shouldStopLoading()){
@@ -697,6 +760,7 @@ void SourceSound::addSourceSamplerSoundsToSampler()
 
 void SourceSound::removeSourceSampleSoundsFromSampler()
 {
+    const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
     std::vector<int> soundIndexesToDelete;
     for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
         auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
@@ -714,6 +778,14 @@ void SourceSound::removeSourceSampleSoundsFromSampler()
     }
     std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
 }
+
+void SourceSound::addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound)
+{
+    // Add the new sample sound data to the state and then start the loader thread that will load the new sound and later create SourceSamplerSound for it
+    state.addChild(newSourceSamplerSound, -1, nullptr);
+    soundLoaderThread.startThread();
+}
+
 
 // ------------------------------------------------------------------------------------------------
 

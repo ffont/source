@@ -67,6 +67,10 @@ public:
     float gpi(juce::Identifier identifier) { return getParameterInt(identifier);};
     
     //==============================================================================
+    void setSampleStartEndAndLoopPositions(float start, float end, float loopStart, float loopEnd);
+    void checkSampleSampleStartEndAndLoopPositions();
+    
+    //==============================================================================
     int getLengthInSamples();
     float getLengthInSeconds();
     float getPlayingPositionPercentage();
@@ -96,6 +100,10 @@ private:
     juce::CachedValue<int> soundId;
     juce::CachedValue<int> midiRootNote;
     juce::CachedValue<int> midiVelocityLayer;
+    juce::CachedValue<int> sampleStartPosition;
+    juce::CachedValue<int> sampleEndPosition;
+    juce::CachedValue<int> sampleLoopStartPosition;
+    juce::CachedValue<int> sampleLoopEndPosition;
 
     // "Volatile" properties that are not binded in state
     std::unique_ptr<juce::AudioBuffer<float>> data;
@@ -169,8 +177,10 @@ public:
     // ------------------------------------------------------------------------------------------------
     
     std::vector<SourceSamplerSound*> createSourceSamplerSounds();
+    bool sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& sourceSamplerSoundUUID);
     void addSourceSamplerSoundsToSampler();
     void removeSourceSampleSoundsFromSampler();
+    void addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound);
     
     void loadSounds(std::function<bool()> shouldStopLoading);
     bool isSupportedAudioFileFormat(const juce::String& extension);
@@ -250,7 +260,7 @@ private:
     bool allDownloaded = false;
     double scheduledForDeletionTime = 0.0;
     std::function<bool()> shouldStopLoading;
-    
+    juce::CriticalSection samplerSoundCreateDeleteLock;
     JUCE_LEAK_DETECTOR (SourceSound)
 };
 

@@ -173,6 +173,11 @@ inline float vel2GainAmt = 0.5f;
 inline int midiChannel = 0;
 // --> End auto-generated code A
 
+inline float sampleStartPosition = -1.0f;
+inline float sampleEndPosition = -1.0f;
+inline float sampleLoopStartPosition = -1.0f;
+inline float sampleLoopEndPosition = -1.0f;
+
 inline float reverbRoomSize = 0.5f;
 inline float reverbDamping = 0.3f;
 inline float reverbWetLevel = 0.0f;
@@ -291,6 +296,11 @@ DECLARE_ID (vel2CutoffAmt)
 DECLARE_ID (vel2GainAmt)
 DECLARE_ID (midiChannel)
 // --> End auto-generated code B
+
+DECLARE_ID (sampleStartPosition)
+DECLARE_ID (sampleEndPosition)
+DECLARE_ID (sampleLoopStartPosition)
+DECLARE_ID (sampleLoopEndPosition)
 
 // Volatile state
 DECLARE_ID (isQueryingAndDownloadingSounds)

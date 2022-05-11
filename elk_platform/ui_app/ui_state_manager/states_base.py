@@ -165,7 +165,9 @@ class State(object):
             new_sound['filesize'],
             ','.join(str(o) for o in sound_onsets_list),  # for use as slices
             assigned_notes,  # This should be string representation of hex number
-            root_note # The note to be used as root
+            root_note, # The note to be used as root
+            0,  # The MIDI velocity layer (we don't really use that feature in the python UI so we always set it to 0)
+            0  # We don't support adding new sample sounds to existing sounds in the python UI so this is always 0
             ])
 
         if sound_uuid == "" and move_once_loaded:
