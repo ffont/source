@@ -783,6 +783,12 @@ void SourceSound::addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourc
 {
     // Add the new sample sound data to the state and then start the loader thread that will load the new sound and later create SourceSamplerSound for it
     state.addChild(newSourceSamplerSound, -1, nullptr);
+    if (soundLoaderThread.isThreadRunning()){
+        // If the loader thread is running, stop it first (give it some time so it can finish loading sounds if it was doing so)
+        // This will interrupt downloads and loading of soudns, but these will be retriggered later when thread is re-started
+        // Note that this situation would only happen if the method addNewSourceSamplerSoundFromValueTree is called vey often, which is unlikely
+        soundLoaderThread.stopThread(10000);
+    }
     soundLoaderThread.startThread();
 }
 
