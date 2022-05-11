@@ -231,6 +231,24 @@ void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
     }
 }
 
+// --------------------------------------------------------------------------------------------
+
+bool SourceSamplerSound::isScheduledForDeletion() {
+    return willBeDeleted;
+}
+
+void SourceSamplerSound::scheduleSampleSoundDeletion(){
+    // Note that the deletion mechanism here is a bit simpler compared to that of SourceSound. This is because the stopping of
+    // all the voices currently playing shat SourceSamplerSound will be done in the SourceSound method that is used to shcedule the
+    // deletion of a SourceSampleSound (and that will in its turn call this method)
+    willBeDeleted = true;
+    scheduledForDeletionTime = juce::Time::getMillisecondCounterHiRes();
+}
+
+bool SourceSamplerSound::shouldBeDeleted(){
+    return isScheduledForDeletion() && ((juce::Time::getMillisecondCounterHiRes() - scheduledForDeletionTime) > SAFE_SOUND_DELETION_TIME_MS);
+}
+
 
 //==============================================================================
 
@@ -360,6 +378,16 @@ SourceSamplerSound* SourceSound::getFirstLinkedSourceSamplerSound() {
     return nullptr;
 }
 
+SourceSamplerSound* SourceSound::getLinkedSourceSamplerSoundWithUUID(const juce::String& sourceSamplerSoundUUID) {
+    for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+        if (sourceSamplerSound->getUUID() == sourceSamplerSoundUUID){
+            return sourceSamplerSound;
+        }
+    }
+    return nullptr;
+}
+
 // --------------------------------------------------------------------------------------------
 
 juce::String SourceSound::getUUID() {
@@ -372,11 +400,6 @@ bool SourceSound::isScheduledForDeletion() {
 
 void SourceSound::scheduleSoundDeletion(){
     // Trigger stop all currently active notes for that sound and set timestamp so sound gets deleted async
-    // If sound already disabled, don't trigger deletion again
-    willBeDeleted = true;
-    scheduledForDeletionTime = juce::Time::getMillisecondCounterHiRes();
-    
-    // Stop all notes currently being played from that sound
     for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
         auto* voice = getGlobalContext().sampler->getVoice(i);
         if (voice != nullptr){
@@ -388,6 +411,8 @@ void SourceSound::scheduleSoundDeletion(){
             }
         }
     }
+    willBeDeleted = true;
+    scheduledForDeletionTime = juce::Time::getMillisecondCounterHiRes();
 }
 
 bool SourceSound::shouldBeDeleted(){
@@ -779,6 +804,14 @@ void SourceSound::removeSourceSampleSoundsFromSampler()
     std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
 }
 
+void SourceSound::removeSourceSamplerSound(const juce::String& samplerSoundUUID, int indexInSampler)
+{
+    const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
+    getGlobalContext().sampler->removeSound(indexInSampler); // Remove source sampler sound from the sampler
+    state.removeChild(state.getChildWithProperty(IDs::uuid, samplerSoundUUID), nullptr);  // Also remove the bit of state corresponding to the sampler sound
+    std::cout << "Removed 1 SourceSamplerSound(s) from sampler... " << std::endl;
+}
+
 void SourceSound::addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound)
 {
     // Add the new sample sound data to the state and then start the loader thread that will load the new sound and later create SourceSamplerSound for it
@@ -790,6 +823,26 @@ void SourceSound::addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourc
         soundLoaderThread.stopThread(10000);
     }
     soundLoaderThread.startThread();
+}
+
+void SourceSound::scheduleDeletionOfSourceSamplerSound(const juce::String& sourceSamplerSoundUUID)
+{
+    // Stop all notes currently being played from that sound
+    auto* sourceSamplerSound = getLinkedSourceSamplerSoundWithUUID(sourceSamplerSoundUUID);
+    if (sourceSamplerSound != nullptr){
+        for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
+            auto* voice = getGlobalContext().sampler->getVoice(i);
+            if (voice != nullptr){
+                if (voice->isVoiceActive()){
+                    auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
+                    if (currentlyPlayingSound == sourceSamplerSound){
+                        voice->stopNote(0.0f, false);
+                    }
+                }
+            }
+        }
+        sourceSamplerSound->scheduleSampleSoundDeletion();
+    }
 }
 
 

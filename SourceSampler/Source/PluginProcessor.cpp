@@ -781,6 +781,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         juce::String soundUUID = parameters[0];
         removeSound(soundUUID);
         
+    } else if (actionName == ACTION_REMOVE_SAMPLER_SOUND){
+        juce::String soundUUID = parameters[0];
+        juce::String samplerSoundUUID = parameters[1];
+        removeSamplerSound(soundUUID, samplerSoundUUID);
+        
     } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
         juce::String soundUUID = parameters[0];
         int soundID = parameters[1].getIntValue();
@@ -1124,6 +1129,18 @@ void SourceSamplerAudioProcessor::removeSound(const juce::String& soundUUID)
     }
 }
 
+void SourceSamplerAudioProcessor::removeSamplerSound(const juce::String& soundUUID, const juce::String& samplerSoundUUID)
+{
+    // Trigger the deletion of the sound by disabling it
+    // Once disabled, all playing notes will be stopped and the sound removed a while after that
+    const juce::ScopedLock sl (soundDeleteLock);
+    auto* sound = sounds->getSoundWithUUID(soundUUID);
+    if (sound != nullptr){
+        sound->scheduleDeletionOfSourceSamplerSound(samplerSoundUUID);
+    }
+}
+
+
 void SourceSamplerAudioProcessor::removeAllSounds()
 {
     // Trigger the deletion of the sounds by disabling them
@@ -1274,9 +1291,10 @@ double SourceSamplerAudioProcessor::getStartTime(){
 
 void SourceSamplerAudioProcessor::timerCallback()
 {
+    const juce::ScopedLock sl (soundDeleteLock);
+    
     // Delete sounds that should be deleted (delete them both from current sounds list and from
     // soundsOld copy as ther might still be sounds scheduled for deletion there)
-    const juce::ScopedLock sl (soundDeleteLock);
     if (sounds != nullptr){
         for (int i=sounds->objects.size() - 1; i>=0 ; i--){
             auto* sound = sounds->objects[i];
@@ -1291,6 +1309,14 @@ void SourceSamplerAudioProcessor::timerCallback()
             if (sound->shouldBeDeleted()){
                 soundsOld->removeSoundWithUUID(sound->getUUID());
             }
+        }
+    }
+    
+    // Also, delete SourceSampleSounds that are schedule for deletion (and have not been deleted yet)
+    for (int i=sampler.getNumSounds() - 1; i>=0; i--){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(sampler.getSound(i).get());
+        if (sourceSamplerSound->shouldBeDeleted()){
+            sourceSamplerSound->getSourceSound()->removeSourceSamplerSound(sourceSamplerSound->getUUID(), i);
         }
     }
     

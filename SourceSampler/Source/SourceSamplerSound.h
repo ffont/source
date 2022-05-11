@@ -89,6 +89,11 @@ public:
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
     std::vector<int> getOnsetTimesSamples();
     
+    //==============================================================================
+    bool isScheduledForDeletion();
+    void scheduleSampleSoundDeletion();
+    bool shouldBeDeleted();
+    
 private:
     //==============================================================================
     friend class SourceSamplerVoice;
@@ -114,6 +119,10 @@ private:
     std::vector<int> onsetTimesSamples = {};
     juce::BigInteger midiNotes = 0;
     juce::BigInteger midiVelocities = 0;
+    
+    // we use these properties to specify when a sample sound will be deleted. Unlike SourceSound, we don't bind this to state
+    bool willBeDeleted = false;
+    double scheduledForDeletionTime = 0.0;
 
     
     JUCE_LEAK_DETECTOR (SourceSamplerSound)
@@ -141,6 +150,7 @@ public:
     
     std::vector<SourceSamplerSound*> getLinkedSourceSamplerSounds();
     SourceSamplerSound* getFirstLinkedSourceSamplerSound();
+    SourceSamplerSound* getLinkedSourceSamplerSoundWithUUID(const juce::String& sourceSamplerSoundUUID);
     juce::String getUUID();
     bool isScheduledForDeletion();
     void scheduleSoundDeletion();
@@ -180,7 +190,9 @@ public:
     bool sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& sourceSamplerSoundUUID);
     void addSourceSamplerSoundsToSampler();
     void removeSourceSampleSoundsFromSampler();
+    void removeSourceSamplerSound(const juce::String& samplerSoundUUID, int indexInSampler);
     void addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound);
+    void scheduleDeletionOfSourceSamplerSound(const juce::String& sourceSamplerSoundUUID);
     
     void loadSounds(std::function<bool()> shouldStopLoading);
     bool isSupportedAudioFileFormat(const juce::String& extension);

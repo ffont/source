@@ -83,6 +83,7 @@
 // Actions to trigger in plugin for a specific sound (first parameter is soundIndex or soundID)
 #define ACTION_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
 #define ACTION_REMOVE_SOUND "/remove_sound"
+#define ACTION_REMOVE_SAMPLER_SOUND "/remove_sampler_sound"
 #define ACTION_PLAY_SOUND "/play_sound"
 #define ACTION_STOP_SOUND "/stop_sound"
 #define ACTION_SOUND_READY_TO_LOAD "/sound_ready_to_load"

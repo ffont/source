@@ -137,6 +137,7 @@ public:
     //==============================================================================
     void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);
     void removeSound(const juce::String& soundUUID);
+    void removeSamplerSound(const juce::String& soundUUID, const juce::String& samplerSoundUUID);
     void removeAllSounds();
     void addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
                                                    int soundID,
