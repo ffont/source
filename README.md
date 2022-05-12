@@ -202,7 +202,7 @@ This will create *Release* versions of SOURCE (VST3, VST2, AU and Standalone) re
 
 ### Build standalone/plugin for desktop (linux)
 
-Before compiling SOURCE, in Linux you need to install a number of system dependencies:
+Before compiling SOURCE, in Linux you first need to install a number of system dependencies:
 
 ```
 sudo apt update
@@ -216,7 +216,7 @@ sudo apt-get install xvfb
 ```
 
 
-You can also use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
+Then, you can use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
 
 ```
 fab compile
