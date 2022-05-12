@@ -17,6 +17,7 @@ Table of Contents
    * [Instructions for developers](#instructions-for-developers)
       * [Building SOURCE sampler engine](#building-source-sampler-engine)
          * [Build standalone/plugin for desktop (macOS)](#build-standaloneplugin-for-desktop-macos)
+         * [Build standalone/plugin for desktop (linux)](#build-standaloneplugin-for-desktop-linux)
          * [Build plugin for Elk platform](#build-plugin-for-elk-platform)
             * [Prepare Elk development SDK](#prepare-elk-development-sdk)
             * [Prepare VST2 SDK](#prepare-vst2-sdk)
