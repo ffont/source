@@ -217,6 +217,7 @@ private:
     int stateUpdateID = 0;
     juce::OSCSender oscSender;  // Used to send state updates to glue app
     void sendOSCMessage(const juce::OSCMessage& message);
+    void sendWSMessage(const juce::OSCMessage& message);
     
     // The next two objects are to preview sounds independently of the sampler
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;

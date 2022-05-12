@@ -61,7 +61,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(juce::OSCMessage("/plugin_started"));
     #endif
-    serverInterface.sendMessageToWebSocketClients(juce::OSCMessage("/plugin_started"));
+    sendWSMessage(juce::OSCMessage("/plugin_started"));
     
     std::cout << "SOURCE plugin is up and running!" << std::endl;
 }
@@ -973,21 +973,21 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
-            serverInterface.sendMessageToWebSocketClients(message);
+            sendWSMessage(message);
         } else if (stateType == "volatileString"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state_string");
             message.addString(collectVolatileStateInformationAsString());
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
-            serverInterface.sendMessageToWebSocketClients(message);
+            sendWSMessage(message);
         } else if (stateType == "volatile"){
             juce::OSCMessage message = juce::OSCMessage("/volatile_state");
             message.addString(collectVolatileStateInformation().toXmlString(juce::XmlElement::TextFormat().singleLine()));
             #if SYNC_STATE_WITH_OSC
             sendOSCMessage(message);
             #endif
-            serverInterface.sendMessageToWebSocketClients(message);
+            sendWSMessage(message);
         }
     } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
         juce::String soundPath = parameters[0];
@@ -1440,6 +1440,14 @@ void SourceSamplerAudioProcessor::sendOSCMessage(const juce::OSCMessage& message
     }
 }
 
+void SourceSamplerAudioProcessor::sendWSMessage(const juce::OSCMessage& message)
+{
+    // Send message to all connected WS clients (if WS server is up and running)
+    if (serverInterface.wsServer.serverPtr != nullptr){
+        serverInterface.sendMessageToWebSocketClients(message);
+    }
+}
+
 
 //==============================================================================
 
@@ -1459,7 +1467,7 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    serverInterface.sendMessageToWebSocketClients(message);
+    sendWSMessage(message);
     stateUpdateID += 1;
 }
 
@@ -1479,7 +1487,7 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    serverInterface.sendMessageToWebSocketClients(message);
+    sendWSMessage(message);
     stateUpdateID += 1;
 }
 
@@ -1497,7 +1505,7 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif
-    serverInterface.sendMessageToWebSocketClients(message);
+    sendWSMessage(message);
     stateUpdateID += 1;
 }
 
