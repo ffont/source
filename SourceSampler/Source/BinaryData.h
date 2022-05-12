@@ -4,13 +4,13 @@
 
 namespace BinaryData
 {
-    extern const char*  localhost_crt;
-    const int           localhost_crtSize = 1066;
-
     extern const char*  ui_plugin_ws_html;
-    const int           ui_plugin_ws_htmlSize = 313067;
+    const int           ui_plugin_ws_htmlSize = 313387;
 
     extern const char*  localhost_key;
     const int           localhost_keySize = 1704;
+
+    extern const char*  localhost_crt;
+    const int           localhost_crtSize = 1066;
 
 }

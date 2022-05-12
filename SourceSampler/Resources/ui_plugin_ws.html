@@ -109,8 +109,12 @@
             max-width: 330px;
         }
 
+        .top_controls_row {
+            width: 1100px;
+        }
+
         .controls_card_top {
-            height: 200px;
+            height: 220px;
             overflow: hidden;
             margin-right: 2px;
         }
@@ -143,7 +147,8 @@
         }
     
         #metersState{
-            height: 198px;
+            display:inline-block;
+            height: 220px;
         }
 
         .meters {
@@ -1348,56 +1353,56 @@
     </div>
 
     <br style="clear: both;">
+    <div class="top_controls_row">
+        <div class="controls_card controls_card_top">
+            <h4>Preset & settings</h4>
+            Preset number:</label><input name="presetIdx" value="" type="number">
+            <button onclick="ss.savePreset()">Save</button>
+            <button onclick="ss.loadPreset()">Load</button><br>
+            Preset name:</label><input name="presetName" value="" type="text">
+            <button onclick="ss.previousPreset()">&#x25C0</button><button onclick="ss.nextPreset()">&#x25b6</button><br>
+            MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="ss.setMidiInChannel()"><br>
+            Num voices:<input name="numVoices" value="" type="number" onchange="ss.setNumVoices()"><br>
+            <div id="voicesState"></div>
+        </div>
 
-    <div class="controls_card controls_card_top">
-        <h4>Preset & settings</h4>
-        Preset number:</label><input name="presetIdx" value="" type="number">
-        <button onclick="ss.savePreset()">Save</button>
-        <button onclick="ss.loadPreset()">Load</button><br>
-        Preset name:</label><input name="presetName" value="" type="text">
-        <button onclick="ss.previousPreset()">&#x25C0</button><button onclick="ss.nextPreset()">&#x25b6</button><br>
-        MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="ss.setMidiInChannel()"><br>
-        Num voices:<input name="numVoices" value="" type="number" onchange="ss.setNumVoices()"><br>
-        <div id="voicesState"></div>
-    </div>
+        <div class="controls_card controls_card_top">
+            <div class="transportSoundButtons"><div id="numResultsIndicator"></div><div id="queryingIndicator"></div></div>
+            <h4>Get new sounds</h4>
+            Query:<input name="query" value="" type="text" placeholder="percussion"><br>
+            Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
+            Sound length:<input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
+            Note layout type: <select class="select-css" name="noteMappingType" onchange="ss.reapplyLayout()">
+                <option value="0">&nbsp;&nbsp;contiguous&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
+                <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
+            </select><br>
+            <button onclick="ss.replaceAllSoundsByQuery()">Search and replace all sounds...</button><br>
+            <button onclick="ss.replaceSoundByQuery()">Search and replace sound #</button><input name="soundIdxToReplace" value="1" type="number" placeholder="1"><br>
+            <button onclick="ss.addSoundsByQuery()">Search and add sounds...</button>
+            
+        </div>
 
-    <div class="controls_card controls_card_top">
-        <div class="transportSoundButtons"><div id="numResultsIndicator"></div><div id="queryingIndicator"></div></div>
-        <h4>Get new sounds</h4>
-        Query:<input name="query" value="" type="text" placeholder="percussion"><br>
-        Num sounds:<input name="numSounds" value="" type="number" placeholder="16"><br>
-        Sound length:<input name="minSoundLength" value="" type="number" placeholder="0.0"> to <input name="maxSoundLength" value="" type="number" placeholder="0.5"><br>
-        Note layout type: <select class="select-css" name="noteMappingType" onchange="ss.reapplyLayout()">
-            <option value="0">&nbsp;&nbsp;contiguous&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
-            <option value="1">&nbsp;&nbsp;interleaved&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
-        </select><br>
-        <button onclick="ss.replaceAllSoundsByQuery()">Search and replace all sounds...</button><br>
-        <button onclick="ss.replaceSoundByQuery()">Search and replace sound #</button><input name="soundIdxToReplace" value="1" type="number" placeholder="1"><br>
-        <button onclick="ss.addSoundsByQuery()">Search and add sounds...</button>
+
+        <div class="controls_card controls_card_top">
+            <h4>Reverb</h4>
+            <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
+            roomSize: <span id="0_roomSizeLabel"></span><br>
+            <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
+            damping: <span id="0_dampingLabel"></span><br>
+            <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
+            width: <span id="0_widthLabel"></span><br>
+            <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
+            freezeMode: <span id="0_freezeModeLabel"></span><br>
+            <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
+            wetLevel: <span id="0_wetLevelLabel"></span><br>
+            <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
+            dryLevel: <span id="0_dryLevelLabel"></span>
+        </div>
         
+        <div class="controls_card controls_card_top">
+            <div id="metersState"></div>
+        </div>
     </div>
-
-
-    <div class="controls_card controls_card_top">
-        <h4>Reverb</h4>
-        <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
-        roomSize: <span id="0_roomSizeLabel"></span><br>
-        <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
-        damping: <span id="0_dampingLabel"></span><br>
-        <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
-        width: <span id="0_widthLabel"></span><br>
-        <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
-        freezeMode: <span id="0_freezeModeLabel"></span><br>
-        <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
-        wetLevel: <span id="0_wetLevelLabel"></span><br>
-        <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
-        dryLevel: <span id="0_dryLevelLabel"></span>
-    </div>
-    
-    <div class="controls_card controls_card_top">
-        <div id="metersState"></div>
-    </div>
-    
     <div class="cards_container_slide">
         <div id="allSoundsEditor"></div>
         <div id="individualSoundEditors"></div>

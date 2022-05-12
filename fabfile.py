@@ -120,7 +120,7 @@ def logs_source(ctx):
 @task
 def compile_elk(ctx, configuration='Release'):
 
-    print('Coss-compiling Source for ELK platform...')
+    print('Cross-compiling Source for ELK platform...')
     print('*********************************************')
 
     # Generate binary files
@@ -207,6 +207,21 @@ def compile_binary_builder_macos(ctx):
 
 
 @task
+def compile_linux(ctx, configuration='Release'):
+    print('Compiling Source for Linux platform...')
+    print('*********************************************\n')
+    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")    
+    os.system("cd SourceSampler/Builds/LinuxMakefile; make CONFIG={} -j4".format(configuration))    
+
+    print('\nAll done!')
+
+
+@task
+def compile_linux_debug(ctx):
+    compile_linux(ctx, configuration='Debug')
+
+
+@task
 def clean(ctx):
 
     # Remove all intermediate build files (for ELK build)
@@ -220,3 +235,5 @@ def clean(ctx):
 def compile(ctx):
     compile_macos(ctx)
     compile_elk(ctx)
+
+
