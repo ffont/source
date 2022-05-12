@@ -23,7 +23,7 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
-#define USE_LAZY_UI 1
+#define USE_LAZY_UI 0
 
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 
