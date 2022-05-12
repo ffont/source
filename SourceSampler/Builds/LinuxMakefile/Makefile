@@ -35,7 +35,7 @@ ifeq ($(CONFIG),Debug)
     TARGET_ARCH := 
   endif
 
-  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DDEBUG=1" "-D_DEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_6D53C8B4=1" "-DJUCE_APP_VERSION=0.6" "-DJUCE_APP_VERSION_HEX=0x600" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I../../../../VST_SDK/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/Simple-Web-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
+  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DDEBUG=1" "-D_DEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_6D53C8B4=1" "-DJUCE_APP_VERSION=0.6" "-DJUCE_APP_VERSION_HEX=0x600" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I../../3rdParty/JUCE/module/juce_audio_processors/format_types/VST3_SDK -I../../../../VST_SDK/VST2_SDK -I../../JuceLibraryCode -I../../3rdParty/JUCE/module -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/Simple-Web-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
 
   JUCE_CPPFLAGS_VST :=  "-DJucePlugin_Build_VST=1" "-DJucePlugin_Build_VST3=0" "-DJucePlugin_Build_AU=0" "-DJucePlugin_Build_AUv3=0" "-DJucePlugin_Build_RTAS=0" "-DJucePlugin_Build_AAX=0" "-DJucePlugin_Build_Standalone=0" "-DJucePlugin_Build_Unity=0"
   JUCE_CFLAGS_VST := -fPIC -fvisibility=hidden
@@ -77,7 +77,7 @@ ifeq ($(CONFIG),Release)
     TARGET_ARCH := 
   endif
 
-  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DNDEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_6D53C8B4=1" "-DJUCE_APP_VERSION=0.6" "-DJUCE_APP_VERSION_HEX=0x600" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I$(HOME)/JUCE/modules/juce_audio_processors/format_types/VST3_SDK -I../../../../VST_SDK/VST2_SDK -I../../JuceLibraryCode -I$(HOME)/JUCE/modules -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/Simple-Web-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
+  JUCE_CPPFLAGS := $(DEPFLAGS) "-DLINUX=1" "-DNDEBUG=1" "-DASIO_STANDALONE=1" "-DJUCER_LINUX_MAKE_6D53C8B4=1" "-DJUCE_APP_VERSION=0.6" "-DJUCE_APP_VERSION_HEX=0x600" $(shell pkg-config --cflags alsa freetype2 libcurl webkit2gtk-4.0 gtk+-x11-3.0) -pthread -I../../3rdParty/JUCE/module/juce_audio_processors/format_types/VST3_SDK -I../../../../VST_SDK/VST2_SDK -I../../JuceLibraryCode -I../../3rdParty/JUCE/module -I../../3rdParty/ff_meters/LevelMeter/ -I../../3rdParty/twine/include/ -I../../3rdParty/Simple-WebSocket-Server/ -I../../3rdParty/Simple-Web-Server/ -I../../3rdParty/asio/asio/include/ $(CPPFLAGS)
 
   JUCE_CPPFLAGS_VST :=  "-DJucePlugin_Build_VST=1" "-DJucePlugin_Build_VST3=0" "-DJucePlugin_Build_AU=0" "-DJucePlugin_Build_AUv3=0" "-DJucePlugin_Build_RTAS=0" "-DJucePlugin_Build_AAX=0" "-DJucePlugin_Build_Standalone=0" "-DJucePlugin_Build_Unity=0"
   JUCE_CFLAGS_VST := -fPIC -fvisibility=hidden
