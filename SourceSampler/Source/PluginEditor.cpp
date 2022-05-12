@@ -26,7 +26,11 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
         baseLocation.createDirectory();
     }
     juce::File uiHtmlFile = baseLocation.getChildFile("ui_plugin_ws").withFileExtension("html");
-    uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_html, BinaryData::ui_plugin_ws_htmlSize);
+    #if USE_LAZY_UI
+    uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_lazy_html , BinaryData::ui_plugin_ws_lazy_htmlSize);
+    #else
+    uiHtmlFile.replaceWithData(BinaryData::ui_plugin_ws_html , BinaryData::ui_plugin_ws_htmlSize);
+    #endif
     uiHTMLFilePath = uiHtmlFile.getFullPathName();
     
     openInBrowser.addListener(this);

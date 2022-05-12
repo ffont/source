@@ -300,6 +300,8 @@ The `ui_plugin_ws.html` file conataining the desktop UI is embedded in the plugi
 
 Also note that this desktop UI can also be used when the plugin is running in the Elk board by simply configuring the WebSockets host and port to that of the plugin instance running in the Elk board.
 
+**WARNING**: when working on Linux and using Chrome browser to open the UI, we've observed issues if re-starting the plugin while UI is still loaded in Chrome.
+
 
 ## Updating available sound parameters
 

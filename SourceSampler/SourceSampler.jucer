@@ -70,6 +70,8 @@
       </GROUP>
     </GROUP>
     <GROUP id="{D8B11299-9CBB-B918-B21A-0DF22D8F20C8}" name="Resources">
+      <FILE id="oPypri" name="ui_plugin_ws_lazy.html" compile="0" resource="0"
+            file="Resources/ui_plugin_ws_lazy.html"/>
       <FILE id="EZPDae" name="ui_plugin_ws.html" compile="0" resource="0"
             file="Resources/ui_plugin_ws.html"/>
       <FILE id="tDxeWY" name="icon.png" compile="0" resource="0" file="../docs/icon.png"/>
