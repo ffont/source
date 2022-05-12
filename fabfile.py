@@ -1,4 +1,5 @@
 import os
+import platform
 import time
 
 from fabric import task, Connection
@@ -119,13 +120,18 @@ def logs_source(ctx):
 
 @task
 def compile_elk(ctx, configuration='Release'):
-
     print('Cross-compiling Source for ELK platform...')
     print('*********************************************')
 
     # Generate binary files
+    # NOTE: this step is uding using the BinaryBuilder binary compiled in the host platform
     print('\n* Building BinaryData')
-    os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
+    if os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder'):
+        os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
+    elif os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder'):
+        os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")
+    else:
+        raise Exception('No BinaryBuilder executable found... fave sure to compile it first running "fab compile-binary-builder')
 
     # When compiling in ELK, the JUCE_WEB_BROWSER option of juce_gui_extra needs to be disabled, but we do want it to be
     # enabled when compiling the plugin for other platforms. The solution we adopt is that here we live modify the source files
@@ -171,8 +177,7 @@ def compile_elk_debug(ctx):
     compile_elk(ctx, configuration='Debug')
 
 
-@task
-def compile_macos(ctx, configuration='Release'):
+def compile_macos(configuration='Release'):
     # Compile release Source for macOS platform
     print('Compiling Source for macOS platform...')
     print('*********************************************\n')
@@ -181,14 +186,7 @@ def compile_macos(ctx, configuration='Release'):
     print('\nAll done!')
 
 
-@task
-def compile_macos_debug(ctx, configuration='Release'):
-    compile_macos(ctx, configuration='Debug')
-
-
-@task
-def compile_projucer_macos(ctx):
-    # Compile the projucer version compatible with source
+def compile_projucer_macos():
     print('Compiling Projucer for macOS platform...')
     print('*********************************************\n')
     os.system("cd SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
@@ -196,9 +194,7 @@ def compile_projucer_macos(ctx):
     print('\nAll done!')
 
 
-@task
-def compile_binary_builder_macos(ctx):
-    # Compile the BinaryBuilder version compatible with source
+def compile_binary_builder_macos():
     print('Compiling BinaryBuilder for macOS platform...')
     print('*********************************************\n')
     os.system("cd SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/;xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS JUCER_ENABLE_GPL_MODE=1' LLVM_LTO=NO")    
@@ -206,34 +202,73 @@ def compile_binary_builder_macos(ctx):
     print('\nAll done!')
 
 
-@task
-def compile_linux(ctx, configuration='Release'):
+def compile_linux(configuration='Release'):
     print('Compiling Source for Linux platform...')
     print('*********************************************\n')
     os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")    
-    os.system("cd SourceSampler/Builds/LinuxMakefile; make CONFIG={} -j4".format(configuration))    
+    os.system("cd SourceSampler/Builds/LinuxMakefile;make CONFIG={} -j4".format(configuration))    
+
+    print('\nAll done!')
+
+
+def compile_projucer_linux():
+    print('Compiling Projucer for linux platform...')
+    print('*********************************************\n')
+    os.system("cd SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/LinuxMakefile/;make CONFIG=Release -j4")    
+
+    print('\nAll done!')
+
+
+def compile_binary_builder_linux():
+    print('Compiling BinaryBuilder for linux platform...')
+    print('*********************************************\n')
+    os.system("cd SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/;make CONFIG=Release -j4")    
 
     print('\nAll done!')
 
 
 @task
-def compile_linux_debug(ctx):
-    compile_linux(ctx, configuration='Debug')
+def compile(ctx, configuration='Release'):
+    if platform.system() == 'Darwin':
+        if not os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder'):
+            compile_binary_builder_macos()
+        compile_macos(configuration=configuration)
+    elif platform.system() == 'Linux':
+        if not os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder'):
+            compile_binary_builder_linux()
+        compile_linux(configuration=configuration)
+    else:
+        raise Exception('Unsupported compilation platform')
+
+
+@task
+def compile_debug(ctx):
+    compile(ctx, configuration="Debug")
+
+
+@task
+def compile_binary_builder(ctx):
+    if platform.system() == 'Darwin':
+        compile_binary_builder_macos()
+    elif platform.system() == 'Linux':
+        compile_binary_builder_linux()
+    else:
+        raise Exception('Unsupported compilation platform')
+
+
+@task
+def compile_projucer(ctx):
+    if platform.system() == 'Darwin':
+        compile_projucer_macos()
+    elif platform.system() == 'Linux':
+        compile_projucer_linux()
+    else:
+        raise Exception('Unsupported compilation platform')
 
 
 @task
 def clean(ctx):
-
-    # Remove all intermediate build files (for ELK build)
+    # Remove all intermediate build files for all platforms
     os.system("rm -r SourceSampler/Builds/ELKAudioOS/build/")
-
-    # Remove all intermediate build files (for macOS build)
     os.system("rm -r SourceSampler/Builds/MacOSX/build/")
-
-
-@task
-def compile(ctx):
-    compile_macos(ctx)
-    compile_elk(ctx)
-
-
+    os.system("rm -r SourceSampler/Builds/LinuxMakefile/build/")
