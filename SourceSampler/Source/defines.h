@@ -10,8 +10,6 @@
 
 #pragma once
 
-#define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
-
 #define USE_OSC_SERVER 0  // OSC can be used as well as an alternative to Websockets, keeping this here for legacy reasons but not really used
 #define SYNC_STATE_WITH_OSC 0
 
@@ -23,13 +21,12 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
+#define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
+
 #define USE_LAZY_UI 0
 
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
-
-#define ENABLE_DEBUG_BUFFER 0
-
-#define SEND_VOLATILE_STATE_OVER_OSC 1  // This is an optimization for faster volatile state updates when using external HTTP server
+#define SAFE_SOUND_DELETION_TIME_MS 200
 
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
@@ -42,19 +39,13 @@
 #define WEBSOCKETS_SERVER_PORT 8125
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 
-
 #define MAX_SAMPLE_LENGTH 300  // minutes maximum sample length
-
-#define ACONNECT_MIDI_INTERFACE_ID 16
-#define ACONNECT_SUSHI_ID 128
 
 #define FREESOUND_API_REQUEST_TIMEOUT 20000
 #define MAX_DOWNLOAD_WAITING_TIME_MS 20000
-
 #define MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD 1024 * 1024 * 15  // 15 MB
 
-#define SAFE_SOUND_DELETION_TIME_MS 200
-
+#define ENABLE_DEBUG_BUFFER 0  // User as a debugging trick for outputting some audio to a file
 
 
 // Setters for preset/global parameters
@@ -89,12 +80,11 @@
 #define ACTION_SET_SAMPLER_SOUND_PARAMETERS "/set_sampler_sound_parameters"
 #define ACTION_PLAY_SOUND "/play_sound"
 #define ACTION_STOP_SOUND "/stop_sound"
-#define ACTION_SOUND_READY_TO_LOAD "/sound_ready_to_load"
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
 
-#define SOUND_TYPE_SINGLE_SAMPLE 0
-#define SOUND_TYPE_MULTI_SAMPLE 1
+
+// "Enumneration" parameters definitions
 
 #define LAUNCH_MODE_GATE 0
 #define LAUNCH_MODE_LOOP 1
@@ -113,8 +103,6 @@
 #define NOTE_MAPPING_TYPE_CONTIGUOUS 0  // Don't confuse note mapping type with note mapping mode. I know, naming should improve...
 #define NOTE_MAPPING_TYPE_INTERLEAVED 1
 #define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
-
-
 
 #define USE_ORIGINAL_FILES_NEVER "never"
 #define USE_ORIGINAL_FILES_ONLY_SHORT "onlyShort"
