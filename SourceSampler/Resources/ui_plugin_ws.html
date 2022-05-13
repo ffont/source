@@ -270,7 +270,6 @@
             position: absolute;
             height: 50px;
             width: 0%;
-            opacity: 0;
         }
 
         .waveformContainer canvas {
@@ -1247,7 +1246,7 @@
                 var voiceSoundPlayPosition = VolatileState.getAttribute('voiceSoundPlayPosition').split(',').slice(0, -1);
                 
                 [...document.getElementsByClassName('canvasOverlay')].forEach(element => {
-                    element.style.opacity = 0;
+                    element.remove();
                 });
 
                 for (var i=0; i<voiceSoundIdxs.length; i++){
@@ -1260,9 +1259,13 @@
                         var soundIdx = ss.findSoundIdxFromSoundUUID(sound.getAttribute('uuid'));
                         html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + soundIdx + '</div></div>'
 
-                        var waveformCanvasOverlay= document.getElementById('canvasOverlay_' + sound.getAttribute('uuid'));
-                        waveformCanvasOverlay.style.width = 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%';
-                        waveformCanvasOverlay.style.opacity = 1;
+                        var canvasOverlayElement = document.createElement('div');
+                        canvasOverlayElement.classList = 'canvasOverlay';
+                        canvasOverlayElement.style.width = 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%';
+                        var waveformContainer = document.getElementById('soundCardWaveformWrapper_' + sound.getAttribute('uuid'));
+                        waveformContainer.appendChild(canvasOverlayElement);
+
+                        
                     }
                 }
             }
