@@ -54,11 +54,6 @@
         input[type=range] {
             vertical-align: top;
         }
-        
-        canvas {
-            height: 50px;
-            width:100%;
-        }
 
         #logos {
             float: right;
@@ -258,6 +253,28 @@
             text-overflow: ellipsis;
             overflow: hidden;
             white-space: nowrap;
+        }
+
+        canvas {
+            height: 50px;
+            width:100%;
+        }
+
+        .waveformContainer {
+            position: relative;
+            height:70px;
+        }
+
+        .waveformContainer .canvasOverlay {
+            border-right: 2px solid rgb(78,184,164);
+            position: absolute;
+            height: 50px;
+            width: 0%;
+            opacity: 0;
+        }
+
+        .waveformContainer canvas {
+            position: absolute;
         }
         
     </style>
@@ -985,7 +1002,7 @@
 
             // Create inner html of sound card element
             var html = '<div id="soundCardInfo_' + soundUUID + '"></div>';
-            html += '<div><div id="waveformLoadingIndicator_' + soundUUID + '"></div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
+            html += '<div><div id="waveformLoadingIndicator_' + soundUUID + '"></div><div class="waveformContainer" id="soundCardWaveformWrapper_' + soundUUID + '"><canvas id="soundCardWaveform_' + soundUUID + '"></canvas><div class="canvasOverlay" id="canvasOverlay_' + soundUUID + '"></div></div></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
             html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '" class="blink_me"></div>';
             html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
@@ -1229,12 +1246,23 @@
                 var voiceSoundIdxs = VolatileState.getAttribute('voiceSoundIdxs').split(',').slice(0, -1);
                 var voiceSoundPlayPosition = VolatileState.getAttribute('voiceSoundPlayPosition').split(',').slice(0, -1);
                 
+                [...document.getElementsByClassName('canvasOverlay')].forEach(element => {
+                    element.style.opacity = 0;
+                });
+
                 for (var i=0; i<voiceSoundIdxs.length; i++){
                     if (voiceSoundIdxs[i] == "-1"){
                         // Draw empty square
                         html += '<div class="voice"><div class="voice_progress" style="width:0%;">&nbsp;</div></div>'
                     } else {
-                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + ss.findSoundIdxFromSourceSamplerSoundUUID(voiceSoundIdxs[i]) + '</div></div>'
+                        
+                        var sound = ss.getSoundFromSoundSampleUUID(voiceSoundIdxs[i]);
+                        var soundIdx = ss.findSoundIdxFromSoundUUID(sound.getAttribute('uuid'));
+                        html += '<div class="voice"><div class="voice_progress" style="width:' + 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%;">' + soundIdx + '</div></div>'
+
+                        var waveformCanvasOverlay= document.getElementById('canvasOverlay_' + sound.getAttribute('uuid'));
+                        waveformCanvasOverlay.style.width = 100 * parseFloat(voiceSoundPlayPosition[i], 10) + '%';
+                        waveformCanvasOverlay.style.opacity = 1;
                     }
                 }
             }
