@@ -160,17 +160,145 @@ pyhon main
 
 ## Architecture and *pseudo* class diagram
 
-TODO
+Please check the main [README][README.md] for an overall description of how SOURCE works, including the two block diagrams 
+of SOURCE running in the ELK hardware stack or as an audio plugin/stand-alone application in a desktop computer. As it can 
+be seen in the diagrams, the UI of SOURCE is completely separated from the sampler audio engine. In the case of ELK deployments,
+the UI is implemented as a Python script (see `elk_platform/ui_app/` folder), and when running on desktop computers the UI
+is implemented with HTML/Javascript (see `SourceSampler/Resources/ui_plugin_ws.html`). The way in which the UI communicates
+with the sampler engine to obtain the state of the app and trigger actions in the engine is [described below](#controlling-plugin-from-UI).
+
+The most important thing to understand of the sampler engine is the *pseudo* class diagram which shows the most important classes and 
+gives an idea of the structure of the app. This should be helpful for anyone willing to contribute to SOURCE. See the *pseudo* class diagram
+below and a brief explanation of the relevance of each of the classes in the diagram:
+
+<p align="center">
+<img src="docs/class_diagram.png" width="650" />
+</p>
+
+
+* **`SourceSamplerAudioProcessor`**: this is the main class of the application is the owner of an instance of the `ServerInterface`, an instance of the `SourceSamplerSynthesiser`, and as many instances of `SourceSound` as sounds are loaded in the plugin. This class also holds the main state of the application in a `state` member using JUCE's `juce::ValueTree` structure. The whole hierarchy of objects in SOURCE is governed and created after the contents of that `state` variable. See [this great talk by Dave Rowland](https://www.youtube.com/watch?v=3IaMjH5lBEY) in which he discusses this technique. When SOURCE runs in desktop computers, the `SourceSamplerAudioProcessor` also has the methods for communicating with Freesound.
+
+* **`ServerInterface`**: this class is the one that handles all the communications with the UI(s). It includes a **WebSockets server** that can be used by UI(s) to send messages to the sampler engine and to receive information about plugin's state. The `ServerInterface` class also implements an Open Sound Control server that can be used by exactly the same purposes as the WebSockets one. Before implementing the WebSockets server, the OSC server was used for remote contorl. Currently it is not used but the code is still here in case it becomes useful. Finally, the `ServerInterface` also has an **HTTP server** which is **only used when SOURCE runs on desktop computers** and it can serve sound the full files to the UI in case these are needed (e.g. to draw a waveform).
+
+* **`SourceSound`**: there will be multiple instances for this class, one for every sound loaded in the sampler. Each instance of `SourceSound` holds the values of all the available sound parameters nad has methods to set and retrieve them. This class **does not hold any audio data** as this is delegated to the `SourceSamplerSound` class (see below). Typically, one instance of `SourceSound` will create an instance of `SourceSamplerSound` (note however that `SourceSamplerSound` is not owned by `SourceSound` but owned by `SourceSamplerSynthesiser`), because when one sound is loaded, an instance of `SourceSamplerSound` is created with the audio contents and extra metadata of that sound. However, SOURCE supports multi-samples, meaning that one single `SourceSound` can create several instances of `SourceSamplerSound` is different audio files are to played depending on the MIDI notes pressed or velocity layers. `SourceSound` therefore includes methods to create `SourceSamplerSound` instances, to download the corresponding sounds and load them into memory, and to add the created `SourceSamplerSound` instances to the sampler (to the `SourceSamplerSynthesiser` instance). `SourceSound` also has methods to handle deletion of these objects.  Finally, `SourceSound` instances own a list of `MidiCCMapping` instances and also include methods to manage them.
+
+* **`SourceSamplerSound`**: an instance of `SourceSamplerSound` is created for each of the audio files currently loaded into the sampler's memory. `SourceSamplerSound` instances keep a reference to the `SourceSound` that created them. This reference is used, among other things, for retrieving the sound parameter values that should be used when playing that sound file (e.g. gain and filter cutoff). `SourceSamplerSound` instances' lifetime is managed by the referenced `SourceSound` objects, but they are indeed owned by the `SourceSamplerSynthesiser` instance.
+
+* **`MidiCCMapping`**: these objects are used to store the relation of MIDI CC numbers, which sound parameters these should affect and with what range. `MidiCCMapping` instances are owned by `SourceSound`.
+
+* **`SourceSamplerSynthesiser`**: this class manages the MIDI input, chooses which sounds should be played depedning on the incoming MIDI notes, and deals with the rendering of the actual audio buffers through `SourceSamplerVoice` instances. Also, `SourceSamplerSynthesiser` owns a list of `SourceSamplerSound` objects which contain the loaded sounds that can be played in response to MIDI notes. When a MIDI note arrives, `SourceSamplerSynthesiser` will find an empty `SourceSamplerVoice` instance and tell it to play the `SourceSamplerSound` corresponding with the input MIDI note.
+
+* **`SourceSamplerVoice`**: this class is the one that does the actual audio rendering of a specific `SourceSamplerSound` when it is being played. It holds a reference to the `SourceSamplerSound` being played, and throught it has access to the values of sound parameters (because `SourceSamplerSound` points to the `SourceSound` that created it). With all that information, the `SourceSamplerVoice` instance calculates the audio samples that need to be placed in the audio buffer every time that the `renderNextBlock` is called. This is the class that does virtually all of the audio processing in SOURCE.
+
+
+You can look at the implementation of these classes in the sources files under `SourceSampler/Source`. Most of them are declared/implemented in source code files of the same names. A notable exception is `SourceSound`, whose declatration/implementation shares file with `SourceSamplerSound`.
 
 
 ## Preset file strcuture
 
-TODO
+SOURCE presets are stored as `.xml` documents that will be placed in the `~/Documents/SourceSampler/presets` folder.
+Files are named with the **number of the preset as the filename** (e.g. `10.xml`). If SOURCE is trying to load a preset
+and no file exists with that preset number, it will create a new empty preset.
+
+The preset file structure follows a similar structure to that of the class diagram, with the root `PRESET` element containing
+an indefinite number of `SOUND` elements which can also contain any number of `SOUND_SAMPLE` and `MIDI_CC_MAPPING` elements.
+`SOUND_SAMPLE` elements can also contain an `ANALYSIS` element with the output of the analysis of that sound. Below is an example
+preset file with 2 sounds. The first sound also has 2 configured MIDI CC mappings, and the second one has analysis data.
+Note that looking at this example file is also good to see what preset parameters and sound parameters are available (see 
+the properties of `PRESET` and `SOUND` elements, respectively). See some devleopment notes about [modifying and updating
+the available sound parameters](#adding-or-modifying-sound-parameters-of-the-sampler-engine) below.
+
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PRESET uuid="6ed7834fe18a4627b4c3b27b69693d38" name="2 sounds of nature"
+        noteLayoutType="0" numVoices="8" reverbDamping="0.0" reverbWetLevel="0.5"
+        reverbDryLevel="1.0" reverbWidth="1.0" reverbFreezeMode="1.0"
+        reverbRoomSize="0.3">
+  <SOUND uuid="084552fc5abe4640881a9765d7274dc1" midiChannel="0" midiNotes="ffffffff"
+         launchMode="0" startPosition="0.0" endPosition="1.0" loopStartPosition="0.0"
+         loopEndPosition="1.0" loopXFadeNSamples="500" reverse="0" noteMappingMode="0"
+         numSlices="0" playheadPosition="0.0" freezePlayheadSpeed="100.0"
+         filterCutoff="20000.0" filterRessonance="0.0" filterKeyboardTracking="0.0"
+         filterAttack="0.009999999776482582" filterDecay="0.0" filterSustain="1.0"
+         filterRelease="0.009999999776482582" filterADSR2CutoffAmt="1.0"
+         gain="-10.0" attack="0.009999999776482582" decay="0.0" sustain="1.0"
+         release="0.009999999776482582" pan="0.0" pitch="0.0" pitchBendRangeUp="12.0"
+         pitchBendRangeDown="12.0" mod2CutoffAmt="10.0" mod2GainAmt="6.0"
+         mod2PitchAmt="0.0" mod2PlayheadPos="0.0" vel2CutoffAmt="0.0"
+         vel2GainAmt="0.5">
+    <SOUND_SAMPLE uuid="eadebe15eda14c81abcf19523e63f939" name="P&#225;ssaro.m4a" soundId="517784"
+                  username="Nicoleamado1" license="http://creativecommons.org/licenses/by/3.0/" filesize="122644"
+                  format="m4a" previewURL="https://cdn.freesound.org/previews/517/517784_11129824-hq.ogg"
+                  soundFromFreesound="1" usesPreview="1" midiRootNote="16" midiVelocityLayer="0"
+                  sampleStartPosition="-1.0" sampleEndPosition="-1.0" sampleLoopStartPosition="-1.0"
+                  sampleLoopEndPosition="-1.0"/>
+    <MIDI_CC_MAPPING uuid="bb48171ba48b4a13b892f89e55818d9e" ccNumber="10" parameterName="filterCutoff"
+                     minRange="0.2899999916553497" maxRange="0.7799999713897705"/>
+    <MIDI_CC_MAPPING uuid="7e65f5d7774b4aa985dfd29e32fa69d1" ccNumber="11" parameterName="pan"
+                     minRange="0.0" maxRange="1.0"/>
+  </SOUND>
+  <SOUND uuid="d5ced7dfbc9e4a0c91a30b1791914780" midiChannel="0" midiNotes="ffffffff00000000"
+         launchMode="0" startPosition="0.0" endPosition="1.0" loopStartPosition="0.0"
+         loopEndPosition="1.0" loopXFadeNSamples="500" reverse="0" noteMappingMode="0"
+         numSlices="0" playheadPosition="0.0" freezePlayheadSpeed="100.0"
+         filterCutoff="20000.0" filterRessonance="0.0" filterKeyboardTracking="0.0"
+         filterAttack="0.009999999776482582" filterDecay="0.0" filterSustain="1.0"
+         filterRelease="0.009999999776482582" filterADSR2CutoffAmt="1.0"
+         gain="-10.0" attack="0.009999999776482582" decay="0.0" sustain="1.0"
+         release="0.009999999776482582" pan="0.0" pitch="0.0" pitchBendRangeUp="12.0"
+         pitchBendRangeDown="12.0" mod2CutoffAmt="10.0" mod2GainAmt="6.0"
+         mod2PitchAmt="0.0" mod2PlayheadPos="0.0" vel2CutoffAmt="0.0"
+         vel2GainAmt="0.5">
+    <SOUND_SAMPLE uuid="35589f5200f447adbd03113f4f54bcd7" name="Field Recording.m4a" soundId="567075"
+                  username="regas23" license="http://creativecommons.org/licenses/by/3.0/" filesize="160283"
+                  format="m4a" previewURL="https://cdn.freesound.org/previews/567/567075_12718295-hq.ogg"
+                  soundFromFreesound="1" usesPreview="1" midiRootNote="48" midiVelocityLayer="0"
+                  sampleStartPosition="-1.0" sampleEndPosition="-1.0" sampleLoopStartPosition="-1.0"
+                  sampleLoopEndPosition="-1.0">
+      <ANALYSIS>
+        <onsets>
+          <onset onsetTime="0.03482993319630623"/>
+          <onset onsetTime="1.207437634468079"/>
+          <onset onsetTime="2.03174614906311"/>
+          <onset onsetTime="2.275555610656738"/>
+          <onset onsetTime="2.600634813308716"/>
+          <onset onsetTime="2.844444513320923"/>
+          <onset onsetTime="3.657142877578735"/>
+          <onset onsetTime="3.889342308044434"/>
+          <onset onsetTime="3.970612287521362"/>
+          <onset onsetTime="4.063492298126221"/>
+          <onset onsetTime="4.14476203918457"/>
+          <onset onsetTime="5.305759429931641"/>
+          <onset onsetTime="5.688889026641846"/>
+        </onsets>
+      </ANALYSIS>
+    </SOUND_SAMPLE>
+  </SOUND>
+</PRESET>
+```
+
+Note that if loading this preset file in SOURCE and then re-saving it, some extra properties might be saved. These correspond
+to *volatile* properties which are only used while the plugin is running, and will be ignored if the preset is loaded again. 
+
+TODO: link to other examples of preset files.
+
+For an example program to generate presets for SOURCE, check the [Freesound Presets](https://github.com/ffont/freesound-presets)
+project.
 
 
 ## Controlling plugin from UI
 
-TODO
+The SOURCE sampler engine exposes a remote control interface that can be accessed using WebSockets or, alternatively, Open Sound Control. This interface is also used to send infromation about the sampler engine state to the UI. Note that the sampler engine state looks exactly like the preset files shown above. Below is a list of the different plugin actions that can be triggered using the remote control interface. The actual details about how to connect to that interface and format the messages can be easily derived by looking at the source code of the UI(s) and also by looking at the implementation of the `actionListenerCallback` from `SourceSamplerAudioProcessor`.
+
+
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/get_state` | [state type (String): `full`/`volatile`/`volatileString`] | Responds with a message including information about current state of the plugin. `full` will return the complete state in a serialized XML data structure (similar to the preset file). `volatile` will return information about the *volatile* aspects of the state (i.e. audio meters, playhead positions of sounds currently being played, ...) in a serialized XML data structure. `volatileString` will also return information about the volatile aspects of the state but in a comma-separated format and serialized to a string (see source code for more details). |
+
+
+TODO: add all the available actions
 
 
 ## Working on the desktop plugin UI
@@ -195,4 +323,4 @@ cd SourceSampler
 python geneate_code.py -i
 ```
 
-After that the parameters will be available in your `SourceSound` objects, and will also be automatically added to the desktop UI of the plugin.
+After that the parameters will be available in your `SourceSound` instances, and will also be automatically added to the desktop UI of the plugin.
