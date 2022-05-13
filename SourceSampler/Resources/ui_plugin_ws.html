@@ -73,6 +73,15 @@
                 transform: rotate(359deg);
             }
         }
+        @keyframes blinker {
+            50% {
+                background-color: white;
+            }
+        }
+
+        .blink_me {
+            animation: blinker 1s linear infinite;
+        }
 
         #numResultsIndicator {
             display: inline-block;
@@ -978,7 +987,7 @@
             var html = '<div id="soundCardInfo_' + soundUUID + '"></div>';
             html += '<div><div id="waveformLoadingIndicator_' + soundUUID + '"></div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
             html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
-            html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
+            html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '" class="blink_me"></div>';
             html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
             html += '</div>';
 
