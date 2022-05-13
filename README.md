@@ -77,13 +77,13 @@ Note that the most interesting bit of SOURCE is it's methods for interacting wit
 SOURCE is composed of a number of software processes that run on a hardware solution based on a [Raspberry Pi 4](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/), the [Elk Pi](https://elk.audio/extended-dev-kit) hat for the Raspberry Pi (which provides low-latency multi-channel audio I/O), and the [Elk BLACKBOARD](https://elk.audio/blackboard) controller board (which provides the user interface elements including buttons, faders, a display, and the audio I/O connectors). All software processes run under [Elk Audio OS](https://elk.audio/audio-os), an operative system optimized for low-latency and real-time audio systems. The core of SOURCE is the *sampler engine* which is implemented as a VST plugin and is run by the *sushi* process (a plugin host bundled with Elk Audio OS). The communication with the sensors of the controller board is carried out by the *sensei* process, which is also part of the Elk Audio OS distribution. Finally, a *glue app* is responsible for connecting all the sub-systems together (mostly via Open Sound Control/WebSockets), controlling the state of the user interface, exposing an HTTP endopoint that offers a complementary user interface, and, most importantly, communicating with Freesound to search and download sounds. Below there is a block diagram including all the aforementioned software processes and hardware elements. 
 
 <p align="center">
-<img src="docs/SOURCE-main-diagram-elk.png" width="400" />
+<img src="docs/SOURCE-main-diagram-elk.png" width="550" />
 </p>
 
 When running as an audio plugin or stand-alone app in a Desktop computer, SOURCE bundles an HTML-based user interface which is loaded in the plugin itself. Below is a block diagram of SOURCE when running as a plugin or stand-alone app in a desktop computer. 
 
 <p align="center">
-<img src="docs/SOURCE-main-diagram-plugin.png" width="400" />
+<img src="docs/SOURCE-main-diagram-plugin.png" width="550" />
 </p>
 
 More information about SOURCE architecture and internal details is documented in the [DEVELOPERS][DEVELOPERS.md] section.
