@@ -543,7 +543,7 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (juce::ValueTre
     // Run some more actions needed to sync some parameters which are not automatically loaded from state
     updateReverbParameters();
     sampler.setSamplerVoices(numVoices);
-    setMidiInChannelFilter(globalMidiInChannel);
+    setGlobalMidiInChannel(globalMidiInChannel);
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -739,232 +739,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
     juce::StringArray parameters;
     parameters.addTokens (serializedParameters, (juce::String)SERIALIZATION_SEPARATOR, "");
     
+    // Log all actions except for "get state" actions as there are too many :)
     if (actionName != ACTION_GET_STATE){
-        // Don't log get state actions as it creates too much logs
         DBG("Action message: " << message);
     }
     
-    if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
-        // If using external server to download sounds, notify download fininshed through this action
-        juce::String soundUUID = parameters[0];
-        juce::File targetFileLocation = juce::File(parameters[1]);
-        bool taskSucceeded = parameters[2].getIntValue() == 1;
-        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            sound->downloadFinished(targetFileLocation, taskSucceeded);
-        }
-        
-    } else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
-        // If using external server to download sounds, send progress updates through this action
-        juce::String soundUUID = parameters[0];
-        juce::File targetFileLocation = juce::File(parameters[1]);
-        float downloadedPercentage = parameters[2].getFloatValue();
-        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            sound->downloadProgressUpdate(targetFileLocation, downloadedPercentage);
-        }
-        
-    } else if (actionName == ACTION_FIND_SOUNDS){
-        juce::String addReplaceOrReplaceSound = parameters[0];
-        juce::String query = parameters[1];
-        int numSounds = parameters[2].getIntValue();
-        float minSoundLength = parameters[3].getFloatValue();
-        float maxSoundLength = parameters[4].getFloatValue();
-        int noteMappingType = parameters[5].getIntValue();
-        noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
-        
-        // Trigger query in a separate thread so that we don't block UI
-        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
-        queryMakerThread.startThread(0);  // Lowest thread priority
-        
-    } else if (actionName == ACTION_REMOVE_SOUND){
-        juce::String soundUUID = parameters[0];
-        removeSound(soundUUID);
-        
-    } else if (actionName == ACTION_REMOVE_SAMPLER_SOUND){
-        juce::String soundUUID = parameters[0];
-        juce::String samplerSoundUUID = parameters[1];
-        removeSamplerSound(soundUUID, samplerSoundUUID);
-        
-    } else if (actionName == ACTION_SET_SAMPLER_SOUND_PARAMETERS){
-        juce::String soundUUID = parameters[0];
-        juce::String samplerSoundUUID = parameters[1];
-        float startPosition = parameters[2].getFloatValue();
-        float endPosition = parameters[3].getFloatValue();
-        float loopStartPosition = parameters[4].getFloatValue();
-        float loopEndPosition = parameters[5].getFloatValue();
-        auto* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            auto* sourceSamplerSound = sound->getLinkedSourceSamplerSoundWithUUID(samplerSoundUUID);
-            if (sourceSamplerSound != nullptr){
-                sourceSamplerSound->setSampleStartEndAndLoopPositions(startPosition, endPosition, loopStartPosition, loopEndPosition);
-            }
-        }
-        
-    } else if (actionName == ACTION_ADD_OR_REPLACE_SOUND){
-        juce::String soundUUID = parameters[0];
-        int soundID = parameters[1].getIntValue();
-        juce::String soundName = parameters[2];
-        juce::String soundUser = parameters[3];
-        juce::String soundLicense = parameters[4];
-        juce::String oggDownloadURL = parameters[5];
-        juce::String localFilePath = parameters[6];
-        juce::String type = parameters[7];
-        int sizeBytes = parameters[8].getIntValue();
-        juce::String serializedSlices = parameters[9];
-        juce::StringArray slices;
-        if (serializedSlices != ""){
-            slices.addTokens(serializedSlices, ",", "");
-        }
-        juce::String assignedNotesBigInteger = parameters[10];
-        juce::BigInteger midiNotes;
-        if (assignedNotesBigInteger != ""){
-            midiNotes.parseString(assignedNotesBigInteger, 16);
-        }
-        int midiRootNote = parameters[11].getIntValue();
-        int midiVelocityLayer = parameters[12].getIntValue();
-        bool addToExistingSourceSampleSounds = parameters[13].getIntValue() == 1;
-
-        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
-        
-    } else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
-        juce::String soundUUID = parameters[0];  // "" means all sounds
-        juce::String parameterName = parameters[1];
-        float parameterValue = parameters[2].getFloatValue();
-        DBG("Setting FLOAT parameter " << parameterName << " of sound " << soundUUID << " to value " << parameterValue);
-        if (soundUUID != "") {
-            // Change one sound
-            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
-            if (sound != nullptr){
-                sound->setParameterByNameFloat(parameterName, parameterValue, false);
-            }
-        } else {
-            // Change all sounds
-            for (auto* sound: sounds->objects){
-                sound->setParameterByNameFloat(parameterName, parameterValue, false);
-            }
-        }
-    } else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
-        juce::String soundUUID = parameters[0];  // "" means all sounds
-        juce::String parameterName = parameters[1];
-        int parameterValue = parameters[2].getIntValue();
-        DBG("Setting INT parameter " << parameterName << " of sound " << soundUUID << " to value " << parameterValue);
-        if (soundUUID != "") {
-            // Change one sound
-            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
-            if (sound != nullptr){
-                sound->setParameterByNameInt(parameterName, parameterValue);
-            }
-        } else {
-            // Change all sounds
-            for (auto* sound: sounds->objects){
-                sound->setParameterByNameInt(parameterName, parameterValue);
-            }
-        }
-    } else if (actionName == ACTION_SET_REVERB_PARAMETERS){
-        reverbRoomSize = parameters[0].getFloatValue();
-        reverbDamping = parameters[1].getFloatValue();
-        reverbWetLevel = parameters[2].getFloatValue();
-        reverbDryLevel = parameters[3].getFloatValue();
-        reverbWidth = parameters[4].getFloatValue();
-        reverbFreezeMode = parameters[5].getFloatValue();
-        updateReverbParameters();
-        
-    } else if (actionName == ACTION_SAVE_PRESET){
-        juce::String presetName = parameters[0];
-        int index = parameters[1].getIntValue();
-        saveCurrentPresetToFile(presetName, index);  // Save to file...
-        currentPresetIndex = index; // ...and update current preset index and name in case it was changed
-        saveGlobalPersistentStateToFile();  // Save global state to reflect last loaded preset has the right index
-        
-    } else if (actionName == ACTION_LOAD_PRESET){
-        int index = parameters[0].getIntValue();
-        setCurrentProgram(index);
-        
-    } else if (actionName == ACTION_SET_MIDI_IN_CHANNEL){
-        int channel = parameters[0].getIntValue();
-        setMidiInChannelFilter(channel);
-        
-    } else if (actionName == ACTION_SET_MIDI_THRU){
-        bool midiThru = parameters[0].getIntValue() == 1;
-        setMidiThru(midiThru);
-        
-    } else if (actionName == ACTION_PLAY_SOUND){
-        juce::String soundUUID = parameters[0];
-        addToMidiBuffer(soundUUID, false);
-        
-    } else if (actionName == ACTION_STOP_SOUND){
-        juce::String soundUUID = parameters[0];
-        addToMidiBuffer(soundUUID, true);
-        
-    } else if (actionName == ACTION_SET_POLYPHONY){
-        numVoices = parameters[0].getIntValue();
-        sampler.setSamplerVoices(numVoices);
-
-    } else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
-        juce::String soundUUID = parameters[0];
-        juce::String uuid = parameters[1];
-        int ccNumber = parameters[2].getIntValue();
-        juce::String parameterName = parameters[3];
-        float minRange = parameters[4].getFloatValue();
-        float maxRange = parameters[5].getFloatValue();
-        auto* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
-        }
-
-    } else if (actionName == ACTION_REMOVE_CC_MAPPING){
-        juce::String soundUUID = parameters[0];
-        juce::String uuid = parameters[1];
-        auto* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            sound->removeMidiMapping(uuid);
-        }
-
-    } else if (actionName == ACTION_SET_STATE_TIMER_HZ){
-        int newHz = parameters[0].getIntValue();
-        stopTimer();
-        startTimerHz(newHz);
-        
-    } else if (actionName == ACTION_REAPPLY_LAYOUT){
-        int newNoteLayout = parameters[0].getIntValue();
-        reapplyNoteLayout(newNoteLayout);
-        
-    } else if (actionName == ACTION_SET_SOUND_SLICES){
-        juce::String soundUUID = parameters[0];
-        juce::String serializedSlices = parameters[1];
-        juce::StringArray slices;
-        slices.addTokens(serializedSlices, ",", "");
-        
-        auto* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            std::vector<float> sliceOnsetTimes = {};
-            for (juce::String sliceOnsetTimeStr: slices){
-                sliceOnsetTimes.push_back(sliceOnsetTimeStr.getFloatValue());
-            }
-            sound->setOnsetTimesSamples(sliceOnsetTimes);
-        }
-
-    } else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
-        juce::String soundUUID = parameters[0];
-        juce::String assignedNotesBigInteger = parameters[1];
-        int rootNote = parameters[2].getIntValue();
-        
-        juce::BigInteger midiNotes;
-        if (assignedNotesBigInteger != ""){
-            midiNotes.parseString(assignedNotesBigInteger, 16);
-        }
-        
-        auto* sound = sounds->getSoundWithUUID(soundUUID);
-        if (sound != nullptr){
-            sound->setMappedMidiNotes(midiNotes);
-            sound->setMidiRootNote(rootNote);
-        }
-        
-    } else if (actionName == ACTION_CLEAR_ALL_SOUNDS){
-        removeAllSounds();
-        
-    } else if (actionName == ACTION_GET_STATE){
+    // Global actions -----------------------------------------------------------------------------------
+    if (actionName == ACTION_GET_STATE) {
         juce::String stateType = parameters[0];
         if (stateType == "full"){
             juce::OSCMessage message = juce::OSCMessage("/full_state");
@@ -989,23 +770,321 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             #endif
             sendWSMessage(message);
         }
-    } else if (actionName == ACTION_PLAY_SOUND_FROM_PATH){
+    }
+    else if (actionName == ACTION_PLAY_SOUND_FILE_FROM_PATH){
         juce::String soundPath = parameters[0];
         if (soundPath == ""){
             stopPreviewingFile();  // Send empty string to stop currently previewing sound
         } else {
             previewFile(soundPath);
         }
-    } else if (actionName == ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE){
+    }
+    else if (actionName == ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE){
         juce::String preference = parameters[0];
         useOriginalFilesPreference = preference;
         saveGlobalPersistentStateToFile();
+    }
+    else if (actionName == ACTION_SET_GLOBAL_MIDI_IN_CHANNEL){
+        int channel = parameters[0].getIntValue();
+        setGlobalMidiInChannel(channel);
+    }
+    
+    // Preset actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_LOAD_PRESET){
+        int index = parameters[0].getIntValue();
+        setCurrentProgram(index);
+    }
+    else if (actionName == ACTION_SAVE_PRESET){
+        juce::String presetName = parameters[0];
+        int index = parameters[1].getIntValue();
+        saveCurrentPresetToFile(presetName, index);  // Save to file...
+        currentPresetIndex = index; // ...and update current preset index and name in case it was changed
+        saveGlobalPersistentStateToFile();  // Save global state to reflect last loaded preset has the right index
+    }
+    else if (actionName == ACTION_SET_REVERB_PARAMETERS){
+        reverbRoomSize = parameters[0].getFloatValue();
+        reverbDamping = parameters[1].getFloatValue();
+        reverbWetLevel = parameters[2].getFloatValue();
+        reverbDryLevel = parameters[3].getFloatValue();
+        reverbWidth = parameters[4].getFloatValue();
+        reverbFreezeMode = parameters[5].getFloatValue();
+        updateReverbParameters();
+    }
+    else if (actionName == ACTION_SET_POLYPHONY){
+        numVoices = parameters[0].getIntValue();
+        sampler.setSamplerVoices(numVoices);
+    }
+    else if (actionName == ACTION_REAPPLY_LAYOUT){
+        int newNoteLayout = parameters[0].getIntValue();
+        reapplyNoteLayout(newNoteLayout);
+    }
+    else if (actionName == ACTION_CLEAR_ALL_SOUNDS){
+        removeAllSounds();
+    }
+    else if ((actionName == ACTION_ADD_NEW_SOUNDS_FROM_QUERY) || (actionName == ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY)){
+        juce::String addReplaceOrReplaceSound = actionName == ACTION_ADD_NEW_SOUNDS_FROM_QUERY ? "add": "replace";
+        juce::String query = parameters[0];
+        int numSounds = parameters[1].getIntValue();
+        float minSoundLength = parameters[2].getFloatValue();
+        float maxSoundLength = parameters[3].getFloatValue();
+        int noteMappingType = parameters[4].getIntValue();
+        noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
+        
+        // Trigger query in a separate thread so that we don't block UI
+        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
+        queryMakerThread.startThread(0);  // Lowest thread priority
+    }
+    else if (actionName == ACTION_REPLACE_SOUND_FROM_QUERY){
+        juce::String addReplaceOrReplaceSound = parameters[0]; // Will be UUID of the sound to replace
+        juce::String query = parameters[1];
+        int numSounds = parameters[2].getIntValue();
+        float minSoundLength = parameters[3].getFloatValue();
+        float maxSoundLength = parameters[4].getFloatValue();
+        int noteMappingType = parameters[5].getIntValue();
+        noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
+        
+        // Trigger query in a separate thread so that we don't block UI
+        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
+        queryMakerThread.startThread(0);  // Lowest thread priority
+    }
+
+    // Sound actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_ADD_SOUND){
+        int soundID = parameters[0].getIntValue();
+        juce::String soundName = parameters[1];
+        juce::String soundUser = parameters[2];
+        juce::String soundLicense = parameters[3];
+        juce::String oggDownloadURL = parameters[4];
+        juce::String localFilePath = parameters[5];
+        juce::String type = parameters[6];
+        int sizeBytes = parameters[7].getIntValue();
+        juce::String serializedSlices = parameters[8];
+        juce::StringArray slices;
+        if (serializedSlices != ""){
+            slices.addTokens(serializedSlices, ",", "");
+        }
+        juce::String assignedNotesBigInteger = parameters[9];
+        juce::BigInteger midiNotes;
+        if (assignedNotesBigInteger != ""){
+            midiNotes.parseString(assignedNotesBigInteger, 16);
+        }
+        int midiRootNote = parameters[10].getIntValue();
+        int midiVelocityLayer = Defaults::midiVelocityLayer;
+        bool addToExistingSourceSampleSounds = false;
+
+        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+    }
+    else if (actionName == ACTION_REPLACE_SOUND){
+        juce::String soundUUID = parameters[0];
+        int soundID = parameters[1].getIntValue();
+        juce::String soundName = parameters[2];
+        juce::String soundUser = parameters[3];
+        juce::String soundLicense = parameters[4];
+        juce::String oggDownloadURL = parameters[5];
+        juce::String localFilePath = parameters[6];
+        juce::String type = parameters[7];
+        int sizeBytes = parameters[8].getIntValue();
+        juce::String serializedSlices = parameters[9];
+        juce::StringArray slices;
+        if (serializedSlices != ""){
+            slices.addTokens(serializedSlices, ",", "");
+        }
+        juce::String assignedNotesBigInteger = parameters[10];
+        juce::BigInteger midiNotes;
+        if (assignedNotesBigInteger != ""){
+            midiNotes.parseString(assignedNotesBigInteger, 16);
+        }
+        int midiRootNote = parameters[11].getIntValue();
+        int midiVelocityLayer = Defaults::midiVelocityLayer;
+        bool addToExistingSourceSampleSounds = false;
+
+        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+    }
+    else if (actionName == ACTION_REMOVE_SOUND){
+        juce::String soundUUID = parameters[0];
+        removeSound(soundUUID);
+    }
+    else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
+        juce::String soundUUID = parameters[0];  // "" means all sounds
+        juce::String parameterName = parameters[1];
+        float parameterValue = parameters[2].getFloatValue();
+        if (soundUUID != "") {
+            // Change one sound
+            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+            if (sound != nullptr){
+                sound->setParameterByNameFloat(parameterName, parameterValue, false);
+            }
+        } else {
+            // Change all sounds
+            for (auto* sound: sounds->objects){
+                sound->setParameterByNameFloat(parameterName, parameterValue, false);
+            }
+        }
+    }
+    else if (actionName == ACTION_SET_SOUND_PARAMETER_INT){
+        juce::String soundUUID = parameters[0];  // "" means all sounds
+        juce::String parameterName = parameters[1];
+        int parameterValue = parameters[2].getIntValue();
+        if (soundUUID != "") {
+            // Change one sound
+            SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+            if (sound != nullptr){
+                sound->setParameterByNameInt(parameterName, parameterValue);
+            }
+        } else {
+            // Change all sounds
+            for (auto* sound: sounds->objects){
+                sound->setParameterByNameInt(parameterName, parameterValue);
+            }
+        }
+    }
+    else if (actionName == ACTION_SET_SOUND_SLICES){
+        juce::String soundUUID = parameters[0];
+        juce::String serializedSlices = parameters[1];
+        juce::StringArray slices;
+        slices.addTokens(serializedSlices, ",", "");
+        
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            std::vector<float> sliceOnsetTimes = {};
+            for (juce::String sliceOnsetTimeStr: slices){
+                sliceOnsetTimes.push_back(sliceOnsetTimeStr.getFloatValue());
+            }
+            sound->setOnsetTimesSamples(sliceOnsetTimes);
+        }
+    }
+    else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
+        juce::String soundUUID = parameters[0];
+        juce::String assignedNotesBigInteger = parameters[1];
+        int rootNote = parameters[2].getIntValue();
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            juce::BigInteger midiNotes;
+            if (assignedNotesBigInteger != ""){
+                midiNotes.parseString(assignedNotesBigInteger, 16);
+                sound->setMappedMidiNotes(midiNotes);
+            }
+            if (rootNote > -1){
+                sound->setMidiRootNote(rootNote);  // Note that this sets the midi root note only for the first SamplerSound associated with the sound
+            }
+        }
+    }
+    else if (actionName == ACTION_PLAY_SOUND){
+        juce::String soundUUID = parameters[0];
+        addToMidiBuffer(soundUUID, false);
+    }
+    else if (actionName == ACTION_STOP_SOUND){
+        juce::String soundUUID = parameters[0];
+        addToMidiBuffer(soundUUID, true);
+    }
+    
+    // SamplerSound actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_ADD_SAMPLER_SOUND){
+        int soundID = parameters[0].getIntValue();
+        juce::String soundName = parameters[1];
+        juce::String soundUser = parameters[2];
+        juce::String soundLicense = parameters[3];
+        juce::String oggDownloadURL = parameters[4];
+        juce::String localFilePath = parameters[5];
+        juce::String type = parameters[6];
+        int sizeBytes = parameters[7].getIntValue();
+        juce::String serializedSlices = parameters[8];
+        juce::StringArray slices;
+        if (serializedSlices != ""){
+            slices.addTokens(serializedSlices, ",", "");
+        }
+        juce::String assignedNotesBigInteger = parameters[9];
+        juce::BigInteger midiNotes;
+        if (assignedNotesBigInteger != ""){
+            midiNotes.parseString(assignedNotesBigInteger, 16);
+        }
+        int midiRootNote = parameters[10].getIntValue();
+        int midiVelocityLayer = parameters[11].getIntValue();
+        bool addToExistingSourceSampleSounds = true;
+
+        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+    }
+    else if (actionName == ACTION_REMOVE_SAMPLER_SOUND){
+        juce::String soundUUID = parameters[0];
+        juce::String samplerSoundUUID = parameters[1];
+        removeSamplerSound(soundUUID, samplerSoundUUID);
+    }
+    else if (actionName == ACTION_SET_SAMPLER_SOUND_PARAMETERS){
+        juce::String soundUUID = parameters[0];
+        juce::String samplerSoundUUID = parameters[1];
+        float startPosition = parameters[2].getFloatValue();
+        float endPosition = parameters[3].getFloatValue();
+        float loopStartPosition = parameters[4].getFloatValue();
+        float loopEndPosition = parameters[5].getFloatValue();
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            auto* sourceSamplerSound = sound->getLinkedSourceSamplerSoundWithUUID(samplerSoundUUID);
+            if (sourceSamplerSound != nullptr){
+                sourceSamplerSound->setSampleStartEndAndLoopPositions(startPosition, endPosition, loopStartPosition, loopEndPosition);
+            }
+        }
+    }
+    else if (actionName == ACTION_SET_SAMPLER_SOUND_MIDI_ROOT_NOTE){
+        juce::String soundUUID = parameters[0];
+        juce::String samplerSoundUUID = parameters[1];
+        int rootNote = parameters[2].getIntValue();
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            auto* sourceSamplerSound = sound->getLinkedSourceSamplerSoundWithUUID(samplerSoundUUID);
+            if (sourceSamplerSound != nullptr){
+                sourceSamplerSound->setMidiRootNote(rootNote);
+            }
+        }
+    }
+    
+    // MIDI mapping actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
+        juce::String soundUUID = parameters[0];
+        juce::String uuid = parameters[1];
+        int ccNumber = parameters[2].getIntValue();
+        juce::String parameterName = parameters[3];
+        float minRange = parameters[4].getFloatValue();
+        float maxRange = parameters[5].getFloatValue();
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->addOrEditMidiMapping(uuid, ccNumber, parameterName, minRange, maxRange);
+        }
+    }
+    else if (actionName == ACTION_REMOVE_CC_MAPPING){
+        juce::String soundUUID = parameters[0];
+        juce::String uuid = parameters[1];
+        auto* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->removeMidiMapping(uuid);
+        }
+    }
+    
+    // Sound external downloads actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_FINISHED_DOWNLOADING_SOUND){
+        // If using external server to download sounds, notify download fininshed through this action
+        juce::String soundUUID = parameters[0];
+        juce::File targetFileLocation = juce::File(parameters[1]);
+        bool taskSucceeded = parameters[2].getIntValue() == 1;
+        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->downloadFinished(targetFileLocation, taskSucceeded);
+        }
+    }
+    else if (actionName == ACTION_DOWNLOADING_SOUND_PROGRESS){
+        // If using external server to download sounds, send progress updates through this action
+        juce::String soundUUID = parameters[0];
+        juce::File targetFileLocation = juce::File(parameters[1]);
+        float downloadedPercentage = parameters[2].getFloatValue();
+        SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+        if (sound != nullptr){
+            sound->downloadProgressUpdate(targetFileLocation, downloadedPercentage);
+        }
     }
 }
 
 //==============================================================================
 
-void SourceSamplerAudioProcessor::setMidiInChannelFilter(int channel)
+void SourceSamplerAudioProcessor::setGlobalMidiInChannel(int channel)
 {
     if (channel < 0){
         channel = 0;  // Al channels

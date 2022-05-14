@@ -48,38 +48,45 @@
 #define ENABLE_DEBUG_BUFFER 0  // User as a debugging trick for outputting some audio to a file
 
 
-// Setters for preset/global parameters
-#define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
-#define ACTION_SET_MIDI_IN_CHANNEL "/set_midi_in_channel"
-#define ACTION_SET_MIDI_THRU "/set_midi_thru"
-#define ACTION_SET_POLYPHONY "/set_polyphony"
-#define ACTION_SET_STATE_TIMER_HZ "/set_state_timer_hz"
+// Global actions
+#define ACTION_GET_STATE "/get_state"
+#define ACTION_PLAY_SOUND_FILE_FROM_PATH "/play_sound_from_path"
 #define ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE "/set_use_original_files"
+#define ACTION_SET_GLOBAL_MIDI_IN_CHANNEL "/set_midi_in_channel"
 
-// Actions to trigger in plugin
-#define ACTION_SAVE_PRESET "/save_preset"
+// Preset actions
 #define ACTION_LOAD_PRESET "/load_preset"
-#define ACTION_FIND_SOUNDS "/find_sounds"
+#define ACTION_SAVE_PRESET "/save_preset"
+#define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
+#define ACTION_SET_POLYPHONY "/set_polyphony"
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
-#define ACTION_GET_STATE "/get_state"
-#define ACTION_PLAY_SOUND_FROM_PATH "/play_sound_from_path"
+#define ACTION_ADD_NEW_SOUNDS_FROM_QUERY "/add_sounds_from_query"
+#define ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY "/replace_sounds_from_query"
+#define ACTION_REPLACE_SOUND_FROM_QUERY "/replace_sound_from_query"
 
-// Setters for sound properties (first parameter is soundIndex)
+// Sound actions
+#define ACTION_ADD_SOUND "/add_sound"
+#define ACTION_REPLACE_SOUND "/replace_sound"
+#define ACTION_REMOVE_SOUND "/remove_sound"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
 #define ACTION_SET_SOUND_PARAMETER_INT "/set_sound_parameter_int"
 #define ACTION_SET_SOUND_SLICES "/set_slices"
 #define ACTION_SET_SOUND_ASSIGNED_NOTES "/set_assigned_notes"
+#define ACTION_PLAY_SOUND "/play_sound"
+#define ACTION_STOP_SOUND "/stop_sound"
+
+// SamplerSound actions
+#define ACTION_ADD_SAMPLER_SOUND "/add_sampler_sound"
+#define ACTION_REMOVE_SAMPLER_SOUND "/remove_sampler_sound"
+#define ACTION_SET_SAMPLER_SOUND_PARAMETERS "/set_sampler_sound_parameters"
+#define ACTION_SET_SAMPLER_SOUND_MIDI_ROOT_NOTE "/set_sampler_sound_root_note"
+
+// MIDI CC mapping actions
 #define ACTION_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define ACTION_REMOVE_CC_MAPPING "/remove_cc_mapping"
 
-// Actions to trigger in plugin for a specific sound (first parameter is soundIndex or soundID)
-#define ACTION_ADD_OR_REPLACE_SOUND "/add_or_replace_sound"
-#define ACTION_REMOVE_SOUND "/remove_sound"
-#define ACTION_REMOVE_SAMPLER_SOUND "/remove_sampler_sound"
-#define ACTION_SET_SAMPLER_SOUND_PARAMETERS "/set_sampler_sound_parameters"
-#define ACTION_PLAY_SOUND "/play_sound"
-#define ACTION_STOP_SOUND "/stop_sound"
+// External sound downloads actions
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
 

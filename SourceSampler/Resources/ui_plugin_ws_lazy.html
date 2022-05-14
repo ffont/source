@@ -581,7 +581,7 @@
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/find_sounds', ['replace', query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
+                this.sendMessageToPlugin('/replace_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
             }
 
             replaceSoundByQuery(){
@@ -592,7 +592,7 @@
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/find_sounds', [soundUUIDToReplace, query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
+                this.sendMessageToPlugin('/replace_sound_from_query', [soundUUIDToReplace, query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
             }
 
             addSoundsByQuery(){
@@ -601,7 +601,7 @@
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/find_sounds', ['add', query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
+                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
             }
 
             reapplyLayout(){

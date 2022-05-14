@@ -102,7 +102,7 @@ public:
     juce::File getGlobalSettingsFilePathFromName();
     
     //==============================================================================
-    void setMidiInChannelFilter(int channel);
+    void setGlobalMidiInChannel(int channel);
     void setMidiThru(bool doMidiTrhu);
     
     //==============================================================================
