@@ -292,10 +292,28 @@ project.
 
 The SOURCE sampler engine exposes a remote control interface that can be accessed using WebSockets or, alternatively, Open Sound Control. This interface is also used to send infromation about the sampler engine state to the UI. Note that the sampler engine state looks exactly like the preset files shown above. Below is a list of the different plugin actions that can be triggered using the remote control interface. The actual details about how to connect to that interface and format the messages can be easily derived by looking at the source code of the UI(s) and also by looking at the implementation of the `actionListenerCallback` from `SourceSamplerAudioProcessor`.
 
+### Global actions
 
 | Action name | Action arguments | Description |
 | --------------- | --------------- | --------------- |
-| `/get_state` | [state type (String): `full`/`volatile`/`volatileString`] | Responds with a message including information about current state of the plugin. `full` will return the complete state in a serialized XML data structure (similar to the preset file). `volatile` will return information about the *volatile* aspects of the state (i.e. audio meters, playhead positions of sounds currently being played, ...) in a serialized XML data structure. `volatileString` will also return information about the volatile aspects of the state but in a comma-separated format and serialized to a string (see source code for more details). |
+| `/get_state` | [`state type` (String)] | Responds with a message including information about current state of the plugin. `state type` should be one of `full`/`volatile`/`volatileString`.  `full` will return the complete state in a serialized XML data structure (similar to the preset file). `volatile` will return information about the *volatile* aspects of the state (i.e. audio meters, playhead positions of sounds currently being played, ...) in a serialized XML data structure. `volatileString` will also return information about the volatile aspects of the state but in a comma-separated format and serialized to a string (see source code for more details).|
+| `/play_sound_from_path` | [`path` (String)] | Plays a sound file that can be located locally in the path provided by the `path` argument. `path` can also be the URL of a sound and it will be downloaded and played accordingly (e.g. `https://freesound.org/data/previews/616/616799_3914271-hq.mp3`). This is mostly used for previewing Freesound search results and/or local sounds. |
+| `/set_use_original_files` | [`preference` (String)] | Sets the preference for using original quality files from Freesound. `preference` should either `never` (never use original quality files, only use OGG previews), `always` (always use the original quality files), or `onlyShort` (only use original quality files for sounds weighting less than 15MB). |
+| `/set_midi_in_channel` | [`channel` (Integer)] | Sets the default global MIDI in channel. All sounds configured to use the global MIDI in channel will use the one specified here. `0` means "All channels", while `1-16` means MIDI channels 1 to 16. |
+
+
+### Preset actions
+
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/load_preset` | [`preset number` (Integer)] | Number of preset to load (can be any integer number, bigger than 128).|
+| `/save_preset` | [`preset name` (String), `preset number` (Integer)] | Renames the preset to `preset name` and saves it to the `preset number` position.|
+| `/set_reverb_parameters` | [`room size` (Float), `damping` (Float), `wet level` (Float), `dry level` (Float), `width` (Float), `freeze mode` (Float)] | Sets global reverb parameters to those indicated by the message. All parameters are in range 0-1.|
+| `/reapply_layout` | [`layout type` (Integer)] | Re-creates the mapping of MIDI notes to loaded sounds according to the given `layout type`. Layout type should either be `0` for *contiguous* layout type, or `1` for *interleaved*. *contiguous* layout will map all loaded sounds in regions of contiguous notes (with as many regions as loaded sounds, useful for playing the different sounds melodically). *interleaved* will map contiguous notes to different sounds (useful for drum-pad type of playing).|
+| `/clear_all_sounds` | [] | Removes all loaded sounds.|
+| `/add_sounds_from_query` | [`query` (String), `num sounds` (Integer), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects `num sounds` and **adds** them to the existing sounds in the sampler, also reapplying the note layout to `layout type`.|
+| `/replace_sounds_from_query` | [`query` (String), `num sounds` (Integer), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects `num sounds` and **replaces** sounds already existing in the sampler by the selected results, also reapplying the note layout to `layout type`.|
+| `/replace_sound_from_query` | [`sound uuid` (String), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects one sound and **replaces** the already existing sound with matching `sound uuid`by the selected result. The new sound retains assigned notes and root note from the replaced sound.|
 
 
 TODO: add all the available actions
