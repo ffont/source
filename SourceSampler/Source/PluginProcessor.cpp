@@ -837,14 +837,13 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
     else if (actionName == ACTION_REPLACE_SOUND_FROM_QUERY){
         juce::String addReplaceOrReplaceSound = parameters[0]; // Will be UUID of the sound to replace
         juce::String query = parameters[1];
-        int numSounds = parameters[2].getIntValue();
-        float minSoundLength = parameters[3].getFloatValue();
-        float maxSoundLength = parameters[4].getFloatValue();
-        int noteMappingType = parameters[5].getIntValue();
+        float minSoundLength = parameters[2].getFloatValue();
+        float maxSoundLength = parameters[3].getFloatValue();
+        int noteMappingType = parameters[4].getIntValue();
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         
         // Trigger query in a separate thread so that we don't block UI
-        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
+        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, 1, minSoundLength, maxSoundLength);
         queryMakerThread.startThread(0);  // Lowest thread priority
     }
 

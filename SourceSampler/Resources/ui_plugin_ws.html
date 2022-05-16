@@ -613,11 +613,10 @@
                 var numSoundToReplace = document.getElementsByName('soundIdxToReplace')[0].value;
                 var soundUUIDToReplace = ss.getSounds()[numSoundToReplace - 1].getAttribute('uuid');
                 var query = document.getElementsByName('query')[0].value;
-                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/replace_sound_from_query', [soundUUIDToReplace, query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
+                this.sendMessageToPlugin('/replace_sound_from_query', [soundUUIDToReplace, query,  minSoundLength, maxSoundLength, noteMappingType])
             }
 
             addSoundsByQuery(){
