@@ -102,11 +102,6 @@
             height: 5px;
         }
 
-       
-
-
-       
-        
     </style>
 
     <script>
@@ -1238,7 +1233,20 @@
             <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="drawSoundWaveform()" style="width: 100%; height: 100%;">
             </select>
         </div>
-        <div class="reverb-knobs"></div>
+        <div class="reverb-knobs">
+            <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
+            roomSize: <span id="0_roomSizeLabel"></span><br>
+            <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
+            damping: <span id="0_dampingLabel"></span><br>
+            <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
+            width: <span id="0_widthLabel"></span><br>
+            <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
+            freezeMode: <span id="0_freezeModeLabel"></span><br>
+            <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
+            wetLevel: <span id="0_wetLevelLabel"></span><br>
+            <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
+            dryLevel: <span id="0_dryLevelLabel"></span>
+        </div>
         <div class="keyboard">
         
         </div>
