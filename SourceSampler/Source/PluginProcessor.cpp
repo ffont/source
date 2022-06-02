@@ -1525,8 +1525,9 @@ void SourceSamplerAudioProcessor::sendWSMessage(const juce::OSCMessage& message)
         serverInterface.sendMessageToWebSocketClients(message);
     }
     
-    #if !ELK_BUILD
+    #if USING_DIRECT_COMMUNICATION_METHOD
     // Send message to the browser-based UI loaed in the WebComponenet of the PluginEditor
+    // NOTE: for some reason calling this crashes the app sometimes. need to be further investigated...
     sendActionMessage(serverInterface.serliaizeOSCMessage(message));
     #endif
 }

@@ -25,19 +25,23 @@ class CustomWebBrowserComponent: public juce::WebBrowserComponent
 public:
     ~CustomWebBrowserComponent(){}
     
-    void setEditorPointer(SourceSamplerAudioProcessorEditor* _editor){
+    void setEditorPointer(SourceSamplerAudioProcessorEditor* _editor)
+    {
          editor.reset(_editor);
     }
     
-    void sendMessage (const juce::String& message)
+    void sendMessage (const juce::String message)
     {
-        const auto url = "javascript:messageFromBackend(\"" + message + "\")";
+        // Send message from backend to frontend
+        juce::String url = "javascript:messageFromBackend(\"" + message + "\")";
         goToURL (url);
     }
     
+    inline bool pageAboutToLoad (const juce::String& newURL) override;
     inline bool pageLoadHadNetworkError (const juce::String& errorInfo) override;
     
     std::unique_ptr<SourceSamplerAudioProcessorEditor> editor;
+    const juce::String urlSchema = "juce://";
 };
 #endif
 
@@ -61,6 +65,10 @@ public:
     bool hadBrowserError = false;
     
     void actionListenerCallback (const juce::String &message) override;
+    
+    void triggerActionInProcessor (const juce::String actionMessage) {
+        processor.actionListenerCallback(actionMessage);
+    }
     
 private:
     // This reference is provided as a quick way for your editor to
@@ -86,5 +94,21 @@ bool CustomWebBrowserComponent::pageLoadHadNetworkError (const juce::String& err
         editor->resized();
     }
     return true;
+}
+
+bool CustomWebBrowserComponent::pageAboutToLoad (const juce::String& newURL)
+{
+    if (newURL.startsWith (urlSchema)) {
+        // Receive mesage from frontend to backend
+        auto messageString = juce::URL::removeEscapeChars (newURL.substring (urlSchema.length()));
+        #if USING_DIRECT_COMMUNICATION_METHOD
+        if (editor != nullptr){
+            editor->triggerActionInProcessor(messageString);
+        }
+        #endif
+        return false;
+    } else {
+        return true;
+    }
 }
 #endif

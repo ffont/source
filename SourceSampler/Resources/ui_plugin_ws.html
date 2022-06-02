@@ -285,6 +285,8 @@
         let useHttps = undefined;
         let hostname = undefined;
         
+        const useDirectCommunicationMethod = true;
+        
         var expStrength = 2;  // For sliders
 
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
@@ -304,8 +306,14 @@
 
                 this.wsPort = wsPort;
                 this.useWss = useWss;
-                this.wsConnection = this.configureWSConnection();
-
+                
+                if (!useDirectCommunicationMethod){
+                    // If not using direct communication method, establish WS connection
+                    this.wsConnection = this.configureWSConnection();
+                } else {
+                    this.wsConnection = undefined;
+                }
+        
                 this.afterStateUpdatesFullStateRequestTimer = undefined;
                 this.afterStateUpdatesFullStateRequestTimerInterval = 1000;
             }
@@ -506,8 +514,13 @@
             }
 
             sendMessageToPlugin(address, args){
-                const message = address + ':' + args.join(';');
-                this.wsConnection.send(message);
+                if (!useDirectCommunicationMethod){
+                    const message = address + ':' + args.join(';');
+                    this.wsConnection.send(message);
+                } else {
+                    const messageUrl = 'juce://' + address + ':' + args.join(';');
+                    window.location.replace(messageUrl);
+                }
             }
 
             requestFullState(){
@@ -784,9 +797,10 @@
         // Util methods
         
         function messageFromBackend(message){
-            document.getElementById('log').innerHTML = message;
-            if (ss !== undefined){
-                //ss.onMessageFromPlugin(message);
+            if (useDirectCommunicationMethod){
+                if (ss !== undefined){
+                    ss.onMessageFromPlugin(message);
+                }
             }
         }
 
@@ -1404,8 +1418,6 @@
 
     <br style="clear: both;">
     <div class="top_controls_row">
-        <div id="log" class="controls_card controls_card_top">
-            </div>
         <div class="controls_card controls_card_top">
             <h4>Preset & settings</h4>
             Preset number:</label><input name="presetIdx" value="" type="number">
