@@ -285,7 +285,7 @@
         let useHttps = undefined;
         let hostname = undefined;
         
-        const useDirectCommunicationMethod = true;
+        const useDirectCommunicationMethod = false;
         
         var expStrength = 2;  // For sliders
 
@@ -312,6 +312,10 @@
                     this.wsConnection = this.configureWSConnection();
                 } else {
                     this.wsConnection = undefined;
+                    this.requestFullState();
+                    this.volatileStateRequestTimer = setInterval(function () {
+                        this.requestVolatileState();
+                    }, this.volatileStateRequestTimerInterval);
                 }
         
                 this.afterStateUpdatesFullStateRequestTimer = undefined;
