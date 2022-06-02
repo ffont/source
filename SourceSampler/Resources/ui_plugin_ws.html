@@ -362,143 +362,147 @@
                 };
 
                 socket.onmessage = function(event) {
-                    const msgTypeSeparatorPosition = event.data.indexOf(':');
-                    const msgType = event.data.slice(0, msgTypeSeparatorPosition);
-                    const rawData = event.data.slice(msgTypeSeparatorPosition + 1, event.data.length);
-                    
-                    if (msgType === "/full_state"){
-                        const updateIdSeparatorPosition = rawData.indexOf(';');
-                        const updateId = parseInt(rawData.slice(0, updateIdSeparatorPosition), 10);
-                        const dataToParse = rawData.slice(updateIdSeparatorPosition + 1, rawData.length);
-                        self.state = self.parser.parseFromString(dataToParse, "text/xml");
-                        updateFullUI();
-
-                    } else if (msgType === "/volatile_state"){
-                        self.volatileState = self.parser.parseFromString(rawData, "text/xml");
-                        updateVolatileUI();
-
-                    } else if (msgType === "/state_update"){
-
-                        if (ss.state === undefined){
-                            // If no state is present, ignore stat update messages as these will fail
-                            // also request full state to get in sync again
-                            self.requestFullState();
-                            return;                            
-                        }
-
-                        const rawDataParts = rawData.split(';');
-                        const updateType = rawDataParts[0];
-                        const updateId = parseInt(rawDataParts[1], 10);
-                        const restOfDataSliced = rawDataParts.slice(2, rawDataParts.length);
-
-                        if (updateType === 'propertyChanged'){
-                            const treeUUID = restOfDataSliced[0];
-                            const treeType = restOfDataSliced[1];
-                            const propertyName = restOfDataSliced[2];
-                            const propertyValue = restOfDataSliced[3];
-
-                            const elementToUpdate = self.state.querySelector("[uuid='" + treeUUID + "']");
-                            if (elementToUpdate !== null){
-                                elementToUpdate.setAttribute(propertyName, propertyValue);
-
-                                // Check if the change was to notify a query with empty results, and show in ui
-                                if (propertyName === 'numResultsLastQuery'){
-                                    notifyQueryResultsFromLastQuery(parseInt(propertyValue, 0));
-                                }
-
-                                // If property was found, trigger corresponding UI updates
-                                if (treeType === "SOUND"){
-                                    // If what changed is a property of a sound or sound sample, then update the card for the sound
-                                    var sound = ss.getSoundFromSoundUUID(treeUUID);
-                                    if (sound !== null){
-                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
-                                    } else {
-                                        // We might receive property change messages from sounds that are being deleted and that still exist in our state
-                                        // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
-                                        if (propertyName !== "willBeDeleted"){
-                                            console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
-                                        }
-                                    }
-
-                                    // If the property name is that of a slider (sound parameter), then update the slider as well
-                                    if (isSoundParameter(propertyName)){
-                                        // NOTE: in that case, treeUUID will always correspond to a SOUND element
-                                        updateSoundParameter(treeUUID, propertyName, propertyValue, elementToUpdate);
-                                    }
-                                } else if (treeType === "SOUND_SAMPLE"){
-                                    var sound = ss.getSoundFromSoundSampleUUID(treeUUID);
-                                    if (sound !== null){
-                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
-                                    } else {
-                                        // We might receive property change messages from sounds that are being deleted and that still exist in our state
-                                        // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
-                                        if (propertyName !== "willBeDeleted"){
-                                            console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
-                                        }
-                                    }
-
-                                } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
-                                    // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
-                                    updateMainPresetParameters();
-                                } else if (treeType === "MIDI_CC_MAPPING"){
-                                    updateMIDIMappingEditor(treeUUID);
-                                }
-                            }
-                            
-                        } else if (updateType === 'addedChild'){
-                            const parentTreeUUID = restOfDataSliced[0];
-                            const parentTreeType = restOfDataSliced[1];
-                            const indexInParentChildren = parseInt(restOfDataSliced[2], 10);
-                            const childXmlString = restOfDataSliced.slice(3, restOfDataSliced.length).join(';');
-                            // Add new child element to the state
-                            var elementToUpdate;
-                            if (parentTreeType === "PRESET"){
-                                // If adding child of type preset, add it to the main SOURCE_STATE node regardless of the SOURCE_STATE uuid which some times changes
-                                elementToUpdate = ss.state.childNodes[0];
-                            } else {
-                                elementToUpdate = self.state.querySelector("[uuid='" + parentTreeUUID + "']");
-                            }
-                            if (elementToUpdate !== null){
-                                var nodeToAdd = self.parser.parseFromString(childXmlString, "text/xml").childNodes[0];
-                                if (indexInParentChildren < 0){
-                                    elementToUpdate.appendChild(nodeToAdd);
-                                } else {
-                                    var beforeNode = elementToUpdate.childNodes[indexInParentChildren];
-                                    elementToUpdate.insertBefore(nodeToAdd, beforeNode);
-                                }
-
-                                // If new sounds or midi cc mappings are added, recreate sounds section
-                                if ((nodeToAdd.tagName === "MIDI_CC_MAPPING") || (nodeToAdd.tagName === "SOUND")){
-                                    updateSoundsSectionUI();
-                                }
-                            }
-                            
-                        } else if (updateType === 'removedChild'){
-                            const childToRemoveUUID = restOfDataSliced[0];
-                            const childToRemoveType = restOfDataSliced[1];
-
-                            // Remove the selected element from the state
-                            const stateElementToRemove = self.state.querySelector("[uuid='" + childToRemoveUUID + "']");
-                            if (stateElementToRemove !== null){
-                                stateElementToRemove.remove();
-
-                                // Trigger corresponding UI updates
-                                const domElementToUpdate = document.getElementById(childToRemoveUUID);
-                                if (domElementToUpdate !== null){
-                                    domElementToUpdate.remove();    
-                                }
-                                
-                                if (childToRemoveType === "SOUND"){
-                                    updateAllSoundCardNumbers();
-                                }
-                            }
-                        }
-
-                        self.scheduleExtraFullStateRequestAfterBurstOfMessages();
-                    }                
+                    self.onMessageFromPlugin(event.data);
                 };
 
                 return socket;
+            }
+            
+            onMessageFromPlugin(rawMessage){
+                const msgTypeSeparatorPosition = rawMessage.indexOf(':');
+                const msgType = rawMessage.slice(0, msgTypeSeparatorPosition);
+                const rawData = rawMessage.slice(msgTypeSeparatorPosition + 1, rawMessage.length);
+                
+                if (msgType === "/full_state"){
+                    const updateIdSeparatorPosition = rawData.indexOf(';');
+                    const updateId = parseInt(rawData.slice(0, updateIdSeparatorPosition), 10);
+                    const dataToParse = rawData.slice(updateIdSeparatorPosition + 1, rawData.length);
+                    this.state = this.parser.parseFromString(dataToParse, "text/xml");
+                    updateFullUI();
+
+                } else if (msgType === "/volatile_state"){
+                    this.volatileState = this.parser.parseFromString(rawData, "text/xml");
+                    updateVolatileUI();
+
+                } else if (msgType === "/state_update"){
+
+                    if (ss.state === undefined){
+                        // If no state is present, ignore stat update messages as these will fail
+                        // also request full state to get in sync again
+                        this.requestFullState();
+                        return;
+                    }
+
+                    const rawDataParts = rawData.split(';');
+                    const updateType = rawDataParts[0];
+                    const updateId = parseInt(rawDataParts[1], 10);
+                    const restOfDataSliced = rawDataParts.slice(2, rawDataParts.length);
+
+                    if (updateType === 'propertyChanged'){
+                        const treeUUID = restOfDataSliced[0];
+                        const treeType = restOfDataSliced[1];
+                        const propertyName = restOfDataSliced[2];
+                        const propertyValue = restOfDataSliced[3];
+
+                        const elementToUpdate = this.state.querySelector("[uuid='" + treeUUID + "']");
+                        if (elementToUpdate !== null){
+                            elementToUpdate.setAttribute(propertyName, propertyValue);
+
+                            // Check if the change was to notify a query with empty results, and show in ui
+                            if (propertyName === 'numResultsLastQuery'){
+                                notifyQueryResultsFromLastQuery(parseInt(propertyValue, 0));
+                            }
+
+                            // If property was found, trigger corresponding UI updates
+                            if (treeType === "SOUND"){
+                                // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                var sound = ss.getSoundFromSoundUUID(treeUUID);
+                                if (sound !== null){
+                                    triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
+                                } else {
+                                    // We might receive property change messages from sounds that are being deleted and that still exist in our state
+                                    // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
+                                    if (propertyName !== "willBeDeleted"){
+                                        console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
+                                    }
+                                }
+
+                                // If the property name is that of a slider (sound parameter), then update the slider as well
+                                if (isSoundParameter(propertyName)){
+                                    // NOTE: in that case, treeUUID will always correspond to a SOUND element
+                                    updateSoundParameter(treeUUID, propertyName, propertyValue, elementToUpdate);
+                                }
+                            } else if (treeType === "SOUND_SAMPLE"){
+                                var sound = ss.getSoundFromSoundSampleUUID(treeUUID);
+                                if (sound !== null){
+                                    triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
+                                } else {
+                                    // We might receive property change messages from sounds that are being deleted and that still exist in our state
+                                    // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
+                                    if (propertyName !== "willBeDeleted"){
+                                        console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
+                                    }
+                                }
+
+                            } else if ((treeType === "SOURCE_STATE") || (treeType === "PRESET")){
+                                // If one of the main state or preset state properties changed, update main preset parameters as it will be contained in one of these
+                                updateMainPresetParameters();
+                            } else if (treeType === "MIDI_CC_MAPPING"){
+                                updateMIDIMappingEditor(treeUUID);
+                            }
+                        }
+                        
+                    } else if (updateType === 'addedChild'){
+                        const parentTreeUUID = restOfDataSliced[0];
+                        const parentTreeType = restOfDataSliced[1];
+                        const indexInParentChildren = parseInt(restOfDataSliced[2], 10);
+                        const childXmlString = restOfDataSliced.slice(3, restOfDataSliced.length).join(';');
+                        // Add new child element to the state
+                        var elementToUpdate;
+                        if (parentTreeType === "PRESET"){
+                            // If adding child of type preset, add it to the main SOURCE_STATE node regardless of the SOURCE_STATE uuid which some times changes
+                            elementToUpdate = ss.state.childNodes[0];
+                        } else {
+                            elementToUpdate = this.state.querySelector("[uuid='" + parentTreeUUID + "']");
+                        }
+                        if (elementToUpdate !== null){
+                            var nodeToAdd = this.parser.parseFromString(childXmlString, "text/xml").childNodes[0];
+                            if (indexInParentChildren < 0){
+                                elementToUpdate.appendChild(nodeToAdd);
+                            } else {
+                                var beforeNode = elementToUpdate.childNodes[indexInParentChildren];
+                                elementToUpdate.insertBefore(nodeToAdd, beforeNode);
+                            }
+
+                            // If new sounds or midi cc mappings are added, recreate sounds section
+                            if ((nodeToAdd.tagName === "MIDI_CC_MAPPING") || (nodeToAdd.tagName === "SOUND")){
+                                updateSoundsSectionUI();
+                            }
+                        }
+                        
+                    } else if (updateType === 'removedChild'){
+                        const childToRemoveUUID = restOfDataSliced[0];
+                        const childToRemoveType = restOfDataSliced[1];
+
+                        // Remove the selected element from the state
+                        const stateElementToRemove = this.state.querySelector("[uuid='" + childToRemoveUUID + "']");
+                        if (stateElementToRemove !== null){
+                            stateElementToRemove.remove();
+
+                            // Trigger corresponding UI updates
+                            const domElementToUpdate = document.getElementById(childToRemoveUUID);
+                            if (domElementToUpdate !== null){
+                                domElementToUpdate.remove();
+                            }
+                            
+                            if (childToRemoveType === "SOUND"){
+                                updateAllSoundCardNumbers();
+                            }
+                        }
+                    }
+
+                    this.scheduleExtraFullStateRequestAfterBurstOfMessages();
+                }
             }
 
             sendMessageToPlugin(address, args){
@@ -778,6 +782,13 @@
         });
 
         // Util methods
+        
+        function messageFromBackend(message){
+            document.getElementById('log').innerHTML = message;
+            if (ss !== undefined){
+                //ss.onMessageFromPlugin(message);
+            }
+        }
 
         function saveCurrentUserActionTime(){
             lastUIAction = (new Date()).getTime();
@@ -1393,6 +1404,8 @@
 
     <br style="clear: both;">
     <div class="top_controls_row">
+        <div id="log" class="controls_card controls_card_top">
+            </div>
         <div class="controls_card controls_card_top">
             <h4>Preset & settings</h4>
             Preset number:</label><input name="presetIdx" value="" type="number">

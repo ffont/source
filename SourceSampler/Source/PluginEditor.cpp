@@ -16,6 +16,8 @@
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    processor.addActionListener(this);
+    
     // Copy bundled HTML plugin file to dcuments folder so we can load it
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
@@ -64,6 +66,8 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
 
 SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
 {
+    processor.removeActionListener(this);
+    
     #if !ELK_BUILD
     browser.editor.release();
     #endif
@@ -145,4 +149,11 @@ void SourceSamplerAudioProcessorEditor::resized()
             #endif
         #endif
     }*/
+}
+
+void SourceSamplerAudioProcessorEditor::actionListenerCallback (const juce::String &message)
+{
+    #if !ELK_BUILD
+    browser.sendMessage(message);
+    #endif
 }

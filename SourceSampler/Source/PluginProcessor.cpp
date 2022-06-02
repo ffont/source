@@ -1524,6 +1524,11 @@ void SourceSamplerAudioProcessor::sendWSMessage(const juce::OSCMessage& message)
     if (serverInterface.wsServer.serverPtr != nullptr){
         serverInterface.sendMessageToWebSocketClients(message);
     }
+    
+    #if !ELK_BUILD
+    // Send message to the browser-based UI loaed in the WebComponenet of the PluginEditor
+    sendActionMessage(serverInterface.serliaizeOSCMessage(message));
+    #endif
 }
 
 
