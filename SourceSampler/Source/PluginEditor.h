@@ -33,7 +33,7 @@ public:
     void sendMessage (const juce::String message)
     {
         // Send message from backend to frontend
-        juce::String url = "javascript:messageFromBackend(\"" + message + "\")";
+        juce::String url = "javascript:messageFromBackend('" + message + "')";
         goToURL (url);
     }
     

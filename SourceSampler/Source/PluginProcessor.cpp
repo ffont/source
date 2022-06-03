@@ -1567,7 +1567,8 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     message.addString(parentTree[IDs::uuid].toString());
     message.addString(parentTree.getType().toString());
     message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
-    message.addString(childWhichHasBeenAdded.toXmlString(juce::XmlElement::TextFormat().singleLine()));
+    // NOTE: for the "direct communication method" to work, we need to make a copy of childWhichHasBeenAdded otherwise the app can crash (not sure why...)
+    message.addString(childWhichHasBeenAdded.createCopy().toXmlString(juce::XmlElement::TextFormat().singleLine()));
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);
     #endif

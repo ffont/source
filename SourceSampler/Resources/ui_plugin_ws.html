@@ -313,8 +313,9 @@
                 } else {
                     this.wsConnection = undefined;
                     this.requestFullState();
+                    self = this;
                     this.volatileStateRequestTimer = setInterval(function () {
-                        this.requestVolatileState();
+                        self.requestVolatileState();
                     }, this.volatileStateRequestTimerInterval);
                 }
         
