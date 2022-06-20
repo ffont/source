@@ -317,8 +317,35 @@ The SOURCE sampler engine exposes a remote control interface that can be accesse
 | `/replace_sounds_from_query` | [`query` (String), `num sounds` (Integer), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects `num sounds` and **replaces** sounds already existing in the sampler by the selected results, also reapplying the note layout to `layout type`.|
 | `/replace_sound_from_query` | [`sound uuid` (String), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects one sound and **replaces** the already existing sound with matching `sound uuid`by the selected result. The new sound retains assigned notes and root note from the replaced sound.|
 
+### Sound actions
 
-TODO: add all the remaining available actions
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/add_sound` | [`freesound_id` (Integer), `name` (String), `username` (String), `license` (String), `preview_download_url` (String), `local_file_path` (String), `format`(String), `size` (Integer), `serialized_slices` (String), `assigned_notes` (String), `root_note` (Integer)] | Add a new sound to the sampler with one *sampler sound* which will load the Freesound sound with the provided `freesound_id`. The `name`, `username`, `license`, `preview_download_url`, `format` and `size` are metadata properties that should be passed and which hold information about the sound being loaded. `local_file_path` is only used when loading a sound which does not come from Freesound: in that case `local_file_path` will have the local path to the file (and `freesound_id` will be ignored). If `local_file_path` is not to be used, just add an empty string. `serialized_slices` is an optional list of comma-separated float numbers with information about the times at which a sound should be sliced (e.g. `0.24,1.23,4.53`, empty string for "no slices"). `assigned_notes` is a String with 128 characters that can either be `1` or `0` and indicates which of the 128 MIDI notes (coresponding to every position in the string) should trigger that sound. Finally, `root_note` sets the MIDI root note at which the sound should be played with original pitch. |
+| `/replace_sound` | [`sound_uuid` (String), `freesound_id` (Integer), `name` (String), `username` (String), `license` (String), `preview_download_url` (String), `local_file_path` (String), `format`(String), `size` (Integer), `serialized_slices` (String), `assigned_notes` (String), `root_note` (Integer)] | Replaces a sound already loaded in the sampler with the given `sound_uuid`. The rest of the parameters work the same as in the `/add_sound` action.|
+| `/remove_sound` | [`sound_uuid` (String)] | Removes the sound with the given `sound_uuid`. |
+| `/set_sound_parameter` | [`sound_uuid` (String), `parameter_name` (String), `parameter_value` (Float)] | Sets the FLOAT parameter `parameter_name` of sound with UUID `sound_uuid` to the value `parameter_value`. Availavle parameters and ranges can be seen here: https://github.com/ffont/source/blob/master/SourceSampler/data_for_code_gen.csv. |
+| `/set_sound_parameter_int` | [`sound_uuid` (String), `parameter_name` (String), `parameter_value` (Integer)] | Sets the INTEGER parameter `parameter_name` of sound with UUID `sound_uuid` to the value `parameter_value`. Availavle parameters and ranges can be seen here: https://github.com/ffont/source/blob/master/SourceSampler/data_for_code_gen.csv. |
+| `/set_slices` | [`sound_uuid` (String), `serialized_slices` (String)] | Sets the slice points for the sound with UUID `sound_uuid` using the same format for `serialized_slices` a in `/add_sound` action. |
+| `/set_assigned_notes` | [`sound_uuid` (String), `assigned_notes` (String), `root_note` (Integer)] |  Sets the assigned notes and root note for the sound with UUID `sound_uuid` using the same format for `assigned_notes` and `root_note` a in `/add_sound` action. |
+| `/play_sound` | [`sound_uuid` (String)] | Plays the sound with UUID `sound_uuid`. |
+| `/stop_sound` | [`sound_uuid` (String)] | Stops playing the sound with UUID `sound_uuid`. |
+
+### Sampler Sound actions
+
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/add_sampler_sound` | [`freesound_id` (Integer), `name` (String), `username` (String), `license` (String), `preview_download_url` (String), `local_file_path` (String), `format`(String), `size` (Integer), `serialized_slices` (String), `assigned_notes` (String), `root_note` (Integer), `velocity_layer` (Integer)] | Adds a *sampler sound* to an already existing sound (i.e. adds a new velocity/pitch layer to the sound). Parameters follow the same format as in `/add_sound`. `velocity_layer` is an integer number that will be used to decide which MIDI velocity values correspond to which sounds. Higher layer number will be assigned to higher MIDI velocity values. For example, if two sounds exist for the same pitch which MIDI velocity layers 1 and 2, the first sound will be triggered for velocities 0-63 and the second one for velocities 64-127. |
+| `/remove_sampler_sound` | [`sound_uuid` (String), `sampler_sound_uuid` (String)] | Removes an existing sampler sound with UUID `sampler_sound_uuid` from sound with UUID `sound_uuid`. |
+| `/set_sampler_sound_parameters` | [`sound_uuid` (String), `sampler_sound_uuid` (String), `start_position` (Integer), `end_position` (Integer), `loop_start_position` (Integer), `loop_end_position` (Integer)] | Sets start/end and loop start/end times of a sampler sound with UUID `sampler_sound_uuid` from sound with UUID `sound_uuid`. |
+| `/set_sampler_sound_root_note` | [`sound_uuid` (String), `sampler_sound_uuid` (String), `root_note` (Integer)] | Sets the MIDI root note for sampler sound with UUID `sampler_sound_uuid` from sound with UUID `sound_uuid`. |
+
+### MIDI CC mapping actions
+
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/add_or_update_cc_mapping` | [`sound_uuid` (String), `mapping_uuid` (String), `cc_number` (Integer), `parameter_name` (String), `range_min` (Float), `range_max` (Float)] | Adds a MIDI control change mapping for sound with UUID `sound_uuid`. MIDI CC number can be specified with `cc_number`, and the parameter name that will be affected should be indicated with `parameter_name` (should be one of https://github.com/ffont/source/blob/master/SourceSampler/data_for_code_gen.csv). `range_min` [0.0-1.0] and `range_max` [0.0-1.0] should be used to define a specific range within the full range of the target parameter that will be mapped to MIDI CC values from 0 to 127. Note that these are noramlized. |
+| `/remove_cc_mapping` | [`sound_uuid` (String), `mapping_uuid` (String)] | Removes an existing MIDI control change mapping with UUID `mapping_uuid` from sound with UUID `sound_uuid`. |
 
 
 ## Working on the desktop plugin UI
