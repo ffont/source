@@ -300,6 +300,8 @@ The SOURCE sampler engine exposes a remote control interface that can be accesse
 | `/play_sound_from_path` | [`path` (String)] | Plays a sound file that can be located locally in the path provided by the `path` argument. `path` can also be the URL of a sound and it will be downloaded and played accordingly (e.g. `https://freesound.org/data/previews/616/616799_3914271-hq.mp3`). This is mostly used for previewing Freesound search results and/or local sounds. |
 | `/set_use_original_files` | [`preference` (String)] | Sets the preference for using original quality files from Freesound. `preference` should either `never` (never use original quality files, only use OGG previews), `always` (always use the original quality files), or `onlyShort` (only use original quality files for sounds weighting less than 15MB). |
 | `/set_midi_in_channel` | [`channel` (Integer)] | Sets the default global MIDI in channel. All sounds configured to use the global MIDI in channel will use the one specified here. `0` means "All channels", while `1-16` means MIDI channels 1 to 16. |
+| `/note_on` | [`note` (Integer), `velocity` (Integer), `channel` (Integer)] | Feeds a MIDI note ON message to the plugin with the specified MIDI `note` (0-127), `velocity` (0-127) and `channel` (0-16, where 0 means "global SOURCE MIDI channel" and 1-16 mean individual MIDI channels 1 to 16). |
+| `/note_off` | [`note` (Integer), `velocity` (Integer), `channel` (Integer)] | Feeds a MIDI note OFF message to the plugin with the specified MIDI `note` (0-127), `velocity` (0-127) and `channel` (0-16, where 0 means "global SOURCE MIDI channel" and 1-16 mean individual MIDI channels 1 to 16). |
 
 
 ### Preset actions
@@ -316,7 +318,7 @@ The SOURCE sampler engine exposes a remote control interface that can be accesse
 | `/replace_sound_from_query` | [`sound uuid` (String), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects one sound and **replaces** the already existing sound with matching `sound uuid`by the selected result. The new sound retains assigned notes and root note from the replaced sound.|
 
 
-TODO: add all the available actions
+TODO: add all the remaining available actions
 
 
 ## Working on the desktop plugin UI
