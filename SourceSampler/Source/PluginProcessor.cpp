@@ -788,6 +788,20 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
         int channel = parameters[0].getIntValue();
         setGlobalMidiInChannel(channel);
     }
+    else if (actionName == ACTION_NOTE_ON){
+        int note = parameters[0].getIntValue();
+        int velocity = parameters[1].getIntValue();
+        int channel = parameters[2].getIntValue();
+        juce::MidiMessage message = juce::MidiMessage::noteOn(channel > 0 ? channel : (globalMidiInChannel > 0 ? globalMidiInChannel : 1), note, (juce::uint8)velocity);
+        midiFromEditor.addEvent(message, 0);
+    }
+    else if (actionName == ACTION_NOTE_OFF){
+        int note = parameters[0].getIntValue();
+        int velocity = parameters[1].getIntValue();
+        int channel = parameters[2].getIntValue();
+        juce::MidiMessage message = juce::MidiMessage::noteOff(channel > 0 ? channel : (globalMidiInChannel > 0 ? globalMidiInChannel : 1), note, (juce::uint8)velocity);
+        midiFromEditor.addEvent(message, 0);
+    }
     
     // Preset actions -----------------------------------------------------------------------------------
     else if (actionName == ACTION_LOAD_PRESET){
