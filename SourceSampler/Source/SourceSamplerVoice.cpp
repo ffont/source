@@ -92,6 +92,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
     // This is called when note on is received
     if (auto* sound = dynamic_cast<SourceSamplerSound*> (s))
     {
+        currentNoteVelocity = sound->getCorrectedVelocity(velocity); // Update velocity to use the corrected velocity (after applying velocity sensitivity correction)
+        
         double pluginSampleRate = sound->pluginSampleRate;
         if (pluginSampleRate == 0.0){
             // TOOD: this is a hack to avoid this being wrongly initialized

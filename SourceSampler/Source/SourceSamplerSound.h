@@ -59,6 +59,8 @@ public:
     bool appliesToNote (int midiNoteNumber) override;
     bool appliesToChannel (int midiChannel) override;
     bool appliesToVelocity (int midiVelocity); // This method is not part of the base class as the base class does not support velocity layers
+    int getCorrectedVelocity(int midiVelocity);
+    float getCorrectedVelocity(float midiVelocity);
     
     //==============================================================================
     float getParameterFloat(juce::Identifier identifier);
@@ -265,6 +267,7 @@ private:
     juce::CachedValue<float> mod2PlayheadPos;
     juce::CachedValue<float> vel2CutoffAmt;
     juce::CachedValue<float> vel2GainAmt;
+    juce::CachedValue<float> velSensitivity;
     juce::CachedValue<int> midiChannel;
     // --> End auto-generated code A
     

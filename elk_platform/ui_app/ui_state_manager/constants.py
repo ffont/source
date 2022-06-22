@@ -32,20 +32,20 @@ sound_parameter_pages = [
         "filterSustain",
         "filterRelease",
     ], [
-        "pitchBendRangeUp",
-        "pitchBendRangeDown",
         "vel2CutoffAmt",
         "vel2GainAmt",
+        "velSensitivity",
+        "pan",
     ], [
         "mod2CutoffAmt",
         "mod2GainAmt",
         "mod2PitchAmt",
         "mod2PlayheadPos",
     ], [
-        "pan",
+        "pitchBendRangeUp",
+        "pitchBendRangeDown",
         "loopXFadeNSamples",
         "midiChannel",
-        None
     ]
 ]
 

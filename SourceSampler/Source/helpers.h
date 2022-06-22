@@ -216,6 +216,7 @@ namespace Helpers
         sound.setProperty (IDs::mod2PlayheadPos, 0.0f, nullptr);
         sound.setProperty (IDs::vel2CutoffAmt, 0.0f, nullptr);
         sound.setProperty (IDs::vel2GainAmt, 0.5f, nullptr);
+        sound.setProperty (IDs::velSensitivity, 1.0f, nullptr);
         sound.setProperty (IDs::midiChannel, 0, nullptr);
         // --> End auto-generated code A
         return sound;

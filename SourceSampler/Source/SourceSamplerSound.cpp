@@ -98,7 +98,19 @@ bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
 
 bool SourceSamplerSound::appliesToVelocity (int midiVelocity)
 {
-    return midiVelocities[midiVelocity];
+    return midiVelocities[getCorrectedVelocity(midiVelocity)];
+}
+
+int SourceSamplerSound::getCorrectedVelocity(int midiVelocity)
+{
+    // Modified velocity value according to velSensitivity parameter (midiVelocity 0-127)
+    return (int)std::round(127.0 * juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity/127.0, getParameterFloat(IDs::velSensitivity))));
+}
+
+float SourceSamplerSound::getCorrectedVelocity(float midiVelocity)
+{
+    // Modified velocity value according to velSensitivity parameter (midiVelocity 0.0-1.0)
+    return (float)juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity, getParameterFloat(IDs::velSensitivity)));
 }
 
 bool SourceSamplerSound::appliesToChannel (int midiChannel)
@@ -349,6 +361,8 @@ void SourceSound::bindState ()
     vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
     Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::vel2GainAmt, Defaults::vel2GainAmt);
     vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::velSensitivity, Defaults::velSensitivity);
+    velSensitivity.referTo(state, IDs::velSensitivity, nullptr, Defaults::velSensitivity);
     Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiChannel, Defaults::midiChannel);
     midiChannel.referTo(state, IDs::midiChannel, nullptr, Defaults::midiChannel);
     // --> End auto-generated code C
@@ -464,6 +478,7 @@ float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
         else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : juce::jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
         else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == IDs::velSensitivity) { return !normed ? velSensitivity.get() : juce::jmap(velSensitivity.get(), 0.0f, 6.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
     throw std::runtime_error("No float parameter with this name");
 }
@@ -499,6 +514,7 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
         else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
         else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
         else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == IDs::velSensitivity) { velSensitivity = !normed ? juce::jlimit(0.0f, 6.0f, value) : juce::jmap(value, 0.0f, 6.0f); }
         // --> End auto-generated code B
     else { throw std::runtime_error("No float parameter with this name"); }
     
