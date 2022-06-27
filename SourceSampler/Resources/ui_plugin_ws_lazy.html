@@ -3,16 +3,29 @@
 
 <head>
     <title>Source, a Freesound Commmunity Sampler</title>
-    <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
     <script src="adsr-envelope/build/adsr-envelope.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"></script>
+    <script src="jQuery-Knob/dist/jquery.knob.min.js"></script>
+
 
     <style>
+
+        /** Define global background variable for dark mode switch **/
+
+        :root {
+            --dark-mode: #1d5eb2;
+            --light-mode: #e0e0e0;
+            --background-color: #f2f1f1;
+        }
+
         body {
             box-sizing: border-box;
             margin: 20px;
             width:100%;
             height: 100vh;
-
+            font-family: "Lucida Console", "Courier New", monospace;
             display:flex;
             justify-content: center;
             align-items: center;
@@ -20,105 +33,788 @@
 
         .container {
         display: grid;
-        border: 0.18em solid black;
+        box-shadow:  -5px -5px 10px #5a5a5a,
+             5px 5px 10px #5a5a5a;
         border-radius: 10px;
         grid-template-columns: repeat(10,1fr);
-        grid-template-rows: repeat(10,1fr);
-        grid-template-areas: 
+        grid-template-rows: 70px repeat(10,1fr) 30px;
+        grid-template-areas:
             "header header header header"
             "main main . sidebar"
             "footer footer footer footer";
         column-gap: 10px;
-        background-color: white;
-        height: 800px;
-        width: 900px;
-        margin-top:  100px;
+        background-color:var(--background-color);
+        height: 850px;
+        width: 1000px;
+        margin-top:  80px;
         margin-bottom: 100px;
         }
 
-        .query-search {
-            grid-row: 1 / 2;
-            grid-column: 2/10;
-            border: 1px solid black;
-            margin-top: 60px;
-
-        }
         .query-parameters {
+            display:grid;
             grid-row: 2/3;
-            grid-column: 2/10;
-            border: 1px solid black;
-            margin-top: 10px;
-
-        }
-        .waveform {
-            grid-row: 3/5;
-            grid-column: 2/6;
-            border: 1px solid black;
-            margin-top: 10px;
-
-        }
-        .adsr-envelope {
-            grid-row: 5/8;
-            grid-column: 2/6;
-            border: 1px solid black;
-            margin-top: 10px;
-
-        }       
-
-        .adsr-envelope-knobs {
-            grid-row: 8/9;
-            grid-column: 2/6;
-            border: 1px solid black;
-            margin-top: 10px;
+            grid-column: 3/9;
+            grid-template-rows: repeat(4,1fr);
+            grid-template-columns: repeat(3,1fr);
 
         }
 
-        .sound-list {
-            grid-row: 3/6;
-            grid-column: 6/10;
-            border: 1px solid black;
-            margin-top: 10px;
+        /**General settings **/
+        p {
+            user-select: none;
+        }
+
+
+        #q-par {
+            display:flex;
+            grid-row:2/5;
+            grid-column:1/3;
+            gap: 40px;
+            margin-top:10px;
+        }
+        
+
+        .query-search {
+            display: flex;
+            grid-row: 1/2;
+            grid-column:1/4;
+            border: none;
+            width:100%;
+            height: auto;
+            background: var(--background-color);
+            justify-content: center;
 
         }
 
-        .reverb-knobs {
-            grid-row: 6/9;
-            grid-column: 6/10;
-            border: 1px solid black;
-            margin-top: 10px;
+        .query-text {
+            font-family: "Lucida Console", "Courier New", monospace;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            box-shadow: inset 5px -5px 10px #dcdbdb,
+            inset -5px 5px 10px #ffffff;
+            
 
         }
 
-        .keyboard {
-            grid-row:9/10;
-            grid-column:2/10;
-            border: 1px solid black;
-            margin-top: 10px;
-
+        .query-button{
+            border-radius: 10px;
+            width: 50px;
+            background: var(--background-color);
+            box-shadow: -5px 5px 10px #c5c5c5,
+             5px -5px 10px #fbfbfb;
+                    }
+        
+        .slider-regular {
+            position: relative;
+            display: flex;
+            width: 120px;
+            height: 20px;
+            border-radius: 5px;
+            border: 0.08em solid purple;
+            background: #f2f1f1;
+            box-shadow:  -5px 5px 10px #c2c1c1,
+             5px -5px 10px #ffffff;
         }
 
         input[type="range"] {
-            width:50px;
-            height: 5px;
+            width:120px;
+            background-color: var(--background-color);
         }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 10px;
+            width: 110px;
+            border-radius: 10px;
+            background-color: red;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -moz-appearance: none !important;
+            appearance: none !important;
+            position: relative;
+            border-radius: 3px;
+            height: 60px;
+            width: 20px;
+            background: #f2f1f1;
+            cursor: pointer;
+            }
+        input[type="range"]::-moz-range-thumb {
+            -moz-appearance: none !important;
+            appearance: none !important;
+            position: relative;
+            border-radius: 3px;
+            height: 30px;
+            width: 20px;
+            border: none;
+            box-shadow:  -5px 5px 10px #c2c1c1,
+             5px -5px 10px #ffffff;
+            background: #f2f1f1;
+            cursor: pointer;
+            }
+        .range-text {
+                position: absolute;
+                top: 4px;
+                font-family: "Lucida Console", "Courier New", monospace;;
+                left: 8px;
+                user-select: none;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: #f2f1f1;
+                text-align: center;
+                height: 10px;
+                width: 10px;
+                }
+
+        input[type="range"]::-ms-fill-lower{
+            background-color: pink;
+        }
+
+
+        *, *::before, *::after {
+        box-sizing: border-box;
+        }
+        :root {
+        --colorMain: white;
+        --brShadow: -6px 6px 15px rgb(80, 1, 80);
+        --tlShadow: 6px -6px 15px rgb(255, 234, 0);
+        }
+
+        .freesound {
+            grid-row:1/2;
+            grid-column: 6/10;
+            display: flex;
+            align-content: flex-end;
+            font-size: 1.1em;
+            transform: rotate(-0deg);
+            color: white;
+            font-weight: bold;
+        }
+
+        .freesound p {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+
+        }
+        .source-icon{
+            grid-row:1/2;
+            grid-column: 2/4;
+            transform: rotate(-20deg);
+            text-align:center;
+            margin-left: -90px;
+            margin-top:50px;
+            color: var(--colorMain);
+            font-size: 4.1em;
+            font-weight: bold;
+            font-family: "Lucida Console", "Courier New", monospace;
+            text-transform: uppercase;
+            text-shadow: var(--brShadow),
+                        var(--tlShadow);
+
+            &::before, &::after {
+                position: absolute;
+                background: var(--colorMain);
+                content: '';
+                border-radius: 10%;
+
+            }
+
+            &::before {
+            left: 0;
+            width: 100px;
+            height: 100px;
+            top: -150px;
+            z-index: 10;
+            box-shadow: inset var(--brShadow),
+                        inset var(--tlShadow) ;
+
+            }
+            &::after {
+            left: -50px;
+            width: 200px;
+            height: 200px;
+            top: -200px;
+            box-shadow: var(--brShadow),
+                        var(--tlShadow) ;
+            }
+        }
+
+
+
+        .bar {
+        position: relative;
+        float: left;
+        display: flex;
+        }
+
+        .first {
+        width:6px;
+        height:1px;
+        margin-top:17px;
+        background: black;
+        border-radius: 4px;
+        margin-left: 8px;
+
+        }
+
+        .second {
+        width: 2px;
+        height: 13px;
+        background: black;
+        margin-left: 3px;
+        margin-top: 10px;
+        border-radius: 4px;
+        }
+
+        .third {
+        width: 3px;
+        height: 25px;
+        background: black;
+        margin-left: 2px;
+        border-radius: 4px;
+        margin-top: 4px;
+
+        }
+
+        .fourth {
+        width: 2px;
+        height: 21px;
+        background: black;
+        margin-left: 2px;
+        margin-top: 8px;
+        border-radius: 4px;
+
+        }
+
+        .fifth {
+        width: 3px;
+        height: 27px;
+        background: black;
+        margin-left: 2px;
+        margin-top: 5px;
+        border-radius: 4px;
+
+        }
+        .sixth {
+        width: 2px;
+        height: 15px;
+        background: black;
+        margin-left: 2px;
+        margin-top: 10px;
+        border-radius: 4px;
+
+        }
+        .last {
+        width:6px;
+        height:2px;
+        margin-top:17px;
+        background: black;
+        margin-left: 3px;
+        border-radius: 4px;
+        }
+
+        input[type="button"] {
+            width: auto;
+            height: auto;
+            border: none;
+        }
+        *:focus {
+            outline: none;
+        }
+
+        .waveform {
+            display: grid;
+            grid-row: 3/5;
+            grid-column: 2/6;
+            background: var(--background-color);
+            margin-top: 10px;
+            border-radius: 2%;
+            z-index:1000;
+            grid-template-rows: repeat(4,1fr);
+            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
+
+        }
+        #waveform {
+            grid-row:1/4;
+            grid-column: 1/6;
+            z-index:4000;
+        }
+
+        #waveform wave {
+            width: 100%;
+            height: 100%;
+        }
+        .launch-mode {
+            display: grid;
+            grid-row: 4/5;
+            grid-column: 1/6;
+            grid-template-columns: repeat(6,1fr);
+            background: var(--background-color);
+            border-radius: 3px;
+            box-shadow: 5px -5px 200px #b3b3b3,-5px 5px 5px #ffffff;
+            z-index: 2;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .left-arrow {
+            grid-column: 2/3;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-arrow-inner {
+            width: 0;
+            height: 0;
+            margin-top: 10px;
+            margin-left: 25px;
+            background: var(--background-color);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-right:10px solid black;
+        }
+
+        .left-arrow-inner:hover{
+            border-right:10px solid purple;
+        }
+
+
+        .right-arrow {
+            grid-column: 5/6;
+            width: 100%;
+            height: 100%;
+
+        }
+
+        .right-arrow-inner {
+            width: 0;
+            height: 0;
+            margin-top: 10px;
+            background: var(--background-color);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 10px solid black;
+            margin-left: 15px;
+
+        }
+
+        .right-arrow-inner:hover{
+            border-left: 10px solid purple;
+        }
+
+        .outer-box{
+            display: grid;
+            grid-column: 3/5;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 5%;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 1;
+            background: var(--background-color);
+            box-shadow:  5px 5px 5px #babdb6;
+            }
+
+        .inner-box {
+            display: flex;
+            width: 80px;
+            height: 25px;
+            border: none;
+            z-index: 2;
+            background: black;
+            border-radius: 5%;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 0.2em solid purple;
+            }
+
+        .outer-box .inner-box p {
+            color: white;
+        }
+        .adsr {
+            display:grid;
+            grid-row: 5/7;
+            grid-column: 2/6;
+            box-shadow: rgb(204, 219, 232) 3px 3px 6px 0px inset, rgba(255, 255, 255, 0.5) -3px -3px 6px 1px inset;
+            margin-top: 10px;
+            border: none;
+            align-items: center;
+
+        }
+
+        #adsr-envelope{
+            width:100%;
+            max-width:100%;
+            height:95%;
+            border: none;
+            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
+            }
+
+
+        .adsr-envelope-knobs {
+            display: grid;
+            grid-gap:5px;
+            grid-row: 7/10;
+            grid-column: 2/6;
+            grid-template-columns: repeat(4,1fr);
+            grid-template-rows: 40px repeat(2,1fr);
+            border-radius: 3%;
+            background: #f2f1f1;
+            box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
+            margin-top: 10px;
+
+        }
+
+        .adsr-filter {
+            grid-row:1/2;
+            grid-column: 1/3;
+            text-align: center;
+            border-radius: 5%;
+            user-select: none;
+            font-weight: none;
+
+        }
+        .adsr-amplitude {
+            grid-row: 1/2;
+            grid-column: 3/5;
+            text-align: center;
+            border-radius: 5%;
+            font-weight: none;
+        }
+
+        .adsr-first-knob {
+            display: flex;
+            grid-row: 2/3;
+            grid-column: 1/6;
+            gap: 60px;
+            margin-left: 15px;
+            
+
+        }
+        .adsr-second-knob {
+            display:flex;
+            flex-direction: row;
+            grid-row: 3/4;
+            grid-column: 1/6;
+            margin-left: 65px;
+            gap: 60px;
+
+        }
+
+        .canvas {
+            display:flex;
+        }
+
+        .knob-inner {
+            display: flex;
+            align-items: center;
+            margin-left: 40px;
+            width:32px;
+            height: 32px;
+            margin-top:-60px;
+            border-radius: 50px;
+            background: linear-gradient(45deg, #dad9d9, #ffffff);
+            box-shadow:  5px -5px 6px #e3e3e3,
+                        -5px 5px 6px #ffffff;
+        }
+
+        /***5px 5px 6px #9d9d9d, 5px -5px 70px #fff This is for bumpy knob? what to do**/
+        .knob-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 0% auto;
+            margin-left: 1px;
+            border: 1px solid purple;
+        }
+
+        .sound-list {
+            grid-row: 3/5;
+            grid-column: 6/10;
+            margin-top: 10px;
+            border-radius: 10px;
+            background: #f2f1f1;
+            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
+        }
+
+        #sound-dropdown {
+            width: 100%;
+            height: 100%;
+            font-family: "Lucida Console", "Courier New", monospace;
+            border: none;
+            border-radius: 5%;
+            background: #f2f1f1;
+            box-shadow: inset 5px -5px 10px #e3e3e3,
+                        inset -5px 5px 10px #ffffff;
+
+        }
+
+        p {
+            color: purple;
+        }
+        
+        .parameter-knobs {
+            display: grid;
+            grid-row: 5/10;
+            grid-column: 6/10;
+            grid-template-rows: repeat(10,1fr);
+            background: #f2f1f1;
+            box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
+            margin-top: 10px;
+            border-radius: 3%;
+            row-gap: 5px;
+        }
+
+        .reverb-header {
+            grid-row: 1/2;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .reverb-knob-area {
+            grid-row: 2/4;
+            display: flex;
+            align-content: center;
+            gap:60px;
+            margin-left: 20px;
+        }
+
+        .modulation-header {
+            grid-row:4/5;
+            text-align: center;
+            font-size:18px;
+                }
+        .modulation-knob-area {
+            grid-row: 5/7;
+            display: flex;
+            gap: 65px;
+            margin-left: 65px;
+        }
+        .velocity-header {
+            grid-row: 7/8;
+            text-align: center;
+            font-size: 18px;
+        }
+        .velocity-knob-area{
+            grid-row: 8/10;
+            display: flex;
+            gap: 80px;
+            margin-left: 110px;
+
+        }
+
+        #keyboard {
+            grid-row:10/12;
+            grid-column:2/8;
+            border: 1px solid black;            
+            border-radius: 5%;
+            width: auto;
+            height: auto;
+            border: none;
+        }
+        #keyboard li:first-child {
+            border-radius: 5px 0 5px 5px;
+            margin-left:-40px;
+            }
+
+        #keyboard li:last-child {
+            border-radius: 0 5px 5px 5px;
+            }
+
+        .white-key,
+        .black-key {
+            position: relative;
+            float: left;
+            display: flex;
+            user-select: none;
+            cursor: pointer;
+        }
+        .white-key {
+            height: 7.5rem;
+            width: 3.0rem;
+            z-index: 1;
+            border-left: 1px solid hsl(0, 0%, 84%);
+            border-bottom: 1px solid hsl(0, 0%, 84%);
+            border-radius: 0 0 5px 5px;
+            background: var(--background-color);
+            box-shadow:  -5px 5px 10px #e7e7e7,
+                        5px -5px 10px #ffffff;
+            color: var(--black-30);
+            }
+
+        .black-key {
+            height: 4.5rem;
+            width: 1.5em;
+            margin: 0 0 0 -1rem;
+            z-index: 2;
+            border: 1px solid purple;
+            border-radius: 0 0 3px 3px;
+            box-shadow: -1px -1px 2px var(--white-20) inset,
+                0 -5px 2px 3px var(--black-60) inset, 0 2px 4px var(--black-50);
+            background: linear-gradient(45deg, hsl(0, 95%, 22%) 0%, hsl(0, 89%, 29%) 100%);
+            color: var(--white-50);
+            }
+            .offset {
+            margin: 0 0 0 -1rem;
+            }
+        .pitch-section {
+            grid-row:10/12;
+            grid-column:8/10;
+            display: flex;
+            justify-content: center;
+            margin-top: 60px;
+
+        }
+
 
     </style>
 
     <script>
-        
+
+        $(function(){
+            $(".knob-1").knob({
+                'min':0,
+                'max':1,
+                'step':0.01,
+                'width':45,
+                'height':45,
+                'displayInput': true,
+                'thickness': 0.2,
+                'angleOffset':180,
+                'fgColor': 'purple',
+                'bgColor':'#dad9d9',
+                'font': '"Lucida Console", "Courier New", monospace',
+                'change': function(v) {
+                    ss.setSoundParameter(this['$'][0]['id'],v,0,1);
+                    if (adsrList.includes(this['$'][0]['id'])){
+                        drawAdsrEnvelope();
+                    }
+                }
+            });
+
+            $(".knob-reverb").knob({
+                'min':0,
+                'max':1,
+                'step':0.01,
+                'width':45,
+                'height':45,
+                'displayInput': true,
+                'thickness': 0.2,
+                'angleOffset':180,
+                'fgColor': 'purple',
+                'bgColor':'#dad9d9',
+                'font': '"Lucida Console", "Courier New", monospace',
+                'change': function(v) {
+                    //Set reverb parameter to the new value
+                    reverbParams[this['$'][0]['id']] = v;
+                    ss.setReverbParameters();
+                }
+            });
+
+            $(".knob-100").knob({
+                'min':0,
+                'max':100,
+                'step':0.01,
+                'width':45,
+                'height':45,
+                'displayInput': true,
+                'thickness': 0.2,
+                'angleOffset':180,
+                'fgColor': 'purple',
+                'bgColor':'#dad9d9',
+                'change': function(v) {
+                    ss.setSoundParameter(this['$'][0]['id'],v,0,1);
+                }
+            });
+
+            $(".knob-12").knob({
+                'min':-12,
+                'max':12,
+                'step':0.01,
+                'width':45,
+                'height':45,
+                'displayInput': true,
+                'thickness': 0.2,
+                'angleOffset':180,
+                'fgColor': 'purple',
+                'bgColor':'#dad9d9',
+                'change': function(v) {
+                    ss.setSoundParameter(this['$'][0]['id'],v,0,1);
+                }
+            });
+
+            $(".knob-2000").knob({
+                'min':10,
+                'max':20000,
+                'step':1,
+                'width':45,
+                'height':45,
+                'displayInput': true,
+                'thickness': 0.2,
+                'angleOffset':180,
+                'fgColor': 'purple',
+                'bgColor':'#dad9d9',
+                'change': function(v) {
+                    ss.setSoundParameter(this['$'][0]['id'],v,0,1)
+                }
+            });
+        });
+
 
         let ss = undefined;  // Will keep source plugin state and has util methods to interact with it
         let httpPort = undefined;
         let useHttps = undefined;
         let hostname = undefined;
-        
+
+        //Define a global selected sound
+        var selectedSoundUUID = null;
+
+        //Sound list for play and remove
+        let playStopSoundList = [];
+
+        //ADSR lists
+        let adsrList = ["attack","decay","release","sustain", "filterAttack","filterDecay","filterRelease","filterSustain"]
+        let launchModes = ['gate', 'loop', 'loopfb', 'trigger'];
+
+        //Reverb parameters
+        let reverbParams = {'roomSize':0, 'damping':0, 'wetLevel':0, 'dryLevel':0, 'width':0,'freezeMode':0}
+
+        //Knob parameters
+        let knobParameterNamesAmp = ["attack", "decay", "sustain", "release","gain","pan", 
+                                    "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt","vel2CutoffAmt", "vel2GainAmt",
+                                "roomSize","damping","wetLevel","dryLevel"]
+        let knobParameterNamesFilter = ["filterAttack", "filterDecay","filterRelease","filterCutoff","filterRessonance",
+                                        "roomSize","damping","wetLevel","dryLevel",
+                                        "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "vel2CutoffAmt", "vel2GainAmt"]
+        //ADSR initial dictionary
+        let DefaultParams = {
+                attackTime: 0.1,
+                decayTime: 0.1,
+                sustainLevel: 0.1,
+                releaseTime: 0.1,
+                gateTime: 1,
+                peakLevel: 1,
+                epsilon: 0.001,
+                attackCurve: "exp",
+                decayCurve: "exp",
+                releaseCurve: "exp",
+                };
+
         var expStrength = 2;  // For sliders
 
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
 
+
+
         let lastUIAction = 0;
-    
+
 
         class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
 
@@ -159,12 +855,12 @@
                 }
                 console.log("Connecting to WS server: " + wsUrl);
                 let socket = new WebSocket(wsUrl);
-                
+
                 let self = this;
 
                 socket.onopen = function(e) {
                     console.log("[WS open] Connection established");
-                    
+
                     // Once connection established, request full state once and start polling volatile state
                     self.requestFullState();
                     self.volatileStateRequestTimer = setInterval(function () {
@@ -181,7 +877,7 @@
                     setTimeout(() => {
                         self.configureWSConnection (); // Start again connection if it fails, wait 2 seconds
                     }, 2000);
-                    
+
                 };
 
                 socket.onerror = function(error) {
@@ -192,7 +888,7 @@
                     const msgTypeSeparatorPosition = event.data.indexOf(':');
                     const msgType = event.data.slice(0, msgTypeSeparatorPosition);
                     const rawData = event.data.slice(msgTypeSeparatorPosition + 1, event.data.length);
-                    
+
 
                     //PROBLEM HERE IS THAT FULL STATE MSG IS COMING BUT VOLATILE IS MORE? HOW TO SOLVE THIS?
                     if (msgType === "/full_state"){
@@ -212,7 +908,7 @@
                             // If no state is present, ignore stat update messages as these will fail
                             // also request full state to get in sync again
                             self.requestFullState();
-                            return;                            
+                            return;
                         }
 
                         const rawDataParts = rawData.split(';');
@@ -230,23 +926,17 @@
                             if (elementToUpdate !== null){
                                 elementToUpdate.setAttribute(propertyName, propertyValue);
 
-                                // Check if the change was to notify a query with empty results, and show in ui
-                                if (propertyName === 'numResultsLastQuery'){
-                                    notifyQueryResultsFromLastQuery(parseInt(propertyValue, 0));
-                                }
 
                                 // If property was found, trigger corresponding UI updates
                                 if (treeType === "SOUND"){
-                                    // If what changed is a property of a sound or sound sample, then update the card for the sound
+                                    // If what changed is a property of a sound or sound sample, then update the sound list
                                     var sound = ss.getSoundFromSoundUUID(treeUUID);
-                                    if (sound !== null){
-                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
+                                    //If sound exists and not in the deleted mode,
+                                    if ((sound !== null) && (propertyName !== "willBeDeleted" && propertyName === "downloadCompleted")){
+                                        console.log(propertyName);
+                                        updateSoundList(sound.getAttribute('uuid'));
                                     } else {
-                                        // We might receive property change messages from sounds that are being deleted and that still exist in our state
-                                        // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
-                                        if (propertyName !== "willBeDeleted"){
-                                            console.log('WARNING: property change for unexisting sound different from "willBeDeleted": ', propertyName, propertyValue);
-                                        }
+
                                     }
 
                                     // If the property name is that of a slider (sound parameter), then update the slider as well
@@ -256,8 +946,11 @@
                                     }
                                 } else if (treeType === "SOUND_SAMPLE"){
                                     var sound = ss.getSoundFromSoundSampleUUID(treeUUID);
-                                    if (sound !== null){
-                                        triggerRateLimitedUpdateSoundCard(sound.getAttribute('uuid'));
+
+                                    //If the property belongs to querying, add the sounds to the sound list
+                                    if ((sound !== null) && (propertyName !== "willBeDeleted" && propertyName === "downloadCompleted")){
+                                        console.log('sound_sample',propertyName);
+                                        updateSoundList(sound.getAttribute('uuid'));
                                     } else {
                                         // We might receive property change messages from sounds that are being deleted and that still exist in our state
                                         // We can ignore these messages, but lets print a warning if a message refers to some unexpected property
@@ -273,7 +966,7 @@
                                     updateMIDIMappingEditor(treeUUID);
                                 }
                             }
-                            
+
                         } else if (updateType === 'addedChild'){
                             const parentTreeUUID = restOfDataSliced[0];
                             const parentTreeType = restOfDataSliced[1];
@@ -301,7 +994,7 @@
                                     updateSoundList();
                                 }
                             }
-                            
+
                         } else if (updateType === 'removedChild'){
                             const childToRemoveUUID = restOfDataSliced[0];
                             const childToRemoveType = restOfDataSliced[1];
@@ -314,9 +1007,9 @@
                                 // Trigger corresponding UI updates
                                 const domElementToUpdate = document.getElementById(childToRemoveUUID);
                                 if (domElementToUpdate !== null){
-                                    domElementToUpdate.remove();    
+                                    domElementToUpdate.remove();
                                 }
-                                
+
                                 if (childToRemoveType === "SOUND"){
                                     updateAllSoundCardNumbers();
                                 }
@@ -324,7 +1017,7 @@
                         }
 
                         self.scheduleExtraFullStateRequestAfterBurstOfMessages();
-                    }                
+                    }
                 };
 
                 return socket;
@@ -355,7 +1048,7 @@
                 } else {
                     return [];
                 }
-                
+
             }
 
             getFirstSoundSampleSound(sound) {  // sound = sound xml state
@@ -379,7 +1072,7 @@
                 return sound.getElementsByTagName('MIDI_CC_MAPPING');
             }
 
-            findSoundIdxFromSoundUUID(soundUUID){            
+            findSoundIdxFromSoundUUID(soundUUID){
                 var sounds = ss.getSounds();
                 for (var i=0; i<sounds.length; i++) {
                     if (sounds[i].getAttribute("uuid") == soundUUID){
@@ -389,7 +1082,7 @@
                 return -1
             }
 
-            findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){            
+            findSoundIdxFromSourceSamplerSoundUUID(samplerSoundUUID){
                 var sounds = ss.getSounds();
                 for (var i=0; i<sounds.length; i++) {
                     var samplerSounds = this.getSoundSamplerSounds(sounds[i]);
@@ -409,26 +1102,21 @@
 
             // Util methods to change things of the state
 
-            setSoundParameter(sliderElement){
-                var soundUUID = $("select#sound-dropdown option").filter(':selected').data('uuid');
-                console.log(sliderElement);
+            setSoundParameter(parameterName, parameterVal, parameterMin, parameterMax){
                 saveCurrentUserActionTime();
-                if (soundUUID === ''){
-                    // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
-                    // corresponding state updates
-                    updateSliderLabel(sliderElement);
-                } 
-                this.sendMessageToPlugin('/set_sound_parameter', [soundUUID, sliderElement.name, getProcessedSoundParameterValuLinToExp(sliderElement)])
+                this.sendMessageToPlugin('/set_sound_parameter', [selectedSoundUUID, parameterName, getProcessedSoundParameterValuLinToExp(parameterName,parameterVal, parameterMin, parameterMax)])
             }
 
-            setSoundParameterInt(soundUUID, sliderElement){
+            setSoundParameterInt(elementName, val){
                 saveCurrentUserActionTime();
-                if (soundUUID === ''){
-                    // If control from "all sounds" card, label needs to be updated manually as it won't be updated when receiving the
-                    // corresponding state updates
-                    updateSliderLabel(sliderElement);
-                } 
-                this.sendMessageToPlugin('/set_sound_parameter_int', [soundUUID, sliderElement.name, sliderElement.value])
+                this.sendMessageToPlugin('/set_sound_parameter_int', [selectedSoundUUID, elementName, val]);
+                this.playSound();
+            }
+
+            getSoundParameterValue(soundUUID, soundParameterName){
+                let sound = this.getSoundFromSoundUUID(soundUUID);
+                let soundParameterVal = sound.getAttribute(soundParameterName);
+                return soundParameterVal;
             }
 
             replaceAllSoundsByQuery(){
@@ -456,15 +1144,14 @@
                 var numSounds = document.getElementsByName('numSounds')[0].value || 16;
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-                this.sendMessageToPlugin('/add_sounds_from_query', [query, 4, minSoundLength, maxSoundLength, "contiguous"])
-                updateSoundList();
+                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength, "contiguous"])
             }
 
             reapplyLayout(){
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
                 this.sendMessageToPlugin('/reapply_layout', [noteMappingType]);
             }
-                           
+
             clearAllSounds(){
                 this.sendMessageToPlugin('/clear_all_sounds', [])
             }
@@ -475,14 +1162,10 @@
             }
 
             setReverbParameters() {
-                var roomSize = document.getElementById('0_roomSize').value;
-                var damping = document.getElementById('0_damping').value;
-                var wetLevel = document.getElementById('0_wetLevel').value;
-                var dryLevel = document.getElementById('0_dryLevel').value;
-                var width = document.getElementById('0_width').value;
-                var freezeMode = document.getElementById('0_freezeMode').value;
-                updateAllSliderLabels();
-                this.sendMessageToPlugin('/set_reverb_parameters', [roomSize, damping, wetLevel, dryLevel, width, freezeMode])
+                var reverbParameterList = Object.keys(reverbParams).map(function(key){
+                    return reverbParams[key];
+                })
+                this.sendMessageToPlugin('/set_reverb_parameters', reverbParameterList)
             }
 
             setNumVoices() {
@@ -491,19 +1174,27 @@
             }
 
             playSound(){
-                var soundUUID = $("select#sound-dropdown option").filter(':selected').data('uuid'); 
-                this.sendMessageToPlugin('/play_sound', [soundUUID])
-                var sound =  ss.getSoundFromSoundUUID(soundUUID);
-                var parameterValue = sound.getAttribute('pitch');
-                console.log(parameterValue);
-                this.updateSoundElementOnUI(parameterValue);
+
+                //Add sound to the list to stop if a new sound is selected
+                playStopSoundList.push(selectedSoundUUID);
+
+
+                if (playStopSoundList.length > 1) {
+                    //Stop the previous sound and remove it
+                    ss.stopSound(playStopSoundList[0]);
+                    playStopSoundList.shift();
+
+                }
+
+                this.sendMessageToPlugin('/play_sound', [selectedSoundUUID])
+
 
             }
 
             stopSound(soundUUID){
                 this.sendMessageToPlugin('/stop_sound', [soundUUID])
             }
-                                        
+
             removeSound(soundUUID){
                 this.sendMessageToPlugin('/remove_sound', [soundUUID])
             }
@@ -549,12 +1240,6 @@
                 this.sendMessageToPlugin('/load_preset', [idx - 1])
             }
 
-            updateSoundElementOnUI(sliderNewVal){
-                console.log("updating pitch...");
-                console.log(sliderNewVal);
-                $("#pitch").attr('value',sliderNewVal);
-
-            }
 
             createUpdateMapping(soundUUID, mappingID){
                 var ccNumber = document.getElementById(mappingID + '_mappingCCNumber').value;
@@ -585,6 +1270,8 @@
             // Once the StateSyncronizer is started, it will start to receive updates when changes happen in
             // the plugin's state. These updates will triger renders of appropriate parts of the UI.
 
+
+
             const queryString = window.location.search;
             const urlParams = new URLSearchParams(queryString);
 
@@ -599,7 +1286,7 @@
                     hostname = 'localhost';
                 }
             }
-            
+
             // Get websockets/http connection config parameters (or use defaults)
             if (urlParams.get('wsPort') !== null){
                 wsPort = urlParams.get('wsPort');
@@ -618,11 +1305,87 @@
             }
             useHttps = useWss;
 
+
             // Start state synchronizer
             ss = new StateSynchronizer(wsPort, useWss);
-        });
+
+            //Initialize the ADSR Envelope
+            drawAdsrEnvelope();
+
+
+            });
 
         // Util methods
+
+        function integerToRadius(){
+
+        }
+
+        function radiusToInteger() {
+            
+        }
+
+        function updateGlobalSoundUUID(){
+            //Update the global sound UUID
+            selectedSoundUUID = $("select#sound-dropdown option").filter(':selected').data('uuid');
+
+            //Draw the ADSR Envelope for the selected sound
+            drawAdsrEnvelope();
+
+            //Draw the waveform for the selected sound
+            drawSoundWaveform();
+
+            //Update the sliders with the new sound
+            updateAllParameterElements();
+
+
+        };
+
+        function updateAllParameterElements(){
+            var pitch = ss.getSoundParameterValue(selectedSoundUUID, 'pitch');
+            $('#pitch').val(pitch);
+            updateKnobElements();
+
+        }
+
+        function updateKnobElements(){
+
+            //A workaround for filter/amplitude ADSR selection
+            if ($('#attack') !== null){
+                var iterateList = knobParameterNamesAmp;
+            } else {
+                var iterateList = knobParameterNamesFilter;
+            }
+            for (var i=0; i < iterateList.length;i++){
+                var element = iterateList[i];
+                var elementVal = ss.getSoundParameterValue(selectedSoundUUID, element);
+                $('#'+element).val(elementVal).trigger('change');
+            }
+        }
+
+        window.onload = function(){
+            var rangeInput = document.getElementById('q-par');
+            rangeInput.addEventListener('click',function() {
+                const isInput = event.target.nodeName === 'INPUT';
+                console.log(event.target.id);
+                var rangeTextName = event.target.id;
+                var rangeText = document.getElementById('range-text-'+rangeTextName);
+                console.log('rangetext',rangeTextName);
+                let newVal = event.target.value;
+                
+                rangeText.innerHTML = newVal; //Set range text equal to input position
+
+            })
+        }
+
+        function switchColorModes(obj){
+            if($(obj).is(':checked')){
+            $('.container').css('background-color',"#1d5eb2");
+            }else {
+                $('.container').css('background-color',"#e0e0e0");
+            }
+
+        }
 
         function saveCurrentUserActionTime(){
             lastUIAction = (new Date()).getTime();
@@ -651,17 +1414,13 @@
                     return true;
                 }
             }
-            
+
             return false;
         }
 
-        function getProcessedSoundParameterValuLinToExp(sliderElement){
-            var value = parseFloat(sliderElement.value, 10);
-            if (sliderShouldBehaveExponentially(sliderElement) == true){
-                return linToExp(value/sliderElement.max)*sliderElement.max;
-            } else {
-                return value;
-            }
+        function getProcessedSoundParameterValuLinToExp(parameterName, parameterVal, parameterMin, parameterMax){
+            var value = parseFloat(parameterVal, 10);
+            return value;
         }
 
         function getProcessedSoundParameterValueExpToLin(sliderElement, valueRaw){
@@ -671,14 +1430,14 @@
                 return valueRaw;
             }
         }
-        
+
         function getMidiControllableParameterNames(){
             // --> Start auto-generated code B
             parameterNames = ["startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "gain", "pan", "pitch"]
             // --> End auto-generated code B
             return parameterNames;
         }
-        
+
         function getAllSoundParameterNames(){
             // --> Start auto-generated code C
             parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "midiChannel"]
@@ -689,7 +1448,7 @@
         function isSoundParameter(parameterName){
             return getAllSoundParameterNames().indexOf(parameterName) > -1;
         }
-        
+
         function getAllSoundParameterTypes(){
             // --> Start auto-generated code D
             parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
@@ -703,40 +1462,11 @@
 
         // Methods to update different parts of the UI
 
-        function updateAllSliderLabels(){
-            var elements = document.querySelectorAll("input[type=range]")
-            for (var i = 0, sliderElement; sliderElement = elements[i++];) {
-                updateSliderLabel(sliderElement);
-            }
-        }
-
-        function updateSliderLabel(sliderElement){
-            var labelElement = document.getElementById(sliderElement.id + "Label");
-            if (labelElement != null) {
-                if (labelElement.id.indexOf("launchModeLabel") > -1){
-                    labelElement.innerHTML = ["gate", "loop", "loopfb", "trigger", "freeze"][sliderElement.value];
-                } else if (labelElement.id.indexOf("noteMappingMode") > -1){
-                    labelElement.innerHTML = ["pitch", "slice", "both", "repeat"][sliderElement.value];
-                } else if (labelElement.id.indexOf("soundType") > -1){
-                    labelElement.innerHTML = ["single-sample", "multi-sample"][sliderElement.value];
-                } else if (labelElement.id.indexOf("midiChannel") > -1){
-                    labelElement.innerHTML = ["global", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"][sliderElement.value];
-                } else if (labelElement.id.indexOf("numSlices") > -1){
-                    var names =  ["auto (onsets)", "auto (n notes)"]
-                    for (var i=2; i<=128; i++){
-                        names.push(i);
-                    }
-                    labelElement.innerHTML = names[sliderElement.value];
-                } else {
-                    labelElement.innerHTML = getProcessedSoundParameterValuLinToExp(sliderElement).toFixed(2);
-                }
-            }
-        }
 
         function addNewMIDIMappingEditor(soundUUID) {
                 document.getElementById('newMappingPlaceholder_' + soundUUID).innerHTML = createMIDIMappingEditorFromRawParams(soundUUID, "", 0, "", 0.0, 1.0);
             }
-        
+
         function createMIDIMappingEditor(soundUUID, mapping){ // mapping xml form state
             var mappingUUID = mapping.getAttribute('uuid');
             var ccNumber = parseInt(mapping.getAttribute('ccNumber'), 10);
@@ -765,6 +1495,23 @@
             html += '</div>';
             return html;
         }
+        function updateSoundParameter(soundUUID, parameterName, parameterValue){
+            const sliderElement = document.getElementById(soundUUID + '_' + parameterName);
+            if (sliderElement === null){
+                return;
+            }
+            if (parameterValue === undefined){
+                var sound =  ss.getSoundFromSoundUUID(soundUUID);
+                parameterValue = sound.getAttribute(parameterName);
+            }
+            const parameterType = getParameterType(parameterName);
+            if (parameterType == "float"){
+                sliderElement.value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(parameterValue, 10));
+            } else if (parameterType == "int"){
+                sliderElement.value = parseInt(parameterValue, 10);
+            }
+            updateSliderLabel(sliderElement);
+        }
 
         function updateMIDIMappingEditor(mappingUUID){
             var mapping = ss.getMidiMappingStateFromMappingUUID(mappingUUID);
@@ -772,7 +1519,7 @@
             var name = mapping.getAttribute('parameterName');
             var minRange = parseFloat(mapping.getAttribute('minRange'), 10);
             var maxRange = parseFloat(mapping.getAttribute('maxRange'), 10);
-            
+
             document.getElementById(mappingUUID + '_mappingCCNumber').value = ccNumber;
             document.getElementById(mappingUUID + '_mappingParameterName').value = name;
             document.getElementById(mappingUUID + '_mappingMinRange').value = minRange;
@@ -792,26 +1539,33 @@
             }
         }
 
-        function createSoundCard(sound){  //sound = xml element from state
-            var soundUUID = sound.getAttribute('uuid');
-            
-            // Create sound card element
-            var element = document.createElement('div');
-            element.id = soundUUID;
-            element.dataset.soundIdx = 0;
-            element.classList = 'controls_card';
-
-            // Create inner html of sound card element
-            var html = '<div id="soundCardInfo_' + soundUUID + '"></div>';
-            html += '<div><div id="waveformLoadingIndicator_' + soundUUID + '"></div><canvas id="soundCardWaveform_' + soundUUID + '"></canvas></div>';
-            html += '<div id="soundCardControls_' + soundUUID +'" style="display:none;">' + generateSoundEditControls(soundUUID) + '</div>';
-            html += '<div id="soundCardMappingsWrapper_' + soundUUID + '" style="display:none;"><br><button onclick="addNewMIDIMappingEditor(\'' + soundUUID +'\');">Add CC mapping</button><div id="newMappingPlaceholder_' + soundUUID + '"></div>';
-            html += '<div id="soundCardMappings_' + soundUUID + '"></div>';
-            html += '</div>';
-
-            element.innerHTML = html;
-            return element;
-        }
+       function changeADSRElementId(val){
+           if (val.className == 'adsr-filter'){
+               document.getElementsByClassName("adsr-filter")[0].style["fontWeight"] = "bold";
+               document.getElementsByClassName("adsr-amplitude")[0].style["fontWeight"] = "normal";
+               $('#attack').attr("id","filterAttack");
+               $('#decay').attr("id","filterDecay");
+               $('#sustain').attr("id","filterSustain");
+               $('#release').attr("id", "filterRelease");
+               $('#gain').attr("id","filterCutoff");
+               $('#filterCutoff>p').text("Cutoff");
+               $('#filterRessonance').css('visibility','visible');
+               $('#pan').attr("id","filterADSR2CutoffAmt");
+               $('#filterADSR2CutoffAmt>p').text("CutoffAmt");
+           }else{
+               document.getElementsByClassName("adsr-amplitude")[0].style["fontWeight"] = "bold";
+               document.getElementsByClassName("adsr-filter")[0].style["fontWeight"] = "normal";
+               $('#filterAttack').attr("id","attack");
+               $('#filterDecay').attr("id","decay");
+               $('#filterSustain').attr("id","sustain");
+               $('#filterRelease').attr("id", "release");
+               $('#filterCutoff').attr("id","gain");
+               $('#gain>p').text('Gain');
+               $('#filterRessonance').css('visibility','hidden');
+               $('#filterADSR2CutoffAmt').attr("id","pan");
+               $('#pan>p').text("Pan");
+           }
+       }
 
         var rateLimitedTimers = {};
         var lastTimeFunctionCalled = {};
@@ -820,7 +1574,6 @@
             // Use this function to reduce the rate of the calls to updateSoundCard
             // It can happen that when many properties change, we call updateSoundCard many times. Using this function this will be reduced.
             if ((lastTimeFunctionCalled[soundUUID] === undefined) || (Date.now() - lastTimeFunctionCalled[soundUUID] > maxUpdateSoundRate)){
-                updateSoundCard(soundUUID);
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }
 
@@ -829,11 +1582,10 @@
                 clearTimeout(rateLimitedTimers[soundUUID]);
             }
             rateLimitedTimers[soundUUID] = setTimeout(() => {
-                updateSoundCard(soundUUID);
                 lastTimeFunctionCalled[soundUUID] = Date.now();
             }, maxUpdateSoundRate);
         }
-    
+
         function updateSoundCard(soundUUID){  //sound = xml element from state
             var sound = ss.getSoundFromSoundUUID(soundUUID);
             if (sound === null){
@@ -863,10 +1615,10 @@
                         progress = parseFloat(samplerSounds[i].getAttribute('downloadProgress'));
                     }
                     downloadProgress += progress;
-                }    
+                }
             }
             downloadProgress = downloadProgress/samplerSounds.length;
-            
+
             var soundID = samplerSound.getAttribute('soundId');
             var sourceSamplerSoundUUID = samplerSound.getAttribute('uuid');
             var soundName = samplerSound.getAttribute('name');
@@ -889,7 +1641,7 @@
                 else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
                 html += '<div class="ellipsis">' + parseFloat(samplerSound.getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '</div>';
                 soundInfoElement.innerHTML = html;
-                
+
                 var soundControlsElement = document.getElementById('soundCardControls_' + soundUUID);
                 if (soundControlsElement.style.display === "none") {
                     soundControlsElement.style.display = "block";
@@ -914,23 +1666,6 @@
             }
         }
 
-        function updateSoundParameter(soundUUID, parameterName, parameterValue){
-            const sliderElement = document.getElementById(soundUUID + '_' + parameterName);
-            if (sliderElement === null){
-                return;
-            }
-            if (parameterValue === undefined){
-                var sound =  ss.getSoundFromSoundUUID(soundUUID);
-                parameterValue = sound.getAttribute(parameterName);
-            }
-            const parameterType = getParameterType(parameterName);
-            if (parameterType == "float"){
-                sliderElement.value = getProcessedSoundParameterValueExpToLin(sliderElement, parseFloat(parameterValue, 10));
-            } else if (parameterType == "int"){
-                sliderElement.value = parseInt(parameterValue, 10);
-            }
-            updateSliderLabel(sliderElement);
-        } 
 
         function updateMainPresetParameters(){
             var sourceState = ss.state.getElementsByTagName('SOURCE_STATE')[0];
@@ -940,60 +1675,60 @@
             var presetState = sourceState.getElementsByTagName('PRESET')[0];
             document.getElementsByName('presetName')[0].value = presetState.getAttribute('name');
             document.getElementsByName('numVoices')[0].value = presetState.getAttribute('numVoices');
-  
+
         }
 
-        function updateSoundList(){
+        function updateLaunchMode(obj) {
+            var currentMode = $("#outer-box-launch > #inner-box-launch > p").text();
+            var currentModeIndex = launchModes.indexOf(currentMode.toLowerCase());
+            var nextModeIndex = currentModeIndex;
 
-            var sounds = ss.getSounds();
-
-            if ($("div.sound-list select").has('option').length > 0)
-                {   
-                    console.log("deleting old sounds");
-                    $("div.sound-list select").empty();
-
+            //Get the direction of arrow
+            var direction = obj.className;
+            if (direction == 'left-arrow-inner'){
+                nextModeIndex = currentModeIndex - 1;
+                if (nextModeIndex < 0) {
+                    nextModeIndex = 3;
                 }
-            for (var i = 0; i < sounds.length; i++) {
-                var sound = sounds[i];
-                // If sound is not scheduled for deletion, add a card for it
-                var soundUUID = sound.getAttribute('uuid');
-                var soundSampler = ss.getSoundSamplerSounds(ss.getSoundFromSoundUUID(soundUUID))[0];
 
-                //Remove the previous sounds
+            }else{
+                nextModeIndex = currentModeIndex + 1;
+                if (nextModeIndex == 4) {
+                    nextModeIndex = 0;
+                }
+            }
 
-                $("div.sound-list select").append($('<option>')
-                                .text(soundSampler.getAttribute('name'))
-                                .data({
-                                    uuid: soundUUID,
-                                    sound: soundSampler.getAttribute('name'),
-                                })
+            var newText = launchModes[nextModeIndex];
+            $("#outer-box-launch > #inner-box-launch > p").text(newText);
+            ss.setSoundParameterInt('launchMode', nextModeIndex);
+
+        }
+
+        function updateSoundList(soundUUID){
+            var sound = ss.getSoundFromSoundUUID(soundUUID);
+
+            if (sound === null){
+                // Sound can be null if triggering this method in a delayed way and sound does not longer exist
+                return;
+            }
+            //Wait until the query is done
+            var samplerSounds = ss.getSoundSamplerSounds(sound);
+            var samplerSound = samplerSounds[0];
+            //If sound exists and loaded, don't add id
+                    $("div.sound-list select").append($('<option>')
+                        .text(samplerSound.getAttribute('name'))
+                        .data({
+                            uuid: soundUUID,
+                            sound: samplerSound.getAttribute('name'),
+                        })
                         );
-            }
-
-            // Now update all sound cards
-            for (var i = 0; i < sounds.length; i++) {
-                var sound = sounds[i];
-                var soundUUID = sound.getAttribute('uuid');
-
-                // Update main parameters of the sound card
-                triggerRateLimitedUpdateSoundCard(soundUUID);
-
-                // Update sound parameters (sliders) of sound card
-                var soundParameters = getAllSoundParameterNames();
-                for (var j=0; j<soundParameters.length; j++){
-                    var parameterName = soundParameters[j];
-                    updateSoundParameter(soundUUID, parameterName);                    
-                }
-
-            }
         }
-        
+
+
+
         function updateFullUI(){
             // Set the main preset parameters to the values form the state
             updateMainPresetParameters();
-
-            updateAllSliderLabels(); // So labels for all sounds section appear
-
             // Update all the section with individual sound cards
         }
 
@@ -1001,18 +1736,22 @@
             // Update the audio meters and the voice allocation section
             // Also update other things like query status
 
+
+            //Launch Mode Check
+            checkBox = document.getElementById('loopfb');
+
             var VolatileState = ss.volatileState.getElementsByTagName('VOLATILE_STATE')[0];
-            
+
             var isQuerying = VolatileState.getAttribute('isQuerying') != "0";
 
-            
+
             var voicesStateElement = document.getElementById('voicesState');
             var html = '<div class="voices">';
             if (VolatileState !== undefined){
                 var voiceActivations = VolatileState.getAttribute('voiceActivations').split(',').slice(0, -1);
                 var voiceSoundIdxs = VolatileState.getAttribute('voiceSoundIdxs').split(',').slice(0, -1);
                 var voiceSoundPlayPosition = VolatileState.getAttribute('voiceSoundPlayPosition').split(',').slice(0, -1);
-                
+
                 for (var i=0; i<voiceSoundIdxs.length; i++){
                     if (voiceSoundIdxs[i] == "-1"){
                         // Draw empty square
@@ -1024,7 +1763,7 @@
             }
             html += "</div>";
             voicesStateElement.innerHTML = html;
-            
+
             var metersStateElement = document.getElementById('metersState');
             var html = '<div class="meters">';
             if (VolatileState !== undefined){
@@ -1037,130 +1776,125 @@
             metersStateElement.innerHTML = html;
         }
 
-        function notifyQueryResultsFromLastQuery(numResults){
-            var element = document.getElementById("numResultsIndicator");
-            if (numResults > -1){
-                element.innerHTML = numResults + ' results';
-                setTimeout(() => {
-                    element.innerHTML = '';
-                }, 2000);
-            } else {
-                element.innerHTML = '';
-            }
-        }
-
        function drawSoundWaveform(){
-            var sourceSoundUUID = $("select#sound-dropdown option").filter(':selected').data('uuid'); 
-            console.log("drawinggg");
-            var sound = ss.getSoundFromSoundUUID(sourceSoundUUID);
+            console.log("draw",selectedSoundUUID);
+            var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
             var samplerSound = ss.getSoundSamplerSounds(sound);
             var sourceSamplerSoundUUID = samplerSound[0].getAttribute('uuid');
-            // Conde inspired from https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/
-            const drawAudio = url => {
-              const request = new XMLHttpRequest();
-              request.open("GET", url);
-              request.responseType = "arraybuffer";
-              request.onload = function() {
-                let undecodedAudio = request.response;
-                audioContext.decodeAudioData(undecodedAudio, (data) => draw(normalizeData(filterData(data))), (error) => console.log(error));
-              };
-              request.send();
-              // NOTE: we used to use the syntax below but it does not seem to work in all computers...
-              //fetch(url)
-              //  .then(response => response.arrayBuffer())
-              //  .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-              //  .then(audioBuffer => draw(normalizeData(filterData(audioBuffer))));
-            };
-            
-            const filterData = audioBuffer => {
-              const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
-              const samples = 100; // Number of samples we want to have in our final data set
-              const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
-              const filteredData = [];
-              for (let i = 0; i < samples; i++) {
-                let blockStart = blockSize * i; // the location of the first sample in the block
-                let sum = 0;
-                for (let j = 0; j < blockSize; j++) {
-                  sum = sum + Math.abs(rawData[blockStart + j]) // find the sum of all the samples in the block
-                }
-                filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
-              }
-              return filteredData;
-            }
-            
-            const normalizeData = filteredData => {
-              const multiplier = Math.pow(Math.max(...filteredData), -1);
-              return filteredData.map(n => n * multiplier);
-            }
-            
-            const draw = normalizedData => {
-              // Set up the canvas
-              const canvas = document.getElementById("waveform-canvas");
-              const padding = 0;
-              canvas.width = canvas.offsetWidth;
-              canvas.height = (canvas.offsetHeight + padding * 2);
-              const ctx = canvas.getContext("2d");
-              //ctx.translate(0, canvas.offsetHeight / 2 + padding); // Set Y = 0 to be in the middle of the canvas
-              
-              // Draw points
-              const width = canvas.offsetWidth / normalizedData.length;
-              for (let i = 0; i < normalizedData.length; i++) {
-                const x = width * i;
-                let height = normalizedData[i] * canvas.offsetHeight - padding;
-                ctx.lineWidth = 1; // how thick the line is
-                ctx.strokeStyle = "#fff"; // what color our line is
-                ctx.beginPath();
-                ctx.moveTo(x, canvas.offsetHeight - padding);
-                ctx.lineTo(x, canvas.offsetHeight - padding - height);
-                ctx.stroke();
-              }
-            };
-            
-            const canvas = document.getElementById("waveform-canvas");
+
+
+            const canvas = document.getElementById("waveform");
             if (canvas !== null){
                     if (httpPort !== undefined){
                         let url = 'http' + (useHttps ? 's':'') + '://' + hostname + ':' + httpPort + '/sounds_data/' + sourceSamplerSoundUUID + '.wav';
                         //let url = ss.getTmpFilesLocation() + '/' + sourceSamplerSoundUUID + '.wav'; // Not supported because of CORS...
                         console.log("Getting waveform for", url);
-                        drawAudio(url);
+
+                        //Remove the previous sounds wave element
+                        $('wave').remove();
+                        var wavesurfer = WaveSurfer.create({
+                                                    container: document.querySelector('#waveform'),
+                                                    waveColor: 'purple',
+                                                    progressColor: 'aqua',
+                                                    backend: 'MediaElement',
+                                                    cursorWidth: 2,
+                                                    responsive: 'true',
+                                                    height: '100',
+                                                    plugins: [
+                                                        WaveSurfer.regions.create({ 
+                                                            regionsMinLength: 0.01,
+                                                            regions: [
+                                                            {
+                                                                loop: true,
+                                                                color: 'hsla(400, 100%, 30%, 0.9)',
+                                                                maxLength: 2,
+                                                            },
+                                                        ],
+                                                        dragSelection: {
+                                                            slop: 1
+                                                        }
+                                                        })
+                                                    ]
+
+                                        });
+
+                        // Limit the region element to 1
+                        wavesurfer.on('region-created', region => {  
+                                wavesurfer.regions.clear();
+                            });
+                        wavesurfer.load(url);
+
+                        wavesurfer.on('region-updated', region =>{
+                            var launchMode = $('#outer-box-launch > #inner-box-launch p').text();
+                            if (launchMode == 'loop' || launchMode == 'loopfb'){
+                                //Get the duration of the sound
+                                var soundLength = wavesurfer.backend.getDuration();
+                                
+
+                                //Stop the previous sound
+                                ss.stopSound();
+
+                                //Set the start and end of the looped sound
+                                ss.setSoundParameter('loopStartPosition', region.start/soundLength,0,1);
+                                ss.setSoundParameter('loopEndPosition', region.end/soundLength,0,1);
+                            }
+
+                        })
+
                     }
                 }
             }
-        
-            function drawAdsrEnvelope() {
 
-            var attackTimeSlider =  $("#attack").val();
-            var decayTimeSlider = $("#decay").val();
-            var sustainTimeSlider = $("#sustain").val();
-            var releaseTimeSlider = $("#release").val();
-            
-            console.log(attackTimeSlider, decayTimeSlider, sustainTimeSlider, releaseTimeSlider);
-            var DefaultParams = {
-                attackTime: attackTimeSlider,
-                decayTime: decayTimeSlider,
-                sustainLevel: sustainTimeSlider,
-                releaseTime: releaseTimeSlider,
-                gateTime: 1,
-                peakLevel: 1,
-                epsilon: 0.001,
-                attackCurve: "exp",
-                decayCurve: "exp",
-                releaseCurve: "exp",
-                };
+
+
+        function drawAdsrEnvelope(){
+
+        var DefaultParamsMod = {
+            attackTime: ss.getSoundParameterValue(selectedSoundUUID, 'filterAttack'),
+            decayTime: ss.getSoundParameterValue(selectedSoundUUID, 'filterDecay'),
+            sustainLevel: ss.getSoundParameterValue(selectedSoundUUID, 'filterSustain'),
+            releaseTime: ss.getSoundParameterValue(selectedSoundUUID, 'filterRelease'),
+            gateTime: 1,
+            peakLevel: 1,
+            epsilon: 0.001,
+            attackCurve: "exp",
+            decayCurve: "exp",
+            releaseCurve: "exp",
+            };
+
+        var DefaultParamsAmp = {
+            attackTime: ss.getSoundParameterValue(selectedSoundUUID, 'attack'),
+            decayTime: ss.getSoundParameterValue(selectedSoundUUID, 'decay'),
+            sustainLevel: ss.getSoundParameterValue(selectedSoundUUID, 'sustain'),
+            releaseTime: ss.getSoundParameterValue(selectedSoundUUID, 'release'),
+            gateTime: 1,
+            peakLevel: 1,
+            epsilon: 0.001,
+            attackCurve: "exp",
+            decayCurve: "exp",
+            releaseCurve: "exp",
+            };
+
+            //If the page has just loaded, operate on default parameter values
             startTime = -1;
 
-            var env = new ADSREnvelope(DefaultParams);
+            var env = new ADSREnvelope(DefaultParamsMod);
+            var ampEnv = new ADSREnvelope(DefaultParamsAmp);
+
+
             var canvas = document.getElementById("adsr-envelope");
             var context = canvas.getContext("2d");
+
+            var contextAmp = canvas.getContext("2d");
             var x, i;
 
             duration = (((env.duration / 5)|0) + 1) * 5;
 
-            context.fillStyle = "#3c3e50";
+            context.fillStyle = "#f2f1f1";
             context.fillRect(0, 0, canvas.width, canvas.height);
 
-            context.strokeStyle = "#95a5a6";
-            context.lineWidth = 1;
+            context.strokeStyle = "#000000";
+            context.lineWidth = 0.0101;
 
             for (i = 1; i < duration; i++) {
                 x = (((i / duration) * canvas.width)|0) + 0.5;
@@ -1171,16 +1905,31 @@
                 context.stroke();
             }
 
-            drawByEnvelope(context, duration, env);
+            contextAmp.strokeStyle = "rgb(80, 1, 80)";
+            contextAmp.lineWidth = 1;
+
+            for (i = 1; i < duration; i++) {
+                x = (((i / duration) * canvas.width)|0) + 0.5;
+
+                contextAmp.beginPath();
+                contextAmp.moveTo(x, 0);
+                contextAmp.lineTo(x, canvas.height);
+                contextAmp.stroke();
             }
-            function drawByEnvelope(context, duration, env) {
+
+            //Draw two envelopes for modulation and amplitude
+            drawByEnvelope(contextAmp, duration, ampEnv,2,"linear-gradient(to right top, #8222ac, #d23177, #e1765b, #d6b274, #d1e0b7)", 'amp');
+            drawByEnvelope(context, duration, env,2, "rgba(22, 160, 133, 0.8)", 'modulation');
+
+
+            function drawByEnvelope(context, duration, env, lineWidth, strokeStyle, type) {
             var t, v, y, x;
             var i, imax;
             var canvas = document.getElementById("adsr-envelope");
 
 
-            context.strokeStyle = "rgba(22, 160, 133, 0.8)";
-            context.lineWidth = 8;
+            context.strokeStyle = strokeStyle;
+            context.lineWidth = lineWidth;
             context.lineCap = "round";
 
             context.beginPath();
@@ -1194,63 +1943,214 @@
             }
             context.stroke();
 
-            }
-        
+            }}
+
+          
+
+
     </script>
 </head>
 
 <body>
 
     <div class="container">
-        <div class="query-search">
-            <input name="query" value="" type="search" placeholder="piano"/>
-            <button id="makeQueryButton" onclick="ss.addSoundsByQuery()">S</button>
+        <div class="source-icon">SOURCE</div>
+        <div class="freesound">
+            <p>A freesound community sampler</p>
         </div>
         <div class="query-parameters">
-            <input name="numSounds" value="" type="number" 
-            placeholder="16"><br>
-            <input name="minSoundLength" value="" 
-            type="number" placeholder="0.0">
-            <input 
-            name="maxSoundLength" value="" type="number" placeholder="0.
-            5">
-            <br>
+            <div class="query-search">
+                <input name="query" value="" type="search" placeholder="piano" class="query-text" />
+                <div class="query-button"  onclick="ss.addSoundsByQuery()">
+                    <li class="bar first"></li>
+                    <li class="bar second"></li>
+                    <li class="bar third"></li>
+                    <li class="bar fourth"></li>
+                    <li class="bar fifth"></li>
+                    <li class="bar sixth"></li>
+                    <li class="bar last"></li>
+                </div>
+            </div>
+            <div id="q-par">
+                <div class="slider-regular">
+                    <input  id="numSounds" name="numSounds" type="range" min="1" max="60" value="1" step="1" placeholder="Number of Sounds"/>
+                    <div class="range-text" id="range-text-numSounds">1</div>
+                </div>
+                    <div class="slider-regular">
+                    <input id="minSoundLength" name="minSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
+                    <div class="range-text" id="range-text-minSoundLength">1</div>
+                </div>
+                <div class="slider-regular">
+                    <input id="maxSoundLength" name="maxSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
+                    <div class="range-text" id="range-text-maxSoundLength">1</div>
+                </div>
+                <div class="slider-regular">
+                    Continuous
+                </div>
+            </div>
         </div>
         <div class="waveform">
-            <canvas id="waveform-canvas" style="background-color: black;"></canvas>
+            <div id="waveform"></div>
+            <div class="launch-mode">
+                <div class="left-arrow">
+                    <button class="left-arrow-inner" onclick="updateLaunchMode(this);"></button>
+                </div>
+                <div class="outer-box" id="outer-box-launch">
+                    <div class="inner-box" id="inner-box-launch">
+                        <p>gate</p>
+                    </div>
+                </div>
+                <div class="right-arrow">
+                    <button class="right-arrow-inner" onclick="updateLaunchMode(this);"></button>
+                </div>
         </div>
-        <div class="adsr-envelope">
+        </div>
+        <div class="adsr">
             <canvas id="adsr-envelope" style="background-color: antiquewhite;"></canvas>
         </div>
         <div class="adsr-envelope-knobs">
-            <input id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this)"> filterAttack: <span id="' + soundUUID + '_pitchLabel"></span><br>
-            <input id="attack" name="filterAttack" type="range" min="0.0" max="1.0" value="0.01" step="0.01" oninput="drawAdsrEnvelope();ss.setSoundParameter(this)"> filterAttack: <span id="' + soundUUID + '_filterAttackLabel"></span><br>
-            <input id="decay" name="filterDecay" type="range" min="0.0" max="1.0" value="0.01" step="0.01" oninput="drawAdsrEnvelope();ss.setSoundParameter(this)"> filterDecay: <span id="' + soundUUID + '_filterDecayLabel"></span><br>
-            <input id="sustain" name="filterSustain" type="range" min="0.0" max="1.0" value="0.01" step="0.01" oninput="drawAdsrEnvelope();ss.setSoundParameter(this)"> filterSustain: <span id="' + soundUUID + '_pitchLabel"></span><br>
-            <input id="release" name="filterRelease" type="range" min="0.0" max="1.0" value="0.01" step="0.01" oninput="drawAdsrEnvelope();ss.setSoundParameter(this)"> filterRelease: <span id="' + soundUUID + '_pitchLabel"></span><br>
+            <div class="adsr-filter" onclick="changeADSRElementId(this);">
+                <p>Filter</p>
+            </div>
+            <div class="adsr-amplitude" onclick="changeADSRElementId(this);">
+                <p>Amplitude</p>
+            </div>
+            <div class="adsr-first-knob">
+            <div class="knob-1" id="attack">
+                <div class="knob-inner">
+                </div>
+                <p>attack</p>
+            </div>
+            <div class="knob-1" id="decay">
+                <div class="knob-inner"></div>
+                <p>decay</p>
+            </div>
+            <div class="knob-1" id="sustain">
+                <div class="knob-inner"></div>
+                <p>sustain</p>
+            </div>
+            <div class="knob-1" id="release">
+                <div class="knob-inner"></div>
+                <p>release</p>
+            </div>
+        </div>
+        <div class="adsr-second-knob">
+            <div class="knob-2000" id="filterCutoff">
+                <div class="knob-inner"></div>
+                <p>Cutoff</p>
+            </div>
+            <div class="knob-1" id="filterRessonance">
+                <div class="knob-inner"></div>
+                <p>Ressonance</p>
+            </div>
+            <div class="knob-100" id="filterADSR2CutoffAmt">
+                <div class="knob-inner"></div>
+                <p>Cutoff Amount</p>
+            </div>
+        </div>
+
         </div>
         <div class="sound-list">
-            <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="drawSoundWaveform()" style="width: 100%; height: 100%;">
+            <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="updateGlobalSoundUUID();">
             </select>
         </div>
-        <div class="reverb-knobs">
-            <input type="range" id="0_roomSize" name="roomSize" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
-            roomSize: <span id="0_roomSizeLabel"></span><br>
-            <input type="range" id="0_damping" name="damping" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setReverbParameters()">
-            damping: <span id="0_dampingLabel"></span><br>
-            <input type="range" id="0_width" name="width" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
-            width: <span id="0_widthLabel"></span><br>
-            <input type="range" id="0_freezeMode" name="freezeMode" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
-            freezeMode: <span id="0_freezeModeLabel"></span><br>
-            <input type="range" id="0_wetLevel" name="wetLevel" min="0.0" max="1.0" value="0.0" step="0.01" oninput="ss.setReverbParameters()">
-            wetLevel: <span id="0_wetLevelLabel"></span><br>
-            <input type="range" id="0_dryLevel" name="dryLevel" min="0.0" max="1.0" value="1.0" step="0.01" oninput="ss.setReverbParameters()">
-            dryLevel: <span id="0_dryLevelLabel"></span>
+        <div class="parameter-knobs">
+            <div class="reverb-header">
+                <p>Reverb</p>
+            </div>
+            <div class="reverb-knob-area">
+                <div class="knob-reverb" id="roomSize">
+                    <div class="knob-inner"></div>
+                    <p>Room Size</p>
+                </div>
+                <div class="knob-reverb" id="damping">
+                    <div class="knob-inner"></div>
+                    <p>damping</p>
+                </div>
+                <div class="knob-reverb" id="wetLevel">
+                    <div class="knob-inner"></div>
+                    <p>Wet Level</p>
+                </div>
+                <div class="knob-reverb" id="dryLevel">
+                    <div class="knob-inner"></div>
+                    <p>Dry Level</p>
+                </div>
+            </div>
+            <div class="modulation-header">
+                <p>Modulation</p>
+            </div>
+            <div class="modulation-knob-area">
+                <div class="knob-12" id="mod2GainAmt">
+                    <div class="knob-inner"></div>
+                    <p>Gain Amount</p>
+                </div>
+                <div class="knob-100" id="mod2CutoffAmt">
+                    <div class="knob-inner"></div>
+                    <p>Cutoff Amount</p>
+                </div>
+                <div class="knob-12" id="mod2PitchAmt">
+                    <div class="knob-inner"></div>
+                    <p>Pitch Amount</p>
+                </div>
+            </div>
+            <div class="velocity-header">
+                <p>Velocity</p>   
+            </div>
+            <div class="velocity-knob-area">
+                <div class="knob-100" id="vel2CutoffAmt">
+                    <div class="knob-inner"></div>
+                    <p>Cutoff Amount</p>
+                </div>
+                <div class="knob-1" id="vel2GainAmt">
+                    <div class="knob-inner"></div>
+                    <p>Gain Amount</p>
+                </div>
+            </div>
         </div>
-        <div class="keyboard">
-        
+            <ul id="keyboard">
+                <li note="C" class="white-key"></li>
+                <li note="C#" class="black-key"></li>
+                <li note="D" class="white-key offset"></li>
+                <li note="D#" class="black-key"></li>
+                <li note="E" class="white-key offset"></li>
+                <li note="F" class="white-key"></li>
+                <li note="F#" class="black-key"></li>
+                <li note="G" class="white-key offset"></li>
+                <li note="G#" class="black-key"></li>
+                <li note="A" class="white-key offset"></li>
+                <li note="A#" class="black-key"></li>
+                <li note="B" class="white-key offset"></li>
+                <li note="C2" class="white-key"></li>
+                <li note="C#2" class="black-key"></li>
+                <li note="D2" class="white-key offset"></li>
+                <li note="D#2" class="black-key"></li>
+                <li note="E2" class="white-key offset"></li>
+                <li note="C" class="white-key"></li>
+                <li note="C#" class="black-key"></li>
+                <li note="D" class="white-key offset"></li>
+                <li note="D#" class="black-key"></li>
+                <li note="E" class="white-key offset"></li>
+
+            </ul>
+            <div class="pitch-section">
+              <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this.name, this.value, this.min, this.max)"> Pitch: <span id="' + soundUUID + '_pitchLabel"></span><br>
+            </div>
+            <div class="controls_card controls_card_top" hidden>
+                <h4>Preset & settings</h4>
+                Preset number:</label><input name="presetIdx" value="" type="number">
+                <button onclick="ss.savePreset()">Save</button>
+                <button onclick="ss.loadPreset()">Load</button><br>
+                Preset name:</label><input name="presetName" value="" type="text">
+                <button onclick="ss.previousPreset()">&#x25C0</button><button onclick="ss.nextPreset()">&#x25b6</button><br>
+                MIDI in channel:<input name="midiInChannel" value="" type="number" onchange="ss.setMidiInChannel()"><br>
+                Num voices:<input name="numVoices" value="" type="number" onchange="ss.setNumVoices()"><br>
+                <div id="voicesState"></div>
+            </div>
+            <div class="controls_card controls_card_top" hidden>
+                <div id="metersState"></div>
+            </div>
+
         </div>
     </div>
 </body>
 </html>
-
