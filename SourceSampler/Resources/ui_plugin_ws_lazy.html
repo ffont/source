@@ -15,9 +15,13 @@
         /** Define global background variable for dark mode switch **/
 
         :root {
-            --dark-mode: #1d5eb2;
-            --light-mode: #e0e0e0;
             --background-color: #f2f1f1;
+            --font-family :"Lucida Console", "Courier New", monospace;
+            --knob-inner-back: linear-gradient(45deg, #dad9d9, #ffffff);
+            --knob-inner-shadow:  5px -5px 6px #e3e3e3,-5px 5px 6px #ffffff;
+            --general-color : purple;
+            --white-keys: #f2f1f1;
+            --black-keys: purple;
         }
 
         body {
@@ -37,7 +41,7 @@
              5px 5px 10px #5a5a5a;
         border-radius: 10px;
         grid-template-columns: repeat(10,1fr);
-        grid-template-rows: 70px repeat(10,1fr) 30px;
+        grid-template-rows: 10px repeat(10,1fr) 30px;
         grid-template-areas:
             "header header header header"
             "main main . sidebar"
@@ -56,6 +60,7 @@
             grid-column: 3/9;
             grid-template-rows: repeat(4,1fr);
             grid-template-columns: repeat(3,1fr);
+            margin-top: 100px;
 
         }
 
@@ -70,7 +75,9 @@
             grid-row:2/5;
             grid-column:1/3;
             gap: 40px;
-            margin-top:10px;
+            margin-top:30px;
+            font-weight: bold;
+            font-size: 10px;
         }
         
 
@@ -83,53 +90,111 @@
             height: auto;
             background: var(--background-color);
             justify-content: center;
+            align-items: center;
 
         }
 
         .query-text {
+            display:flex;
+            justify-content: center;
+            align-items: center;
             font-family: "Lucida Console", "Courier New", monospace;
             font-size: 12px;
-            font-weight: bold;
             border: none;
-            border-radius: 10px;
+            width:150px;
+            height: 30px;
+            border-radius: 5px;
+            background-color: var(--background-color);
             box-shadow: inset 5px -5px 10px #dcdbdb,
             inset -5px 5px 10px #ffffff;
-            
+        }
 
+        input[type="search"]{
+            font-family: "Lucida Console", "Courier New", monospace;
+            font-size: 12px;
+            border: none;
+            width:100px;
+            height: 20px;
+            border-radius: 5px;
+            background-color: transparent;
         }
 
         .query-button{
-            border-radius: 10px;
-            width: 50px;
+            display:flex;
+            width: 40px;
+            height: 30px ;
+            border-radius: 8px;
             background: var(--background-color);
-            box-shadow: -5px 5px 10px #c5c5c5,
-             5px -5px 10px #fbfbfb;
+            box-shadow:  3px -3px 6px #d3d2d2,
+                        -3px 3px 6px #ffffff;
+            justify-content: center;
+            align-items: center;
                     }
+
+        .query-icon{
+            width: auto;
+            height: auto;
+
+        }
+
+        svg {
+            filter: drop-shadow(1px 1px 1px rgba(183, 181, 181, 0.4));
+
+            border-radius: 10px;
+            }
+
+        .query-animation {
+            transform: scale(1);
+            animation: query-pulse 1s infinite;
+        }
+        @keyframes query-pulse {
+            0% {
+                transform: scale(0.55);
+                box-shadow: 0 0 0 0 rgba(118, 20, 148, 0.7);
+            }
+            
+            70% {
+                transform: scale(0.8);
+                box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+            }
+            }
+        
         
         .slider-regular {
             position: relative;
             display: flex;
             width: 120px;
             height: 20px;
+            text-align: center;
+            justify-content: center;
             border-radius: 5px;
-            border: 0.08em solid purple;
             background: #f2f1f1;
             box-shadow:  -5px 5px 10px #c2c1c1,
              5px -5px 10px #ffffff;
         }
+
+        .slider-regular p{
+            margin-top: 3px;
+        }
+
+        .slider-wrapper {
+            position: relative;
+            display:flex;
+            text-align:start;
+        }
+
 
         input[type="range"] {
             width:120px;
             background-color: var(--background-color);
         }
 
-        input[type="range"]::-webkit-slider-runnable-track {
-            height: 10px;
-            width: 110px;
-            border-radius: 10px;
-            background-color: red;
-        }
-
+        input[type="range"]::-ms-fill-lower {
+            background-color: #e2dfdf;
+            }
+        input[type="range"]::-moz-range-progress {
+            background-color: #e2dfdf; 
+            }
         input[type="range"]::-webkit-slider-thumb {
             -moz-appearance: none !important;
             appearance: none !important;
@@ -157,17 +222,18 @@
                 position: absolute;
                 top: 4px;
                 font-family: "Lucida Console", "Courier New", monospace;;
-                left: 8px;
                 user-select: none;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                background: #f2f1f1;
+                background: transparent;
                 text-align: center;
                 height: 10px;
                 width: 10px;
+                margin-left: 97px;
+                font-size:10px;
                 }
-
+            
         input[type="range"]::-ms-fill-lower{
             background-color: pink;
         }
@@ -182,29 +248,13 @@
         --tlShadow: 6px -6px 15px rgb(255, 234, 0);
         }
 
-        .freesound {
-            grid-row:1/2;
-            grid-column: 6/10;
-            display: flex;
-            align-content: flex-end;
-            font-size: 1.1em;
-            transform: rotate(-0deg);
-            color: white;
-            font-weight: bold;
-        }
-
-        .freesound p {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-
-        }
+    
         .source-icon{
             grid-row:1/2;
             grid-column: 2/4;
-            transform: rotate(-20deg);
+            transform: rotate(-0deg);
             text-align:center;
-            margin-left: -90px;
+            margin-left: -3px;
             margin-top:50px;
             color: var(--colorMain);
             font-size: 4.1em;
@@ -242,80 +292,6 @@
             }
         }
 
-
-
-        .bar {
-        position: relative;
-        float: left;
-        display: flex;
-        }
-
-        .first {
-        width:6px;
-        height:1px;
-        margin-top:17px;
-        background: black;
-        border-radius: 4px;
-        margin-left: 8px;
-
-        }
-
-        .second {
-        width: 2px;
-        height: 13px;
-        background: black;
-        margin-left: 3px;
-        margin-top: 10px;
-        border-radius: 4px;
-        }
-
-        .third {
-        width: 3px;
-        height: 25px;
-        background: black;
-        margin-left: 2px;
-        border-radius: 4px;
-        margin-top: 4px;
-
-        }
-
-        .fourth {
-        width: 2px;
-        height: 21px;
-        background: black;
-        margin-left: 2px;
-        margin-top: 8px;
-        border-radius: 4px;
-
-        }
-
-        .fifth {
-        width: 3px;
-        height: 27px;
-        background: black;
-        margin-left: 2px;
-        margin-top: 5px;
-        border-radius: 4px;
-
-        }
-        .sixth {
-        width: 2px;
-        height: 15px;
-        background: black;
-        margin-left: 2px;
-        margin-top: 10px;
-        border-radius: 4px;
-
-        }
-        .last {
-        width:6px;
-        height:2px;
-        margin-top:17px;
-        background: black;
-        margin-left: 3px;
-        border-radius: 4px;
-        }
-
         input[type="button"] {
             width: auto;
             height: auto;
@@ -331,10 +307,10 @@
             grid-column: 2/6;
             background: var(--background-color);
             margin-top: 10px;
-            border-radius: 2%;
+            border-radius: 10px;
             z-index:1000;
             grid-template-rows: repeat(4,1fr);
-            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
+            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 100px #ffffff;
 
         }
         #waveform {
@@ -353,8 +329,9 @@
             grid-column: 1/6;
             grid-template-columns: repeat(6,1fr);
             background: var(--background-color);
-            border-radius: 3px;
-            box-shadow: 5px -5px 200px #b3b3b3,-5px 5px 5px #ffffff;
+            border-radius: 5px;
+            box-shadow:  5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;            
             z-index: 2;
             justify-content: center;
             align-items: center;
@@ -417,8 +394,9 @@
             text-align: center;
             z-index: 1;
             background: var(--background-color);
-            box-shadow:  5px 5px 5px #babdb6;
-            }
+            box-shadow: 5px -5px 10px #c6c0c0, -5px 5px 40px #fffdfd;
+
+                                }
 
         .inner-box {
             display: flex;
@@ -465,27 +443,49 @@
             grid-template-columns: repeat(4,1fr);
             grid-template-rows: 40px repeat(2,1fr);
             border-radius: 3%;
-            background: #f2f1f1;
+            background: var(--background-color);
             box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
             margin-top: 10px;
 
         }
 
-        .adsr-filter {
+        .adsr-header {
             grid-row:1/2;
-            grid-column: 1/3;
+            grid-column: 1/5;
+            display:flex;
+            border-radius: 8px;
+            box-shadow: rgb(211, 210, 210)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
+        }
+
+        .adsr-filter {
+            width: 100%;
             text-align: center;
             border-radius: 5%;
             user-select: none;
             font-weight: none;
+            display:flex;
+            justify-content: center;
+        }
 
+        .adsr-filter p {
+            border-radius: 5px;
+            width: 100px;
+            height: 20px;
+            margin-top:10px;
         }
         .adsr-amplitude {
-            grid-row: 1/2;
-            grid-column: 3/5;
+            width: 100%;
             text-align: center;
             border-radius: 5%;
             font-weight: none;
+            display: flex;
+            justify-content: center;
+        }
+        .adsr-amplitude p {
+            border-radius: 5px;
+            width: 100px;
+            height: 20px;
+            margin-top:10px;
         }
 
         .adsr-first-knob {
@@ -513,16 +513,27 @@
 
         .knob-inner {
             display: flex;
-            align-items: center;
+            text-align: center;
             margin-left: 40px;
             width:32px;
             height: 32px;
             margin-top:-60px;
             border-radius: 50px;
-            background: linear-gradient(45deg, #dad9d9, #ffffff);
-            box-shadow:  5px -5px 6px #e3e3e3,
-                        -5px 5px 6px #ffffff;
+            background: var(--knob-inner-back);
+            box-shadow:  var(--knob-inner-shadow);
         }
+
+        .knob-1 p,
+        .knob-12 p,
+        .knob-2000 p,
+        .knob-100 p,
+        .knob-reverb p{
+            font-size: 12px;
+            width: 100px;
+            font-weight: normal;
+            font-family: var(--font-family);
+        }
+
 
         /***5px 5px 6px #9d9d9d, 5px -5px 70px #fff This is for bumpy knob? what to do**/
         .knob-circle {
@@ -535,36 +546,96 @@
         }
 
         .sound-list {
+            display:grid;
             grid-row: 3/5;
             grid-column: 6/10;
             margin-top: 10px;
             border-radius: 10px;
-            background: #f2f1f1;
+            background: var(--background-color);
+            grid-template-rows: 90.85px 30.2833px;
+            grid-template-columns: repeat(2,1fr);
             box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
         }
 
+        .sound-list-options {
+            display: flex;
+            grid-row: 2/3;
+            grid-column: 1/3;
+            width: auto;
+            height: auto;
+            background: var(--background-color);
+            border-radius: 3px;
+            box-shadow:  5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;            
+            z-index: 2;
+            justify-content: center;
+            align-items: center;
+            gap:10px;
+            font-size:10px;
+            text-align: center;
+            margin-top:2px;
+        }
+
+        .sound-list-buttons {
+            display:flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 20px;
+            border-radius: 8px;
+            background: var(--background-color);
+            box-shadow:  5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;
+            z-index: 3;
+        }
+
+        .remove-icon {
+            width: 25px;
+            height:10px;
+            border-radius: 2px;
+            background-color: purple;
+            box-shadow:  5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;
+
+        }
+
+        .remove-icon:hover,
+        .stop-icon:hover{
+            background-color: white;
+        }
+
+        .stop-icon {
+            width: 13px;
+            height:13px;
+            border-radius: 2px;
+            background-color: purple;
+            box-shadow:  5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;
+
+        }
+
+
         #sound-dropdown {
+            grid-row:1/2;
+            grid-column:1/3;
             width: 100%;
             height: 100%;
-            font-family: "Lucida Console", "Courier New", monospace;
             border: none;
             border-radius: 5%;
             background: #f2f1f1;
-            box-shadow: inset 5px -5px 10px #e3e3e3,
-                        inset -5px 5px 10px #ffffff;
 
         }
 
         p {
-            color: purple;
+            color: var(--general-color);
         }
         
         .parameter-knobs {
             display: grid;
             grid-row: 5/10;
             grid-column: 6/10;
-            grid-template-rows: repeat(10,1fr);
-            background: #f2f1f1;
+            grid-template-rows: 40px 1fr 40px 1fr 40px 1fr 1fr;
+            background: var(--background-color);
             box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
             margin-top: 10px;
             border-radius: 3%;
@@ -574,39 +645,53 @@
         .reverb-header {
             grid-row: 1/2;
             text-align: center;
-            font-size: 18px;
+            font-size: 15px;
+            
         }
 
         .reverb-knob-area {
-            grid-row: 2/4;
+            grid-row: 2/3;
             display: flex;
             align-content: center;
             gap:60px;
             margin-left: 20px;
+            padding-top: 5px;
+            padding-bottom: 5px;
         }
 
         .modulation-header {
-            grid-row:4/5;
+            grid-row:3/4;
             text-align: center;
-            font-size:18px;
+            font-size:15px;
                 }
         .modulation-knob-area {
-            grid-row: 5/7;
+            grid-row: 4/5;
             display: flex;
             gap: 65px;
             margin-left: 65px;
+            padding-top: 5px;
+            padding-bottom: 5px;
         }
         .velocity-header {
-            grid-row: 7/8;
+            grid-row: 5/6;
             text-align: center;
-            font-size: 18px;
+            font-size: 15px;
         }
         .velocity-knob-area{
-            grid-row: 8/10;
+            grid-row: 6/7;
             display: flex;
             gap: 80px;
             margin-left: 110px;
+            padding-top: 5px;
+            padding-bottom: 5px;
 
+        }
+
+        .reverb-header p,
+        .modulation-header p,
+        .velocity-header p {
+            box-shadow: rgb(234, 230, 230)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
+            border-radius: 10px;
         }
 
         #keyboard {
@@ -642,7 +727,7 @@
             border-left: 1px solid hsl(0, 0%, 84%);
             border-bottom: 1px solid hsl(0, 0%, 84%);
             border-radius: 0 0 5px 5px;
-            background: var(--background-color);
+            background: var(--white-keys);
             box-shadow:  -5px 5px 10px #e7e7e7,
                         5px -5px 10px #ffffff;
             color: var(--black-30);
@@ -733,6 +818,7 @@
                 }
             });
 
+
             $(".knob-12").knob({
                 'min':-12,
                 'max':12,
@@ -787,10 +873,8 @@
 
         //Knob parameters
         let knobParameterNamesAmp = ["attack", "decay", "sustain", "release","gain","pan", 
-                                    "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt","vel2CutoffAmt", "vel2GainAmt",
-                                "roomSize","damping","wetLevel","dryLevel"]
+                                    "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt","vel2CutoffAmt", "vel2GainAmt"]
         let knobParameterNamesFilter = ["filterAttack", "filterDecay","filterRelease","filterCutoff","filterRessonance",
-                                        "roomSize","damping","wetLevel","dryLevel",
                                         "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "vel2CutoffAmt", "vel2GainAmt"]
         //ADSR initial dictionary
         let DefaultParams = {
@@ -807,13 +891,13 @@
                 };
 
         var expStrength = 2;  // For sliders
-
+        
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
         const audioContext = new AudioContext();
-
-
-
+        
         let lastUIAction = 0;
+
+        var wavesurfer = null;
 
 
         class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
@@ -1110,7 +1194,6 @@
             setSoundParameterInt(elementName, val){
                 saveCurrentUserActionTime();
                 this.sendMessageToPlugin('/set_sound_parameter_int', [selectedSoundUUID, elementName, val]);
-                this.playSound();
             }
 
             getSoundParameterValue(soundUUID, soundParameterName){
@@ -1144,7 +1227,8 @@
                 var numSounds = document.getElementsByName('numSounds')[0].value || 16;
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength, "contiguous"])
+                //var noteLayoutType = document.getElementsByName('noteLayout')[0].value || 'contiguous';
+                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength])
             }
 
             reapplyLayout(){
@@ -1183,15 +1267,21 @@
                     //Stop the previous sound and remove it
                     ss.stopSound(playStopSoundList[0]);
                     playStopSoundList.shift();
-
                 }
+                var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
+                var samplerSounds = ss.getSoundSamplerSounds(sound);
 
+                console.log(samplerSounds);
                 this.sendMessageToPlugin('/play_sound', [selectedSoundUUID])
-
 
             }
 
             stopSound(soundUUID){
+                
+                //Kind of a hack for stopping sound from the button below sound list
+                if (soundUUID === 'stop') {
+                    var soundUUID = selectedSoundUUID;
+                }
                 this.sendMessageToPlugin('/stop_sound', [soundUUID])
             }
 
@@ -1221,6 +1311,15 @@
                     }
                 }
                 this.sendMessageToPlugin('/load_preset', [idx + 1])
+            }
+
+            setMidiRootNote(obj){
+                var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
+                var samplerSounds = ss.getSoundSamplerSounds(sound);
+                var samplerSound = samplerSounds[0];
+                console.log('midiroot',samplerSound.getAttribute('midiRootNote'));
+                var rootNote = obj.id;
+                this.sendMessageToPlugin('/note_on',[rootNote,120,0])
             }
 
             previousPreset(){
@@ -1311,9 +1410,9 @@
 
             //Initialize the ADSR Envelope
             drawAdsrEnvelope();
+            //container: document.querySelector('#waveform'),
 
-
-            });
+        });
 
         // Util methods
 
@@ -1338,6 +1437,9 @@
             //Update the sliders with the new sound
             updateAllParameterElements();
 
+            //Reset the launch mode
+            resetLaunchMode();
+
 
         };
 
@@ -1349,7 +1451,7 @@
         }
 
         function updateKnobElements(){
-
+            console.log('updating knobs');
             //A workaround for filter/amplitude ADSR selection
             if ($('#attack') !== null){
                 var iterateList = knobParameterNamesAmp;
@@ -1363,30 +1465,86 @@
             }
         }
 
-        window.onload = function(){
-            var rangeInput = document.getElementById('q-par');
-            rangeInput.addEventListener('click',function() {
-                const isInput = event.target.nodeName === 'INPUT';
-                console.log(event.target.id);
-                var rangeTextName = event.target.id;
-                var rangeText = document.getElementById('range-text-'+rangeTextName);
-                console.log('rangetext',rangeTextName);
-                let newVal = event.target.value;
-                
-                rangeText.innerHTML = newVal; //Set range text equal to input position
-
-            })
-        }
-
-        function switchColorModes(obj){
-            if($(obj).is(':checked')){
-            $('.container').css('background-color',"#1d5eb2");
-            }else {
-                $('.container').css('background-color',"#e0e0e0");
+        function updateFilterADSR(){
+            console.log('updating filter adsr vals');
+            var iterateList = ['filterAttack','filterDecay','filterRelease','filterSustain'];
+            for (var i=0; i < iterateList.length;i++){
+                var element = iterateList[i];
+                console.log('updatng', element);
+                var elementVal = ss.getSoundParameterValue(selectedSoundUUID, element);
+                $('#'+element).val(elementVal).trigger('change');
             }
 
         }
 
+        function updateAmplitudeADSR(){
+            var iterateList = ['attack','decay','release','sustain'];
+            for (var i=0; i < iterateList.length;i++){
+                var element = iterateList[i];
+                var elementVal = ss.getSoundParameterValue(selectedSoundUUID, element);
+                $('#'+element).val(elementVal).trigger('change');
+            }        }
+
+        window.onload = function(){
+            var rangeInput = document.getElementById('q-par');
+            rangeInput.addEventListener('click',function() {
+                const isInput = event.target.nodeName === 'INPUT';
+                var rangeTextName = event.target.id;
+                var rangeText = document.getElementById('range-text-'+rangeTextName);
+                if (rangeText !== null){
+                    let newVal = event.target.value;
+                    rangeText.innerHTML = newVal; //Set range text equal to input position
+                   
+                }
+            })
+        }
+
+        function updateMaxSoundLength(){
+            if ($('#minSoundLength').val() > $('#maxSoundLength').val()){
+                $('#maxSoundLength').val($('#minSoundLength')+2);
+            }
+        }
+
+        function switchColorModes(){
+            if (document.documentElement.style.getPropertyValue('--background-color') === '#f2f1f1'){
+                var newBackground = '#2e3436';
+                var newInnerKnobBack = 'linear-gradient(45deg, #636a6c, #31383a)';
+                var newInnerKnobShadow = '28px -28px 56px #1c1f20, -28px 28px 56px #40494c';
+                var newGeneralColor = 'white';
+                var newBlackKeys = 'black';
+            }else{
+                var newBackground = '#f2f1f1';
+                var newInnerKnobBack = 'linear-gradient(45deg, #dad9d9, #ffffff)';
+                var newInnerKnobShadow = '5px -5px 6px #e3e3e3,-5px 5px 6px #ffffff';
+                var newGeneralColor = 'purple';
+                var newBlackKeys = 'purple';
+            }
+            document.documentElement.style.setProperty('--background-color', newBackground);
+            document.documentElement.style.setProperty('--knob-inner-back', newInnerKnobBack);
+            document.documentElement.style.setProperty('--knob-inner-shadow', newInnerKnobShadow);
+            document.documentElement.style.setProperty('--general-color', newGeneralColor);
+            document.documentElement.style.setProperty('--black-keys',newBlackKeys);
+        }   
+
+        function updateReverseState(){
+            var val = $('#reverse').attr('value');
+            if (val === 1){
+                $('#reverse').attr('value',0);
+                ss.setSoundParameterInt('reverse',val);
+                ss.playSound();
+                ss.sendNoteOn(60);
+                return null;
+            }else{
+                $('#reverse').attr('value',1);
+                ss.setSoundParameterInt('reverse',val);
+                ss.playSound();
+                ss.sendNoteOn(60);
+                return null;
+                        }
+
+
+
+        }
         function saveCurrentUserActionTime(){
             lastUIAction = (new Date()).getTime();
         }
@@ -1541,30 +1699,59 @@
 
        function changeADSRElementId(val){
            if (val.className == 'adsr-filter'){
-               document.getElementsByClassName("adsr-filter")[0].style["fontWeight"] = "bold";
-               document.getElementsByClassName("adsr-amplitude")[0].style["fontWeight"] = "normal";
+               document.getElementsByClassName("adsr-filter")[0].style["border"] = "0.1em solid rgba(150,101,80,0.3)";
+               document.getElementsByClassName("adsr-amplitude")[0].style["border"] = "none";
                $('#attack').attr("id","filterAttack");
                $('#decay').attr("id","filterDecay");
                $('#sustain').attr("id","filterSustain");
                $('#release').attr("id", "filterRelease");
                $('#gain').attr("id","filterCutoff");
                $('#filterCutoff>p').text("Cutoff");
-               $('#filterRessonance').css('visibility','visible');
-               $('#pan').attr("id","filterADSR2CutoffAmt");
-               $('#filterADSR2CutoffAmt>p').text("CutoffAmt");
+               $('#filterCutoff').trigger('configure', {
+                'min':10,
+                'max':20000,
+               });
+               $('.filterADSR2CutoffAmt').css('visibility','visible');
+               $('#pan').attr("id","filterRessonance");
+               $('#filterRessonance').trigger('configure', {
+                'min':0,
+                'max':1,
+               });
+               $('#filterRessonance>p').text("Ressonance");
+               updateFilterADSR();
            }else{
-               document.getElementsByClassName("adsr-amplitude")[0].style["fontWeight"] = "bold";
-               document.getElementsByClassName("adsr-filter")[0].style["fontWeight"] = "normal";
+               document.getElementsByClassName("adsr-amplitude")[0].style["border"] = "0.1em solid rgba(150,101,80,0.3)";
+               document.getElementsByClassName("adsr-filter")[0].style["border"] = "none";
                $('#filterAttack').attr("id","attack");
                $('#filterDecay').attr("id","decay");
                $('#filterSustain').attr("id","sustain");
                $('#filterRelease').attr("id", "release");
                $('#filterCutoff').attr("id","gain");
+               $('#gain').trigger('configure', {
+                'min':-80,
+                'max':12,
+               });
+               
                $('#gain>p').text('Gain');
-               $('#filterRessonance').css('visibility','hidden');
-               $('#filterADSR2CutoffAmt').attr("id","pan");
+               $('.filterADSR2CutoffAmt').css('visibility','hidden');
+               $('#filterRessonance').attr("id","pan");
                $('#pan>p').text("Pan");
+               $('#pan').trigger('configure', {
+                'min':-1,
+                'max':1,
+               });
+
+               //Only update for ADSR elements should be added
+               updateAmplitudeADSR();
            }
+       }
+       function changeNoteLayout(){
+            if ($('#noteLayout p').text() === 'Continuous'){
+                var newNoteLayout = 'Interleaved';
+            }else {
+                var newNoteLayout = 'Continuous'
+            }
+            $('#noteLayout p').text(newNoteLayout);
        }
 
         var rateLimitedTimers = {};
@@ -1586,86 +1773,6 @@
             }, maxUpdateSoundRate);
         }
 
-        function updateSoundCard(soundUUID){  //sound = xml element from state
-            var sound = ss.getSoundFromSoundUUID(soundUUID);
-            if (sound === null){
-                // Sound can be null if triggering this method in a delayed way and sound does not longer exist
-                return;
-            }
-            var soundUUID = sound.getAttribute('uuid');
-            var samplerSounds = ss.getSoundSamplerSounds(sound);
-            var samplerSound = samplerSounds[0];
-            var soundCard = document.getElementById(soundUUID);
-            if (soundCard === null){
-                // Also if soundCard has not yet been created, don't continue
-                return;
-            }
-            var soundInfoElement = document.getElementById('soundCardInfo_' + soundUUID);
-            var downloadProgress = 0.0;  // Calculate download progress, take into account the case in which a sound has multiple source sampler sounds
-            for (var i=0; i<samplerSounds.length; i++){
-                var downloadCompleted = samplerSounds[i].getAttribute('downloadCompleted');
-                var progress = samplerSounds[i].getAttribute('downloadProgress');
-                if ((downloadCompleted === null) || (progress === null)){
-                    downloadProgress += 0;
-                } else {
-                    var progress;
-                    if (samplerSounds[i].getAttribute('downloadCompleted') === '1'){
-                        progress = 100.0;
-                    } else {
-                        progress = parseFloat(samplerSounds[i].getAttribute('downloadProgress'));
-                    }
-                    downloadProgress += progress;
-                }
-            }
-            downloadProgress = downloadProgress/samplerSounds.length;
-
-            var soundID = samplerSound.getAttribute('soundId');
-            var sourceSamplerSoundUUID = samplerSound.getAttribute('uuid');
-            var soundName = samplerSound.getAttribute('name');
-            if (samplerSounds.length > 1){
-                soundName = '(' + samplerSounds.length + ' sounds) ' + soundName;
-            }
-            var licenseURL = samplerSound.getAttribute('license') || "-";
-            var soundIdx = 0;
-            soundIdx = soundCard.dataset.soundIdx;
-
-            if (sound.getAttribute("allSoundsLoaded") === "1"){
-                // Sound already loaded, show all info (if it has not been already shown)
-                html = '<div class="transportSoundButtons"><button onclick="ss.playSound(\'' + soundUUID + '\')">&#x25b6</button><button onclick="ss.stopSound(\'' + soundUUID + '\')">&#x25fc</button><button onclick="ss.removeSound(\'' + soundUUID + '\')">x</button></div>';
-                html += '<h4><span id="' + soundUUID + '_idx">' + soundIdx + "</span> - " + soundID + '</h4>';
-                html += '<div class="ellipsis">' + soundName + '</div>';
-                var licenseName = "-";
-                if ( licenseURL.indexOf('/by/') > -1) {licenseName = 'CC-BY'}
-                else if ( licenseURL.indexOf('/sampling+/') > -1) {licenseName = 'S+'}
-                else if ( licenseURL.indexOf('/by-nc/') > -1) {licenseName = 'CC-BY-NC'}
-                else if ( licenseURL.indexOf('/zero/') > -1) {licenseName = 'CC0'}
-                html += '<div class="ellipsis">' + parseFloat(samplerSound.getAttribute('duration'), 10).toFixed(2) + 's | ' + licenseName + '</div>';
-                soundInfoElement.innerHTML = html;
-
-                var soundControlsElement = document.getElementById('soundCardControls_' + soundUUID);
-                if (soundControlsElement.style.display === "none") {
-                    soundControlsElement.style.display = "block";
-                }
-
-                var soundMappingsWrapperElement = document.getElementById('soundCardMappingsWrapper_' + soundUUID);
-                if (soundMappingsWrapperElement.style.display === "none") {
-                    soundMappingsWrapperElement.style.display = "block";
-                }
-
-                drawSoundWaveform(sourceSamplerSoundUUID, 'soundCardWaveform_' + soundUUID, 'waveformLoadingIndicator_' + soundUUID);
-            } else {
-                // Sound not yet loaded, show download progress
-                html = '<h4><span id="' + soundUUID + '_idx">' + soundIdx + " - " + soundID + '</h4>';
-                html += '<div class="ellipsis">' + soundName + '</div>';
-                if (downloadProgress === 100.0){
-                    html += '<div>Loading in sampler...</div>';
-                } else if (downloadProgress >= 0.0) {
-                    html += '<div style="background: linear-gradient(to right, #4eb8a4 ' + downloadProgress + '%, black ' + downloadProgress + '%);">&nbsp;Downloading: ' + parseFloat(downloadProgress).toFixed(2) + '% </div>';
-                }
-                soundInfoElement.innerHTML = html;
-            }
-        }
-
 
         function updateMainPresetParameters(){
             var sourceState = ss.state.getElementsByTagName('SOURCE_STATE')[0];
@@ -1678,6 +1785,10 @@
 
         }
 
+        function resetLaunchMode(){
+            $("#outer-box-launch > #inner-box-launch > p").text('gate');
+        }
+
         function updateLaunchMode(obj) {
             var currentMode = $("#outer-box-launch > #inner-box-launch > p").text();
             var currentModeIndex = launchModes.indexOf(currentMode.toLowerCase());
@@ -1686,24 +1797,73 @@
             //Get the direction of arrow
             var direction = obj.className;
             if (direction == 'left-arrow-inner'){
-                nextModeIndex = currentModeIndex - 1;
-                if (nextModeIndex < 0) {
-                    nextModeIndex = 3;
-                }
+                    nextModeIndex = currentModeIndex - 1;
+                    if (nextModeIndex < 0) {
+                        nextModeIndex = 3;
+                    }
 
-            }else{
-                nextModeIndex = currentModeIndex + 1;
-                if (nextModeIndex == 4) {
-                    nextModeIndex = 0;
+                }else{
+                    nextModeIndex = currentModeIndex + 1;
+                    if (nextModeIndex == 4) {
+                        nextModeIndex = 0;
+                    }
                 }
+            //If the mode is gate or trigger, play all sound
+
+                        
+            var newText = launchModes[nextModeIndex];
+            if (['trigger','gate'].includes(newText)){
+                wavesurfer.regions.clear();
+                ss.setSoundParameter('startPosition',0,0,1);
+                ss.setSoundParameter('endPosition',1,0,1);
+                ss.playSound();
             }
 
-            var newText = launchModes[nextModeIndex];
+            if (['loop','loopfb'].includes(newText)){
+                wavesurfer.regions.clear();
+                //Get the duration to create fitting region
+                var soundLength = wavesurfer.backend.getDuration();
+                wavesurfer.addRegion({ 
+                                start: 0,
+                                end: soundLength/4,
+                                loop: false,
+                                color: 'hsla(400, 100%, 30%, 0.5)'
+                                    })
+            
+            wavesurfer.on('region-updated', region =>{
+
+                    //Set the start and end of the looped sound
+                    ss.setSoundParameter('startPosition', region.start/soundLength,0,1);
+                    ss.setSoundParameter('endPosition', region.end/soundLength,0,1);
+                    ss.setSoundParameter('loopStartPosition', region.start/soundLength,0,1);
+                    ss.setSoundParameter('loopEndPosition', region.end/soundLength,0,1);
+                    ss.playSound();
+
+            })
+            }
+
             $("#outer-box-launch > #inner-box-launch > p").text(newText);
             ss.setSoundParameterInt('launchMode', nextModeIndex);
 
         }
 
+        function removeSoundFromList(){
+
+            //Stop the sound first
+            ss.stopSound(selectedSoundUUID);
+
+            var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
+            var samplerSounds = ss.getSoundSamplerSounds(sound);
+            var samplerSound = samplerSounds[0];
+            //Remove the sound from sound list
+            console.log($("select#sound-dropdown option").filter(":contains('" + samplerSound.getAttribute('name')+"')"));
+            $("select#sound-dropdown option").filter(":contains('" + samplerSound.getAttribute('name')+"')").remove();
+
+            //Remove the sound from state
+            ss.removeSound(selectedSoundUUID);
+
+            
+        }
         function updateSoundList(soundUUID){
             var sound = ss.getSoundFromSoundUUID(soundUUID);
 
@@ -1743,6 +1903,13 @@
             var VolatileState = ss.volatileState.getElementsByTagName('VOLATILE_STATE')[0];
 
             var isQuerying = VolatileState.getAttribute('isQuerying') != "0";
+            var queryingIndicator = document.getElementById('query-indicator');
+            if (isQuerying){
+                queryingIndicator.classList.add('query-animation');
+            } else {
+                queryingIndicator.classList.remove('query-animation');
+            }
+            
 
 
             var voicesStateElement = document.getElementById('voicesState');
@@ -1777,7 +1944,6 @@
         }
 
        function drawSoundWaveform(){
-            console.log("draw",selectedSoundUUID);
             var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
             var samplerSound = ss.getSoundSamplerSounds(sound);
             var sourceSamplerSoundUUID = samplerSound[0].getAttribute('uuid');
@@ -1792,7 +1958,7 @@
 
                         //Remove the previous sounds wave element
                         $('wave').remove();
-                        var wavesurfer = WaveSurfer.create({
+                        wavesurfer = WaveSurfer.create({        
                                                     container: document.querySelector('#waveform'),
                                                     waveColor: 'purple',
                                                     progressColor: 'aqua',
@@ -1800,46 +1966,14 @@
                                                     cursorWidth: 2,
                                                     responsive: 'true',
                                                     height: '100',
-                                                    plugins: [
-                                                        WaveSurfer.regions.create({ 
-                                                            regionsMinLength: 0.01,
-                                                            regions: [
-                                                            {
-                                                                loop: true,
-                                                                color: 'hsla(400, 100%, 30%, 0.9)',
-                                                                maxLength: 2,
-                                                            },
-                                                        ],
-                                                        dragSelection: {
-                                                            slop: 1
-                                                        }
-                                                        })
+                                                    plugins: [ WaveSurfer.regions.create({})
                                                     ]
 
                                         });
+                    wavesurfer.load(url);
 
-                        // Limit the region element to 1
-                        wavesurfer.on('region-created', region => {  
-                                wavesurfer.regions.clear();
-                            });
-                        wavesurfer.load(url);
 
-                        wavesurfer.on('region-updated', region =>{
-                            var launchMode = $('#outer-box-launch > #inner-box-launch p').text();
-                            if (launchMode == 'loop' || launchMode == 'loopfb'){
-                                //Get the duration of the sound
-                                var soundLength = wavesurfer.backend.getDuration();
-                                
-
-                                //Stop the previous sound
-                                ss.stopSound();
-
-                                //Set the start and end of the looped sound
-                                ss.setSoundParameter('loopStartPosition', region.start/soundLength,0,1);
-                                ss.setSoundParameter('loopEndPosition', region.end/soundLength,0,1);
-                            }
-
-                        })
+                       
 
                     }
                 }
@@ -1955,27 +2089,24 @@
 
     <div class="container">
         <div class="source-icon">SOURCE</div>
-        <div class="freesound">
-            <p>A freesound community sampler</p>
-        </div>
         <div class="query-parameters">
             <div class="query-search">
-                <input name="query" value="" type="search" placeholder="piano" class="query-text" />
+                <div class="query-text">
+                <input name="query" value="" type="search" placeholder="piano" />
+            </div>
                 <div class="query-button"  onclick="ss.addSoundsByQuery()">
-                    <li class="bar first"></li>
-                    <li class="bar second"></li>
-                    <li class="bar third"></li>
-                    <li class="bar fourth"></li>
-                    <li class="bar fifth"></li>
-                    <li class="bar sixth"></li>
-                    <li class="bar last"></li>
+                    <div class="query-icon">
+                    <svg id="query-indicator" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4d2d2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                  </div>                
                 </div>
             </div>
             <div id="q-par">
-                <div class="slider-regular">
-                    <input  id="numSounds" name="numSounds" type="range" min="1" max="60" value="1" step="1" placeholder="Number of Sounds"/>
-                    <div class="range-text" id="range-text-numSounds">1</div>
-                </div>
+                    <div class="slider-regular">
+                        <input  id="numSounds" name="numSounds" type="range" min="1" max="60" value="1" step="1" placeholder="Number of Sounds"/>
+                        <div class="range-text" id="range-text-numSounds">1</div>
+                    </div>
                     <div class="slider-regular">
                     <input id="minSoundLength" name="minSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
                     <div class="range-text" id="range-text-minSoundLength">1</div>
@@ -1984,8 +2115,8 @@
                     <input id="maxSoundLength" name="maxSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
                     <div class="range-text" id="range-text-maxSoundLength">1</div>
                 </div>
-                <div class="slider-regular">
-                    Continuous
+                <div class="slider-regular" onclick="changeNoteLayout();" id="noteLayout">
+                    <p>Continuous</p>
                 </div>
             </div>
         </div>
@@ -2009,16 +2140,17 @@
             <canvas id="adsr-envelope" style="background-color: antiquewhite;"></canvas>
         </div>
         <div class="adsr-envelope-knobs">
+            <div class="adsr-header">
             <div class="adsr-filter" onclick="changeADSRElementId(this);">
                 <p>Filter</p>
             </div>
             <div class="adsr-amplitude" onclick="changeADSRElementId(this);">
                 <p>Amplitude</p>
             </div>
+        </div>
             <div class="adsr-first-knob">
             <div class="knob-1" id="attack">
-                <div class="knob-inner">
-                </div>
+                <div class="knob-inner"></div>
                 <p>attack</p>
             </div>
             <div class="knob-1" id="decay">
@@ -2031,21 +2163,23 @@
             </div>
             <div class="knob-1" id="release">
                 <div class="knob-inner"></div>
-                <p>release</p>
+                <p style="margin-left:10px;">release</p>
             </div>
         </div>
         <div class="adsr-second-knob">
             <div class="knob-2000" id="filterCutoff">
                 <div class="knob-inner"></div>
-                <p>Cutoff</p>
+                <p style="margin-left:10px;">cutoff</p>
             </div>
-            <div class="knob-1" id="filterRessonance">
-                <div class="knob-inner"></div>
-                <p>Ressonance</p>
-            </div>
+            <div class="filterADSR2CutoffAmt">
             <div class="knob-100" id="filterADSR2CutoffAmt">
                 <div class="knob-inner"></div>
-                <p>Cutoff Amount</p>
+                <p>cutoff amount</p>
+            </div>
+        </div>
+            <div class="knob-1" id="filterRessonance">
+                <div class="knob-inner"></div>
+                <p>ressonance</p>
             </div>
         </div>
 
@@ -2053,6 +2187,17 @@
         <div class="sound-list">
             <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="updateGlobalSoundUUID();">
             </select>
+            <div class="sound-list-options">
+                <div class="sound-list-buttons" onlick="switchColorModes();">
+                    <div class="stop-icon" onclick="ss.stopSound('stop');"></div>
+                </div>
+                <div class="sound-list-buttons">
+                    <div class="remove-icon" onclick="removeSoundFromList();"></div>
+                </div>
+                <div class="sound-list-buttons" id="reverse" value="0" onclick="updateReverseState(this);">
+                    Reverse
+                </div>
+            </div>
         </div>
         <div class="parameter-knobs">
             <div class="reverb-header">
@@ -2061,7 +2206,7 @@
             <div class="reverb-knob-area">
                 <div class="knob-reverb" id="roomSize">
                     <div class="knob-inner"></div>
-                    <p>Room Size</p>
+                    <p>room</p>
                 </div>
                 <div class="knob-reverb" id="damping">
                     <div class="knob-inner"></div>
@@ -2069,11 +2214,11 @@
                 </div>
                 <div class="knob-reverb" id="wetLevel">
                     <div class="knob-inner"></div>
-                    <p>Wet Level</p>
+                    <p>wet</p>
                 </div>
                 <div class="knob-reverb" id="dryLevel">
                     <div class="knob-inner"></div>
-                    <p>Dry Level</p>
+                    <p>dry</p>
                 </div>
             </div>
             <div class="modulation-header">
@@ -2108,28 +2253,28 @@
             </div>
         </div>
             <ul id="keyboard">
-                <li note="C" class="white-key"></li>
-                <li note="C#" class="black-key"></li>
-                <li note="D" class="white-key offset"></li>
-                <li note="D#" class="black-key"></li>
-                <li note="E" class="white-key offset"></li>
-                <li note="F" class="white-key"></li>
-                <li note="F#" class="black-key"></li>
-                <li note="G" class="white-key offset"></li>
-                <li note="G#" class="black-key"></li>
-                <li note="A" class="white-key offset"></li>
-                <li note="A#" class="black-key"></li>
-                <li note="B" class="white-key offset"></li>
-                <li note="C2" class="white-key"></li>
-                <li note="C#2" class="black-key"></li>
-                <li note="D2" class="white-key offset"></li>
-                <li note="D#2" class="black-key"></li>
-                <li note="E2" class="white-key offset"></li>
-                <li note="C" class="white-key"></li>
-                <li note="C#" class="black-key"></li>
-                <li note="D" class="white-key offset"></li>
-                <li note="D#" class="black-key"></li>
-                <li note="E" class="white-key offset"></li>
+                <li note="C" id="60" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C#" id="61" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D" id="62" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D#" id="63" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="E" id="64" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="F" id="65" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="F#" id="66" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="G" id="67" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="G#" id="68" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="A" id="69" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="A#" id="70" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="B" id="71" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C2" id="72" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C#2" id="73" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D2" id="74" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D#2" id="75" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="E2" id="76" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C" id="77" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C#" id="78" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D" id="79" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="D#" id="80" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="E" id="100" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
 
             </ul>
             <div class="pitch-section">
