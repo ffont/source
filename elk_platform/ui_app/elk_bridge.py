@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 SOURCE_TRACK_ID = 0
 BUTTON_LONG_PRESS_TIME = 0.25
 BUTTON_DOUBLE_PRESS_TIME = 0.2
+INITIAL_GAIN = 0.7
 
 
 class ElkBridge(object):
@@ -61,7 +62,7 @@ class ElkBridge(object):
                 # Set init gain to high number
                 controller_id = SOURCE_TRACK_ID
                 param_id = 0  # Gain
-                self.sushic.parameters.set_parameter_value(controller_id, param_id, 0.92)
+                self.sushic.parameters.set_parameter_value(controller_id, param_id, INITIAL_GAIN)
                 print("Initialized SushiController")
             except Exception as e:
                 print('ERROR initializing SushiController: {0}'.format(e))

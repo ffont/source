@@ -33,7 +33,7 @@
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
-#define ELK_SOURCE_TMP_LOCATION "/udata/source/tmp/"
+#define ELK_SOURCE_TMP_LOCATION "/tmp/source/"
 
 #define OSC_LISTEN_PORT 9001
 #define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
