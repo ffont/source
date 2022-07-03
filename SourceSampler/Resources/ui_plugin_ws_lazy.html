@@ -22,6 +22,19 @@
             --general-color : purple;
             --white-keys: #f2f1f1;
             --black-keys: purple;
+            --sound-list-buttons: 5px -5px 10px #d3d2d2,
+                        -5px 5px 10px #ffffff;
+            --parameter-knobs-shadow: -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
+            --parameter-header-shadow: 5px -5px 2px #ececec, -5px 5px 17px #fff;
+            --slider-thumb-shadow: -5px 5px 10px #c2c1c1,5px -5px 10px #ffffff;
+            --query-button-shadow: 3px -3px 6px #d3d2d2, -3px 3px 6px #ffffff;
+            --waveform-soundlist-shadow: -5px -5px 0px #d4d2d2,5px 5px 100px #ffffff;
+            --launch-mode-shadow:  5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff; 
+            --parameter-knob-background: #f2f1f1;
+            --outer-box-shadow: 5px -5px 10px #c6c0c0, -5px 5px 40px #fffdfd;
+            --adsr-header-shadow: rgb(211, 210, 210)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
+            --query-text-shadow: inset 5px -5px 10px #dcdbdb,inset -5px 5px 10px #ffffff;
+            --slider-track-shadow: -5px 5px 10px #c2c1c1,5px -5px 10px #ffffff;
         }
 
         body {
@@ -41,14 +54,14 @@
              5px 5px 10px #5a5a5a;
         border-radius: 10px;
         grid-template-columns: repeat(10,1fr);
-        grid-template-rows: 10px repeat(10,1fr) 30px;
+        grid-template-rows: 1px repeat(10,1fr) 30px;
         grid-template-areas:
             "header header header header"
             "main main . sidebar"
             "footer footer footer footer";
         column-gap: 10px;
         background-color:var(--background-color);
-        height: 850px;
+        height: 900px;
         width: 1000px;
         margin-top:  80px;
         margin-bottom: 100px;
@@ -105,8 +118,8 @@
             height: 30px;
             border-radius: 5px;
             background-color: var(--background-color);
-            box-shadow: inset 5px -5px 10px #dcdbdb,
-            inset -5px 5px 10px #ffffff;
+            box-shadow: var(--query-text-shadow);
+
         }
 
         input[type="search"]{
@@ -125,8 +138,7 @@
             height: 30px ;
             border-radius: 8px;
             background: var(--background-color);
-            box-shadow:  3px -3px 6px #d3d2d2,
-                        -3px 3px 6px #ffffff;
+            box-shadow: var(--query-button-shadow);
             justify-content: center;
             align-items: center;
                     }
@@ -168,9 +180,8 @@
             text-align: center;
             justify-content: center;
             border-radius: 5px;
-            background: #f2f1f1;
-            box-shadow:  -5px 5px 10px #c2c1c1,
-             5px -5px 10px #ffffff;
+            background: var(--background-color);
+            box-shadow:  var(--slider-track-shadow);
         }
 
         .slider-regular p{
@@ -202,7 +213,8 @@
             border-radius: 3px;
             height: 60px;
             width: 20px;
-            background: #f2f1f1;
+            background: var(--background-color);
+            box-shadow:  var(--slider-thumb-shadow);
             cursor: pointer;
             }
         input[type="range"]::-moz-range-thumb {
@@ -213,15 +225,14 @@
             height: 30px;
             width: 20px;
             border: none;
-            box-shadow:  -5px 5px 10px #c2c1c1,
-             5px -5px 10px #ffffff;
-            background: #f2f1f1;
+            box-shadow:  var(--slider-thumb-shadow);
+            background: var(--background-color);
             cursor: pointer;
             }
         .range-text {
                 position: absolute;
                 top: 4px;
-                font-family: "Lucida Console", "Courier New", monospace;;
+                font-family: "Lucida Console", "Courier New", monospace;
                 user-select: none;
                 display: flex;
                 justify-content: center;
@@ -245,7 +256,7 @@
         :root {
         --colorMain: white;
         --brShadow: -6px 6px 15px rgb(80, 1, 80);
-        --tlShadow: 6px -6px 15px rgb(255, 234, 0);
+        --tlShadow: 6px -6px 15px rgb(238, 197, 182);
         }
 
     
@@ -310,7 +321,7 @@
             border-radius: 10px;
             z-index:1000;
             grid-template-rows: repeat(4,1fr);
-            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 100px #ffffff;
+            box-shadow:  var(--waveform-soundlist-shadow);
 
         }
         #waveform {
@@ -330,8 +341,7 @@
             grid-template-columns: repeat(6,1fr);
             background: var(--background-color);
             border-radius: 5px;
-            box-shadow:  5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;            
+            box-shadow: var(--launch-mode-shadow);           
             z-index: 2;
             justify-content: center;
             align-items: center;
@@ -394,7 +404,7 @@
             text-align: center;
             z-index: 1;
             background: var(--background-color);
-            box-shadow: 5px -5px 10px #c6c0c0, -5px 5px 40px #fffdfd;
+            box-shadow: var(--outer-box-shadow);
 
                                 }
 
@@ -444,17 +454,17 @@
             grid-template-rows: 40px repeat(2,1fr);
             border-radius: 3%;
             background: var(--background-color);
-            box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
+            box-shadow:  var(--parameter-knobs-shadow);
             margin-top: 10px;
 
         }
 
         .adsr-header {
             grid-row:1/2;
-            grid-column: 1/5;
+            grid-column: 1/6;
             display:flex;
             border-radius: 8px;
-            box-shadow: rgb(211, 210, 210)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
+            box-shadow: var(--adsr-header-shadow);
         }
 
         .adsr-filter {
@@ -552,28 +562,23 @@
             margin-top: 10px;
             border-radius: 10px;
             background: var(--background-color);
-            grid-template-rows: 90.85px 30.2833px;
+            grid-template-rows:  repeat(4,1fr);
             grid-template-columns: repeat(2,1fr);
-            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
+            box-shadow: var(--waveform-soundlist-shadow);
         }
 
         .sound-list-options {
             display: flex;
-            grid-row: 2/3;
-            grid-column: 1/3;
-            width: auto;
-            height: auto;
+            grid-row: 4/5;
+            grid-column: 1/4;
+            height: 100%;
+            grid-template-columns: repeat(6,1fr);
             background: var(--background-color);
-            border-radius: 3px;
-            box-shadow:  5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;            
+            border-radius: 5px;
+            box-shadow: var(--launch-mode-shadow);           
             z-index: 2;
             justify-content: center;
             align-items: center;
-            gap:10px;
-            font-size:10px;
-            text-align: center;
-            margin-top:2px;
         }
 
         .sound-list-buttons {
@@ -584,8 +589,7 @@
             height: 20px;
             border-radius: 8px;
             background: var(--background-color);
-            box-shadow:  5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;
+            box-shadow:  var(--sound-list-button);
             z-index: 3;
         }
 
@@ -616,13 +620,13 @@
 
 
         #sound-dropdown {
-            grid-row:1/2;
+            grid-row:1/4;
             grid-column:1/3;
             width: 100%;
             height: 100%;
             border: none;
             border-radius: 5%;
-            background: #f2f1f1;
+            background: transparent;
 
         }
 
@@ -634,9 +638,9 @@
             display: grid;
             grid-row: 5/10;
             grid-column: 6/10;
-            grid-template-rows: 40px 1fr 40px 1fr 40px 1fr 1fr;
-            background: var(--background-color);
-            box-shadow:  -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
+            grid-template-rows: 40px 65px 40px 65px 40px 65px;
+            background: var(--parameter-knob-background);
+            box-shadow:  var(--parameter-knobs-shadow);
             margin-top: 10px;
             border-radius: 3%;
             row-gap: 5px;
@@ -646,7 +650,10 @@
             grid-row: 1/2;
             text-align: center;
             font-size: 15px;
-            
+            display:flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .reverb-knob-area {
@@ -663,7 +670,12 @@
             grid-row:3/4;
             text-align: center;
             font-size:15px;
+            display:flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
                 }
+
         .modulation-knob-area {
             grid-row: 4/5;
             display: flex;
@@ -674,6 +686,9 @@
         }
         .velocity-header {
             grid-row: 5/6;
+            display:flex;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             font-size: 15px;
         }
@@ -690,8 +705,11 @@
         .reverb-header p,
         .modulation-header p,
         .velocity-header p {
-            box-shadow: rgb(234, 230, 230)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
-            border-radius: 10px;
+            box-shadow: var(--parameter-header-shadow);
+            border-radius: 5px;
+            width:150px;
+            height: 20px;
+
         }
 
         #keyboard {
@@ -712,6 +730,14 @@
             border-radius: 0 5px 5px 5px;
             }
 
+        .keyboard-arrow {
+            border-radius: 25px;
+            width:25px;
+            height: 25px;
+            background-color: var(--background-color);
+            box-shadow:  6px 6px 12px #cecdcd,
+             -6px -6px 12px #ffffff;
+        }
         .white-key,
         .black-key {
             position: relative;
@@ -720,9 +746,13 @@
             user-select: none;
             cursor: pointer;
         }
+
+        .white-key:hover {
+            box-shadow:  -5px 5px 10px #bdb9b9, 5px -5px 10px #bdb9b9;
+        }
         .white-key {
             height: 7.5rem;
-            width: 3.0rem;
+            width: 2.8rem;
             z-index: 1;
             border-left: 1px solid hsl(0, 0%, 84%);
             border-bottom: 1px solid hsl(0, 0%, 84%);
@@ -738,11 +768,11 @@
             width: 1.5em;
             margin: 0 0 0 -1rem;
             z-index: 2;
-            border: 1px solid purple;
+            border: 1px solid var(--black-keys);
             border-radius: 0 0 3px 3px;
             box-shadow: -1px -1px 2px var(--white-20) inset,
                 0 -5px 2px 3px var(--black-60) inset, 0 2px 4px var(--black-50);
-            background: linear-gradient(45deg, hsl(0, 95%, 22%) 0%, hsl(0, 89%, 29%) 100%);
+            background: var(--black-keys);
             color: var(--white-50);
             }
             .offset {
@@ -863,6 +893,9 @@
 
         //Sound list for play and remove
         let playStopSoundList = [];
+
+        //Midi note list to stop previous one
+        let midiOnOffList = [];
 
         //ADSR lists
         let adsrList = ["attack","decay","release","sustain", "filterAttack","filterDecay","filterRelease","filterSustain"]
@@ -1227,12 +1260,11 @@
                 var numSounds = document.getElementsByName('numSounds')[0].value || 16;
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-                //var noteLayoutType = document.getElementsByName('noteLayout')[0].value || 'contiguous';
-                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength])
+                var noteLayoutType = $('#noteLayout p').text(); 
+                this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength,noteLayoutType])
             }
 
-            reapplyLayout(){
-                var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
+            reapplyLayout(noteMappingType){
                 this.sendMessageToPlugin('/reapply_layout', [noteMappingType]);
             }
 
@@ -1313,14 +1345,14 @@
                 this.sendMessageToPlugin('/load_preset', [idx + 1])
             }
 
-            setMidiRootNote(obj){
-                var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
-                var samplerSounds = ss.getSoundSamplerSounds(sound);
-                var samplerSound = samplerSounds[0];
-                console.log('midiroot',samplerSound.getAttribute('midiRootNote'));
-                var rootNote = obj.id;
-                this.sendMessageToPlugin('/note_on',[rootNote,120,0])
+            sendMidiNoteOn(rootNote){
+                this.sendMessageToPlugin('/note_on',[rootNote, 120, 0]);
             }
+
+            sendMidiNoteOff(rootNote){
+                this.sendMessageToPlugin('/note_off', [rootNote, 120, 0]);
+            }
+
 
             previousPreset(){
                 var idx = document.getElementsByName('presetIdx')[0].value;
@@ -1337,6 +1369,14 @@
                     idx = 1; //Will become 0 when subtracted 1
                 }
                 this.sendMessageToPlugin('/load_preset', [idx - 1])
+            }
+
+            rootNote(){
+                var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
+                var samplerSounds = ss.getSoundSamplerSounds(sound);
+                var samplerSound = samplerSounds[0];
+                this.sendMessageToPlugin('/set_sampler_sound_root_note',[selectedSoundUUID,samplerSound.getAttribute('uuid'),60]);
+
             }
 
 
@@ -1410,18 +1450,53 @@
 
             //Initialize the ADSR Envelope
             drawAdsrEnvelope();
-            //container: document.querySelector('#waveform'),
+            
+            //Remove all the sounds from previous session
+            ss.clearAllSounds();
 
         });
 
         // Util methods
 
-        function integerToRadius(){
+        function updateOctave(obj){
+                var octaveVal = obj.value;
+                var keyboardParent = document.getElementById('keyboard');
+                var keyboardOctaveVal = keyboardParent.children[0].textContent.split("")[1];
+                    for(var i=0; i < keyboardParent.children.length; i++){
+                        keyboardParent.children[i].id = 12 * (parseInt(octaveVal) + 2) + i;
+                    }        
+                
+                keyboardParent.children[0].textContent = "C"+octaveVal;
+                keyboardParent.children[12].textContent = "C"+(parseInt(octaveVal)+1);
+                
+            }
 
-        }
+        function sendMidiMessage(obj){
+            var midiNote = obj.id;
 
-        function radiusToInteger() {
+            var launchMode = $("#outer-box-launch > #inner-box-launch > p").text();
             
+            //If mode is gate, the sound should stop as soon as key is released
+            if (launchMode === "gate"){ 
+            $('#'+obj.id).mousedown(function(){
+                    ss.sendMidiNoteOn(midiNote); 
+                    int00 = setInterval(function() { console.log('hold..'); }, 50);
+                }).mouseup(function() {
+                    clearInterval(int00);
+                    ss.sendMidiNoteOff(midiNote);
+                });
+            }else{
+                midiOnOffList.push(midiNote);
+
+
+                if (midiOnOffList.length > 1) {
+                    //Stop the previous sound and remove it
+                    ss.sendMidiNoteOff(midiOnOffList[0]);
+                    midiOnOffList.shift();
+                }
+                ss.sendMidiNoteOn(midiNote);
+            }
+        
         }
 
         function updateGlobalSoundUUID(){
@@ -1440,7 +1515,7 @@
             //Reset the launch mode
             resetLaunchMode();
 
-
+            //Set midi root of the selected sound
         };
 
         function updateAllParameterElements(){
@@ -1451,7 +1526,6 @@
         }
 
         function updateKnobElements(){
-            console.log('updating knobs');
             //A workaround for filter/amplitude ADSR selection
             if ($('#attack') !== null){
                 var iterateList = knobParameterNamesAmp;
@@ -1466,11 +1540,9 @@
         }
 
         function updateFilterADSR(){
-            console.log('updating filter adsr vals');
             var iterateList = ['filterAttack','filterDecay','filterRelease','filterSustain'];
             for (var i=0; i < iterateList.length;i++){
                 var element = iterateList[i];
-                console.log('updatng', element);
                 var elementVal = ss.getSoundParameterValue(selectedSoundUUID, element);
                 $('#'+element).val(elementVal).trigger('change');
             }
@@ -1507,23 +1579,76 @@
 
         function switchColorModes(){
             if (document.documentElement.style.getPropertyValue('--background-color') === '#f2f1f1'){
-                var newBackground = '#2e3436';
-                var newInnerKnobBack = 'linear-gradient(45deg, #636a6c, #31383a)';
-                var newInnerKnobShadow = '28px -28px 56px #1c1f20, -28px 28px 56px #40494c';
+                var newBackground = '#3e424a';
+                var newInnerKnobBack = 'linear-gradient(145deg, #42474f, #383b43)';
+                var newInnerKnobShadow = '8px -8px 16px #191a1e,-8px 8px 16px #636a76';
                 var newGeneralColor = 'white';
                 var newBlackKeys = 'black';
+                var newSoundListButton = "6px 6px 13px #222321,-6px -6px 13px #888b85";
+                var newParameterKnobShadow = "-5px 5px 10px #33363d,5px -5px 10px #494e57";
+                var newParameterHeaderShadow = "8px -8px 16px #1b1f20,-8px 8px 16px #41494c";
+                var newSliderThumbShadow = "5px 5px 15px #25272c,-5px -5px 15px #575d68";
+                var newQueryButtonShadow = "8px -8px 16px #1b1f20,-8px 8px 16px #41494c";
+                var newWaveformShadow = "inset 6px -6px 12px #272c2e,inset -6px 6px 12px #353c3e";
+                var newLaunchModeShadow = "12px -12px 31px #262b2c,-12px 12px 31px #363d40";
+                var newBrShadow = "-6px 6px 15px rgb(1600, 120, 255)";
+                var newtlShadow = "6px -6px 15px rgb(0, 10, 255)";
+                var newParameterKnobBackground = "linear-gradient(225deg, #42474f, #383b43)";
+                var newLaunchOuterBoxShadow = "-5px -5px 10px #222429,5px 5px 10px #5a606b";
+                var newAdsrHeaderShadow ="-5px -5px 10px #222429,5px 5px 10px #5a606b";
+                var newQueryTextShadow = "inset 5px 5px 3px #35383f,inset -5px -5px 3px #474c55";
+                var newSliderTrackShadow = "9px 9px 18px #33363d,-9px -9px 18px #494e57";
+                console.log('dark mode');
+                $(".knob-1,.knob-100,.knob-12,.knob-2000,.knob-reverb").trigger('configure', 
+                {
+                'fgColor': 'cyan',
+                'bgColor':'yellow',
+                }
+                );
+           
             }else{
                 var newBackground = '#f2f1f1';
                 var newInnerKnobBack = 'linear-gradient(45deg, #dad9d9, #ffffff)';
                 var newInnerKnobShadow = '5px -5px 6px #e3e3e3,-5px 5px 6px #ffffff';
                 var newGeneralColor = 'purple';
                 var newBlackKeys = 'purple';
+                var newSoundListButton = "5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff";
+                var newParameterKnobShadow = "-5px 5px 10px #eaeaea, 5px -5px 10px #ffffff";
+                var newParameterHeaderShadow = "5px -5px 2px #ececec, -5px 5px 17px #fff";
+                var newQueryButtonShadow = "3px -3px 6px #d3d2d2,-3px 3px 6px #ffffff";
+                var newWaveformShadow = "-5px -5px 0px #d4d2d2,5px 5px 100px #ffffff";
+                var newLaunchModeShadow = "5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff";
+                var newBrShadow = "-6px 6px 15px rgb(80, 1, 80)";
+                var newtlShadow = "6px -6px 15px rgb(238, 197, 182)";
+                var newParameterKnobBackground = "#f2f1f1";
+                var newLaunchOuterBoxShadow = "5px -5px 10px #c6c0c0, -5px 5px 40px #fffdfd";
+                var newAdsrHeaderShadow = "rgb(211, 210, 210)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px";
+                var newQueryTextShadow = "inset 5px -5px 10px #dcdbdb,inset -5px 5px 10px #ffffff";
+                var newSliderTrackShadow = " -5px 5px 10px #32353b,5px -5px 10px #4a4f59";
+                var newSliderThumbShadow = "-5px 5px 10px #c2c1c1,5px -5px 10px #ffffff";
+
+
             }
             document.documentElement.style.setProperty('--background-color', newBackground);
             document.documentElement.style.setProperty('--knob-inner-back', newInnerKnobBack);
             document.documentElement.style.setProperty('--knob-inner-shadow', newInnerKnobShadow);
             document.documentElement.style.setProperty('--general-color', newGeneralColor);
             document.documentElement.style.setProperty('--black-keys',newBlackKeys);
+            document.documentElement.style.setProperty('--sound-list-button',newSoundListButton);
+            document.documentElement.style.setProperty('--parameter-knobs-shadow',newParameterKnobShadow);
+            document.documentElement.style.setProperty('--parameter-header-shadow',newParameterHeaderShadow);
+            document.documentElement.style.setProperty('--query-button-shadow', newQueryButtonShadow);
+            document.documentElement.style.setProperty('--waveform-soundlist-shadow', newWaveformShadow);
+            document.documentElement.style.setProperty('--launch-mode-shadow',newLaunchModeShadow);
+            document.documentElement.style.setProperty('--brShadow',newBrShadow);
+            document.documentElement.style.setProperty('--tlShadow', newtlShadow);
+            document.documentElement.style.setProperty('--parameter-knob-background', newParameterKnobBackground);
+            document.documentElement.style.setProperty('--outer-box-shadow', newLaunchOuterBoxShadow);
+            document.documentElement.style.setProperty('--adsr-header-shadow',newAdsrHeaderShadow);
+            document.documentElement.style.setProperty('--query-text-shadow', newQueryTextShadow);
+            document.documentElement.style.setProperty('--slider-track-shadow', newSliderTrackShadow);
+            document.documentElement.style.setProperty('--slider-thumb-shadow', newSliderThumbShadow);
+
         }   
 
         function updateReverseState(){
@@ -1532,13 +1657,11 @@
                 $('#reverse').attr('value',0);
                 ss.setSoundParameterInt('reverse',val);
                 ss.playSound();
-                ss.sendNoteOn(60);
                 return null;
             }else{
                 $('#reverse').attr('value',1);
                 ss.setSoundParameterInt('reverse',val);
                 ss.playSound();
-                ss.sendNoteOn(60);
                 return null;
                         }
 
@@ -1746,32 +1869,15 @@
            }
        }
        function changeNoteLayout(){
-            if ($('#noteLayout p').text() === 'Continuous'){
-                var newNoteLayout = 'Interleaved';
+            if ($('#noteLayout p').text() === 'contiguous'){
+                var newNoteLayout = 'interleaved';
             }else {
-                var newNoteLayout = 'Continuous'
+                var newNoteLayout = 'contiguous';
             }
             $('#noteLayout p').text(newNoteLayout);
+
+            ss.reapplyLayout(newNoteLayout);
        }
-
-        var rateLimitedTimers = {};
-        var lastTimeFunctionCalled = {};
-        var maxUpdateSoundRate = 100;
-        function triggerRateLimitedUpdateSoundCard(soundUUID){
-            // Use this function to reduce the rate of the calls to updateSoundCard
-            // It can happen that when many properties change, we call updateSoundCard many times. Using this function this will be reduced.
-            if ((lastTimeFunctionCalled[soundUUID] === undefined) || (Date.now() - lastTimeFunctionCalled[soundUUID] > maxUpdateSoundRate)){
-                lastTimeFunctionCalled[soundUUID] = Date.now();
-            }
-
-            if (rateLimitedTimers[soundUUID] !== undefined){
-                // If a timer already set, cancel it
-                clearTimeout(rateLimitedTimers[soundUUID]);
-            }
-            rateLimitedTimers[soundUUID] = setTimeout(() => {
-                lastTimeFunctionCalled[soundUUID] = Date.now();
-            }, maxUpdateSoundRate);
-        }
 
 
         function updateMainPresetParameters(){
@@ -1810,13 +1916,12 @@
                 }
             //If the mode is gate or trigger, play all sound
 
-                        
+
             var newText = launchModes[nextModeIndex];
             if (['trigger','gate'].includes(newText)){
                 wavesurfer.regions.clear();
                 ss.setSoundParameter('startPosition',0,0,1);
                 ss.setSoundParameter('endPosition',1,0,1);
-                ss.playSound();
             }
 
             if (['loop','loopfb'].includes(newText)){
@@ -2116,7 +2221,7 @@
                     <div class="range-text" id="range-text-maxSoundLength">1</div>
                 </div>
                 <div class="slider-regular" onclick="changeNoteLayout();" id="noteLayout">
-                    <p>Continuous</p>
+                    <p>contiguous</p>
                 </div>
             </div>
         </div>
@@ -2151,51 +2256,59 @@
             <div class="adsr-first-knob">
             <div class="knob-1" id="attack">
                 <div class="knob-inner"></div>
-                <p>attack</p>
+                <p style="margin-left:7.5px;">attack</p>
             </div>
             <div class="knob-1" id="decay">
                 <div class="knob-inner"></div>
-                <p>decay</p>
+                <p style="margin-left:7.5px;">decay</p>
             </div>
             <div class="knob-1" id="sustain">
                 <div class="knob-inner"></div>
-                <p>sustain</p>
+                <p style="margin-left:7px;">sustain</p>
             </div>
             <div class="knob-1" id="release">
                 <div class="knob-inner"></div>
-                <p style="margin-left:10px;">release</p>
+                <p style="margin-left:8px;">release</p>
             </div>
         </div>
         <div class="adsr-second-knob">
             <div class="knob-2000" id="filterCutoff">
                 <div class="knob-inner"></div>
-                <p style="margin-left:10px;">cutoff</p>
+                <p style="margin-left:7.5px;">cutoff</p>
             </div>
             <div class="filterADSR2CutoffAmt">
             <div class="knob-100" id="filterADSR2CutoffAmt">
                 <div class="knob-inner"></div>
-                <p>cutoff amount</p>
+                <p style="margin-left:8px;">cutoff amount</p>
             </div>
         </div>
             <div class="knob-1" id="filterRessonance">
                 <div class="knob-inner"></div>
-                <p>ressonance</p>
+                <p style="margin-left:9px;">ressonance</p>
             </div>
         </div>
 
         </div>
         <div class="sound-list">
-            <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="updateGlobalSoundUUID();">
+            <select multiple name="sounds" id="sound-dropdown" onclick="ss.playSound()" onchange="updateGlobalSoundUUID();" style="width:100%;height:100%;">
             </select>
             <div class="sound-list-options">
-                <div class="sound-list-buttons" onlick="switchColorModes();">
+                <div class="sound-list-buttons"">
                     <div class="stop-icon" onclick="ss.stopSound('stop');"></div>
                 </div>
                 <div class="sound-list-buttons">
                     <div class="remove-icon" onclick="removeSoundFromList();"></div>
                 </div>
                 <div class="sound-list-buttons" id="reverse" value="0" onclick="updateReverseState(this);">
-                    Reverse
+                    <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    x="0px" y="0px"
+                    width="64" height="64"
+                    viewBox="0 0 172 172"
+                    style=" fill:#26e07f;">
+                    <g fill="none" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+                        <path d="M0,172v-172h172v172z" fill="none"></path><g fill="#1fb141">
+                            <path d="M21.5,21.5v129h64.5v-32.25v-64.5v-32.25zM86,53.75c0,17.7805 14.4695,32.25 32.25,32.25c17.7805,0 32.25,-14.4695 32.25,-32.25c0,-17.7805 -14.4695,-32.25 -32.25,-32.25c-17.7805,0 -32.25,14.4695 -32.25,32.25zM118.25,86c-17.7805,0 -32.25,14.4695 -32.25,32.25c0,17.7805 14.4695,32.25 32.25,32.25c17.7805,0 32.25,-14.4695 32.25,-32.25c0,-17.7805 -14.4695,-32.25 -32.25,-32.25z"></path></g></g></svg>                
                 </div>
             </div>
         </div>
@@ -2206,19 +2319,19 @@
             <div class="reverb-knob-area">
                 <div class="knob-reverb" id="roomSize">
                     <div class="knob-inner"></div>
-                    <p>room</p>
+                    <p style="margin-left:6.5px;">room</p>
                 </div>
                 <div class="knob-reverb" id="damping">
                     <div class="knob-inner"></div>
-                    <p>damping</p>
+                    <p style="margin-left:7.5px;">damping</p>
                 </div>
                 <div class="knob-reverb" id="wetLevel">
                     <div class="knob-inner"></div>
-                    <p>wet</p>
+                    <p style="margin-left:8px;">wet</p>
                 </div>
                 <div class="knob-reverb" id="dryLevel">
                     <div class="knob-inner"></div>
-                    <p>dry</p>
+                    <p style="margin-left:8px;">dry</p>
                 </div>
             </div>
             <div class="modulation-header">
@@ -2227,15 +2340,15 @@
             <div class="modulation-knob-area">
                 <div class="knob-12" id="mod2GainAmt">
                     <div class="knob-inner"></div>
-                    <p>Gain Amount</p>
+                    <p style="margin-left:7.5px;">gain</p>
                 </div>
                 <div class="knob-100" id="mod2CutoffAmt">
                     <div class="knob-inner"></div>
-                    <p>Cutoff Amount</p>
+                    <p style="margin-left:7.5px;">cutoff</p>
                 </div>
                 <div class="knob-12" id="mod2PitchAmt">
                     <div class="knob-inner"></div>
-                    <p>Pitch Amount</p>
+                    <p style="margin-left:7px;">pitch</p>
                 </div>
             </div>
             <div class="velocity-header">
@@ -2244,41 +2357,39 @@
             <div class="velocity-knob-area">
                 <div class="knob-100" id="vel2CutoffAmt">
                     <div class="knob-inner"></div>
-                    <p>Cutoff Amount</p>
+                    <p style="margin-left:7px;">cutoff</p>
                 </div>
                 <div class="knob-1" id="vel2GainAmt">
                     <div class="knob-inner"></div>
-                    <p>Gain Amount</p>
+                    <p style="margin-left:7px;">gain</p>
                 </div>
             </div>
         </div>
             <ul id="keyboard">
-                <li note="C" id="60" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="C#" id="61" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D" id="62" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D#" id="63" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="E" id="64" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="F" id="65" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="F#" id="66" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="G" id="67" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="G#" id="68" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="A" id="69" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="A#" id="70" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="B" id="71" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="C2" id="72" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="C#2" id="73" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D2" id="74" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D#2" id="75" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="E2" id="76" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="C" id="77" class="white-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="C#" id="78" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D" id="79" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="D#" id="80" class="black-key" onclick="ss.setMidiRootNote(this);"></li>
-                <li note="E" id="100" class="white-key offset" onclick="ss.setMidiRootNote(this);"></li>
+                <li note="C" id="60" class="white-key" onclick="sendMidiMessage(this);">C3</li>
+                <li note="C#" id="61" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="D" id="62" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="D#" id="63" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="E" id="64" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="F" id="65" class="white-key" onclick="sendMidiMessage(this);"></li>
+                <li note="F#" id="66" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="G" id="67" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="G#" id="68" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="A" id="69" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="A#" id="70" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="B" id="71" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="C2" id="72" class="white-key" onclick="sendMidiMessage(this);">C4</li>
+                <li note="C#2" id="73" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="D2" id="74" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="D#2" id="75" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="E2" id="76" class="white-key offset" onclick="sendMidiMessage(this);"></li>
 
             </ul>
+
             <div class="pitch-section">
-              <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this.name, this.value, this.min, this.max)"> Pitch: <span id="' + soundUUID + '_pitchLabel"></span><br>
+            <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-2" max="8" value="3" step="1" oninput="updateOctave(this);">
+              <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this.name, this.value, this.min, this.max)">
+              <div onclick="switchColorModes();" style="height:50px; width:100px;background-color: red;"></div>
             </div>
             <div class="controls_card controls_card_top" hidden>
                 <h4>Preset & settings</h4>
