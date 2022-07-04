@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/wavesurfer.js"></script>
     <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"></script>
     <script src="jQuery-Knob/dist/jquery.knob.min.js"></script>
+    <link href="nouislider/dist/nouislider.css" rel="stylesheet">
+    <script src="nouislider/dist/nouislider.js"></script>
 
 
     <style>
@@ -21,9 +23,8 @@
             --knob-inner-shadow:  5px -5px 6px #e3e3e3,-5px 5px 6px #ffffff;
             --general-color : purple;
             --white-keys: #f2f1f1;
-            --black-keys: purple;
-            --sound-list-buttons: 5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;
+            --black-keys: #711771d1;
+            --sound-list-button: 5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff;
             --parameter-knobs-shadow: -5px 5px 10px #eaeaea,5px -5px 10px #ffffff;
             --parameter-header-shadow: 5px -5px 2px #ececec, -5px 5px 17px #fff;
             --slider-thumb-shadow: -5px 5px 10px #c2c1c1,5px -5px 10px #ffffff;
@@ -35,7 +36,14 @@
             --adsr-header-shadow: rgb(211, 210, 210)0px -5px 10px, rgb(255, 255, 255) -5px 5px 10px;
             --query-text-shadow: inset 5px -5px 10px #dcdbdb,inset -5px 5px 10px #ffffff;
             --slider-track-shadow: -5px 5px 10px #c2c1c1,5px -5px 10px #ffffff;
-        }
+            --icon-background: purple;
+            --icon-shadow: 5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff;
+            --white-key-shadow:  -5px 5px 10px #e7e7e7,5px -5px 10px #ffffff;
+            --adsr-shadow: rgb(204, 219, 232) 3px 3px 6px 0px inset, rgba(255, 255, 255, 0.5) -3px -3px 6px 1px inset;
+            --inner-box-border: #80008033;
+            --query-icon: rgba(118, 20, 148, 0.7);
+            --black-key-hover: purple;
+        }   
 
         body {
             box-sizing: border-box;
@@ -54,7 +62,7 @@
              5px 5px 10px #5a5a5a;
         border-radius: 10px;
         grid-template-columns: repeat(10,1fr);
-        grid-template-rows: 1px repeat(10,1fr) 30px;
+        grid-template-rows: 1px repeat(10,1fr) 40px;
         grid-template-areas:
             "header header header header"
             "main main . sidebar"
@@ -85,12 +93,28 @@
 
         #q-par {
             display:flex;
-            grid-row:2/5;
+            grid-row:3/5;
             grid-column:1/3;
             gap: 40px;
-            margin-top:30px;
             font-weight: bold;
             font-size: 10px;
+            margin-left: 60px;
+            height:10px;
+        }
+
+        #q-par-labels {
+            display:flex;
+            grid-row:2;
+            height:10px;
+            grid-column: 1/5;
+            gap:60px;
+            margin-left:53px;
+            margin-bottom: 15px;
+            
+        }
+        #q-par-labels p {
+            font-size:12px;
+            font-weight: bold;
         }
         
 
@@ -111,10 +135,8 @@
             display:flex;
             justify-content: center;
             align-items: center;
-            font-family: "Lucida Console", "Courier New", monospace;
-            font-size: 12px;
             border: none;
-            width:150px;
+            width:155px;
             height: 30px;
             border-radius: 5px;
             background-color: var(--background-color);
@@ -130,6 +152,7 @@
             height: 20px;
             border-radius: 5px;
             background-color: transparent;
+            color: var(--general-color);
         }
 
         .query-button{
@@ -162,7 +185,7 @@
         @keyframes query-pulse {
             0% {
                 transform: scale(0.55);
-                box-shadow: 0 0 0 0 rgba(118, 20, 148, 0.7);
+                box-shadow: 0 0 0 0 var(--query-icon);
             }
             
             70% {
@@ -175,36 +198,139 @@
         .slider-regular {
             position: relative;
             display: flex;
-            width: 120px;
+            width: 100px;
             height: 20px;
             text-align: center;
             justify-content: center;
             border-radius: 5px;
             background: var(--background-color);
-            box-shadow:  var(--slider-track-shadow);
+            box-shadow:  var(--sound-list-button);
+            margin-top:5px;
         }
-
-        .slider-regular p{
-            margin-top: 3px;
-        }
-
-        .slider-wrapper {
+        .slider-regular-down {
             position: relative;
-            display:flex;
-            text-align:start;
+            display: flex;
+            width: 100px;
+            height: 20px;
+            text-align: center;
+            justify-content: center;
+            border-radius: 5px;
+            background: var(--background-color);
+            box-shadow:  var(--sound-list-button);
+            margin-top:5px;
+        }
+
+        .double-slider,.single-slider {
+            width:180px;
+            height:20px;
+            border: none;
+            background-color: transparent;
+            margin-top: 5px;
         }
 
 
+        .single-slider {
+            width: 120px;
+        }
+
+        .single-slider-octave {
+            height: 85px;
+            background-color: transparent;
+            border: none;
+
+        }
+
+        .single-slider-pitch {
+            height: 85px;
+            background-color: transparent;
+            border: none;
+
+        }
+
+        .noUi-touch-area{
+            border-radius: 3px;
+            height: 30px;
+            width: 25px;
+            box-shadow:  var(--slider-thumb-shadow);
+            background: var(--background-color);  
+            border: none;      
+        }
+        .noUi-base .noUi-connects {
+            justify-content: center;
+            border-radius: 5px;
+            background: var(--background-color);
+            box-shadow:  var(--query-text-shadow);
+            border: none;
+        }
+
+        .noUi-connect {
+            background-color: var(--inner-box-border);
+            height: 3px;
+            margin-top: 9px;
+        }
+        
+        .noUi-handle {
+            border: none;
+            border-radius: 5px;
+            background-color: transparent;
+            cursor: default;
+            box-shadow: none;
+        }
+
+        .noUi-base .noUi-origin .noUi-handle::after , .double-slider .noUi-base .noUi-origin .noUi-handle::before{
+            background:none;
+            
+        }
+
+        .noUi-handle::before, .noUi-handle::after {
+            content: none;
+        }
+
+        .noUi-horizontal .noUi-tooltip {
+        -webkit-transform: translate(-50%, 0);
+        transform: translate(-50%, 0);
+        left: 12px;
+        bottom: 0px;
+        font-size: 9px;
+        font-family: "Lucida Console", "Courier New", monospace;
+        background: transparent;
+        border: none;
+        color: var(--general-color);
+        }
+
+        .single-slider-octave .noUi-tooltip, .single-slider-pitch .noUi-tooltip {
+            top: 12px;
+            right:1px;
+            background-color: transparent;
+            border: none;
+            font-size: 10px;
+            font-family: "Lucida Console", "Courier New", monospace;
+            color: var(--general-color);
+
+        }
+        .single-slider-octave .noUi-touch-area, .single-slider-pitch .noUi-touch-area {
+            border-radius: 3px;
+            height: 20px;
+            width: 25px;
+            box-shadow: var(--slider-thumb-shadow);
+            background: var(--background-color);
+            border: none;
+        }
+
+        .single-slider-octave .noUi-tooltip {
+            right: 7px;
+        
+        }
         input[type="range"] {
-            width:120px;
-            background-color: var(--background-color);
+            width:100px;
+            background-color: transparent;
         }
 
         input[type="range"]::-ms-fill-lower {
-            background-color: #e2dfdf;
+            background-color: var(--inner-box-border);
             }
         input[type="range"]::-moz-range-progress {
-            background-color: #e2dfdf; 
+            background-color: var(--inner-box-border);
             }
         input[type="range"]::-webkit-slider-thumb {
             -moz-appearance: none !important;
@@ -241,9 +367,11 @@
                 text-align: center;
                 height: 10px;
                 width: 10px;
-                margin-left: 97px;
+                margin-left: 80px;
                 font-size:10px;
                 }
+
+
             
         input[type="range"]::-ms-fill-lower{
             background-color: pink;
@@ -261,14 +389,15 @@
 
     
         .source-icon{
+            display:grid;
             grid-row:1/2;
-            grid-column: 2/4;
+            grid-column: 1/11;
             transform: rotate(-0deg);
             text-align:center;
-            margin-left: -3px;
-            margin-top:50px;
+            margin-left: 50px;
+            margin-top: 55px;
             color: var(--colorMain);
-            font-size: 4.1em;
+            font-size: 3.8em;
             font-weight: bold;
             font-family: "Lucida Console", "Courier New", monospace;
             text-transform: uppercase;
@@ -302,6 +431,26 @@
                         var(--tlShadow) ;
             }
         }
+
+        .mode-button {
+            grid-column: 5/6;
+            width: 50px;
+            height: 20px;
+            border-radius: 8px;
+            background: var(--background-color);
+            box-shadow:  var(--sound-list-button);
+            margin-top:40px;
+            margin-left:125px;
+            font-size:12px;
+            color: var(--general-color);
+            text-shadow: none;
+
+        }
+        
+        .mode-button p {
+            margin-top:1.5px;
+        }
+
 
         input[type="button"] {
             width: auto;
@@ -361,11 +510,11 @@
             background: var(--background-color);
             border-top: 10px solid transparent;
             border-bottom: 10px solid transparent;
-            border-right:10px solid black;
+            border-right:10px solid var(--icon-background);
         }
 
         .left-arrow-inner:hover{
-            border-right:10px solid purple;
+            border-right:10px solid var(--inner-box-border);
         }
 
 
@@ -383,13 +532,13 @@
             background: var(--background-color);
             border-top: 10px solid transparent;
             border-bottom: 10px solid transparent;
-            border-left: 10px solid black;
+            border-left: 10px solid var(--icon-background);
             margin-left: 15px;
 
         }
 
         .right-arrow-inner:hover{
-            border-left: 10px solid purple;
+            border-left: 10px solid var(--inner-box-border);
         }
 
         .outer-box{
@@ -414,24 +563,27 @@
             height: 25px;
             border: none;
             z-index: 2;
-            background: black;
+            box-shadow: var(--query-text-shadow);
             border-radius: 5%;
             align-items: center;
             justify-content: center;
             text-align: center;
-            border: 0.2em solid purple;
+            border: 0.02em solid var(--inner-box-border);
             }
 
         .outer-box .inner-box p {
-            color: white;
+            color: var(--general-color);
+            font-size: 11px;
         }
         .adsr {
             display:grid;
             grid-row: 5/7;
             grid-column: 2/6;
-            box-shadow: rgb(204, 219, 232) 3px 3px 6px 0px inset, rgba(255, 255, 255, 0.5) -3px -3px 6px 1px inset;
+            box-shadow: var(--adsr-shadow);
             margin-top: 10px;
+            border-radius: 10px;
             border: none;
+            background-color: transparent;
             align-items: center;
 
         }
@@ -441,7 +593,6 @@
             max-width:100%;
             height:95%;
             border: none;
-            box-shadow:  -5px -5px 0px #d4d2d2,5px 5px 0px #ffffff;
             }
 
 
@@ -460,43 +611,20 @@
         }
 
         .adsr-header {
+            display: grid;
             grid-row:1/2;
             grid-column: 1/6;
-            display:flex;
+            grid-template-columns: repeat(6,1fr);
+            background: var(--background-color);
+            border-radius: 5px;
+            box-shadow: var(--launch-mode-shadow);           
+            z-index: 2;
+            justify-content: center;
+            align-items: center;
             border-radius: 8px;
             box-shadow: var(--adsr-header-shadow);
         }
 
-        .adsr-filter {
-            width: 100%;
-            text-align: center;
-            border-radius: 5%;
-            user-select: none;
-            font-weight: none;
-            display:flex;
-            justify-content: center;
-        }
-
-        .adsr-filter p {
-            border-radius: 5px;
-            width: 100px;
-            height: 20px;
-            margin-top:10px;
-        }
-        .adsr-amplitude {
-            width: 100%;
-            text-align: center;
-            border-radius: 5%;
-            font-weight: none;
-            display: flex;
-            justify-content: center;
-        }
-        .adsr-amplitude p {
-            border-radius: 5px;
-            width: 100px;
-            height: 20px;
-            margin-top:10px;
-        }
 
         .adsr-first-knob {
             display: flex;
@@ -572,13 +700,14 @@
             grid-row: 4/5;
             grid-column: 1/4;
             height: 100%;
-            grid-template-columns: repeat(6,1fr);
             background: var(--background-color);
             border-radius: 5px;
             box-shadow: var(--launch-mode-shadow);           
             z-index: 2;
             justify-content: center;
             align-items: center;
+            gap:15px;
+
         }
 
         .sound-list-buttons {
@@ -589,7 +718,7 @@
             height: 20px;
             border-radius: 8px;
             background: var(--background-color);
-            box-shadow:  var(--sound-list-button);
+            box-shadow: var(--sound-list-button);
             z-index: 3;
         }
 
@@ -597,25 +726,22 @@
             width: 25px;
             height:10px;
             border-radius: 2px;
-            background-color: purple;
-            box-shadow:  5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;
+            background-color: var(--icon-background);
+            box-shadow:  var(--icon-shadow);
 
         }
 
         .remove-icon:hover,
         .stop-icon:hover{
-            background-color: white;
+            background-color: var(--inner-box-border);
         }
 
         .stop-icon {
             width: 13px;
             height:13px;
             border-radius: 2px;
-            background-color: purple;
-            box-shadow:  5px -5px 10px #d3d2d2,
-                        -5px 5px 10px #ffffff;
-
+            background-color: var(--icon-background);
+            box-shadow:  var(--icon-shadow);
         }
 
 
@@ -627,6 +753,7 @@
             border: none;
             border-radius: 5%;
             background: transparent;
+            color: var(--general-color);
 
         }
 
@@ -745,10 +872,15 @@
             display: flex;
             user-select: none;
             cursor: pointer;
+            text-align: end;
         }
 
         .white-key:hover {
             box-shadow:  -5px 5px 10px #bdb9b9, 5px -5px 10px #bdb9b9;
+        }
+
+        .black-key:hover{
+            background-color: var(--black-key-hover);
         }
         .white-key {
             height: 7.5rem;
@@ -758,14 +890,12 @@
             border-bottom: 1px solid hsl(0, 0%, 84%);
             border-radius: 0 0 5px 5px;
             background: var(--white-keys);
-            box-shadow:  -5px 5px 10px #e7e7e7,
-                        5px -5px 10px #ffffff;
+            box-shadow: var(--white-key-shadow);
             color: var(--black-30);
             }
-
         .black-key {
             height: 4.5rem;
-            width: 1.5em;
+            width: 1.9rem;
             margin: 0 0 0 -1rem;
             z-index: 2;
             border: 1px solid var(--black-keys);
@@ -778,19 +908,40 @@
             .offset {
             margin: 0 0 0 -1rem;
             }
+
+        .white-key p {
+            color: var(--icon-background);
+            margin-top: 90px;
+            margin-left: 7px;
+            font-size: 12px;
+        }
         .pitch-section {
             grid-row:10/12;
             grid-column:8/10;
             display: flex;
-            justify-content: center;
-            margin-top: 60px;
+            align-items: center;
+            gap: 0px;
+           
 
+        }
+
+        .pitch-div {
+            display:flex;
+            align-items: center;
+            width: auto;
+            height: 120px;
+        }
+        .pitch-div p {
+            font-size: 12px;
+            margin-top: 130px;
+            margin-left: -60px;
         }
 
 
     </style>
 
     <script>
+
 
         $(function(){
             $(".knob-1").knob({
@@ -882,6 +1033,7 @@
             });
         });
 
+       
 
         let ss = undefined;  // Will keep source plugin state and has util methods to interact with it
         let httpPort = undefined;
@@ -923,6 +1075,12 @@
                 releaseCurve: "exp",
                 };
 
+        //Wavecolor
+        var wavesurferColor = 'purple';
+
+        var adsrBackgroundColor = '#f2f1f1';
+
+
         var expStrength = 2;  // For sliders
         
         window.AudioContext = window.AudioContext || window.webkitAudioContext; // Audio context used for loading audio for drawing waveforms
@@ -931,6 +1089,9 @@
         let lastUIAction = 0;
 
         var wavesurfer = null;
+
+        var slider = null;
+        var singleSlider = null;
 
 
         class StateSynchronizer {  // Class to synchronize with plugin's state and interact with it
@@ -1235,31 +1396,11 @@
                 return soundParameterVal;
             }
 
-            replaceAllSoundsByQuery(){
-                var query = document.getElementsByName('query')[0].value;
-                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
-                var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
-                var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-                var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/replace_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
-            }
-
-            replaceSoundByQuery(){
-                var numSoundToReplace = document.getElementsByName('soundIdxToReplace')[0].value;
-                var soundUUIDToReplace = ss.getSounds()[numSoundToReplace - 1].getAttribute('uuid');
-                var query = document.getElementsByName('query')[0].value;
-                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
-                var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
-                var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
-                var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
-                this.sendMessageToPlugin('/replace_sound_from_query', [soundUUIDToReplace, query, numSounds, minSoundLength, maxSoundLength, noteMappingType])
-            }
-
             addSoundsByQuery(){
                 var query = document.getElementsByName('query')[0].value;
-                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
-                var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
-                var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
+                var numSounds = $('.single-slider')[0].noUiSlider.get()[0];
+                var minSoundLength = $('.double-slider')[0].noUiSlider.get()[0];
+                var maxSoundLength = $('.double-slider')[0].noUiSlider.get()[1];            
                 var noteLayoutType = $('#noteLayout p').text(); 
                 this.sendMessageToPlugin('/add_sounds_from_query', [query, numSounds, minSoundLength, maxSoundLength,noteLayoutType])
             }
@@ -1303,7 +1444,6 @@
                 var sound = ss.getSoundFromSoundUUID(selectedSoundUUID);
                 var samplerSounds = ss.getSoundSamplerSounds(sound);
 
-                console.log(samplerSounds);
                 this.sendMessageToPlugin('/play_sound', [selectedSoundUUID])
 
             }
@@ -1454,9 +1594,11 @@
             //Remove all the sounds from previous session
             ss.clearAllSounds();
 
+            
+
         });
 
-        // Util methods
+        // Util methods  
 
         function updateOctave(obj){
                 var octaveVal = obj.value;
@@ -1466,35 +1608,46 @@
                         keyboardParent.children[i].id = 12 * (parseInt(octaveVal) + 2) + i;
                     }        
                 
-                keyboardParent.children[0].textContent = "C"+octaveVal;
-                keyboardParent.children[12].textContent = "C"+(parseInt(octaveVal)+1);
+                keyboardParent.children[0].children[0].textContent = "C"+octaveVal;
+                keyboardParent.children[12].children[0].textContent = "C"+(parseInt(octaveVal)+1);
                 
-            }
+            } 
+        
 
         function sendMidiMessage(obj){
+
+
+            if (obj){
             var midiNote = obj.id;
 
             var launchMode = $("#outer-box-launch > #inner-box-launch > p").text();
             
             //If mode is gate, the sound should stop as soon as key is released
+            var int00 = 0;
             if (launchMode === "gate"){ 
-            $('#'+obj.id).mousedown(function(){
-                    ss.sendMidiNoteOn(midiNote); 
-                    int00 = setInterval(function() { console.log('hold..'); }, 50);
-                }).mouseup(function() {
-                    clearInterval(int00);
-                    ss.sendMidiNoteOff(midiNote);
-                });
-            }else{
-                midiOnOffList.push(midiNote);
+                $('#'+obj.id).mousedown(function(){
+                        ss.sendMidiNoteOn(midiNote); 
+                        int00 = setInterval(function() { console.log('hold..'); }, 50);
+                    }).mouseup(function() {
+                        clearInterval(int00);
+                        ss.sendMidiNoteOff(midiNote);
+                    });
 
+            }else{
+                ss.sendMidiNoteOff(midiOnOffList[0]);
+                midiOnOffList.push(midiNote);
+                ss.sendMidiNoteOn(midiNote);
 
                 if (midiOnOffList.length > 1) {
                     //Stop the previous sound and remove it
-                    ss.sendMidiNoteOff(midiOnOffList[0]);
                     midiOnOffList.shift();
                 }
-                ss.sendMidiNoteOn(midiNote);
+                if (midiOnOffList[1]){
+                    ss.sendMidiNoteOn(midiOnOffList[1]);
+                }
+            }
+            }else{
+                ss.stopSound();
             }
         
         }
@@ -1519,8 +1672,6 @@
         };
 
         function updateAllParameterElements(){
-            var pitch = ss.getSoundParameterValue(selectedSoundUUID, 'pitch');
-            $('#pitch').val(pitch);
             updateKnobElements();
 
         }
@@ -1566,52 +1717,101 @@
                 if (rangeText !== null){
                     let newVal = event.target.value;
                     rangeText.innerHTML = newVal; //Set range text equal to input position
-                   
+            
+            
+
                 }
             })
+            slider = $('.double-slider');
+
+            noUiSlider.create(slider[0], {
+                start: [0, 90],
+                step: 1,
+                connect: true,
+                tooltips:true,
+                format: wNumb({decimals: 0}),
+                range: {
+                    'min': 0,
+                    'max': 100,
+                },
+                
+        });
+        singleSlider = $('.single-slider');
+
+        noUiSlider.create(singleSlider[0], {
+            start: 1,
+            step: 1,
+            connect: true,
+            tooltips:true,
+            format: wNumb({decimals: 0}),
+            range: {
+                'min': 1,
+                'max': 20,
+            },
+            
+        });
+        
         }
 
-        function updateMaxSoundLength(){
-            if ($('#minSoundLength').val() > $('#maxSoundLength').val()){
-                $('#maxSoundLength').val($('#minSoundLength')+2);
-            }
-        }
-
-        function switchColorModes(){
-            if (document.documentElement.style.getPropertyValue('--background-color') === '#f2f1f1'){
+        function switchColorModes(obj){
+            if ($('.mode-button').attr('value') === "0"){
+                var newVal = "1";
                 var newBackground = '#3e424a';
                 var newInnerKnobBack = 'linear-gradient(145deg, #42474f, #383b43)';
                 var newInnerKnobShadow = '8px -8px 16px #191a1e,-8px 8px 16px #636a76';
                 var newGeneralColor = 'white';
-                var newBlackKeys = 'black';
-                var newSoundListButton = "6px 6px 13px #222321,-6px -6px 13px #888b85";
+                var newBlackKeys = '#3e424a';
+                var newSoundListButton = "-7px 7px 14px #2b2e34,7px -7px 14px #515660";
                 var newParameterKnobShadow = "-5px 5px 10px #33363d,5px -5px 10px #494e57";
                 var newParameterHeaderShadow = "8px -8px 16px #1b1f20,-8px 8px 16px #41494c";
-                var newSliderThumbShadow = "5px 5px 15px #25272c,-5px -5px 15px #575d68";
+                var newSliderThumbShadow = "7px 7px 19px #1a1c1f, -7px -7px 19px #626875";
                 var newQueryButtonShadow = "8px -8px 16px #1b1f20,-8px 8px 16px #41494c";
                 var newWaveformShadow = "inset 6px -6px 12px #272c2e,inset -6px 6px 12px #353c3e";
-                var newLaunchModeShadow = "12px -12px 31px #262b2c,-12px 12px 31px #363d40";
-                var newBrShadow = "-6px 6px 15px rgb(1600, 120, 255)";
-                var newtlShadow = "6px -6px 15px rgb(0, 10, 255)";
+                var newLaunchModeShadow = "-5px -5px 10px #222429,5px 5px 200px #5a606b";
+                var newBrShadow = "-6px 6px 15px rgba(95, 185, 185, 1)";
+                var newtlShadow = "6px -6px 15px rgba(95, 185, 185)";
                 var newParameterKnobBackground = "linear-gradient(225deg, #42474f, #383b43)";
                 var newLaunchOuterBoxShadow = "-5px -5px 10px #222429,5px 5px 10px #5a606b";
-                var newAdsrHeaderShadow ="-5px -5px 10px #222429,5px 5px 10px #5a606b";
+                var newAdsrHeaderShadow ="-5px -5px 10px #222429,5px 5px 200px #5a606b";
                 var newQueryTextShadow = "inset 5px 5px 3px #35383f,inset -5px -5px 3px #474c55";
-                var newSliderTrackShadow = "9px 9px 18px #33363d,-9px -9px 18px #494e57";
-                console.log('dark mode');
+                var newSliderTrackShadow = "5px 5px 10px #1f2125, -5px -5px 15px #5d636f";
+                var newIconShadow = "none";
+                var newIconBackground = "#838486";
+                var newWhiteKeyShadow = "-1px 1px 5px #b7b7b6, 1px -1px 5px #fff";
+                var newAdsrShadow = "inset 6px -6px 12px #272c2e,inset -6px 6px 12px #353c3e";
+                var newInnerBoxBorder = "#5fb9b9a1";
+                var newQueryIcon = "#5fb9b9a1";
+                var newBlackHover = "black";
+
+
+                //Change the waveform color
+                wavesurferColor = '#5fb9b9a1';
+
+                //Change the background of ADSR Envelope
+                adsrBackgroundColor = '#3e424a';
+
+
+                //Change the progress color of knobs
                 $(".knob-1,.knob-100,.knob-12,.knob-2000,.knob-reverb").trigger('configure', 
                 {
                 'fgColor': 'cyan',
-                'bgColor':'yellow',
                 }
                 );
+                if (wavesurfer){
+                    wavesurfer.setWaveColor('#5fb9b9a1');
+                }
+
+                if (selectedSoundUUID) {
+                    drawAdsrEnvelope();
+                }
            
             }else{
+                var newVal = "0";
                 var newBackground = '#f2f1f1';
                 var newInnerKnobBack = 'linear-gradient(45deg, #dad9d9, #ffffff)';
                 var newInnerKnobShadow = '5px -5px 6px #e3e3e3,-5px 5px 6px #ffffff';
                 var newGeneralColor = 'purple';
-                var newBlackKeys = 'purple';
+                var newBlackKeys = '#711771d1';
                 var newSoundListButton = "5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff";
                 var newParameterKnobShadow = "-5px 5px 10px #eaeaea, 5px -5px 10px #ffffff";
                 var newParameterHeaderShadow = "5px -5px 2px #ececec, -5px 5px 17px #fff";
@@ -1626,6 +1826,30 @@
                 var newQueryTextShadow = "inset 5px -5px 10px #dcdbdb,inset -5px 5px 10px #ffffff";
                 var newSliderTrackShadow = " -5px 5px 10px #32353b,5px -5px 10px #4a4f59";
                 var newSliderThumbShadow = "-5px 5px 10px #c2c1c1,5px -5px 10px #ffffff";
+                var newWhiteKeyShadow = " -5px 5px 10px #e7e7e7,5px -5px 10px #ffffff";
+                var newAdsrShadow = "rgb(204, 219, 232) 3px 3px 6px 0px inset, rgba(255, 255, 255, 0.5) -3px -3px 6px 1px inset"; 
+                var newIconBackground = "purple";
+                var newIconShadow = " 5px -5px 10px #d3d2d2,-5px 5px 10px #ffffff";
+                var newInnerBoxBorder = "#80008033";
+                var newQueryIcon = "rgba(118, 20, 148, 0.7)";
+                var newBlackHover = "purple";
+
+                wavesurferColor = 'purple;'
+                adsrBackgroundColor = '#f2f1f1';
+
+                if (wavesurfer){
+                    wavesurfer.setWaveColor('purple');
+                }
+
+                $(".knob-1,.knob-100,.knob-12,.knob-2000,.knob-reverb").trigger('configure', 
+                {
+                'fgColor': 'purple',
+                }
+                );
+
+                if (selectedSoundUUID){
+                    drawAdsrEnvelope();
+                }
 
 
             }
@@ -1648,6 +1872,16 @@
             document.documentElement.style.setProperty('--query-text-shadow', newQueryTextShadow);
             document.documentElement.style.setProperty('--slider-track-shadow', newSliderTrackShadow);
             document.documentElement.style.setProperty('--slider-thumb-shadow', newSliderThumbShadow);
+            document.documentElement.style.setProperty('--icon-background',newIconBackground);
+            document.documentElement.style.setProperty('--icon-shadow',newIconShadow);
+            document.documentElement.style.setProperty('--white-key-shadow', newWhiteKeyShadow);
+            document.documentElement.style.setProperty('--adsr-shadow', newAdsrShadow);
+            document.documentElement.style.setProperty('--inner-box-border', newInnerBoxBorder);
+            document.documentElement.style.setProperty('--query-icon', newQueryIcon);
+            document.documentElement.style.setProperty('--black-key-hover', newBlackHover);
+            $('.mode-button').attr('value',newVal);
+
+
 
         }   
 
@@ -1820,16 +2054,15 @@
             }
         }
 
-       function changeADSRElementId(val){
-           if (val.className == 'adsr-filter'){
-               document.getElementsByClassName("adsr-filter")[0].style["border"] = "0.1em solid rgba(150,101,80,0.3)";
-               document.getElementsByClassName("adsr-amplitude")[0].style["border"] = "none";
+       function changeADSRElementId(){
+        var adsrMode = $('#outer-box-adsr #inner-box-launch p').text();
+           if (adsrMode === 'amplitude'){
                $('#attack').attr("id","filterAttack");
                $('#decay').attr("id","filterDecay");
                $('#sustain').attr("id","filterSustain");
                $('#release').attr("id", "filterRelease");
                $('#gain').attr("id","filterCutoff");
-               $('#filterCutoff>p').text("Cutoff");
+               $('#filterCutoff>p').text("cutoff");
                $('#filterCutoff').trigger('configure', {
                 'min':10,
                 'max':20000,
@@ -1840,11 +2073,10 @@
                 'min':0,
                 'max':1,
                });
-               $('#filterRessonance>p').text("Ressonance");
+               $('#filterRessonance>p').text("ressonance");
                updateFilterADSR();
+               var newAdsrText = 'filter';
            }else{
-               document.getElementsByClassName("adsr-amplitude")[0].style["border"] = "0.1em solid rgba(150,101,80,0.3)";
-               document.getElementsByClassName("adsr-filter")[0].style["border"] = "none";
                $('#filterAttack').attr("id","attack");
                $('#filterDecay').attr("id","decay");
                $('#filterSustain').attr("id","sustain");
@@ -1855,28 +2087,32 @@
                 'max':12,
                });
                
-               $('#gain>p').text('Gain');
+               $('#gain>p').text('gain');
                $('.filterADSR2CutoffAmt').css('visibility','hidden');
                $('#filterRessonance').attr("id","pan");
-               $('#pan>p').text("Pan");
+               $('#pan>p').text("pan");
                $('#pan').trigger('configure', {
                 'min':-1,
                 'max':1,
                });
+               var newAdsrText = 'amplitude';
+            }
+            $('#outer-box-adsr #inner-box-launch p').text(newAdsrText);
 
                //Only update for ADSR elements should be added
                updateAmplitudeADSR();
            }
-       }
+       
        function changeNoteLayout(){
             if ($('#noteLayout p').text() === 'contiguous'){
                 var newNoteLayout = 'interleaved';
+                var noteLayoutVal = 1;
             }else {
                 var newNoteLayout = 'contiguous';
+                var noteLayoutVal = 0;
             }
             $('#noteLayout p').text(newNoteLayout);
-
-            ss.reapplyLayout(newNoteLayout);
+            ss.reapplyLayout(noteLayoutVal);
        }
 
 
@@ -1950,6 +2186,9 @@
             $("#outer-box-launch > #inner-box-launch > p").text(newText);
             ss.setSoundParameterInt('launchMode', nextModeIndex);
 
+            //Send Midi Msg
+            sendMidiMessage();
+
         }
 
         function removeSoundFromList(){
@@ -1961,7 +2200,6 @@
             var samplerSounds = ss.getSoundSamplerSounds(sound);
             var samplerSound = samplerSounds[0];
             //Remove the sound from sound list
-            console.log($("select#sound-dropdown option").filter(":contains('" + samplerSound.getAttribute('name')+"')"));
             $("select#sound-dropdown option").filter(":contains('" + samplerSound.getAttribute('name')+"')").remove();
 
             //Remove the sound from state
@@ -2053,7 +2291,6 @@
             var samplerSound = ss.getSoundSamplerSounds(sound);
             var sourceSamplerSoundUUID = samplerSound[0].getAttribute('uuid');
 
-
             const canvas = document.getElementById("waveform");
             if (canvas !== null){
                     if (httpPort !== undefined){
@@ -2065,7 +2302,7 @@
                         $('wave').remove();
                         wavesurfer = WaveSurfer.create({        
                                                     container: document.querySelector('#waveform'),
-                                                    waveColor: 'purple',
+                                                    waveColor: wavesurferColor,
                                                     progressColor: 'aqua',
                                                     backend: 'MediaElement',
                                                     cursorWidth: 2,
@@ -2129,11 +2366,12 @@
 
             duration = (((env.duration / 5)|0) + 1) * 5;
 
-            context.fillStyle = "#f2f1f1";
+            context.fillStyle = adsrBackgroundColor;
             context.fillRect(0, 0, canvas.width, canvas.height);
 
+            //Filter ADSR
             context.strokeStyle = "#000000";
-            context.lineWidth = 0.0101;
+            context.lineWidth = 0.01;
 
             for (i = 1; i < duration; i++) {
                 x = (((i / duration) * canvas.width)|0) + 0.5;
@@ -2144,8 +2382,9 @@
                 context.stroke();
             }
 
+            //Amplitude ADSR
             contextAmp.strokeStyle = "rgb(80, 1, 80)";
-            contextAmp.lineWidth = 1;
+            contextAmp.lineWidth = 0.1;
 
             for (i = 1; i < duration; i++) {
                 x = (((i / duration) * canvas.width)|0) + 0.5;
@@ -2157,8 +2396,8 @@
             }
 
             //Draw two envelopes for modulation and amplitude
-            drawByEnvelope(contextAmp, duration, ampEnv,2,"linear-gradient(to right top, #8222ac, #d23177, #e1765b, #d6b274, #d1e0b7)", 'amp');
-            drawByEnvelope(context, duration, env,2, "rgba(22, 160, 133, 0.8)", 'modulation');
+            drawByEnvelope(contextAmp, duration, ampEnv,1,"#5fb9b9a1", 'amp');
+            drawByEnvelope(context, duration, env,1, "rgba(118, 20, 148, 0.7)", 'modulation');
 
 
             function drawByEnvelope(context, duration, env, lineWidth, strokeStyle, type) {
@@ -2193,7 +2432,12 @@
 <body>
 
     <div class="container">
-        <div class="source-icon">SOURCE</div>
+        <div class="source-icon">
+            SOURCE
+            <div class="mode-button" value="0" onclick="switchColorModes(this);">
+                <p>mode</p>
+            </div>
+        </div>
         <div class="query-parameters">
             <div class="query-search">
                 <div class="query-text">
@@ -2207,21 +2451,18 @@
                   </div>                
                 </div>
             </div>
+            <div id="q-par-labels">
+                <p style="margin-left: 5px;">Number of sounds</p>
+                <p style="margin-left: -5px;">Min/Max Sound Length</p>
+                <p style="margin-left: 2px;">Note Layout Type</p>
+            </div>
             <div id="q-par">
-                    <div class="slider-regular">
-                        <input  id="numSounds" name="numSounds" type="range" min="1" max="60" value="1" step="1" placeholder="Number of Sounds"/>
-                        <div class="range-text" id="range-text-numSounds">1</div>
+                    <div class="single-slider">
                     </div>
-                    <div class="slider-regular">
-                    <input id="minSoundLength" name="minSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
-                    <div class="range-text" id="range-text-minSoundLength">1</div>
-                </div>
-                <div class="slider-regular">
-                    <input id="maxSoundLength" name="maxSoundLength" type="range" min="1" max="100" value="1" step="1" placeholder="Minimum Sound Length"/>
-                    <div class="range-text" id="range-text-maxSoundLength">1</div>
-                </div>
+                    <div class="double-slider">
+                    </div>
                 <div class="slider-regular" onclick="changeNoteLayout();" id="noteLayout">
-                    <p>contiguous</p>
+                    <p style="margin-top:3px;">contiguous</p>
                 </div>
             </div>
         </div>
@@ -2242,17 +2483,22 @@
         </div>
         </div>
         <div class="adsr">
-            <canvas id="adsr-envelope" style="background-color: antiquewhite;"></canvas>
+            <canvas id="adsr-envelope" style="background-color: transparent;"></canvas>
         </div>
         <div class="adsr-envelope-knobs">
             <div class="adsr-header">
-            <div class="adsr-filter" onclick="changeADSRElementId(this);">
-                <p>Filter</p>
+                <div class="left-arrow">
+                    <button class="left-arrow-inner" onclick="changeADSRElementId(this);"></button>
+                </div>
+                <div class="outer-box" id="outer-box-adsr">
+                    <div class="inner-box" id="inner-box-launch">
+                        <p>filter</p>
+                    </div>
+                </div>
+                <div class="right-arrow">
+                    <button class="right-arrow-inner" onclick="changeADSRElementId(this);"></button>
+                </div>        
             </div>
-            <div class="adsr-amplitude" onclick="changeADSRElementId(this);">
-                <p>Amplitude</p>
-            </div>
-        </div>
             <div class="adsr-first-knob">
             <div class="knob-1" id="attack">
                 <div class="knob-inner"></div>
@@ -2300,15 +2546,6 @@
                     <div class="remove-icon" onclick="removeSoundFromList();"></div>
                 </div>
                 <div class="sound-list-buttons" id="reverse" value="0" onclick="updateReverseState(this);">
-                    <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    x="0px" y="0px"
-                    width="64" height="64"
-                    viewBox="0 0 172 172"
-                    style=" fill:#26e07f;">
-                    <g fill="none" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
-                        <path d="M0,172v-172h172v172z" fill="none"></path><g fill="#1fb141">
-                            <path d="M21.5,21.5v129h64.5v-32.25v-64.5v-32.25zM86,53.75c0,17.7805 14.4695,32.25 32.25,32.25c17.7805,0 32.25,-14.4695 32.25,-32.25c0,-17.7805 -14.4695,-32.25 -32.25,-32.25c-17.7805,0 -32.25,14.4695 -32.25,32.25zM118.25,86c-17.7805,0 -32.25,14.4695 -32.25,32.25c0,17.7805 14.4695,32.25 32.25,32.25c17.7805,0 32.25,-14.4695 32.25,-32.25c0,-17.7805 -14.4695,-32.25 -32.25,-32.25z"></path></g></g></svg>                
                 </div>
             </div>
         </div>
@@ -2366,7 +2603,9 @@
             </div>
         </div>
             <ul id="keyboard">
-                <li note="C" id="60" class="white-key" onclick="sendMidiMessage(this);">C3</li>
+                <li note="C" id="60" class="white-key" onclick="sendMidiMessage(this);">
+                <p>C3</p>
+                </li>
                 <li note="C#" id="61" class="black-key" onclick="sendMidiMessage(this);"></li>
                 <li note="D" id="62" class="white-key offset" onclick="sendMidiMessage(this);"></li>
                 <li note="D#" id="63" class="black-key" onclick="sendMidiMessage(this);"></li>
@@ -2378,19 +2617,28 @@
                 <li note="A" id="69" class="white-key offset" onclick="sendMidiMessage(this);"></li>
                 <li note="A#" id="70" class="black-key" onclick="sendMidiMessage(this);"></li>
                 <li note="B" id="71" class="white-key offset" onclick="sendMidiMessage(this);"></li>
-                <li note="C2" id="72" class="white-key" onclick="sendMidiMessage(this);">C4</li>
-                <li note="C#2" id="73" class="black-key" onclick="sendMidiMessage(this);"></li>
-                <li note="D2" id="74" class="white-key offset" onclick="sendMidiMessage(this);"></li>
-                <li note="D#2" id="75" class="black-key" onclick="sendMidiMessage(this);"></li>
-                <li note="E2" id="76" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="C2" id="72" class="white-key" onclick="sendMidiMessage(this);">
+                <p>C4</p>
+                </li>
+                <li note="C#" id="73" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="D" id="74" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="D#" id="75" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="E" id="76" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                <li note="F" id="77" class="white-key" onclick="sendMidiMessage(this);"></li>
+                <li note="F#" id="78" class="black-key" onclick="sendMidiMessage(this);"></li>
+                <li note="G" id=79" class="white-key offset" onclick="sendMidiMessage(this);"></li>
+                
 
             </ul>
 
             <div class="pitch-section">
-            <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-2" max="8" value="3" step="1" oninput="updateOctave(this);">
-              <input class="slider-regular" style="transform: rotate(-90deg);width: 100px;" id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this.name, this.value, this.min, this.max)">
-              <div onclick="switchColorModes();" style="height:50px; width:100px;background-color: red;"></div>
+                <input class="slider-regular-down" style="transform: rotate(-90deg);width: 90px;" id ="octave" type="range" name="octave" min="-2" max="7" value="3" step="1" oninput="updateOctave(this);">
+                <p id='octave-text' style="margin-left:-75px;margin-top:140px;font-size:12px;">octave</p>
+                <input class="slider-regular-down" style="transform: rotate(-90deg);width: 90px;" id ="pitch" type="range" name="pitch" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(this.name, this.value, this.min, this.max)">
+                <p id='pitch-text' style="margin-left:-75px;margin-top:140px;font-size:12px;">pitch range</p>
+
             </div>
+
             <div class="controls_card controls_card_top" hidden>
                 <h4>Preset & settings</h4>
                 Preset number:</label><input name="presetIdx" value="" type="number">
