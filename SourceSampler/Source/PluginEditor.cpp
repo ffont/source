@@ -105,8 +105,8 @@ void SourceSamplerAudioProcessorEditor::resized()
 {
     #if !ELK_BUILD
     if (!hadBrowserError){
-        float width = 980;
-        float height = 800;
+        float width = 1000;
+        float height = 900;
         #if JUCE_DEBUG
         setSize(width, height + 20);
         openInBrowser.setBounds(0, 0, 150, 20);
