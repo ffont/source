@@ -27,7 +27,7 @@ struct GlobalContextStruct {
     juce::File soundsDownloadLocation;
     juce::File presetFilesLocation;
     juce::File tmpFilesLocation;
-    juce::String freesoundOauthAccessToken = "";
+    juce::String freesoundOauthAccessToken = Defaults::freesoundOauthAccessToken;
 };
 
 
@@ -77,6 +77,7 @@ namespace Helpers
         state.setProperty (IDs::globalMidiInChannel, Defaults::globalMidiInChannel, nullptr);
         state.setProperty (IDs::midiOutForwardsMidiIn, Defaults::midiOutForwardsMidiIn, nullptr);
         state.setProperty (IDs::useOriginalFilesPreference, Defaults::useOriginalFilesPreference, nullptr);
+        state.setProperty (IDs::freesoundOauthAccessToken, Defaults::freesoundOauthAccessToken, nullptr);
         return state;
     }
 
@@ -88,6 +89,7 @@ namespace Helpers
         state.setProperty (IDs::globalMidiInChannel, currentState.getProperty(IDs::globalMidiInChannel), nullptr);
         state.setProperty (IDs::midiOutForwardsMidiIn, currentState.getProperty(IDs::midiOutForwardsMidiIn), nullptr);
         state.setProperty (IDs::useOriginalFilesPreference, currentState.getProperty(IDs::useOriginalFilesPreference), nullptr);
+        state.setProperty (IDs::freesoundOauthAccessToken, currentState.getProperty(IDs::freesoundOauthAccessToken), nullptr);
         return state;
     }
 

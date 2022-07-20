@@ -251,6 +251,7 @@ class SourceStateSynchronizer(object):
         self.last_update_id = -1
         self.state_soup = None
         self.should_request_full_state = True
+        self.ui_state_manager.current_state.spi.send_oauth_token_to_plugin()
 
     def plugin_is_alive(self):
         self.last_time_plugin_alive = time.time()
@@ -286,6 +287,7 @@ class SourceStateSynchronizer(object):
 
         # Configure some stuff that requires the data paths to be known
         configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
+        #self.ui_state_manager.current_state.spi.check_if_fs_oauth_token_should_be_set()
 
     def set_volatile_state_from_string(self, volatile_state_string):
         # Do it from string serialized version of the state
@@ -385,3 +387,4 @@ class SourceStateSynchronizer(object):
             self.last_update_id = update_id
 
             self.ui_state_manager.current_state.on_source_state_update()
+            #self.ui_state_manager.current_state.spi.check_if_fs_oauth_token_should_be_set()

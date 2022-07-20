@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from state_synchronizer import SourceStateSynchronizer
 from helpers import PlStateNames, state_names_source_state_hierarchy_map, sound_parameters_info_dict, translate_cc_license_url
+from freesound_interface import get_stored_access_token
 
 
 class SourcePluginInterface(object):
@@ -22,6 +23,17 @@ class SourcePluginInterface(object):
 
     def has_state(self):
         return self.sss.state_soup is not None
+
+    def check_if_fs_oauth_token_should_be_set(self):
+        token = self.get_property(PlStateNames.FREESOUND_OAUTH_TOKEN, '')
+        if not token:
+            # If no token in the plugin state, get the token from the UI state and send it
+            self.send_oauth_token_to_plugin()
+
+    def send_oauth_token_to_plugin(self):
+        stored_token = get_stored_access_token()
+        if stored_token:
+            self.send_msg_to_plugin("/set_oauth_token", [stored_token])
 
     def get_source_sound_idx_from_source_sampler_sound_uuid(self, source_sampler_sound_uuid):
         for sound_idx, sound in enumerate(self.sss.state_soup.find_all("SOUND".lower())):

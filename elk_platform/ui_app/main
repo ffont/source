@@ -172,6 +172,7 @@ def freesound_login_callback():
     # Serve interface HTML file with all the available controls
     code = request.args.get('code')
     get_access_token_from_code(code)
+    source_plugin_interface.send_oauth_token_to_plugin()
     return redirect(url_for('index'))
 
 
@@ -283,6 +284,9 @@ if __name__ == "__main__":
 
     print('* Running aconnect')
     get_command_output("aconnect 16 128")
+
+    # Try sending access token already
+    source_plugin_interface.send_oauth_token_to_plugin()
 
     # Start HTTP server that will receive state updates from the plugin and implements the web interface
     print('* Starting HTTP server at {}'.format(args.http_port))

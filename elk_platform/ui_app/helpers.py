@@ -48,6 +48,7 @@ class PlStateNames():
     PLUGIN_VERSION = 'pluginVersion'
 
     USE_ORIGINAL_FILES_PREFERENCE = 'useOriginalFilesPreference'
+    FREESOUND_OAUTH_TOKEN = 'freesoundOauthAccessToken'
     MIDI_IN_CHANNEL = 'globalMidiInChannel'
 
     LOADED_PRESET_NAME = 'name_preset'
@@ -113,6 +114,7 @@ state_names_source_state_hierarchy_map = {
 
     PlStateNames.PLUGIN_VERSION: 'source_state',
     PlStateNames.USE_ORIGINAL_FILES_PREFERENCE: 'source_state',
+    PlStateNames.FREESOUND_OAUTH_TOKEN: 'source_state',
     PlStateNames.MIDI_IN_CHANNEL: 'source_state',
 
     PlStateNames.LOADED_PRESET_NAME: 'preset',

@@ -97,6 +97,8 @@ void SourceSamplerAudioProcessor::bindState()
     midiOutForwardsMidiIn.referTo(state, IDs::midiOutForwardsMidiIn, nullptr, Defaults::midiOutForwardsMidiIn);
     Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::useOriginalFilesPreference, Defaults::currentPresetIndex);
     useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::freesoundOauthAccessToken, Defaults::freesoundOauthAccessToken);
+    freesoundOauthAccessToken.referTo(state, IDs::freesoundOauthAccessToken, nullptr, Defaults::freesoundOauthAccessToken);
     
     juce::ValueTree preset = state.getChildWithName(IDs::PRESET);
     Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::numVoices, Defaults::numVoices);
@@ -164,7 +166,7 @@ GlobalContextStruct SourceSamplerAudioProcessor::getGlobalContext()
     context.sourceDataLocation = sourceDataLocation;
     context.presetFilesLocation = presetFilesLocation;
     context.tmpFilesLocation = tmpFilesLocation;
-    context.freesoundOauthAccessToken = ""; // TODO: implement support for obtaining an access token and enable downloading original quality files
+    context.freesoundOauthAccessToken = freesoundOauthAccessToken.get();
     context.midiInChannel = globalMidiInChannel.get();
     return context;
 }
@@ -575,6 +577,7 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
     settings.setProperty(IDs::midiOutForwardsMidiIn, midiOutForwardsMidiIn.get(), nullptr);
     settings.setProperty(IDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
     settings.setProperty(IDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
+    settings.setProperty(IDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
     settings.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
     std::unique_ptr<juce::XmlElement> xml (settings.createXml());
@@ -782,6 +785,11 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
     else if (actionName == ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE){
         juce::String preference = parameters[0];
         useOriginalFilesPreference = preference;
+        saveGlobalPersistentStateToFile();
+    }
+    else if (actionName == ACTION_SET_FREESOUND_OAUTH_TOKEN){
+        juce::String oauthToken = parameters[0];
+        freesoundOauthAccessToken = oauthToken;
         saveGlobalPersistentStateToFile();
     }
     else if (actionName == ACTION_SET_GLOBAL_MIDI_IN_CHANNEL){

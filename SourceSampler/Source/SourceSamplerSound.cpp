@@ -933,6 +933,8 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                     // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
                     if (!locationInDisk.getFullPathName().contains("-original")){
                         child.setProperty(IDs::usesPreview, true, nullptr);
+                    } else {
+                        child.setProperty(IDs::usesPreview, false, nullptr);
                     }
                     child.setProperty(IDs::downloadProgress, 100.0, nullptr);
                     child.setProperty(IDs::downloadCompleted, true, nullptr);
@@ -944,6 +946,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                     if (shouldUseOriginalQualityFile(child)){
                         // Download original quality file
                         juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
+                        child.setProperty(IDs::usesPreview, false, nullptr);
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);

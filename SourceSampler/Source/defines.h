@@ -18,7 +18,7 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
 #else
     #define USE_HTTP_SERVER 1  // Use embedded http server to serve audio files to plugin UI
-    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
 #define USING_DIRECT_COMMUNICATION_METHOD 0  // Direct communication method (without ws server) is implemented, but it does not seem to perform better than ws method
@@ -54,6 +54,7 @@
 #define ACTION_GET_STATE "/get_state"
 #define ACTION_PLAY_SOUND_FILE_FROM_PATH "/play_sound_from_path"
 #define ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE "/set_use_original_files"
+#define ACTION_SET_FREESOUND_OAUTH_TOKEN "/set_oauth_token"
 #define ACTION_SET_GLOBAL_MIDI_IN_CHANNEL "/set_midi_in_channel"
 #define ACTION_NOTE_ON "/note_on"
 #define ACTION_NOTE_OFF "/note_off"
@@ -130,6 +131,7 @@ inline int globalMidiInChannel = 0;
 inline int numVoices = 8;
 inline bool midiOutForwardsMidiIn = false;
 inline juce::String useOriginalFilesPreference = USE_ORIGINAL_FILES_NEVER;
+inline juce::String freesoundOauthAccessToken = "";
 inline int midiVelocityLayer = 0;
 inline int midiRootNote = 64;
 inline bool willBeDeleted = false;
@@ -242,6 +244,7 @@ DECLARE_ID (allSoundsLoaded)
 DECLARE_ID (globalMidiInChannel)
 DECLARE_ID (numVoices)
 DECLARE_ID (useOriginalFilesPreference)
+DECLARE_ID (freesoundOauthAccessToken)
 
 DECLARE_ID (sourceDataLocation)
 DECLARE_ID (soundsDownloadLocation)

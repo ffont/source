@@ -189,6 +189,7 @@ private:
     juce::CachedValue<int> globalMidiInChannel;
     juce::CachedValue<int> midiOutForwardsMidiIn;
     juce::CachedValue<juce::String> useOriginalFilesPreference;
+    juce::CachedValue<juce::String> freesoundOauthAccessToken;
     
     std::unique_ptr<SourceSoundList> sounds;
     std::unique_ptr<SourceSoundList> soundsOld;  // Used when sounds is replaced to not immediately delete all objects inside and give time for save deletion

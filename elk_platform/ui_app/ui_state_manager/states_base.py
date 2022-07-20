@@ -139,6 +139,7 @@ class State(object):
             'Only small': 'onlyShort',
             'Always': 'always',
         }[preference]])
+        self.spi.send_oauth_token_to_plugin()
 
     def send_add_or_replace_sound_to_plugin(self, sound_uuid, new_sound, assigned_notes="", root_note=-1, local_file_path="", move_once_loaded=False):
         sound_onsets_list = []

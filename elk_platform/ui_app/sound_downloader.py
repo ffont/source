@@ -38,7 +38,7 @@ def download_sound(url, outfile, sound_uuid, use_header, source_plugin_interface
     progress = SoundDownloaderProgress(url, outfile, sound_uuid, source_plugin_interface)
     if ':' in use_header:
         opener = urllib.request.build_opener()
-        if len(use_header) > len('Authorization: Bearer ' + 10):
+        if len(use_header) > len('Authorization: Bearer ') + 10:
             # If the plugin has sent a header long enough so that it contains the actual access token, use it
             opener.addheaders = [(use_header.split(':')[0], use_header.split(':')[1])]
         else:
