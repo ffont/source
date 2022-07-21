@@ -81,9 +81,9 @@ void SourceSamplerSound::writeBufferToDisk()
     juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
     #endif
     writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
-                                          soundSampleRate,
+                                          16000,  // Write files with lower resolution as it will be enough for waveform visualization
                                           1,  // Write mono files for visualization (will probably only take the first channel)
-                                          16,
+                                          8,  // Write 8 bits only as it will be enough for waveform visualization purposes
                                           {},
                                           0));
     if (writer != nullptr)

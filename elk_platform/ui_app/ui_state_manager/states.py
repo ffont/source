@@ -476,23 +476,6 @@ class EditMIDICCAssignmentState(GoBackOnEncoderLongPressedStateMixin, State):
 
 class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateMixin, State):
 
-    def to_array(self, vorbis_file):
-        bytes_per_sample = 2
-        dtype = {
-            1: numpy.int8,
-            2: numpy.int16
-        }
-        # Convert the ctypes buffer to a NumPy array
-        array = numpy.frombuffer(
-            vorbis_file.buffer,
-            dtype=dtype[bytes_per_sample]
-        )
-        # Reshape the array
-        return array.reshape(
-            (len(vorbis_file.buffer) // bytes_per_sample // vorbis_file.channels,
-             vorbis_file.channels)
-        )
-
     frame_count = 0
     sound_idx = -1
     sound_data_array = None  # numpy array of shape (x, 1)
@@ -541,6 +524,10 @@ class SoundSliceEditorState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStateM
             if os.path.exists(path):
                 self.sm.show_global_message('Loading\nwaveform...', duration=10)
                 self.sound_sr, self.sound_data_array = wavfile.read(path)
+                if self.sound_data_array.dtype == numpy.uint8:
+                    # if type is uint8, change to int8 so it is centered at 0 and not 128
+                    self.sound_data_array = self.sound_data_array.view(numpy.int8)
+                    self.sound_data_array -= 128                    
                 if len(self.sound_data_array.shape) > 1:
                     self.sound_data_array = self.sound_data_array[:, 0]  # Take 1 channel only
                 self.sound_data_array = self.sound_data_array / abs(

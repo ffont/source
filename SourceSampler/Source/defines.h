@@ -14,11 +14,11 @@
 #define SYNC_STATE_WITH_OSC 0
 
 #if ELK_BUILD
-    #define USE_HTTP_SERVER 0 // Don't use the embedded http server to serve audio files as these are directly loaded from disk
+    #define USE_HTTP_SERVER 1 // Use the embedded http server to serve audio files because even though in python ui we direcly load them form disk, if loading the web ui we still want to be able to see waveforms
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // In ELK, downloads also happen through the external HTTP server
 #else
     #define USE_HTTP_SERVER 1  // Use embedded http server to serve audio files to plugin UI
-    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 1  // Don't use external HTTP server for downloads, download them from the plugin
+    #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
 #define USING_DIRECT_COMMUNICATION_METHOD 0  // Direct communication method (without ws server) is implemented, but it does not seem to perform better than ws method
