@@ -66,7 +66,7 @@ ac_descriptors_options = ['off', 'low', 'mid', 'high']
 ac_descriptors_names = ['brightness', 'hardness', 'depth', 'roughness','boominess', 'warmth', 'sharpness']
 
 query_settings_info_dict = {
-    'num_sounds': (lambda x:num_sounds_options[int(round(x * (len(num_sounds_options) - 1)))], 'Num sounds', '{}', 16),
+    'num_sounds': (lambda x:num_sounds_options[int(round(x * (len(num_sounds_options) - 1)))], 'Num sounds', '{}', 8),
     'min_length': (lambda x:float(pow(x, 4) * 300), 'Min length', '{0:.1f}s', 0.0),
     'max_length': (lambda x:float(pow(x, 4) * 300), 'Max length', '{0:.1f}s', 10.0),
     'layout': (lambda x:note_layout_types[int(round(x * (len(note_layout_types) - 1)))], 'Layout', '{}', note_layout_types[1]),

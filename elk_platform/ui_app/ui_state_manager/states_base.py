@@ -264,7 +264,7 @@ class State(object):
             self.sm.show_global_message("Error :(")
         self.sm.block_ui_input = False
 
-    def new_preset_by_query(self, query='', num_sounds=16, min_length=0, max_length=300, layout=1, page_size=150, **kwargs):
+    def new_preset_by_query(self, query='', num_sounds=8, min_length=0, max_length=300, layout=1, page_size=150, **kwargs):
         self.sm.show_global_message("Searching\n{}...".format(query), duration=3600)
         self.sm.block_ui_input = True
         try:

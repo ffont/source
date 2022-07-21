@@ -77,7 +77,7 @@ class EnterQuerySettingsState(ShowHelpPagesMixin, GoBackOnEncoderLongPressedStat
         for parameter_name in query_settings_info_dict.keys():
             self.query_settings_values[parameter_name] = query_settings_info_dict[parameter_name][3]
         # Overwrite num sounds if passed in query
-        self.query_settings_values['num_sounds'] = kwargs.get('num_sounds', 16)
+        self.query_settings_values['num_sounds'] = kwargs.get('num_sounds', 8)
         self.callback = kwargs.get('callback', None)
         self.extra_data_for_callback = kwargs.get('extra_data_for_callback', None)
         self.allow_change_num_sounds = kwargs.get('allow_change_num_sounds', True)
