@@ -54,8 +54,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     bindState();
     
     // Load global settings and do extra configuration
-    std::cout << "Loading global settings" << std::endl;
-    loadGlobalPersistentStateFromFile();
+    //std::cout << "Loading global settings" << std::endl;
+    //loadGlobalPersistentStateFromFile();
+    // NOTE: loading global persistent state is now part of the bindState method
     
     // Notify that plugin is running
     #if SYNC_STATE_WITH_OSC
@@ -99,6 +100,9 @@ void SourceSamplerAudioProcessor::bindState()
     useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
     Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::freesoundOauthAccessToken, Defaults::freesoundOauthAccessToken);
     freesoundOauthAccessToken.referTo(state, IDs::freesoundOauthAccessToken, nullptr, Defaults::freesoundOauthAccessToken);
+    
+    // Load global settings stored in file, now before sounds are created as these might need the oauth token
+    loadGlobalPersistentStateFromFile();
     
     juce::ValueTree preset = state.getChildWithName(IDs::PRESET);
     Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::numVoices, Defaults::numVoices);
@@ -608,6 +612,9 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
             }
             if (settings.hasProperty(IDs::useOriginalFilesPreference)){
                 useOriginalFilesPreference = settings.getProperty(IDs::useOriginalFilesPreference).toString();
+            }
+            if (settings.hasProperty(IDs::freesoundOauthAccessToken)){
+                freesoundOauthAccessToken = settings.getProperty(IDs::freesoundOauthAccessToken).toString();
             }
         }
     }
