@@ -3,7 +3,7 @@ import os
 from freesound_api_key import FREESOUND_CLIENT_ID
 from freesound_interface import logout_from_freesound, is_logged_in, get_currently_logged_in_user
 from helpers import justify_text, frame_from_lines, PlStateNames, sound_parameters_info_dict, add_meter_to_frame, \
-    add_voice_grid_to_frame
+    add_voice_grid_to_frame, sizeof_fmt, free_disk_space
 
 from .states_base import PaginatedState, ChangePresetOnEncoderShiftRotatedStateMixin, \
     GoBackOnEncoderLongPressedStateMixin, MenuState, EnterTextViaHWOrWebInterfaceState, MenuCallbackState, \
@@ -30,7 +30,9 @@ class HomeState(ChangePresetOnEncoderShiftRotatedStateMixin, PaginatedState):
         if self.current_page_data == EXTRA_PAGE_1_NAME:
             # Show some sound information
             lines += [
-                justify_text('Temp:', '{0}ºC'.format(self.spi.get_property(PlStateNames.SYSTEM_STATS).get("temp", ""))),
+                #justify_text('Disk usage:', '{0}'.format(sizeof_fmt(self.spi.get_property(PlStateNames.SYSTEM_STATS).get("disk_used_bytes", 0)))),
+                justify_text('Disk free:', '{0:.1f}%'.format(100.0 * self.spi.get_property(PlStateNames.SYSTEM_STATS).get("disk_free_percentage", ""))),
+                #justify_text('Temp:', '{0}ºC'.format(self.spi.get_property(PlStateNames.SYSTEM_STATS).get("temp", ""))),
                 justify_text('Memory:', '{0}%'.format(self.spi.get_property(PlStateNames.SYSTEM_STATS).get("mem", ""))),
                 justify_text('CPU:', '{0}% | {1:.1f}%'.format(self.spi.get_property(PlStateNames.SYSTEM_STATS).get("cpu", ""),
                                                               self.spi.get_property(PlStateNames.SYSTEM_STATS).get(
@@ -133,12 +135,13 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
     OPTION_LOGIN_TO_FREESOUND = "Login to Freesound"
     OPTION_LOGOUT_FROM_FREESOUND = "Logout from Freesound"
     OPTION_DOWNLOAD_ORIGINAL = "Use original files..."
+    OPTION_REDUCE_DISK_USAGE = "Free disk space..."
     OPTION_ABOUT = "About"
 
     items = [OPTION_SAVE, OPTION_SAVE_AS, OPTION_RELOAD, OPTION_LOAD_PRESET, \
              OPTION_NEW_SOUNDS, OPTION_ADD_NEW_SOUND, OPTION_RELAYOUT, OPTION_REVERB, \
              OPTION_NUM_VOICES, OPTION_GO_TO_SOUND, OPTION_SOUND_USAGE_LOG, OPTION_DOWNLOAD_ORIGINAL,
-             OPTION_MIDI_IN_CHANNEL, OPTION_LOGIN_TO_FREESOUND, OPTION_ABOUT]
+             OPTION_MIDI_IN_CHANNEL, OPTION_LOGIN_TO_FREESOUND, OPTION_REDUCE_DISK_USAGE, OPTION_ABOUT]
     page_size = 5
 
     def draw_display_frame(self):
@@ -276,6 +279,12 @@ class HomeContextualMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
             current_midi_in = self.spi.get_property(PlStateNames.MIDI_IN_CHANNEL, 0)
             self.sm.move_to(EnterNumberState(initial=current_midi_in, minimum=0, maximum=16, title1="Midi in channel",
                                         callback=self.set_midi_in_chhannel, go_back_n_times=2))
+        elif action_name == self.OPTION_REDUCE_DISK_USAGE:
+            sounds_path = self.spi.get_property(PlStateNames.SOUNDS_DATA_LOCATION)
+            self.sm.show_global_message('Cleaning old\naudio files...')
+            cleaned_amount_in_bytes, num_removed = free_disk_space(directory_path=sounds_path)
+            self.sm.show_global_message('Cleaned {}\nfiles ({})!'.format(num_removed, sizeof_fmt(cleaned_amount_in_bytes)), duration=2)
+
         elif action_name == self.OPTION_ABOUT:
             try:
                 last_commit_info = open('last_commit_info', 'r').readlines()[0]

@@ -14,6 +14,7 @@ import urllib
 from collections import deque
 from functools import wraps
 from PIL import ImageFont, Image, ImageDraw
+from pathlib import Path
 
 # -- Various
 
@@ -802,6 +803,24 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
+
+def free_disk_space(directory_path=None, percentage_to_free=0.25):
+    freed_space = 0
+    num_files_removed = 0
+    root_directory = Path(directory_path)
+    directory_size = sum(f.stat().st_size for f in root_directory.glob('**/*') if f.is_file())
+    amount_to_free_bytes = directory_size * percentage_to_free
+    if directory_path is not None:
+        paths = sorted(Path(directory_path).iterdir(), key=os.path.getmtime)
+        for path in paths:
+            size = os.path.getsize(path)
+            os.remove(path)
+            freed_space += size
+            num_files_removed += 1
+            if freed_space >= amount_to_free_bytes:
+                break
+    return freed_space, num_files_removed
+    
 
 # -- Recent queries and query filters
 

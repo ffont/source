@@ -1,9 +1,42 @@
+import os
+import shutil
 import time
+
 from helpers import get_platform, get_command_output
 
 system_stats = {}
 last_time_restarting_connman = 0
 network_currently_connected = False
+
+last_time_disk_space_checked = 0
+last_disk_space_percentage = -1.0
+last_disk_usage_bytes = -1.0
+last_disk_capacity_bytes = -1.0
+
+
+def get_disk_stats():
+    global last_time_disk_space_checked
+    global last_disk_space_percentage
+    global last_disk_usage_bytes
+    global last_disk_capacity_bytes
+
+    now = time.time()
+    if now - last_time_disk_space_checked > 10.0:        
+        if get_platform() == "ELK":
+            path_to_check = '/udata/'
+        else:
+            path_to_check = os.path.dirname(os.path.realpath(__file__))
+        total, used, free = shutil.disk_usage(__file__)
+        last_disk_space_percentage = free/total
+        last_disk_usage_bytes = free
+        last_disk_capacity_bytes = total
+        last_time_disk_space_checked = now
+    
+    return {
+        'disk_free_percentage': last_disk_space_percentage,
+        'disk_used_bytes': last_disk_usage_bytes,
+        'disk_capacity_bytes': last_disk_capacity_bytes
+    }
 
 
 def collect_system_stats():
@@ -15,6 +48,7 @@ def collect_system_stats():
 
         # Get system stats like cpu usage, temperature, etc.
         try:
+            system_stats.update(get_disk_stats())
             system_stats['temp'] = get_command_output("sudo vcgencmd measure_temp").replace('temp=', '').replace("'C", '')
             system_stats['cpu'] = get_command_output("/bin/grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage \"%\"}'")[0:4]
             system_stats['mem'] = get_command_output("free | /bin/grep Mem | awk '{print $3/$2 * 100.0}'")[0:4]
@@ -55,3 +89,5 @@ def collect_system_stats():
 
         except:
             system_stats = {}
+    else: 
+        system_stats.update(get_disk_stats())
