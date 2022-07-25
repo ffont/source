@@ -64,7 +64,7 @@ def deploy_elk(ctx):
         # Copy UI app files
         print('\n* Copying UI app files...')
         ui_app_remote_dir = os.path.join(remote_base_dir, 'ui_app')
-        copy_local_directory_to_remote(c, local_ui_app_path, ui_app_remote_dir, to_ignore=['.pyc', '__pycache__', 'frame', '.idea', 'sound_usage_log', 'recent_queries', 'tokens', 'sm_settings'])
+        copy_local_directory_to_remote(c, local_ui_app_path, ui_app_remote_dir, to_ignore=['.pyc', '__pycache__', 'frame', '.idea', 'sound_usage_log', 'recent_queries', 'tokens', 'sm_settings', 'freesound_api_key_dev.py'])
 
         # Copy sucshi and sensei config files
         print('\n* Copying sushi and sensei config files...') 
