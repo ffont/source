@@ -6,7 +6,10 @@ import threading
 import asyncio
 import time
 
-from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
+try:
+    from freesound_api_key_dev import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
+except:
+    from freesound_api_key import FREESOUND_API_KEY, FREESOUND_CLIENT_ID
 
 from helpers import DownloadFileThread
 

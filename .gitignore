@@ -7,6 +7,7 @@ VST2_SDK
 api_key.h
 elk_platform/static
 freesound_api_key.py
+freesound_api_key_dev.py
 recent_queries_and_filters.json
 sound_usage_log
 tokens.json
