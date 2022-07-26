@@ -173,7 +173,7 @@ class State(object):
             self.spi.send_msg_to_plugin("/add_sound", common_arguments)
         else:
             # Replacing existing sound
-            self.spi.send_msg_to_plugin("/reaplce_sound", [sound_uuid] + common_arguments )
+            self.spi.send_msg_to_plugin("/replace_sound", [sound_uuid] + common_arguments )
 
         if sound_uuid == "" and move_once_loaded:
             self.sm.set_waiting_to_go_to_last_loaded_sound()
