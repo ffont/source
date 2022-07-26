@@ -261,6 +261,8 @@ class NewSoundOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState):
                             'name': file_path.split('/')[-1],
                             'username': '-',
                             'license': '-',
+                            'type': file_path.split('.')[1],
+                            'filesize': os.path.getsize(file_path),
                             'previews': {'preview-hq-ogg': ''},
                         },
                         local_file_path=file_path,
@@ -375,6 +377,8 @@ class ReplaceByOptionsMenuState(GoBackOnEncoderLongPressedStateMixin, MenuState)
                             'name': file_path.split('/')[-1],
                             'username': '-',
                             'license': '-',
+                            'type': file_path.split('.')[1],
+                            'filesize': os.path.getsize(file_path),
                             'previews': {'preview-hq-ogg': ''},
                         },
                         local_file_path=file_path
