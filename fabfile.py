@@ -61,6 +61,9 @@ def deploy_elk(ctx):
         c.run('mkdir -p {}'.format(os.path.join(remote_base_dir, 'local_files')))
         c.run('mkdir -p {}'.format(os.path.join(remote_base_dir, 'sound_usage_log')))
 
+        # Generate and copy last_commit_info file
+        os.system('git log -1 --pretty=format:"%h %ci" > elk_platform/ui_app/last_commit_info')
+
         # Copy UI app files
         print('\n* Copying UI app files...')
         ui_app_remote_dir = os.path.join(remote_base_dir, 'ui_app')
