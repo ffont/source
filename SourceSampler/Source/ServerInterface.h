@@ -14,11 +14,15 @@
 #include "defines_source.h"
 #include "BinaryData.h"
 #if USE_SSL_FOR_HTTP_AND_WS
-#include "server_wss.hpp"
-#include "server_https.hpp"
+    #include "server_wss.hpp"
+    #if USE_HTTP_SERVER
+    #include "server_https.hpp"
+    #endif
 #else
-#include "server_ws.hpp"
-#include "server_http.hpp"
+    #include "server_ws.hpp"
+    #if USE_HTTP_SERVER
+    #include "server_http.hpp"
+    #endif
 #endif
 #include <future>
 #include <fstream>
@@ -88,13 +92,16 @@ public:
     
 };
 
+#if USE_HTTP_SERVER
 #if USE_SSL_FOR_HTTP_AND_WS
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 #else
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 #endif
+#endif
 
 
+#if USE_HTTP_SERVER
 class HTTPServer: public juce::Thread
 {
 public:
@@ -119,7 +126,7 @@ public:
     ServerInterface* interfacePtr;
     std::unique_ptr<HttpServer> serverPtr;
 };
-
+#endif
 
 class ServerInterface: public juce::ActionBroadcaster
 {
@@ -245,7 +252,7 @@ void WebSocketsServer::run()
         #endif
     #else
     server.config.port = WEBSOCKETS_SERVER_PORT;  // Use a known port so python UI can connect to it
-    #endif    
+    #endif
     serverPtr.reset(&server);
     
     auto &source_coms_endpoint = server.endpoint["^/source_coms/?$"];
@@ -262,7 +269,7 @@ void WebSocketsServer::run()
     });
 }
 
-
+#if USE_HTTP_SERVER
 void HTTPServer::run() {
     #if USE_SSL_FOR_HTTP_AND_WS
     #if ELK_BUILD
@@ -358,7 +365,7 @@ void HTTPServer::run() {
     });
 
 }
-
+#endif
 
 void OSCServer::oscMessageReceived (const juce::OSCMessage& message)
 {
