@@ -42,6 +42,7 @@
 		2F91ACE53009BBF1787062F8 /* Cocoa.framework */ = {isa = PBXBuildFile; fileRef = 129B2FA0A9E3ECEE9589F0CA; };
 		303F7F9231F6AF065CE4E7FD /* Shared Code */ = {isa = PBXBuildFile; fileRef = 75A6FDD2862C71EDF00FD6B3; };
 		30D6F52683EFBA7C8450906E /* include_juce_cryptography.mm */ = {isa = PBXBuildFile; fileRef = 8E697AC7EC717E5F9AFBDC48; };
+		332C87C6F36E349E37C4E660 /* SourceSampler.cpp */ = {isa = PBXBuildFile; fileRef = 81C399931B0DB13A690E16D7; };
 		39A0A3E4216481B5D1B8E5D5 /* include_juce_audio_devices.mm */ = {isa = PBXBuildFile; fileRef = 4AA605BB6A5FDA9F4F543C4F; };
 		3D0607CEB601546E6381A15F /* include_juce_audio_plugin_client_Standalone.cpp */ = {isa = PBXBuildFile; fileRef = 5B679FDC2FB9A717B0B91CDC; };
 		3DBF6464DA0645109F1DA947 /* AudioToolbox.framework */ = {isa = PBXBuildFile; fileRef = 242B201E0F057EFCA955DD58; };
@@ -109,6 +110,7 @@
 		47B336B762C77ACCC220B2BA /* Info-VST3.plist */ /* Info-VST3.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST3.plist"; path = "Info-VST3.plist"; sourceTree = SOURCE_ROOT; };
 		4941D670F1F6F776FAE44B6B /* juce_gui_extra */ /* juce_gui_extra */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_extra; path = ../../3rdParty/JUCE/modules/juce_gui_extra; sourceTree = SOURCE_ROOT; };
 		4AA605BB6A5FDA9F4F543C4F /* include_juce_audio_devices.mm */ /* include_juce_audio_devices.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_devices.mm; path = ../../JuceLibraryCode/include_juce_audio_devices.mm; sourceTree = SOURCE_ROOT; };
+		4B461D067EE0D2D4DD22BD5C /* SourceSampler.h */ /* SourceSampler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SourceSampler.h; path = ../../Source/SourceSampler.h; sourceTree = SOURCE_ROOT; };
 		4C47FD4CCEB3061DE8FD6A75 /* include_juce_osc.cpp */ /* include_juce_osc.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_osc.cpp; path = ../../JuceLibraryCode/include_juce_osc.cpp; sourceTree = SOURCE_ROOT; };
 		51B8BE17C29C2141DE1111F6 /* juce_osc */ /* juce_osc */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_osc; path = ../../3rdParty/JUCE/modules/juce_osc; sourceTree = SOURCE_ROOT; };
 		546E5C94581589536369E97E /* include_juce_audio_plugin_client_AU_2.mm */ /* include_juce_audio_plugin_client_AU_2.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_AU_2.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU_2.mm; sourceTree = SOURCE_ROOT; };
@@ -131,6 +133,7 @@
 		7B14D666DF33F10A426D2D16 /* ui_plugin_ws_lazy.html */ /* ui_plugin_ws_lazy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = ui_plugin_ws_lazy.html; path = ../../Resources/ui_plugin_ws_lazy.html; sourceTree = SOURCE_ROOT; };
 		7B7047A307A218418CB0612C /* RecentFilesMenuTemplate.nib */ /* RecentFilesMenuTemplate.nib */ = {isa = PBXFileReference; lastKnownFileType = file.nib; name = RecentFilesMenuTemplate.nib; path = RecentFilesMenuTemplate.nib; sourceTree = SOURCE_ROOT; };
 		7EA54F98BDA2739089629A6C /* include_juce_gui_extra.mm */ /* include_juce_gui_extra.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_extra.mm; path = ../../JuceLibraryCode/include_juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
+		81C399931B0DB13A690E16D7 /* SourceSampler.cpp */ /* SourceSampler.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SourceSampler.cpp; path = ../../Source/SourceSampler.cpp; sourceTree = SOURCE_ROOT; };
 		8399535889E4E09A2BCE7015 /* QuartzCore.framework */ /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		8486F824FD97661FF5C053EE /* drow_ValueTreeObjectList.h */ /* drow_ValueTreeObjectList.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = drow_ValueTreeObjectList.h; path = ../../Source/drow_ValueTreeObjectList.h; sourceTree = SOURCE_ROOT; };
 		852695CCF020E7741DFB5239 /* LevelMeterSource.h */ /* LevelMeterSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LevelMeterSource.h; path = ../../3rdParty/ff_meters/LevelMeter/LevelMeterSource.h; sourceTree = SOURCE_ROOT; };
@@ -445,9 +448,11 @@
 				CAF159EE43BED805AECE3E10,
 				3CAABA94EAA743182819A1D8,
 				F913441AFAB33F45033E472D,
-				372BAC76C5A8F2B77569BB78,
 				0093CD2C1A4C423E37B299BC,
 				042B13F5D6A591E5AA8E1FF6,
+				81C399931B0DB13A690E16D7,
+				4B461D067EE0D2D4DD22BD5C,
+				372BAC76C5A8F2B77569BB78,
 				6890C3E0045A04E713CAA3BB,
 				231731DB1E7A71CF246DF02C,
 				9228145D2E132F51E8605108,
@@ -890,6 +895,7 @@
 			files = (
 				A4FB6FE8FE17AF5967D16FB6,
 				DF8FB1342E15E248CF2BB8FB,
+				332C87C6F36E349E37C4E660,
 				7CA241889649439177FBCC0E,
 				F203ECFB5C279CD9C3FB3054,
 				D68AA53B57DD38E3843C1B97,

@@ -123,6 +123,7 @@ OBJECTS_STANDALONE_PLUGIN := \
 OBJECTS_SHARED_CODE := \
   $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o \
   $(JUCE_OBJDIR)/PluginProcessor_a059e380.o \
+  $(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o \
   $(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o \
   $(JUCE_OBJDIR)/SourceSamplerSound_cc95aa2b.o \
   $(JUCE_OBJDIR)/SourceSamplerVoice_fbe0f8ce.o \
@@ -218,6 +219,11 @@ $(JUCE_OBJDIR)/PluginEditor_94d4fb09.o: ../../Source/PluginEditor.cpp
 $(JUCE_OBJDIR)/PluginProcessor_a059e380.o: ../../Source/PluginProcessor.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling PluginProcessor.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/SourceSampler_bcab0c4e.o: ../../Source/SourceSampler.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling SourceSampler.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_SHARED_CODE) $(JUCE_CFLAGS_SHARED_CODE) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/SourceSamplerSynthesiser_17fa8a1d.o: ../../Source/SourceSamplerSynthesiser.cpp

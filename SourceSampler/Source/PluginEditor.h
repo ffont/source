@@ -67,7 +67,7 @@ public:
     void actionListenerCallback (const juce::String &message) override;
     
     void triggerActionInProcessor (const juce::String actionMessage) {
-        processor.actionListenerCallback(actionMessage);
+        processor.source.actionListenerCallback(actionMessage);
     }
     
 private:

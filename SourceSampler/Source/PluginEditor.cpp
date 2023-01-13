@@ -16,7 +16,7 @@
 SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    processor.addActionListener(this);
+    processor.source.addActionListener(this);
     
     // Copy bundled HTML plugin file to dcuments folder so we can load it
     #if ELK_BUILD
@@ -66,7 +66,7 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
 
 SourceSamplerAudioProcessorEditor::~SourceSamplerAudioProcessorEditor()
 {
-    processor.removeActionListener(this);
+    processor.source.removeActionListener(this);
     
     #if !ELK_BUILD
     browser.editor.release();
@@ -79,7 +79,7 @@ juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
     #else
     juce::String useWss = "0";
     #endif
-    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.getServerInterfaceHttpPort());
+    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.source.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.source.getServerInterfaceHttpPort());
     DBG("> Satic UI URL: " << url.toString(true));
     return url;
 }
