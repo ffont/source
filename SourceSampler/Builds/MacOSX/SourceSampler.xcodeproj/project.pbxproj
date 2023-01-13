@@ -80,6 +80,7 @@
 
 /* Begin PBXFileReference section */
 		0093CD2C1A4C423E37B299BC /* PluginProcessor.cpp */ /* PluginProcessor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PluginProcessor.cpp; path = ../../Source/PluginProcessor.cpp; sourceTree = SOURCE_ROOT; };
+		01E8EBA3D4906EA04401361F /* defines_source.h */ /* defines_source.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = defines_source.h; path = ../../Source/defines_source.h; sourceTree = SOURCE_ROOT; };
 		033342EB572F049A39C6B21A /* worker_pool_implementation.h */ /* worker_pool_implementation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = worker_pool_implementation.h; path = ../../3rdParty/twine/src/worker_pool_implementation.h; sourceTree = SOURCE_ROOT; };
 		042B13F5D6A591E5AA8E1FF6 /* PluginProcessor.h */ /* PluginProcessor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PluginProcessor.h; path = ../../Source/PluginProcessor.h; sourceTree = SOURCE_ROOT; };
 		0459039BD68DB47C7E952B2F /* include_juce_audio_plugin_client_VST3.cpp */ /* include_juce_audio_plugin_client_VST3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_VST3.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_VST3.cpp; sourceTree = SOURCE_ROOT; };
@@ -88,7 +89,6 @@
 		0BE2918EC1169D1062E517C8 /* juce_cryptography */ /* juce_cryptography */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_cryptography; path = ../../3rdParty/JUCE/modules/juce_cryptography; sourceTree = SOURCE_ROOT; };
 		0C636102DF04538D9FF9ADB2 /* include_juce_audio_utils.mm */ /* include_juce_audio_utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_utils.mm; path = ../../JuceLibraryCode/include_juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
 		129B2FA0A9E3ECEE9589F0CA /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
-		13136607F9291DD5C2F82BAE /* defines.h */ /* defines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = defines.h; path = ../../Source/defines.h; sourceTree = SOURCE_ROOT; };
 		160F33129C21F39682D768BC /* Info-AU.plist */ /* Info-AU.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-AU.plist"; path = "Info-AU.plist"; sourceTree = SOURCE_ROOT; };
 		1D60E7D5B1EF58ED10B71F7D /* xenomai_stubs.h */ /* xenomai_stubs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xenomai_stubs.h; path = ../../3rdParty/twine/src/xenomai_stubs.h; sourceTree = SOURCE_ROOT; };
 		1DEE04B05B79DF8EA3A9E5DD /* include_juce_dsp.mm */ /* include_juce_dsp.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_dsp.mm; path = ../../JuceLibraryCode/include_juce_dsp.mm; sourceTree = SOURCE_ROOT; };
@@ -161,6 +161,7 @@
 		C4EE541746D9AB336E207AAB /* JuceHeader.h */ /* JuceHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JuceHeader.h; path = ../../JuceLibraryCode/JuceHeader.h; sourceTree = SOURCE_ROOT; };
 		CA7E3E2A594B692989FA319E /* FreesoundAPI.cpp */ /* FreesoundAPI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FreesoundAPI.cpp; path = ../../Source/FreesoundAPI.cpp; sourceTree = SOURCE_ROOT; };
 		CAA46233BEAE6C5D01EBA25B /* icon.png */ /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = icon.png; path = ../../../docs/icon.png; sourceTree = SOURCE_ROOT; };
+		CAF159EE43BED805AECE3E10 /* helpers_source.h */ /* helpers_source.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = helpers_source.h; path = ../../Source/helpers_source.h; sourceTree = SOURCE_ROOT; };
 		D0658F1793EAF839A61A4BAC /* juce_gui_basics */ /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = ../../3rdParty/JUCE/modules/juce_gui_basics; sourceTree = SOURCE_ROOT; };
 		D1C18AA6321D8651CB293A22 /* SourceSamplerVoice.h */ /* SourceSamplerVoice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SourceSamplerVoice.h; path = ../../Source/SourceSamplerVoice.h; sourceTree = SOURCE_ROOT; };
 		DF6C7463FDF28DD60A44BDC9 /* CoreMIDI.framework */ /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
@@ -172,7 +173,6 @@
 		F4B467BBE140488419BA9D8B /* Info-VST.plist */ /* Info-VST.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST.plist"; path = "Info-VST.plist"; sourceTree = SOURCE_ROOT; };
 		F5DAE94341AADD7DA7CA3949 /* CoreAudioKit.framework */ /* CoreAudioKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioKit.framework; path = System/Library/Frameworks/CoreAudioKit.framework; sourceTree = SDKROOT; };
 		F834FF9950575DB0902CA127 /* include_juce_events.mm */ /* include_juce_events.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_events.mm; path = ../../JuceLibraryCode/include_juce_events.mm; sourceTree = SOURCE_ROOT; };
-		F8908F9ECA7D95B6AE630FEE /* helpers.h */ /* helpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = helpers.h; path = ../../Source/helpers.h; sourceTree = SOURCE_ROOT; };
 		F913441AFAB33F45033E472D /* PluginEditor.h */ /* PluginEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PluginEditor.h; path = ../../Source/PluginEditor.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -441,8 +441,8 @@
 		D6F4544776E0B949F646A967 /* Main */ = {
 			isa = PBXGroup;
 			children = (
-				13136607F9291DD5C2F82BAE,
-				F8908F9ECA7D95B6AE630FEE,
+				01E8EBA3D4906EA04401361F,
+				CAF159EE43BED805AECE3E10,
 				3CAABA94EAA743182819A1D8,
 				F913441AFAB33F45033E472D,
 				372BAC76C5A8F2B77569BB78,

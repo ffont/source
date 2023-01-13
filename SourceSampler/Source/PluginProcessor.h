@@ -11,13 +11,12 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "helpers.h"
+#include "helpers_source.h"
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
 #include "LevelMeterSource.h"
-#include "defines.h"
 
 
 //==============================================================================

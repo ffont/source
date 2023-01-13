@@ -35,7 +35,7 @@ def generate_code(controls_data_filename):
             minf = float(control_data['min'])
             maxf = float(control_data['max'])
             control_data.update({'minf': minf, 'maxf': maxf})
-            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = !normed ? juce::jlimit({minf}f, {maxf}f, value) : juce::jmap(value, {minf}f, {maxf}f); }}\n'.format(**control_data)
+            current_code += '        {iftag} (identifier == SourceIDs::{name}) {{ {name} = !normed ? juce::jlimit({minf}f, {maxf}f, value) : juce::jmap(value, {minf}f, {maxf}f); }}\n'.format(**control_data)
         else:
             # Don't know what to do with other types
             pass
@@ -52,7 +52,7 @@ def generate_code(controls_data_filename):
             mini = int(control_data['min'])
             maxi = int(control_data['max'])
             control_data.update({'mini': mini, 'maxi': maxi})
-            current_code += '        {iftag} (identifier == IDs::{name}) {{ {name} = juce::jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
+            current_code += '        {iftag} (identifier == SourceIDs::{name}) {{ {name} = juce::jlimit({mini}, {maxi}, value); }}\n'.format(**control_data)  
         else:
             # Don't know what to do with other types
             pass
@@ -67,11 +67,11 @@ def generate_code(controls_data_filename):
         minf = float(control_data['min'])
         maxf = float(control_data['max'])
         control_data.update({'minf': minf, 'maxf': maxf, 'iftag': iftag})
-        current_code_f += '        {iftag} (identifier == IDs::{name}) {{ return !normed ? {name}.get() : juce::jmap({name}.get(), {minf}f, {maxf}f, 0.0f, 1.0f); }}\n'.format(**control_data)
+        current_code_f += '        {iftag} (identifier == SourceIDs::{name}) {{ return !normed ? {name}.get() : juce::jmap({name}.get(), {minf}f, {maxf}f, 0.0f, 1.0f); }}\n'.format(**control_data)
     for count, control_data in enumerate([control_data for control_data in controls_list if control_data['type'] in ['int']]):
         iftag = 'else if' if count > 0 else 'if'
         control_data.update({'iftag': iftag})
-        current_code_e += '        {iftag} (identifier == IDs::{name}) {{ return {name}.get(); }}\n'.format(**control_data)
+        current_code_e += '        {iftag} (identifier == SourceIDs::{name}) {{ return {name}.get(); }}\n'.format(**control_data)
         
     current_code_e += '        '
     current_code_f += '        '
@@ -95,7 +95,7 @@ def generate_code(controls_data_filename):
     # Generate SourceSamplerSound.h code to bind state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
-        current_code += "    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::{name}, Defaults::{name});\n    {name}.referTo(state, IDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
+        current_code += "    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::{name}, Defaults::{name});\n    {name}.referTo(state, SourceIDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
     current_code += '    '
     code_dict['Source/SourceSamplerSound.cpp']['C'] = current_code
 
@@ -119,23 +119,23 @@ def generate_code(controls_data_filename):
     code_dict['Source/defines.h']['A'] = current_code_a
     code_dict['Source/defines.h']['B'] = current_code_b
 
-    # Generate helpers.h code to include all sound parameters when creating an empry sound
+    # Generate helpers_source.h code to include all sound parameters when creating an empry sound
     current_code_a = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
         if control_data['type'] == 'float':
             defaultf = float(control_data['default'])
             control_data.update({'defaultf': defaultf})
-            current_code_a += "        sound.setProperty (IDs::{name}, {defaultf}f, nullptr);\n".format(**control_data)
+            current_code_a += "        sound.setProperty (SourceIDs::{name}, {defaultf}f, nullptr);\n".format(**control_data)
         elif control_data['type'] == 'int':
             defaulti = int(control_data['default'])
             control_data.update({'defaulti': defaulti})
-            current_code_a += "        sound.setProperty (IDs::{name}, {defaulti}, nullptr);\n".format(**control_data)
+            current_code_a += "        sound.setProperty (SourceIDs::{name}, {defaulti}, nullptr);\n".format(**control_data)
         else:
             # Don't know what to do with other types
             pass
     current_code_a += "        "
-    code_dict['Source/helpers.h'] = {}
-    code_dict['Source/helpers.h']['A'] = current_code_a
+    code_dict['Source/helpers_source.h'] = {}
+    code_dict['Source/helpers_source.h']['A'] = current_code_a
 
     # Generate HTML interface sound edit elements code
     current_code = ''

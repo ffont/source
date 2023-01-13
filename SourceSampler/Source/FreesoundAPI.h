@@ -22,7 +22,8 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "defines.h"
+
+#define FREESOUND_API_REQUEST_TIMEOUT 20000
 
 /**
  * \typedef	std::pair<int, var> Response

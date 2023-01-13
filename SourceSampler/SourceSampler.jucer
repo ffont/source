@@ -10,8 +10,10 @@
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Main">
-      <FILE id="NCfDAx" name="defines.h" compile="0" resource="0" file="Source/defines.h"/>
-      <FILE id="VMg3xj" name="helpers.h" compile="0" resource="0" file="Source/helpers.h"/>
+      <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"
+            file="Source/defines_source.h"/>
+      <FILE id="VMg3xj" name="helpers_source.h" compile="0" resource="0"
+            file="Source/helpers_source.h"/>
       <FILE id="wHELQH" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="vCgU7A" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>

@@ -33,7 +33,7 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
         source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
         
         // Add duration to state
-        state.setProperty(IDs::duration, getLengthInSeconds(), nullptr);
+        state.setProperty(SourceIDs::duration, getLengthInSeconds(), nullptr);
     }
     
     // Load calculated onsets (if any)
@@ -50,22 +50,22 @@ SourceSamplerSound::~SourceSamplerSound()
 
 void SourceSamplerSound::bindState ()
 {
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::name, Defaults::name);
-    name.referTo(state, IDs::name, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::soundId, Defaults::soundId);
-    soundId.referTo(state, IDs::soundId, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiRootNote, Defaults::midiRootNote);
-    midiRootNote.referTo(state, IDs::midiRootNote, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiVelocityLayer, Defaults::midiVelocityLayer);
-    midiVelocityLayer.referTo(state, IDs::midiVelocityLayer, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleStartPosition, Defaults::sampleStartPosition);
-    sampleStartPosition.referTo(state, IDs::sampleStartPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleEndPosition, Defaults::sampleEndPosition);
-    sampleEndPosition.referTo(state, IDs::sampleEndPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleLoopStartPosition, Defaults::sampleLoopStartPosition);
-    sampleLoopStartPosition.referTo(state, IDs::sampleLoopStartPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sampleLoopEndPosition, Defaults::sampleLoopEndPosition);
-    sampleLoopEndPosition.referTo(state, IDs::sampleLoopEndPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::name, SourceDefaults::name);
+    name.referTo(state, SourceIDs::name, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::soundId, SourceDefaults::soundId);
+    soundId.referTo(state, SourceIDs::soundId, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiRootNote, SourceDefaults::midiRootNote);
+    midiRootNote.referTo(state, SourceIDs::midiRootNote, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiVelocityLayer, SourceDefaults::midiVelocityLayer);
+    midiVelocityLayer.referTo(state, SourceIDs::midiVelocityLayer, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleStartPosition, SourceDefaults::sampleStartPosition);
+    sampleStartPosition.referTo(state, SourceIDs::sampleStartPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleEndPosition, SourceDefaults::sampleEndPosition);
+    sampleEndPosition.referTo(state, SourceIDs::sampleEndPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopStartPosition, SourceDefaults::sampleLoopStartPosition);
+    sampleLoopStartPosition.referTo(state, SourceIDs::sampleLoopStartPosition, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopEndPosition, SourceDefaults::sampleLoopEndPosition);
+    sampleLoopEndPosition.referTo(state, SourceIDs::sampleLoopEndPosition, nullptr);
     checkSampleSampleStartEndAndLoopPositions();
 }
 
@@ -76,9 +76,9 @@ void SourceSamplerSound::writeBufferToDisk()
     std::unique_ptr<juce::AudioFormatWriter> writer;
     #if ELK_BUILD
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
-    juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
     #else
-    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(IDs::uuid).toString()).withFileExtension("wav");
+    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
     #endif
     writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
                                           16000,  // Write files with lower resolution as it will be enough for waveform visualization
@@ -104,18 +104,18 @@ bool SourceSamplerSound::appliesToVelocity (int midiVelocity)
 int SourceSamplerSound::getCorrectedVelocity(int midiVelocity)
 {
     // Modified velocity value according to velSensitivity parameter (midiVelocity 0-127)
-    return (int)std::round(127.0 * juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity/127.0, getParameterFloat(IDs::velSensitivity))));
+    return (int)std::round(127.0 * juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity/127.0, getParameterFloat(SourceIDs::velSensitivity))));
 }
 
 float SourceSamplerSound::getCorrectedVelocity(float midiVelocity)
 {
     // Modified velocity value according to velSensitivity parameter (midiVelocity 0.0-1.0)
-    return (float)juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity, getParameterFloat(IDs::velSensitivity)));
+    return (float)juce::jlimit(0.0, 1.0, std::pow((double)midiVelocity, getParameterFloat(SourceIDs::velSensitivity)));
 }
 
 bool SourceSamplerSound::appliesToChannel (int midiChannel)
 {
-    int soundMidiChannel = getParameterInt(IDs::midiChannel);
+    int soundMidiChannel = getParameterInt(SourceIDs::midiChannel);
     if (soundMidiChannel == 0){
         // use global channel
         int globalMidiChannel = sourceSoundPointer->getGlobalContext().midiInChannel;
@@ -129,13 +129,13 @@ bool SourceSamplerSound::appliesToChannel (int midiChannel)
 float SourceSamplerSound::getParameterFloat(juce::Identifier identifier){
     // Return parameters from the corresponding SourceSound object
     // For some parameters, first check if the SourceSamplerSound object has a special "override"
-    if ((identifier == IDs::startPosition) && (sampleStartPosition >= 0.0)){
+    if ((identifier == SourceIDs::startPosition) && (sampleStartPosition >= 0.0)){
         return sampleStartPosition;
-    } else if ((identifier == IDs::endPosition) && (sampleEndPosition >= 0.0)){
+    } else if ((identifier == SourceIDs::endPosition) && (sampleEndPosition >= 0.0)){
         return sampleEndPosition;
-    } else if ((identifier == IDs::loopStartPosition) && (sampleLoopStartPosition >= 0.0)){
+    } else if ((identifier == SourceIDs::loopStartPosition) && (sampleLoopStartPosition >= 0.0)){
         return sampleLoopStartPosition;
-    } else if ((identifier == IDs::loopEndPosition) && (sampleLoopEndPosition >= 0.0)){
+    } else if ((identifier == SourceIDs::loopEndPosition) && (sampleLoopEndPosition >= 0.0)){
         return sampleLoopEndPosition;
     }
     return sourceSoundPointer->getParameterFloat(identifier, false);
@@ -228,14 +228,14 @@ std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
 }
 
 void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
-    juce::ValueTree soundAnalysis = state.getChildWithName(IDs::ANALYSIS);
+    juce::ValueTree soundAnalysis = state.getChildWithName(SourceIDs::ANALYSIS);
     if (soundAnalysis.isValid()){
-        juce::ValueTree onsetTimes = soundAnalysis.getChildWithName(IDs::onsets);
+        juce::ValueTree onsetTimes = soundAnalysis.getChildWithName(SourceIDs::onsets);
         if (onsetTimes.isValid()){
             std::vector<float> onsets = {};
             for (int i=0; i<onsetTimes.getNumChildren(); i++){
                 juce::ValueTree onsetVT = onsetTimes.getChild(i);
-                float onset = (float)(onsetVT.getProperty(IDs::onsetTime));
+                float onset = (float)(onsetVT.getProperty(SourceIDs::onsetTime));
                 onsets.push_back(onset);
             }
             setOnsetTimesSamples(onsets);
@@ -285,86 +285,86 @@ SourceSound::~SourceSound ()
 
 void SourceSound::bindState ()
 {
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::willBeDeleted, Defaults::willBeDeleted);
-    willBeDeleted.referTo(state, IDs::willBeDeleted, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::allSoundsLoaded, Defaults::allSoundsLoaded);
-    allSoundsLoaded.referTo(state, IDs::allSoundsLoaded, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiNotes, Defaults::midiNotes);
-    midiNotesAsString.referTo(state, IDs::midiNotes, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::willBeDeleted, SourceDefaults::willBeDeleted);
+    willBeDeleted.referTo(state, SourceIDs::willBeDeleted, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::allSoundsLoaded, SourceDefaults::allSoundsLoaded);
+    allSoundsLoaded.referTo(state, SourceIDs::allSoundsLoaded, nullptr);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiNotes, SourceDefaults::midiNotes);
+    midiNotesAsString.referTo(state, SourceIDs::midiNotes, nullptr);
     
     // --> Start auto-generated code C
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::launchMode, Defaults::launchMode);
-    launchMode.referTo(state, IDs::launchMode, nullptr, Defaults::launchMode);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::startPosition, Defaults::startPosition);
-    startPosition.referTo(state, IDs::startPosition, nullptr, Defaults::startPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::endPosition, Defaults::endPosition);
-    endPosition.referTo(state, IDs::endPosition, nullptr, Defaults::endPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopStartPosition, Defaults::loopStartPosition);
-    loopStartPosition.referTo(state, IDs::loopStartPosition, nullptr, Defaults::loopStartPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopEndPosition, Defaults::loopEndPosition);
-    loopEndPosition.referTo(state, IDs::loopEndPosition, nullptr, Defaults::loopEndPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::loopXFadeNSamples, Defaults::loopXFadeNSamples);
-    loopXFadeNSamples.referTo(state, IDs::loopXFadeNSamples, nullptr, Defaults::loopXFadeNSamples);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::reverse, Defaults::reverse);
-    reverse.referTo(state, IDs::reverse, nullptr, Defaults::reverse);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::noteMappingMode, Defaults::noteMappingMode);
-    noteMappingMode.referTo(state, IDs::noteMappingMode, nullptr, Defaults::noteMappingMode);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::numSlices, Defaults::numSlices);
-    numSlices.referTo(state, IDs::numSlices, nullptr, Defaults::numSlices);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::playheadPosition, Defaults::playheadPosition);
-    playheadPosition.referTo(state, IDs::playheadPosition, nullptr, Defaults::playheadPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::freezePlayheadSpeed, Defaults::freezePlayheadSpeed);
-    freezePlayheadSpeed.referTo(state, IDs::freezePlayheadSpeed, nullptr, Defaults::freezePlayheadSpeed);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterCutoff, Defaults::filterCutoff);
-    filterCutoff.referTo(state, IDs::filterCutoff, nullptr, Defaults::filterCutoff);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterRessonance, Defaults::filterRessonance);
-    filterRessonance.referTo(state, IDs::filterRessonance, nullptr, Defaults::filterRessonance);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterKeyboardTracking, Defaults::filterKeyboardTracking);
-    filterKeyboardTracking.referTo(state, IDs::filterKeyboardTracking, nullptr, Defaults::filterKeyboardTracking);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterAttack, Defaults::filterAttack);
-    filterAttack.referTo(state, IDs::filterAttack, nullptr, Defaults::filterAttack);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterDecay, Defaults::filterDecay);
-    filterDecay.referTo(state, IDs::filterDecay, nullptr, Defaults::filterDecay);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterSustain, Defaults::filterSustain);
-    filterSustain.referTo(state, IDs::filterSustain, nullptr, Defaults::filterSustain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterRelease, Defaults::filterRelease);
-    filterRelease.referTo(state, IDs::filterRelease, nullptr, Defaults::filterRelease);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::filterADSR2CutoffAmt, Defaults::filterADSR2CutoffAmt);
-    filterADSR2CutoffAmt.referTo(state, IDs::filterADSR2CutoffAmt, nullptr, Defaults::filterADSR2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::gain, Defaults::gain);
-    gain.referTo(state, IDs::gain, nullptr, Defaults::gain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::attack, Defaults::attack);
-    attack.referTo(state, IDs::attack, nullptr, Defaults::attack);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::decay, Defaults::decay);
-    decay.referTo(state, IDs::decay, nullptr, Defaults::decay);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::sustain, Defaults::sustain);
-    sustain.referTo(state, IDs::sustain, nullptr, Defaults::sustain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::release, Defaults::release);
-    release.referTo(state, IDs::release, nullptr, Defaults::release);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pan, Defaults::pan);
-    pan.referTo(state, IDs::pan, nullptr, Defaults::pan);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitch, Defaults::pitch);
-    pitch.referTo(state, IDs::pitch, nullptr, Defaults::pitch);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitchBendRangeUp, Defaults::pitchBendRangeUp);
-    pitchBendRangeUp.referTo(state, IDs::pitchBendRangeUp, nullptr, Defaults::pitchBendRangeUp);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::pitchBendRangeDown, Defaults::pitchBendRangeDown);
-    pitchBendRangeDown.referTo(state, IDs::pitchBendRangeDown, nullptr, Defaults::pitchBendRangeDown);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2CutoffAmt, Defaults::mod2CutoffAmt);
-    mod2CutoffAmt.referTo(state, IDs::mod2CutoffAmt, nullptr, Defaults::mod2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2GainAmt, Defaults::mod2GainAmt);
-    mod2GainAmt.referTo(state, IDs::mod2GainAmt, nullptr, Defaults::mod2GainAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2PitchAmt, Defaults::mod2PitchAmt);
-    mod2PitchAmt.referTo(state, IDs::mod2PitchAmt, nullptr, Defaults::mod2PitchAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::mod2PlayheadPos, Defaults::mod2PlayheadPos);
-    mod2PlayheadPos.referTo(state, IDs::mod2PlayheadPos, nullptr, Defaults::mod2PlayheadPos);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::vel2CutoffAmt, Defaults::vel2CutoffAmt);
-    vel2CutoffAmt.referTo(state, IDs::vel2CutoffAmt, nullptr, Defaults::vel2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::vel2GainAmt, Defaults::vel2GainAmt);
-    vel2GainAmt.referTo(state, IDs::vel2GainAmt, nullptr, Defaults::vel2GainAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::velSensitivity, Defaults::velSensitivity);
-    velSensitivity.referTo(state, IDs::velSensitivity, nullptr, Defaults::velSensitivity);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiChannel, Defaults::midiChannel);
-    midiChannel.referTo(state, IDs::midiChannel, nullptr, Defaults::midiChannel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::launchMode, SourceDefaults::launchMode);
+    launchMode.referTo(state, SourceIDs::launchMode, nullptr, SourceDefaults::launchMode);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::startPosition, SourceDefaults::startPosition);
+    startPosition.referTo(state, SourceIDs::startPosition, nullptr, SourceDefaults::startPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::endPosition, SourceDefaults::endPosition);
+    endPosition.referTo(state, SourceIDs::endPosition, nullptr, SourceDefaults::endPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopStartPosition, SourceDefaults::loopStartPosition);
+    loopStartPosition.referTo(state, SourceIDs::loopStartPosition, nullptr, SourceDefaults::loopStartPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopEndPosition, SourceDefaults::loopEndPosition);
+    loopEndPosition.referTo(state, SourceIDs::loopEndPosition, nullptr, SourceDefaults::loopEndPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopXFadeNSamples, SourceDefaults::loopXFadeNSamples);
+    loopXFadeNSamples.referTo(state, SourceIDs::loopXFadeNSamples, nullptr, SourceDefaults::loopXFadeNSamples);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::reverse, SourceDefaults::reverse);
+    reverse.referTo(state, SourceIDs::reverse, nullptr, SourceDefaults::reverse);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::noteMappingMode, SourceDefaults::noteMappingMode);
+    noteMappingMode.referTo(state, SourceIDs::noteMappingMode, nullptr, SourceDefaults::noteMappingMode);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::numSlices, SourceDefaults::numSlices);
+    numSlices.referTo(state, SourceIDs::numSlices, nullptr, SourceDefaults::numSlices);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::playheadPosition, SourceDefaults::playheadPosition);
+    playheadPosition.referTo(state, SourceIDs::playheadPosition, nullptr, SourceDefaults::playheadPosition);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freezePlayheadSpeed, SourceDefaults::freezePlayheadSpeed);
+    freezePlayheadSpeed.referTo(state, SourceIDs::freezePlayheadSpeed, nullptr, SourceDefaults::freezePlayheadSpeed);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterCutoff, SourceDefaults::filterCutoff);
+    filterCutoff.referTo(state, SourceIDs::filterCutoff, nullptr, SourceDefaults::filterCutoff);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRessonance, SourceDefaults::filterRessonance);
+    filterRessonance.referTo(state, SourceIDs::filterRessonance, nullptr, SourceDefaults::filterRessonance);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterKeyboardTracking, SourceDefaults::filterKeyboardTracking);
+    filterKeyboardTracking.referTo(state, SourceIDs::filterKeyboardTracking, nullptr, SourceDefaults::filterKeyboardTracking);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterAttack, SourceDefaults::filterAttack);
+    filterAttack.referTo(state, SourceIDs::filterAttack, nullptr, SourceDefaults::filterAttack);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterDecay, SourceDefaults::filterDecay);
+    filterDecay.referTo(state, SourceIDs::filterDecay, nullptr, SourceDefaults::filterDecay);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterSustain, SourceDefaults::filterSustain);
+    filterSustain.referTo(state, SourceIDs::filterSustain, nullptr, SourceDefaults::filterSustain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRelease, SourceDefaults::filterRelease);
+    filterRelease.referTo(state, SourceIDs::filterRelease, nullptr, SourceDefaults::filterRelease);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterADSR2CutoffAmt, SourceDefaults::filterADSR2CutoffAmt);
+    filterADSR2CutoffAmt.referTo(state, SourceIDs::filterADSR2CutoffAmt, nullptr, SourceDefaults::filterADSR2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::gain, SourceDefaults::gain);
+    gain.referTo(state, SourceIDs::gain, nullptr, SourceDefaults::gain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::attack, SourceDefaults::attack);
+    attack.referTo(state, SourceIDs::attack, nullptr, SourceDefaults::attack);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::decay, SourceDefaults::decay);
+    decay.referTo(state, SourceIDs::decay, nullptr, SourceDefaults::decay);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sustain, SourceDefaults::sustain);
+    sustain.referTo(state, SourceIDs::sustain, nullptr, SourceDefaults::sustain);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::release, SourceDefaults::release);
+    release.referTo(state, SourceIDs::release, nullptr, SourceDefaults::release);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pan, SourceDefaults::pan);
+    pan.referTo(state, SourceIDs::pan, nullptr, SourceDefaults::pan);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitch, SourceDefaults::pitch);
+    pitch.referTo(state, SourceIDs::pitch, nullptr, SourceDefaults::pitch);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeUp, SourceDefaults::pitchBendRangeUp);
+    pitchBendRangeUp.referTo(state, SourceIDs::pitchBendRangeUp, nullptr, SourceDefaults::pitchBendRangeUp);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeDown, SourceDefaults::pitchBendRangeDown);
+    pitchBendRangeDown.referTo(state, SourceIDs::pitchBendRangeDown, nullptr, SourceDefaults::pitchBendRangeDown);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2CutoffAmt, SourceDefaults::mod2CutoffAmt);
+    mod2CutoffAmt.referTo(state, SourceIDs::mod2CutoffAmt, nullptr, SourceDefaults::mod2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2GainAmt, SourceDefaults::mod2GainAmt);
+    mod2GainAmt.referTo(state, SourceIDs::mod2GainAmt, nullptr, SourceDefaults::mod2GainAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PitchAmt, SourceDefaults::mod2PitchAmt);
+    mod2PitchAmt.referTo(state, SourceIDs::mod2PitchAmt, nullptr, SourceDefaults::mod2PitchAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PlayheadPos, SourceDefaults::mod2PlayheadPos);
+    mod2PlayheadPos.referTo(state, SourceIDs::mod2PlayheadPos, nullptr, SourceDefaults::mod2PlayheadPos);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2CutoffAmt, SourceDefaults::vel2CutoffAmt);
+    vel2CutoffAmt.referTo(state, SourceIDs::vel2CutoffAmt, nullptr, SourceDefaults::vel2CutoffAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2GainAmt, SourceDefaults::vel2GainAmt);
+    vel2GainAmt.referTo(state, SourceIDs::vel2GainAmt, nullptr, SourceDefaults::vel2GainAmt);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::velSensitivity, SourceDefaults::velSensitivity);
+    velSensitivity.referTo(state, SourceIDs::velSensitivity, nullptr, SourceDefaults::velSensitivity);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiChannel, SourceDefaults::midiChannel);
+    midiChannel.referTo(state, SourceIDs::midiChannel, nullptr, SourceDefaults::midiChannel);
     // --> End auto-generated code C
     
     midiCCmappings = std::make_unique<MidiCCMappingList>(state);
@@ -405,7 +405,7 @@ SourceSamplerSound* SourceSound::getLinkedSourceSamplerSoundWithUUID(const juce:
 // --------------------------------------------------------------------------------------------
 
 juce::String SourceSound::getUUID() {
-    return state.getProperty(IDs::uuid).toString();
+    return state.getProperty(SourceIDs::uuid).toString();
 }
 
 bool SourceSound::isScheduledForDeletion() {
@@ -437,84 +437,84 @@ bool SourceSound::shouldBeDeleted(){
 
 int SourceSound::getParameterInt(juce::Identifier identifier){
     // --> Start auto-generated code E
-        if (identifier == IDs::launchMode) { return launchMode.get(); }
-        else if (identifier == IDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
-        else if (identifier == IDs::reverse) { return reverse.get(); }
-        else if (identifier == IDs::noteMappingMode) { return noteMappingMode.get(); }
-        else if (identifier == IDs::numSlices) { return numSlices.get(); }
-        else if (identifier == IDs::midiChannel) { return midiChannel.get(); }
+        if (identifier == SourceIDs::launchMode) { return launchMode.get(); }
+        else if (identifier == SourceIDs::loopXFadeNSamples) { return loopXFadeNSamples.get(); }
+        else if (identifier == SourceIDs::reverse) { return reverse.get(); }
+        else if (identifier == SourceIDs::noteMappingMode) { return noteMappingMode.get(); }
+        else if (identifier == SourceIDs::numSlices) { return numSlices.get(); }
+        else if (identifier == SourceIDs::midiChannel) { return midiChannel.get(); }
         // --> End auto-generated code E
     throw std::runtime_error("No int parameter with this name");
 }
 
 float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
     // --> Start auto-generated code F
-        if (identifier == IDs::startPosition) { return !normed ? startPosition.get() : juce::jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { return !normed ? endPosition.get() : juce::jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { return !normed ? loopStartPosition.get() : juce::jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { return !normed ? loopEndPosition.get() : juce::jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { return !normed ? playheadPosition.get() : juce::jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : juce::jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterCutoff) { return !normed ? filterCutoff.get() : juce::jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRessonance) { return !normed ? filterRessonance.get() : juce::jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : juce::jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { return !normed ? filterAttack.get() : juce::jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { return !normed ? filterDecay.get() : juce::jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { return !normed ? filterSustain.get() : juce::jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { return !normed ? filterRelease.get() : juce::jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : juce::jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::gain) { return !normed ? gain.get() : juce::jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::attack) { return !normed ? attack.get() : juce::jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { return !normed ? decay.get() : juce::jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { return !normed ? sustain.get() : juce::jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { return !normed ? release.get() : juce::jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { return !normed ? pan.get() : juce::jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { return !normed ? pitch.get() : juce::jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : juce::jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : juce::jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : juce::jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : juce::jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : juce::jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : juce::jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == IDs::velSensitivity) { return !normed ? velSensitivity.get() : juce::jmap(velSensitivity.get(), 0.0f, 6.0f, 0.0f, 1.0f); }
+        if (identifier == SourceIDs::startPosition) { return !normed ? startPosition.get() : juce::jmap(startPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::endPosition) { return !normed ? endPosition.get() : juce::jmap(endPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::loopStartPosition) { return !normed ? loopStartPosition.get() : juce::jmap(loopStartPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::loopEndPosition) { return !normed ? loopEndPosition.get() : juce::jmap(loopEndPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::playheadPosition) { return !normed ? playheadPosition.get() : juce::jmap(playheadPosition.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::freezePlayheadSpeed) { return !normed ? freezePlayheadSpeed.get() : juce::jmap(freezePlayheadSpeed.get(), 1.0f, 5000.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterCutoff) { return !normed ? filterCutoff.get() : juce::jmap(filterCutoff.get(), 10.0f, 20000.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterRessonance) { return !normed ? filterRessonance.get() : juce::jmap(filterRessonance.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterKeyboardTracking) { return !normed ? filterKeyboardTracking.get() : juce::jmap(filterKeyboardTracking.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterAttack) { return !normed ? filterAttack.get() : juce::jmap(filterAttack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterDecay) { return !normed ? filterDecay.get() : juce::jmap(filterDecay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterSustain) { return !normed ? filterSustain.get() : juce::jmap(filterSustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterRelease) { return !normed ? filterRelease.get() : juce::jmap(filterRelease.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterADSR2CutoffAmt) { return !normed ? filterADSR2CutoffAmt.get() : juce::jmap(filterADSR2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::gain) { return !normed ? gain.get() : juce::jmap(gain.get(), -80.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::attack) { return !normed ? attack.get() : juce::jmap(attack.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::decay) { return !normed ? decay.get() : juce::jmap(decay.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::sustain) { return !normed ? sustain.get() : juce::jmap(sustain.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::release) { return !normed ? release.get() : juce::jmap(release.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pan) { return !normed ? pan.get() : juce::jmap(pan.get(), -1.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pitch) { return !normed ? pitch.get() : juce::jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : juce::jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : juce::jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : juce::jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : juce::jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : juce::jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : juce::jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::velSensitivity) { return !normed ? velSensitivity.get() : juce::jmap(velSensitivity.get(), 0.0f, 6.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
     throw std::runtime_error("No float parameter with this name");
 }
 
 void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float value, bool normed){
     // --> Start auto-generated code B
-        if (identifier == IDs::startPosition) { startPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::endPosition) { endPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopStartPosition) { loopStartPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::loopEndPosition) { loopEndPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::playheadPosition) { playheadPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? juce::jlimit(1.0f, 5000.0f, value) : juce::jmap(value, 1.0f, 5000.0f); }
-        else if (identifier == IDs::filterCutoff) { filterCutoff = !normed ? juce::jlimit(10.0f, 20000.0f, value) : juce::jmap(value, 10.0f, 20000.0f); }
-        else if (identifier == IDs::filterRessonance) { filterRessonance = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterAttack) { filterAttack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterDecay) { filterDecay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterSustain) { filterSustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterRelease) { filterRelease = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::gain) { gain = !normed ? juce::jlimit(-80.0f, 12.0f, value) : juce::jmap(value, -80.0f, 12.0f); }
-        else if (identifier == IDs::attack) { attack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::decay) { decay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::sustain) { sustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::release) { release = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::pan) { pan = !normed ? juce::jlimit(-1.0f, 1.0f, value) : juce::jmap(value, -1.0f, 1.0f); }
-        else if (identifier == IDs::pitch) { pitch = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
-        else if (identifier == IDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::mod2GainAmt) { mod2GainAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PitchAmt) { mod2PitchAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
-        else if (identifier == IDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
-        else if (identifier == IDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == IDs::velSensitivity) { velSensitivity = !normed ? juce::jlimit(0.0f, 6.0f, value) : juce::jmap(value, 0.0f, 6.0f); }
+        if (identifier == SourceIDs::startPosition) { startPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::endPosition) { endPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::loopStartPosition) { loopStartPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::loopEndPosition) { loopEndPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::playheadPosition) { playheadPosition = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::freezePlayheadSpeed) { freezePlayheadSpeed = !normed ? juce::jlimit(1.0f, 5000.0f, value) : juce::jmap(value, 1.0f, 5000.0f); }
+        else if (identifier == SourceIDs::filterCutoff) { filterCutoff = !normed ? juce::jlimit(10.0f, 20000.0f, value) : juce::jmap(value, 10.0f, 20000.0f); }
+        else if (identifier == SourceIDs::filterRessonance) { filterRessonance = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterKeyboardTracking) { filterKeyboardTracking = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterAttack) { filterAttack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterDecay) { filterDecay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterSustain) { filterSustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterRelease) { filterRelease = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::filterADSR2CutoffAmt) { filterADSR2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == SourceIDs::gain) { gain = !normed ? juce::jlimit(-80.0f, 12.0f, value) : juce::jmap(value, -80.0f, 12.0f); }
+        else if (identifier == SourceIDs::attack) { attack = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::decay) { decay = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::sustain) { sustain = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::release) { release = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pan) { pan = !normed ? juce::jlimit(-1.0f, 1.0f, value) : juce::jmap(value, -1.0f, 1.0f); }
+        else if (identifier == SourceIDs::pitch) { pitch = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
+        else if (identifier == SourceIDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
+        else if (identifier == SourceIDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
+        else if (identifier == SourceIDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == SourceIDs::mod2GainAmt) { mod2GainAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
+        else if (identifier == SourceIDs::mod2PitchAmt) { mod2PitchAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
+        else if (identifier == SourceIDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
+        else if (identifier == SourceIDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::velSensitivity) { velSensitivity = !normed ? juce::jlimit(0.0f, 6.0f, value) : juce::jmap(value, 0.0f, 6.0f); }
         // --> End auto-generated code B
     else { throw std::runtime_error("No float parameter with this name"); }
     
@@ -535,12 +535,12 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
 
 void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
     // --> Start auto-generated code D
-        if (identifier == IDs::launchMode) { launchMode = juce::jlimit(0, 4, value); }
-        else if (identifier == IDs::loopXFadeNSamples) { loopXFadeNSamples = juce::jlimit(10, 100000, value); }
-        else if (identifier == IDs::reverse) { reverse = juce::jlimit(0, 1, value); }
-        else if (identifier == IDs::noteMappingMode) { noteMappingMode = juce::jlimit(0, 3, value); }
-        else if (identifier == IDs::numSlices) { numSlices = juce::jlimit(0, 100, value); }
-        else if (identifier == IDs::midiChannel) { midiChannel = juce::jlimit(0, 16, value); }
+        if (identifier == SourceIDs::launchMode) { launchMode = juce::jlimit(0, 4, value); }
+        else if (identifier == SourceIDs::loopXFadeNSamples) { loopXFadeNSamples = juce::jlimit(10, 100000, value); }
+        else if (identifier == SourceIDs::reverse) { reverse = juce::jlimit(0, 1, value); }
+        else if (identifier == SourceIDs::noteMappingMode) { noteMappingMode = juce::jlimit(0, 3, value); }
+        else if (identifier == SourceIDs::numSlices) { numSlices = juce::jlimit(0, 100, value); }
+        else if (identifier == SourceIDs::midiChannel) { midiChannel = juce::jlimit(0, 16, value); }
         // --> End auto-generated code D
     else { throw std::runtime_error("No int parameter with this name"); }
 }
@@ -657,7 +657,7 @@ void SourceSound::setMidiRootNote(int newMidiRootNote){
         // If sound has not yer any liked SourceSamplerSound objects, set midi property to thge first SOUND_SAMPLE in the sound's state
         auto firstSourceSamplerSoundState = state.getChild(0);
         if (firstSourceSamplerSoundState.isValid()){
-            firstSourceSamplerSoundState.setProperty(IDs::midiRootNote, newMidiRootNote, nullptr);
+            firstSourceSamplerSoundState.setProperty(SourceIDs::midiRootNote, newMidiRootNote, nullptr);
         }
     } else if (getLinkedSourceSamplerSounds().size() == 1) {
         // If sound already has a SourceSamplerSound object created, set the midi root note (to the first only)
@@ -672,12 +672,12 @@ int SourceSound::getMidiNoteFromFirstSourceSamplerSound(){
     if (getLinkedSourceSamplerSounds().size() == 0){
         auto firstSourceSamplerSoundState = state.getChild(0);
         if (firstSourceSamplerSoundState.isValid()){
-            return firstSourceSamplerSoundState.getProperty(IDs::midiRootNote, Defaults::midiRootNote);
+            return firstSourceSamplerSoundState.getProperty(SourceIDs::midiRootNote, SourceDefaults::midiRootNote);
         }
     } else {
         getFirstLinkedSourceSamplerSound()->getMidiRootNote();
     }
-    return Defaults::midiRootNote;
+    return SourceDefaults::midiRootNote;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -696,13 +696,13 @@ void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange){
     const juce::ScopedLock sl (midiMappingCreateDeleteLock);
     
-    juce::ValueTree existingMapping = state.getChildWithProperty(IDs::uuid, uuid);
+    juce::ValueTree existingMapping = state.getChildWithProperty(SourceIDs::uuid, uuid);
     if (existingMapping.isValid()) {
         // Modify existing mapping
-        existingMapping.setProperty (IDs::ccNumber, ccNumber, nullptr);
-        existingMapping.setProperty (IDs::parameterName, parameterName, nullptr);
-        existingMapping.setProperty (IDs::minRange, juce::jlimit(0.0f, 1.0f, minRange), nullptr);
-        existingMapping.setProperty (IDs::maxRange, juce::jlimit(0.0f, 1.0f, maxRange), nullptr);
+        existingMapping.setProperty (SourceIDs::ccNumber, ccNumber, nullptr);
+        existingMapping.setProperty (SourceIDs::parameterName, parameterName, nullptr);
+        existingMapping.setProperty (SourceIDs::minRange, juce::jlimit(0.0f, 1.0f, minRange), nullptr);
+        existingMapping.setProperty (SourceIDs::maxRange, juce::jlimit(0.0f, 1.0f, maxRange), nullptr);
     } else {
         // No mapping with uuid found, create a new one
         // TODO: move this to the MidiCCMappingList class?
@@ -768,10 +768,10 @@ std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
             return sounds;
         }
         auto child = state.getChild(i);
-        if (child.hasType(IDs::SOUND_SAMPLE)){
-            bool alreadyCreated = sourceSamplerSoundWithUUIDAlreadyCreated(child.getProperty(IDs::uuid, "").toString());
+        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
+            bool alreadyCreated = sourceSamplerSoundWithUUIDAlreadyCreated(child.getProperty(SourceIDs::uuid, "").toString());
             if (!alreadyCreated){
-                juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+                juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
                 if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
                     std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
                     if (reader == NULL){
@@ -848,7 +848,7 @@ void SourceSound::removeSourceSamplerSound(const juce::String& samplerSoundUUID,
 {
     const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
     getGlobalContext().sampler->removeSound(indexInSampler); // Remove source sampler sound from the sampler
-    state.removeChild(state.getChildWithProperty(IDs::uuid, samplerSoundUUID), nullptr);  // Also remove the bit of state corresponding to the sampler sound
+    state.removeChild(state.getChildWithProperty(SourceIDs::uuid, samplerSoundUUID), nullptr);  // Also remove the bit of state corresponding to the sampler sound
     std::cout << "Removed 1 SourceSamplerSound(s) from sampler... " << std::endl;
 }
 
@@ -902,8 +902,8 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
     // Set all download progress/completed properties to 0/false to start from scratch
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        child.setProperty (IDs::downloadProgress, 0, nullptr);
-        child.setProperty (IDs::downloadCompleted, false, nullptr);
+        child.setProperty (SourceIDs::downloadProgress, 0, nullptr);
+        child.setProperty (SourceIDs::downloadCompleted, false, nullptr);
     }
     
     // Iterate thorugh all sampler sounds and trigger downloads if necessary
@@ -917,9 +917,9 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
         }
         
         auto child = state.getChild(i);
-        if (child.hasType(IDs::SOUND_SAMPLE)){
-            bool isFromFreesound = child.getProperty(IDs::soundFromFreesound, false);
-            juce::String filePath = child.getProperty(IDs::filePath, ""); // Relative file path
+        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
+            bool isFromFreesound = child.getProperty(SourceIDs::soundFromFreesound, false);
+            juce::String filePath = child.getProperty(SourceIDs::filePath, ""); // Relative file path
             juce::File locationInDisk; // The location in disk where sound should be downloaded/placed
             
             if (isFromFreesound){
@@ -928,25 +928,25 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                 // This can be useful if sharing presets that had downloaded original quality files with plugin instances that don't have the ability to
                 // download original quality files (e.g. have no access token set)
                 locationInDisk = getFreesoundFileLocation(child);
-                child.setProperty(IDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
+                child.setProperty(SourceIDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
                 if (fileAlreadyInDisk(locationInDisk)){
                     // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
                     if (!locationInDisk.getFullPathName().contains("-original")){
-                        child.setProperty(IDs::usesPreview, true, nullptr);
+                        child.setProperty(SourceIDs::usesPreview, true, nullptr);
                     } else {
-                        child.setProperty(IDs::usesPreview, false, nullptr);
+                        child.setProperty(SourceIDs::usesPreview, false, nullptr);
                     }
-                    child.setProperty(IDs::downloadProgress, 100.0, nullptr);
-                    child.setProperty(IDs::downloadCompleted, true, nullptr);
+                    child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
+                    child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
                 } else {
                     // If the sound does not exist, then trigger the download
                     allAlreadyDownloaded = false;
-                    child.setProperty(IDs::downloadProgress, 0.0, nullptr);
-                    child.setProperty(IDs::downloadCompleted, false, nullptr);
+                    child.setProperty(SourceIDs::downloadProgress, 0.0, nullptr);
+                    child.setProperty(SourceIDs::downloadCompleted, false, nullptr);
                     if (shouldUseOriginalQualityFile(child)){
                         // Download original quality file
-                        juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(IDs::soundId).toString(), false);
-                        child.setProperty(IDs::usesPreview, false, nullptr);
+                        juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(SourceIDs::soundId).toString(), false);
+                        child.setProperty(SourceIDs::usesPreview, false, nullptr);
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
@@ -968,8 +968,8 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         # endif
                     } else {
                         // Download preview quality file
-                        child.setProperty(IDs::usesPreview, true, nullptr);
-                        juce::String previewURL = child.getProperty(IDs::previewURL, "").toString();
+                        child.setProperty(SourceIDs::usesPreview, true, nullptr);
+                        juce::String previewURL = child.getProperty(SourceIDs::previewURL, "").toString();
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withListener(this);
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
@@ -997,8 +997,8 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                 if (filePath != ""){
                     locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
                     if (fileAlreadyInDisk(locationInDisk)){
-                        child.setProperty(IDs::downloadProgress, 100.0, nullptr);
-                        child.setProperty(IDs::downloadCompleted, true, nullptr);
+                        child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
+                        child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
                     }
                 }
             }
@@ -1025,9 +1025,9 @@ bool SourceSound::fileLocationIsSupportedAudioFileFormat(juce::File location)
 juce::File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
 {
     juce::File locationInDisk;
-    juce::String soundId = sourceSamplerSoundState.getProperty(IDs::soundId);
+    juce::String soundId = sourceSamplerSoundState.getProperty(SourceIDs::soundId);
     if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
-        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(IDs::format).toString());
+        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(SourceIDs::format).toString());
     } else {
         locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
     }
@@ -1042,11 +1042,11 @@ bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoun
     // - the sound sample to have the "format" metadata, othewise we don't know the file format and can't download (this can be checked with isSupportedAudioFileFormat)
     if (getGlobalContext().freesoundOauthAccessToken != ""){
         if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
-            return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(IDs::format, ""));
+            return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(SourceIDs::format, ""));
         } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
             // Only return true if sound has a filesize below the threshold
-            if ((int)sourceSamplerSoundState.getProperty(IDs::filesize, MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD + 1) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
-                return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(IDs::format, ""));
+            if ((int)sourceSamplerSoundState.getProperty(SourceIDs::filesize, MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD + 1) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
+                return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(SourceIDs::format, ""));
             }
         }
     }
@@ -1064,11 +1064,11 @@ void SourceSound::downloadProgressUpdate(juce::File targetFileLocation, float pe
 {
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        if (child.hasType(IDs::SOUND_SAMPLE)){
-            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
+            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
             if (targetFileLocation == locationInDisk){
                 // Find the sample that corresponds to this download task and update state
-                child.setProperty(IDs::downloadProgress, percentageCompleted, nullptr);
+                child.setProperty(SourceIDs::downloadProgress, percentageCompleted, nullptr);
             }
         }
     }
@@ -1079,15 +1079,15 @@ void SourceSound::downloadFinished(juce::File targetFileLocation, bool taskSucce
     bool allAlreadyDownloaded = true;
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        if (child.hasType(IDs::SOUND_SAMPLE)){
+        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
             // Find the sample that corresponds to this download task and update state
             // To consider a download as succeeded, check that the the task returned succes
-            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(IDs::filePath, "").toString());
+            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
             if (taskSucceeded && (targetFileLocation == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
-                child.setProperty(IDs::downloadCompleted, true, nullptr);
-                child.setProperty(IDs::downloadProgress, 100.0, nullptr);
+                child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
+                child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
             } else {
-                if (!child.getProperty(IDs::downloadCompleted, false)){
+                if (!child.getProperty(SourceIDs::downloadCompleted, false)){
                     allAlreadyDownloaded = false;
                 }
             }

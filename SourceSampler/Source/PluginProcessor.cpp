@@ -84,51 +84,51 @@ void SourceSamplerAudioProcessor::bindState()
 {
     state.addListener(this);
     
-    state.setProperty(IDs::sourceDataLocation, sourceDataLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
-    state.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
+    state.setProperty(SourceIDs::sourceDataLocation, sourceDataLocation.getFullPathName(), nullptr);
+    state.setProperty(SourceIDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
+    state.setProperty(SourceIDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
+    state.setProperty(SourceIDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
+    state.setProperty(SourceIDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::currentPresetIndex, Defaults::currentPresetIndex);
-    currentPresetIndex.referTo(state, IDs::currentPresetIndex, nullptr, Defaults::currentPresetIndex);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::globalMidiInChannel, Defaults::globalMidiInChannel);
-    globalMidiInChannel.referTo(state, IDs::globalMidiInChannel, nullptr, Defaults::globalMidiInChannel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::midiOutForwardsMidiIn, Defaults::midiOutForwardsMidiIn);
-    midiOutForwardsMidiIn.referTo(state, IDs::midiOutForwardsMidiIn, nullptr, Defaults::midiOutForwardsMidiIn);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::useOriginalFilesPreference, Defaults::currentPresetIndex);
-    useOriginalFilesPreference.referTo(state, IDs::useOriginalFilesPreference, nullptr, Defaults::useOriginalFilesPreference);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, IDs::freesoundOauthAccessToken, Defaults::freesoundOauthAccessToken);
-    freesoundOauthAccessToken.referTo(state, IDs::freesoundOauthAccessToken, nullptr, Defaults::freesoundOauthAccessToken);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::currentPresetIndex, SourceDefaults::currentPresetIndex);
+    currentPresetIndex.referTo(state, SourceIDs::currentPresetIndex, nullptr, SourceDefaults::currentPresetIndex);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::globalMidiInChannel, SourceDefaults::globalMidiInChannel);
+    globalMidiInChannel.referTo(state, SourceIDs::globalMidiInChannel, nullptr, SourceDefaults::globalMidiInChannel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn);
+    midiOutForwardsMidiIn.referTo(state, SourceIDs::midiOutForwardsMidiIn, nullptr, SourceDefaults::midiOutForwardsMidiIn);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::useOriginalFilesPreference, SourceDefaults::currentPresetIndex);
+    useOriginalFilesPreference.referTo(state, SourceIDs::useOriginalFilesPreference, nullptr, SourceDefaults::useOriginalFilesPreference);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freesoundOauthAccessToken, SourceDefaults::freesoundOauthAccessToken);
+    freesoundOauthAccessToken.referTo(state, SourceIDs::freesoundOauthAccessToken, nullptr, SourceDefaults::freesoundOauthAccessToken);
     
     // Load global settings stored in file, now before sounds are created as these might need the oauth token
     loadGlobalPersistentStateFromFile();
     
-    juce::ValueTree preset = state.getChildWithName(IDs::PRESET);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::numVoices, Defaults::numVoices);
-    numVoices.referTo(preset, IDs::numVoices, nullptr, Defaults::numVoices);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::name, Helpers::defaultPresetName());
-    presetName.referTo(preset, IDs::name, nullptr, Helpers::defaultPresetName());
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::noteLayoutType, Defaults::noteLayoutType);
-    noteLayoutType.referTo(preset, IDs::noteLayoutType, nullptr, Defaults::noteLayoutType);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbRoomSize, Defaults::reverbRoomSize);
-    reverbRoomSize.referTo(preset, IDs::reverbRoomSize, nullptr, Defaults::reverbRoomSize);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbDamping, Defaults::reverbDamping);
-    reverbDamping.referTo(preset, IDs::reverbDamping, nullptr, Defaults::reverbDamping);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbWetLevel, Defaults::reverbWetLevel);
-    reverbWetLevel.referTo(preset, IDs::reverbWetLevel, nullptr, Defaults::reverbWetLevel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbDryLevel, Defaults::reverbDryLevel);
-    reverbDryLevel.referTo(preset, IDs::reverbDryLevel, nullptr, Defaults::reverbDryLevel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbWidth, Defaults::reverbWidth);
-    reverbWidth.referTo(preset, IDs::reverbWidth, nullptr, Defaults::reverbWidth);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, IDs::reverbFreezeMode, Defaults::reverbFreezeMode);
-    reverbFreezeMode.referTo(preset, IDs::reverbFreezeMode, nullptr, Defaults::reverbFreezeMode);
+    juce::ValueTree preset = state.getChildWithName(SourceIDs::PRESET);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::numVoices, SourceDefaults::numVoices);
+    numVoices.referTo(preset, SourceIDs::numVoices, nullptr, SourceDefaults::numVoices);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::name, Helpers::defaultPresetName());
+    presetName.referTo(preset, SourceIDs::name, nullptr, Helpers::defaultPresetName());
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType);
+    noteLayoutType.referTo(preset, SourceIDs::noteLayoutType, nullptr, SourceDefaults::noteLayoutType);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbRoomSize, SourceDefaults::reverbRoomSize);
+    reverbRoomSize.referTo(preset, SourceIDs::reverbRoomSize, nullptr, SourceDefaults::reverbRoomSize);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDamping, SourceDefaults::reverbDamping);
+    reverbDamping.referTo(preset, SourceIDs::reverbDamping, nullptr, SourceDefaults::reverbDamping);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWetLevel, SourceDefaults::reverbWetLevel);
+    reverbWetLevel.referTo(preset, SourceIDs::reverbWetLevel, nullptr, SourceDefaults::reverbWetLevel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDryLevel, SourceDefaults::reverbDryLevel);
+    reverbDryLevel.referTo(preset, SourceIDs::reverbDryLevel, nullptr, SourceDefaults::reverbDryLevel);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWidth, SourceDefaults::reverbWidth);
+    reverbWidth.referTo(preset, SourceIDs::reverbWidth, nullptr, SourceDefaults::reverbWidth);
+    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbFreezeMode, SourceDefaults::reverbFreezeMode);
+    reverbFreezeMode.referTo(preset, SourceIDs::reverbFreezeMode, nullptr, SourceDefaults::reverbFreezeMode);
     
     // Swap pointer with oldSound so if there were objects in there still pending to be safely deleted, these will be
     // deleted when needed. Then create a new SourceSoundList with the new preset information
     soundsOld.swap(sounds);
     sounds.reset();
-    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(IDs::PRESET), [this]{return getGlobalContext();});
+    sounds = std::make_unique<SourceSoundList>(state.getChildWithName(SourceIDs::PRESET), [this]{return getGlobalContext();});
 }
 
 void SourceSamplerAudioProcessor::createDirectories()
@@ -267,8 +267,8 @@ const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
         std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             juce::ValueTree state = juce::ValueTree::fromXml(*xmlState.get());
-            if (state.hasProperty(IDs::name)){
-                return state.getProperty(IDs::name).toString();
+            if (state.hasProperty(SourceIDs::name)){
+                return state.getProperty(SourceIDs::name).toString();
             }
         }
     }
@@ -283,7 +283,7 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const juce::Stri
         std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             juce::ValueTree state = juce::ValueTree::fromXml(*xmlState.get());
-            state.setProperty(IDs::name, newName, nullptr);
+            state.setProperty(SourceIDs::name, newName, nullptr);
             std::unique_ptr<juce::XmlElement> updatedXmlState (state.createXml());
             juce::String filename = getPresetFilenameFromNameAndIndex(newName, index);
             juce::File location = getPresetFilePath(filename);
@@ -419,7 +419,7 @@ juce::AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 
 void SourceSamplerAudioProcessor::saveCurrentPresetToFile (const juce::String& _presetName, int index)
 {
-    juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+    juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
     if (presetState.isValid()){
         
         if (_presetName == ""){
@@ -459,64 +459,64 @@ bool SourceSamplerAudioProcessor::loadPresetFromFile (const juce::String& fileNa
                 DBG("Old preset file found, transforming to new format");
                 juce::ValueTree modifiedPresetState = Helpers::createEmptyPresetState();
                 // Preset is of new format, we can add it to the new state without modification
-                modifiedPresetState.setProperty(IDs::name, presetState.getProperty("presetName", "old preset no name"), nullptr);
-                modifiedPresetState.setProperty(IDs::noteLayoutType, presetState.getProperty("noteLayoutType", Defaults::noteLayoutType), nullptr);
+                modifiedPresetState.setProperty(SourceIDs::name, presetState.getProperty("presetName", "old preset no name"), nullptr);
+                modifiedPresetState.setProperty(SourceIDs::noteLayoutType, presetState.getProperty("noteLayoutType", SourceDefaults::noteLayoutType), nullptr);
                 juce::ValueTree samplerState = presetState.getChildWithName("Sampler");
                 if (samplerState.isValid()){
-                    modifiedPresetState.setProperty(IDs::numVoices, samplerState.getProperty("NumVoices", Defaults::numVoices), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::numVoices, samplerState.getProperty("NumVoices", SourceDefaults::numVoices), nullptr);
                 }
                 juce::ValueTree reverbParamsState = samplerState.getChildWithName("ReverbParameters");
                 if (reverbParamsState.isValid()){
-                    modifiedPresetState.setProperty(IDs::reverbDamping, reverbParamsState.getProperty("reverb_damping", Defaults::reverbDamping), nullptr);
-                    modifiedPresetState.setProperty(IDs::reverbWetLevel, reverbParamsState.getProperty("reverb_wetLevel", Defaults::reverbWetLevel), nullptr);
-                    modifiedPresetState.setProperty(IDs::reverbDryLevel, reverbParamsState.getProperty("reverb_dryLevel", Defaults::reverbDryLevel), nullptr);
-                    modifiedPresetState.setProperty(IDs::reverbWidth, reverbParamsState.getProperty("reverb_width", Defaults::reverbWidth), nullptr);
-                    modifiedPresetState.setProperty(IDs::reverbFreezeMode, reverbParamsState.getProperty("reverb_freezeMode", Defaults::reverbFreezeMode), nullptr);
-                    modifiedPresetState.setProperty(IDs::reverbRoomSize, reverbParamsState.getProperty("reverb_roomSize", Defaults::reverbRoomSize), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbDamping, reverbParamsState.getProperty("reverb_damping", SourceDefaults::reverbDamping), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbWetLevel, reverbParamsState.getProperty("reverb_wetLevel", SourceDefaults::reverbWetLevel), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbDryLevel, reverbParamsState.getProperty("reverb_dryLevel", SourceDefaults::reverbDryLevel), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbWidth, reverbParamsState.getProperty("reverb_width", SourceDefaults::reverbWidth), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbFreezeMode, reverbParamsState.getProperty("reverb_freezeMode", SourceDefaults::reverbFreezeMode), nullptr);
+                    modifiedPresetState.setProperty(SourceIDs::reverbRoomSize, reverbParamsState.getProperty("reverb_roomSize", SourceDefaults::reverbRoomSize), nullptr);
                 }
                 juce::ValueTree soundsInfoState = presetState.getChildWithName("soundsInfo");
                 for (int i=0; i<soundsInfoState.getNumChildren(); i++){
                     auto soundInfo = soundsInfoState.getChild(i);
                     auto samplerSound = soundInfo.getChildWithName("SamplerSound");
                     juce::BigInteger midiNotes = 0;
-                    midiNotes.parseString(samplerSound.getProperty("midiNotes", Defaults::midiNotes).toString(), 16);
+                    midiNotes.parseString(samplerSound.getProperty("midiNotes", SourceDefaults::midiNotes).toString(), 16);
                     juce::ValueTree sound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
-                    sound.getChildWithName(IDs::SOUND_SAMPLE).setProperty(IDs::usesPreview, true, nullptr);
+                    sound.getChildWithName(SourceIDs::SOUND_SAMPLE).setProperty(SourceIDs::usesPreview, true, nullptr);
                     
-                    sound.setProperty(IDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::startPosition, (float)samplerSound.getChildWithProperty("parameter_name", "startPosition").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::endPosition, (float)samplerSound.getChildWithProperty("parameter_name", "endPosition").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::loopStartPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopStartPosition").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::loopEndPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopEndPosition").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::loopXFadeNSamples, (int)samplerSound.getChildWithProperty("parameter_name", "loopXFadeNSamples").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::reverse, (int)samplerSound.getChildWithProperty("parameter_name", "reverse").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::noteMappingMode, (int)samplerSound.getChildWithProperty("parameter_name", "noteMappingMode").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::numSlices, (int)samplerSound.getChildWithProperty("parameter_name", "numSlices").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::playheadPosition, (float)samplerSound.getChildWithProperty("parameter_name", "playheadPosition").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::freezePlayheadSpeed, (float)samplerSound.getChildWithProperty("parameter_name", "freezePlayheadSpeed").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterCutoff, (float)samplerSound.getChildWithProperty("parameter_name", "filterCutoff").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterRessonance, (float)samplerSound.getChildWithProperty("parameter_name", "filterRessonance").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterKeyboardTracking, (float)samplerSound.getChildWithProperty("parameter_name", "filterKeyboardTracking").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterAttack, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.attack").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterDecay, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.decay").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterSustain, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.sustain").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterRelease, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.release").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::filterADSR2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR2CutoffAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::gain, (float)samplerSound.getChildWithProperty("parameter_name", "gain").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::attack, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.attack").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::decay, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.decay").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::sustain, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.sustain").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::release, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.release").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::pan, (float)samplerSound.getChildWithProperty("parameter_name", "pan").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::pitch, (float)samplerSound.getChildWithProperty("parameter_name", "pitch").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::pitchBendRangeUp, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeUp").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::pitchBendRangeDown, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeDown").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::mod2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2CutoffAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::mod2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2GainAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::mod2PitchAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PitchAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::mod2PlayheadPos, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PlayheadPos").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::vel2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2CutoffAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(IDs::vel2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2GainAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::startPosition, (float)samplerSound.getChildWithProperty("parameter_name", "startPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::endPosition, (float)samplerSound.getChildWithProperty("parameter_name", "endPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::loopStartPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopStartPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::loopEndPosition, (float)samplerSound.getChildWithProperty("parameter_name", "loopEndPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::loopXFadeNSamples, (int)samplerSound.getChildWithProperty("parameter_name", "loopXFadeNSamples").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::reverse, (int)samplerSound.getChildWithProperty("parameter_name", "reverse").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::noteMappingMode, (int)samplerSound.getChildWithProperty("parameter_name", "noteMappingMode").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::numSlices, (int)samplerSound.getChildWithProperty("parameter_name", "numSlices").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::playheadPosition, (float)samplerSound.getChildWithProperty("parameter_name", "playheadPosition").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::freezePlayheadSpeed, (float)samplerSound.getChildWithProperty("parameter_name", "freezePlayheadSpeed").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterCutoff, (float)samplerSound.getChildWithProperty("parameter_name", "filterCutoff").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterRessonance, (float)samplerSound.getChildWithProperty("parameter_name", "filterRessonance").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterKeyboardTracking, (float)samplerSound.getChildWithProperty("parameter_name", "filterKeyboardTracking").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterAttack, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.attack").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterDecay, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.decay").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterSustain, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.sustain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterRelease, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR.release").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::filterADSR2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "filterADSR2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::gain, (float)samplerSound.getChildWithProperty("parameter_name", "gain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::attack, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.attack").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::decay, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.decay").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::sustain, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.sustain").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::release, (float)samplerSound.getChildWithProperty("parameter_name", "ampADSR.release").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::pan, (float)samplerSound.getChildWithProperty("parameter_name", "pan").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::pitch, (float)samplerSound.getChildWithProperty("parameter_name", "pitch").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::pitchBendRangeUp, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeUp").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::pitchBendRangeDown, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeDown").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::mod2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::mod2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2GainAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::mod2PitchAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PitchAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::mod2PlayheadPos, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PlayheadPos").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::vel2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(SourceIDs::vel2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2GainAmt").getProperty("parameter_value"), nullptr);
                     
                     modifiedPresetState.addChild (sound, -1, nullptr);
                 }
@@ -534,7 +534,7 @@ void SourceSamplerAudioProcessor::loadPresetFromStateInformation (juce::ValueTre
 {
     // If sounds are currently loaded in the state, remove them all
     // This will trigger the deletion of SampleSound and SourceSamplerSound objects
-    juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+    juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
     if (presetState.isValid()){
         removeAllSounds();
     }
@@ -576,13 +576,13 @@ void SourceSamplerAudioProcessor::saveGlobalPersistentStateToFile()
     // This is to save settings that need to persist between sampler runs and that do not
     // change per preset
     
-    juce::ValueTree settings = juce::ValueTree(IDs::GLOBAL_SETTINGS);
-    settings.setProperty(IDs::globalMidiInChannel, globalMidiInChannel.get(), nullptr);
-    settings.setProperty(IDs::midiOutForwardsMidiIn, midiOutForwardsMidiIn.get(), nullptr);
-    settings.setProperty(IDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
-    settings.setProperty(IDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
-    settings.setProperty(IDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
-    settings.setProperty(IDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
+    juce::ValueTree settings = juce::ValueTree(SourceIDs::GLOBAL_SETTINGS);
+    settings.setProperty(SourceIDs::globalMidiInChannel, globalMidiInChannel.get(), nullptr);
+    settings.setProperty(SourceIDs::midiOutForwardsMidiIn, midiOutForwardsMidiIn.get(), nullptr);
+    settings.setProperty(SourceIDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
+    settings.setProperty(SourceIDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
+    settings.setProperty(SourceIDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
+    settings.setProperty(SourceIDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
     std::unique_ptr<juce::XmlElement> xml (settings.createXml());
     juce::File location = getGlobalSettingsFilePathFromName();
@@ -601,20 +601,20 @@ void SourceSamplerAudioProcessor::loadGlobalPersistentStateFromFile()
         std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
             juce::ValueTree settings = juce::ValueTree::fromXml(*xmlState.get());
-            if (settings.hasProperty(IDs::globalMidiInChannel)){
-                globalMidiInChannel = (int)settings.getProperty(IDs::globalMidiInChannel);
+            if (settings.hasProperty(SourceIDs::globalMidiInChannel)){
+                globalMidiInChannel = (int)settings.getProperty(SourceIDs::globalMidiInChannel);
             }
-            if (settings.hasProperty(IDs::midiOutForwardsMidiIn)){
-                midiOutForwardsMidiIn = (bool)settings.getProperty(IDs::midiOutForwardsMidiIn);
+            if (settings.hasProperty(SourceIDs::midiOutForwardsMidiIn)){
+                midiOutForwardsMidiIn = (bool)settings.getProperty(SourceIDs::midiOutForwardsMidiIn);
             }
-            if (settings.hasProperty(IDs::latestLoadedPresetIndex)){
-                latestLoadedPreset = (int)settings.getProperty(IDs::latestLoadedPresetIndex);
+            if (settings.hasProperty(SourceIDs::latestLoadedPresetIndex)){
+                latestLoadedPreset = (int)settings.getProperty(SourceIDs::latestLoadedPresetIndex);
             }
-            if (settings.hasProperty(IDs::useOriginalFilesPreference)){
-                useOriginalFilesPreference = settings.getProperty(IDs::useOriginalFilesPreference).toString();
+            if (settings.hasProperty(SourceIDs::useOriginalFilesPreference)){
+                useOriginalFilesPreference = settings.getProperty(SourceIDs::useOriginalFilesPreference).toString();
             }
-            if (settings.hasProperty(IDs::freesoundOauthAccessToken)){
-                freesoundOauthAccessToken = settings.getProperty(IDs::freesoundOauthAccessToken).toString();
+            if (settings.hasProperty(SourceIDs::freesoundOauthAccessToken)){
+                freesoundOauthAccessToken = settings.getProperty(SourceIDs::freesoundOauthAccessToken).toString();
             }
         }
     }
@@ -639,12 +639,12 @@ juce::File SourceSamplerAudioProcessor::getGlobalSettingsFilePathFromName()
 }
 
 juce::ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
-    juce::ValueTree state = juce::ValueTree(IDs::VOLATILE_STATE);
-    state.setProperty(IDs::isQuerying, isQuerying, nullptr);
-    state.setProperty(IDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
+    juce::ValueTree state = juce::ValueTree(SourceIDs::VOLATILE_STATE);
+    state.setProperty(SourceIDs::isQuerying, isQuerying, nullptr);
+    state.setProperty(SourceIDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
     midiMessagesPresentInLastStateReport = false;
-    state.setProperty(IDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
-    state.setProperty(IDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber, nullptr);
+    state.setProperty(SourceIDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
+    state.setProperty(SourceIDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber, nullptr);
     
     juce::String voiceActivations = "";
     juce::String voiceSoundIdxs = "";
@@ -668,15 +668,15 @@ juce::ValueTree SourceSamplerAudioProcessor::collectVolatileStateInformation (){
         }
     }
     
-    state.setProperty(IDs::voiceActivations, voiceActivations, nullptr);
-    state.setProperty(IDs::voiceSoundIdxs, voiceSoundIdxs, nullptr);
-    state.setProperty(IDs::voiceSoundPlayPosition, voiceSoundPlayPositions, nullptr);
+    state.setProperty(SourceIDs::voiceActivations, voiceActivations, nullptr);
+    state.setProperty(SourceIDs::voiceSoundIdxs, voiceSoundIdxs, nullptr);
+    state.setProperty(SourceIDs::voiceSoundPlayPosition, voiceSoundPlayPositions, nullptr);
     
     juce::String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
         audioLevels += (juce::String)lms.getRMSLevel(i) + ",";
     }
-    state.setProperty(IDs::audioLevels, audioLevels, nullptr);
+    state.setProperty(SourceIDs::audioLevels, audioLevels, nullptr);
     return state;
 }
 
@@ -897,7 +897,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
         int midiRootNote = parameters[10].getIntValue();
-        int midiVelocityLayer = Defaults::midiVelocityLayer;
+        int midiVelocityLayer = SourceDefaults::midiVelocityLayer;
         bool addToExistingSourceSampleSounds = false;
 
         addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
@@ -923,7 +923,7 @@ void SourceSamplerAudioProcessor::actionListenerCallback (const juce::String &me
             midiNotes.parseString(assignedNotesBigInteger, 16);
         }
         int midiRootNote = parameters[11].getIntValue();
-        int midiVelocityLayer = Defaults::midiVelocityLayer;
+        int midiVelocityLayer = SourceDefaults::midiVelocityLayer;
         bool addToExistingSourceSampleSounds = false;
 
         addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
@@ -1156,7 +1156,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
     
     FreesoundClient client(FREESOUND_API_KEY);
     isQuerying = true;
-    state.setProperty(IDs::numResultsLastQuery, -1, nullptr);
+    state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
     juce::String query = "";
     juce::String filter = "";
     int pageSize = 0;
@@ -1174,7 +1174,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
     }
     SoundList list = client.textSearch(query, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     int numResults = list.getCount();
-    state.setProperty(IDs::numResultsLastQuery, numResults, nullptr);
+    state.setProperty(SourceIDs::numResultsLastQuery, numResults, nullptr);
     isQuerying = false;
     if (numResults > 0){
         
@@ -1187,7 +1187,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
         int nSounds = soundsFound.size();
         
         // Move this elsewhere in a helper function (?)
-        juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+        juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
         
         if (addReplaceOrReplaceSound == "replace"){
             // If action is to replace all sounds, then we need to first clear all loaded sounds
@@ -1208,7 +1208,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
                     // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
                     midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
                     midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                } else {
+                } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED) {
                     // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
                     midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
                     for (int j=midiRootNote; j<128; j=j+nSounds){
@@ -1217,6 +1217,9 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
                     for (int j=midiRootNote; j>=0; j=j-nSounds){
                         midiNotes.setBit(j);  // Map notes in downwards direction
                     }
+                } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
+                    // Map all notes to the sound
+                    midiNotes.setRange(0, 127, true);
                 }
             } else {
                 // If a specific sound is being replaced, no need to calcualte any mapping here because it will be copied from the
@@ -1225,7 +1228,7 @@ void SourceSamplerAudioProcessor::makeQueryAndLoadSounds(const juce::String& add
             
             // Create sound
             // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
-            int midiVelocityLayer = Defaults::midiVelocityLayer; // Always use default velocity layer as we're not layering sounds
+            int midiVelocityLayer = SourceDefaults::midiVelocityLayer; // Always use default velocity layer as we're not layering sounds
             bool addToExistingSourceSampleSounds = false;
             addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
         }
@@ -1302,13 +1305,13 @@ void SourceSamplerAudioProcessor::addOrReplaceSoundFromBasicSoundProperties(cons
         
         juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
         
-        juce::ValueTree presetState = state.getChildWithName(IDs::PRESET);
+        juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
         if (existingSoundIndex > -1){
             // If replacing an existing sound, copy as well the midi mappings
-            juce::ValueTree soundToReplaceState = presetState.getChildWithProperty(IDs::uuid, soundUUID);
+            juce::ValueTree soundToReplaceState = presetState.getChildWithProperty(SourceIDs::uuid, soundUUID);
             for (int i=0; i<soundToReplaceState.getNumChildren(); i++){
                 auto child = soundToReplaceState.getChild(i);
-                if (child.hasType(IDs::MIDI_CC_MAPPING)){
+                if (child.hasType(SourceIDs::MIDI_CC_MAPPING)){
                     juce::ValueTree copyChild = child.createCopy();
                     sourceSound.addChild(copyChild, -1, nullptr);
                 }
@@ -1380,6 +1383,11 @@ void SourceSamplerAudioProcessor::reapplyNoteLayout(int newNoteLayoutType)
                     }
                     sound->setMappedMidiNotes(midiNotes);
                     sound->setMidiRootNote(rootNote);
+                } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
+                    juce::BigInteger midiNotes;
+                    midiNotes.setRange(0, 127, true);
+                    sound->setMappedMidiNotes(midiNotes);
+                    sound->setMidiRootNote(64);
                 }
             }
         }
@@ -1400,7 +1408,7 @@ void SourceSamplerAudioProcessor::addToMidiBuffer(const juce::String& soundUUID,
         if (midiNoteForNormalPitch < 0){
             // If for some reason no note was found, don't play anything
         } else {
-            int midiChannel = sound->getParameterInt(IDs::midiChannel);
+            int midiChannel = sound->getParameterInt(SourceIDs::midiChannel);
             if (midiChannel == 0){
                 if (globalMidiInChannel > 0){
                     midiChannel = globalMidiInChannel;
@@ -1569,11 +1577,11 @@ void SourceSamplerAudioProcessor::valueTreePropertyChanged (juce::ValueTree& tre
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
-    DBG("Changed " << treeWhosePropertyHasChanged[IDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
+    DBG("Changed " << treeWhosePropertyHasChanged[SourceIDs::name].toString() << " " << property.toString() << ": " << treeWhosePropertyHasChanged[property].toString());
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("propertyChanged");
     message.addInt32(stateUpdateID);
-    message.addString(treeWhosePropertyHasChanged[IDs::uuid].toString());
+    message.addString(treeWhosePropertyHasChanged[SourceIDs::uuid].toString());
     message.addString(treeWhosePropertyHasChanged.getType().toString());
     message.addString(property.toString());
     message.addString(treeWhosePropertyHasChanged[property].toString());
@@ -1593,7 +1601,7 @@ void SourceSamplerAudioProcessor::valueTreeChildAdded (juce::ValueTree& parentTr
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("addedChild");
     message.addInt32(stateUpdateID);
-    message.addString(parentTree[IDs::uuid].toString());
+    message.addString(parentTree[SourceIDs::uuid].toString());
     message.addString(parentTree.getType().toString());
     message.addInt32(parentTree.indexOf(childWhichHasBeenAdded));
     // NOTE: for the "direct communication method" to work, we need to make a copy of childWhichHasBeenAdded otherwise the app can crash (not sure why...)
@@ -1614,7 +1622,7 @@ void SourceSamplerAudioProcessor::valueTreeChildRemoved (juce::ValueTree& parent
     juce::OSCMessage message = juce::OSCMessage("/state_update");
     message.addString("removedChild");
     message.addInt32(stateUpdateID);
-    message.addString(childWhichHasBeenRemoved[IDs::uuid].toString());
+    message.addString(childWhichHasBeenRemoved[SourceIDs::uuid].toString());
     message.addString(childWhichHasBeenRemoved.getType().toString());
     #if SYNC_STATE_WITH_OSC
     sendOSCMessage(message);

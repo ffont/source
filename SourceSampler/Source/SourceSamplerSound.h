@@ -10,8 +10,7 @@
 
 #pragma once
 #include <JuceHeader.h>
-#include "defines.h"
-#include "helpers.h"
+#include "helpers_source.h"
 
 
 class SourceSound;
@@ -51,7 +50,7 @@ public:
     juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     void writeBufferToDisk();
     
-    juce::String getUUID() { return state.getProperty(IDs::uuid, "-"); };
+    juce::String getUUID() { return state.getProperty(SourceIDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
     juce::String getSoundName() { return name.get(); };
 
@@ -299,7 +298,7 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
 
     bool isSuitableType (const juce::ValueTree& v) const override
     {
-        return v.hasType (IDs::SOUND);
+        return v.hasType (SourceIDs::SOUND);
     }
 
     SourceSound* createNewObject (const juce::ValueTree& v) override
@@ -349,7 +348,7 @@ struct SourceSoundList: public drow::ValueTreeObjectList<SourceSound>
     }
     
     void removeSoundWithUUID(const juce::String& uuid){
-        juce::ValueTree child = parent.getChildWithProperty(IDs::uuid, uuid);
+        juce::ValueTree child = parent.getChildWithProperty(SourceIDs::uuid, uuid);
         if (child.isValid()){
             parent.removeChild(child, nullptr);
         }

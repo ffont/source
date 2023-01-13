@@ -43,7 +43,6 @@
 
 #define MAX_SAMPLE_LENGTH 300  // minutes maximum sample length
 
-#define FREESOUND_API_REQUEST_TIMEOUT 20000
 #define MAX_DOWNLOAD_WAITING_TIME_MS 20000
 #define MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD 1024 * 1024 * 15  // 15 MB
 
@@ -115,6 +114,7 @@
 #define NOTE_MAPPING_TYPE_CONTIGUOUS 0  // Don't confuse note mapping type with note mapping mode. I know, naming should improve...
 #define NOTE_MAPPING_TYPE_INTERLEAVED 1
 #define NOTE_MAPPING_INTERLEAVED_ROOT_NOTE 36 // C2 (the note from which sounds start being mapped (also in backwards direction)
+#define NOTE_MAPPING_TYPE_ALL 2  // Map all notes to "all" sounds
 
 #define USE_ORIGINAL_FILES_NEVER "never"
 #define USE_ORIGINAL_FILES_ONLY_SHORT "onlyShort"
@@ -123,7 +123,7 @@
 #define SERIALIZATION_SEPARATOR ";"
 
 
-namespace Defaults
+namespace SourceDefaults
 {
 inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
 inline int currentPresetIndex = -1;
@@ -198,7 +198,7 @@ inline float maxRange = 127.0;
 }
 
 
-namespace IDs
+namespace SourceIDs
 {
 #define DECLARE_ID(name) const juce::Identifier name (#name);
 

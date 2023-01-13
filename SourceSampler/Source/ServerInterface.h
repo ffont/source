@@ -11,7 +11,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "defines.h"
+#include "defines_source.h"
 #include "BinaryData.h"
 #if USE_SSL_FOR_HTTP_AND_WS
 #include "server_wss.hpp"

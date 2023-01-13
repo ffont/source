@@ -10,7 +10,7 @@
 
 #pragma once
 #include <JuceHeader.h>
-#include "defines.h"
+#include "helpers_source.h"
 #include "SourceSamplerSound.h"
 
 
