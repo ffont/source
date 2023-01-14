@@ -20,7 +20,7 @@ SourceSampler::SourceSampler():
     serverInterface ([this]{return getGlobalContext();})
 {
     std::cout << "Creating needed directories" << std::endl;
-    createDirectories();
+    createDirectories(APP_DIRECTORY_NAME);
     
     std::cout << "Configuring app" << std::endl;
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
@@ -120,7 +120,7 @@ void SourceSampler::bindState()
     sounds = std::make_unique<SourceSoundList>(state.getChildWithName(SourceIDs::PRESET), [this]{return getGlobalContext();});
 }
 
-void SourceSampler::createDirectories()
+void SourceSampler::createDirectories(const juce::String& appDirectoryName)
 {
     #if ELK_BUILD
     sourceDataLocation = juce::File(ELK_SOURCE_DATA_BASE_LOCATION);
@@ -128,10 +128,10 @@ void SourceSampler::createDirectories()
     presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
     tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/");
-    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/sounds");
-    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/presets");
-    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName);
+    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/sounds");
+    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/presets");
+    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/tmp");
     #endif
 
     if (!sourceDataLocation.exists()){

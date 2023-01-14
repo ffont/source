@@ -30,6 +30,7 @@
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200
 
+#define APP_DIRECTORY_NAME "SourceSampler"  // Note this is ignored in ELK builds
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"

@@ -36,7 +36,7 @@ public:
     void bindState();
     GlobalContextStruct getGlobalContext();
     
-    void createDirectories();
+    void createDirectories(const juce::String& appDirectoryName);
     
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock);
