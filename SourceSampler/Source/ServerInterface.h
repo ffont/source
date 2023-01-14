@@ -37,16 +37,16 @@ using WsServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
 using WsServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
 #endif
 
-class WebSocketsServer: public juce::Thread
+class SourceWebSocketsServer: public juce::Thread
 {
 public:
     // Websockets server is used for communication between UI<>plugin
    
-    WebSocketsServer(): juce::Thread ("SourceWebsocketsServer")
+    SourceWebSocketsServer(): juce::Thread ("SourceWebsocketsServer")
     {
     }
    
-    ~WebSocketsServer(){
+    ~SourceWebSocketsServer(){
         if (serverPtr != nullptr){
             serverPtr.release();
         }
@@ -64,13 +64,13 @@ public:
 };
 
 
-class OSCServer: private juce::OSCReceiver,
+class SourceOSCServer: private juce::OSCReceiver,
                  private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
 {
 public:
     // OSC server can be used as an alternative to websockets for communication between UI<>plugin
     
-    OSCServer(){
+    SourceOSCServer(){
         if (! connect (OSC_LISTEN_PORT)){
             DBG("ERROR starting OSC server");
         } else {
@@ -79,7 +79,7 @@ public:
         }
     }
     
-    ~OSCServer(){
+    ~SourceOSCServer(){
     }
     
     void setInterfacePointer(ServerInterface* _interface){
@@ -102,14 +102,14 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 
 
 #if USE_HTTP_SERVER
-class HTTPServer: public juce::Thread
+class SourceHTTPServer: public juce::Thread
 {
 public:
     // HTTP server is used for serving sounds to the UI so waveforms can be drawn
    
-    HTTPServer(): juce::Thread ("SourceHttpServer"){}
+    SourceHTTPServer(): juce::Thread ("SourceHttpServer"){}
    
-    ~HTTPServer(){
+    ~SourceHTTPServer(){
         if (serverPtr != nullptr){
             serverPtr.release();
         }
@@ -211,18 +211,18 @@ public:
     }
     
     #if USE_HTTP_SERVER
-    HTTPServer httpServer;
+    SourceHTTPServer httpServer;
     #endif
     #if USE_OSC_SERVER
-    OSCServer oscServer;
+    SourceOSCServer oscServer;
     #endif
-    WebSocketsServer wsServer;
+    SourceWebSocketsServer wsServer;
 
     std::function<GlobalContextStruct()> getGlobalContext;
 };
 
 
-void WebSocketsServer::run()
+void SourceWebSocketsServer::run()
 {
     #if USE_SSL_FOR_HTTP_AND_WS
     #if ELK_BUILD
@@ -270,7 +270,7 @@ void WebSocketsServer::run()
 }
 
 #if USE_HTTP_SERVER
-void HTTPServer::run() {
+void SourceHTTPServer::run() {
     #if USE_SSL_FOR_HTTP_AND_WS
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
@@ -367,7 +367,7 @@ void HTTPServer::run() {
 }
 #endif
 
-void OSCServer::oscMessageReceived (const juce::OSCMessage& message)
+void SourceOSCServer::oscMessageReceived (const juce::OSCMessage& message)
 {
     if (interface != nullptr){
         interface->processActionFromOSCMessage(message);
