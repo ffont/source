@@ -77,7 +77,7 @@ void SourceSampler::bindState()
     state.setProperty(SourceIDs::soundsDownloadLocation, soundsDownloadLocation.getFullPathName(), nullptr);
     state.setProperty(SourceIDs::presetFilesLocation, presetFilesLocation.getFullPathName(), nullptr);
     state.setProperty(SourceIDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
-    state.setProperty(SourceIDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
+    state.setProperty(SourceIDs::pluginVersion, juce::String(ProjectInfo::versionString), nullptr);
     
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::currentPresetIndex, SourceDefaults::currentPresetIndex);
     currentPresetIndex.referTo(state, SourceIDs::currentPresetIndex, nullptr, SourceDefaults::currentPresetIndex);
@@ -476,7 +476,7 @@ void SourceSampler::saveGlobalPersistentStateToFile()
     settings.setProperty(SourceIDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
     settings.setProperty(SourceIDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
     settings.setProperty(SourceIDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
-    settings.setProperty(SourceIDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
+    settings.setProperty(SourceIDs::pluginVersion, juce::String(ProjectInfo::versionString), nullptr);
     
     std::unique_ptr<juce::XmlElement> xml (settings.createXml());
     juce::File location = getGlobalSettingsFilePathFromName();

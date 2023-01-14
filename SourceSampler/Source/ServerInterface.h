@@ -12,8 +12,8 @@
 
 #include <JuceHeader.h>
 #include "defines_source.h"
-#include "BinaryData.h"
 #if USE_SSL_FOR_HTTP_AND_WS
+    #include "BinaryData.h"
     #include "server_wss.hpp"
     #if USE_HTTP_SERVER
     #include "server_https.hpp"
