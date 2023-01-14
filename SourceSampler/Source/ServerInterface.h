@@ -228,7 +228,7 @@ void SourceWebSocketsServer::run()
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");
     #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
@@ -275,7 +275,7 @@ void SourceHTTPServer::run() {
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");
     #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
@@ -306,7 +306,7 @@ void SourceHTTPServer::run() {
     #if ELK_BUILD
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     #else
-    juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp").getFullPathName();
+    juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
     #endif
     server.resource["^/sounds_data/.*$"]["GET"] = [tmpFilesPathName](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
         try {

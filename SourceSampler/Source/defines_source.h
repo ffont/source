@@ -30,12 +30,23 @@
 
 #define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
 
+#ifndef LOADED_LATEST_LOADED_PRESET_AT_STARTUP
+#define LOADED_LATEST_LOADED_PRESET_AT_STARTUP 0
+#endif
+
+#if ELK_BUILD
+#undef LOADED_LATEST_LOADED_PRESET_AT_STARTUP
+#define LOADED_LATEST_LOADED_PRESET_AT_STARTUP 1
+#endif
+
 #define USE_LAZY_UI 0
 
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200
 
-#define APP_DIRECTORY_NAME "SourceSampler"  // Note this is ignored in ELK builds
+#ifndef SOURCE_APP_DIRECTORY_NAME
+#define SOURCE_APP_DIRECTORY_NAME "SourceSampler"  // Note this is ignored in ELK builds
+#endif
 #define ELK_SOURCE_DATA_BASE_LOCATION "/udata/source/"
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"

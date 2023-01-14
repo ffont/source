@@ -78,7 +78,7 @@ void SourceSamplerSound::writeBufferToDisk()
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
     #else
-    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
+    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
     #endif
     writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
                                           16000,  // Write files with lower resolution as it will be enough for waveform visualization

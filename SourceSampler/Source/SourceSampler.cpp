@@ -9,7 +9,9 @@
 */
 
 #include "SourceSampler.h"
+#ifndef FREESOUND_API_KEY
 #include "api_key.h"
+#endif
 #include <climits>  // for using INT_MAX
 #include <random> // for using shuffle
 
@@ -20,7 +22,7 @@ SourceSampler::SourceSampler():
     serverInterface ([this]{return getGlobalContext();})
 {
     std::cout << "Creating needed directories" << std::endl;
-    createDirectories(APP_DIRECTORY_NAME);
+    createDirectories(SOURCE_APP_DIRECTORY_NAME);
     
     std::cout << "Configuring app" << std::endl;
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
@@ -200,10 +202,10 @@ void SourceSampler::prepareToPlay (double _sampleRate, int _samplesPerBlock)
     lms.resize(getTotalNumOutputChannels(), 200 * 0.001f * sampleRate / blockSize); // 200ms average window
     
     // Loaded the last loaded preset (only in ELK platform)
-    # if ELK_BUILD
+    # if LOADED_LATEST_LOADED_PRESET_AT_STARTUP
     if (!loadedPresetAtElkStartup){
         std::cout << "Loading latest loaded preset " << (juce::String)latestLoadedPreset << std::endl;
-            setCurrentProgram(latestLoadedPreset);
+        loadPresetFromIndex(latestLoadedPreset);
         loadedPresetAtElkStartup = true;
     }
     # endif
