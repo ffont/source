@@ -21,6 +21,11 @@
     #define USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS 0  // Don't use external HTTP server for downloads, download them from the plugin
 #endif
 
+#if SOURCE_DISABLE_HTTP_SERVER
+#undef USE_HTTP_SERVER
+#define USE_HTTP_SERVER 0
+#endif
+
 #define USING_DIRECT_COMMUNICATION_METHOD 0  // Direct communication method (without ws server) is implemented, but it does not seem to perform better than ws method
 
 #define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
