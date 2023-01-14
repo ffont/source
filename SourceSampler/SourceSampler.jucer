@@ -5,7 +5,7 @@
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../Source/common/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
@@ -40,8 +40,8 @@
             file="Source/SourceSamplerVoice.h"/>
     </GROUP>
     <GROUP id="{2DC6F67B-501C-9F38-87E3-661FF13778B5}" name="Other">
-      <FILE id="pRVYIM" name="drow_ValueTreeObjectList.h" compile="0" resource="0"
-            file="Source/drow_ValueTreeObjectList.h"/>
+      <FILE id="FiRqK4" name="drow_ValueTreeObjectList.h" compile="0" resource="0"
+            file="Source/common/drow_ValueTreeObjectList.h"/>
       <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
             file="Source/api_key.example.h"/>
       <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>
