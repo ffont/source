@@ -37,7 +37,7 @@ SourceSampler::SourceSampler():
     
     // Load empty session to state
     std::cout << "Creating default empty state" << std::endl;
-    state = Helpers::createDefaultEmptyState();
+    state = SourceHelpers::createDefaultEmptyState();
     
     // Add state change listener and bind cached properties to state properties (including loaded sounds)
     bindState();
@@ -79,38 +79,38 @@ void SourceSampler::bindState()
     state.setProperty(SourceIDs::tmpFilesLocation, tmpFilesLocation.getFullPathName(), nullptr);
     state.setProperty(SourceIDs::pluginVersion, juce::String(JucePlugin_VersionString), nullptr);
     
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::currentPresetIndex, SourceDefaults::currentPresetIndex);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::currentPresetIndex, SourceDefaults::currentPresetIndex);
     currentPresetIndex.referTo(state, SourceIDs::currentPresetIndex, nullptr, SourceDefaults::currentPresetIndex);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::globalMidiInChannel, SourceDefaults::globalMidiInChannel);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::globalMidiInChannel, SourceDefaults::globalMidiInChannel);
     globalMidiInChannel.referTo(state, SourceIDs::globalMidiInChannel, nullptr, SourceDefaults::globalMidiInChannel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn);
     midiOutForwardsMidiIn.referTo(state, SourceIDs::midiOutForwardsMidiIn, nullptr, SourceDefaults::midiOutForwardsMidiIn);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::useOriginalFilesPreference, SourceDefaults::currentPresetIndex);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::useOriginalFilesPreference, SourceDefaults::currentPresetIndex);
     useOriginalFilesPreference.referTo(state, SourceIDs::useOriginalFilesPreference, nullptr, SourceDefaults::useOriginalFilesPreference);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freesoundOauthAccessToken, SourceDefaults::freesoundOauthAccessToken);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freesoundOauthAccessToken, SourceDefaults::freesoundOauthAccessToken);
     freesoundOauthAccessToken.referTo(state, SourceIDs::freesoundOauthAccessToken, nullptr, SourceDefaults::freesoundOauthAccessToken);
     
     // Load global settings stored in file, now before sounds are created as these might need the oauth token
     loadGlobalPersistentStateFromFile();
     
     juce::ValueTree preset = state.getChildWithName(SourceIDs::PRESET);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::numVoices, SourceDefaults::numVoices);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::numVoices, SourceDefaults::numVoices);
     numVoices.referTo(preset, SourceIDs::numVoices, nullptr, SourceDefaults::numVoices);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::name, Helpers::defaultPresetName());
-    presetName.referTo(preset, SourceIDs::name, nullptr, Helpers::defaultPresetName());
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::name, SourceHelpers::defaultPresetName());
+    presetName.referTo(preset, SourceIDs::name, nullptr, SourceHelpers::defaultPresetName());
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType);
     noteLayoutType.referTo(preset, SourceIDs::noteLayoutType, nullptr, SourceDefaults::noteLayoutType);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbRoomSize, SourceDefaults::reverbRoomSize);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbRoomSize, SourceDefaults::reverbRoomSize);
     reverbRoomSize.referTo(preset, SourceIDs::reverbRoomSize, nullptr, SourceDefaults::reverbRoomSize);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDamping, SourceDefaults::reverbDamping);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDamping, SourceDefaults::reverbDamping);
     reverbDamping.referTo(preset, SourceIDs::reverbDamping, nullptr, SourceDefaults::reverbDamping);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWetLevel, SourceDefaults::reverbWetLevel);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWetLevel, SourceDefaults::reverbWetLevel);
     reverbWetLevel.referTo(preset, SourceIDs::reverbWetLevel, nullptr, SourceDefaults::reverbWetLevel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDryLevel, SourceDefaults::reverbDryLevel);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbDryLevel, SourceDefaults::reverbDryLevel);
     reverbDryLevel.referTo(preset, SourceIDs::reverbDryLevel, nullptr, SourceDefaults::reverbDryLevel);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWidth, SourceDefaults::reverbWidth);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbWidth, SourceDefaults::reverbWidth);
     reverbWidth.referTo(preset, SourceIDs::reverbWidth, nullptr, SourceDefaults::reverbWidth);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbFreezeMode, SourceDefaults::reverbFreezeMode);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbFreezeMode, SourceDefaults::reverbFreezeMode);
     reverbFreezeMode.referTo(preset, SourceIDs::reverbFreezeMode, nullptr, SourceDefaults::reverbFreezeMode);
     
     // Swap pointer with oldSound so if there were objects in there still pending to be safely deleted, these will be
@@ -342,13 +342,13 @@ bool SourceSampler::loadPresetFromFile (const juce::String& fileName)
         juce::XmlDocument xmlDocument (location);
         std::unique_ptr<juce::XmlElement> xmlState = xmlDocument.getDocumentElement();
         if (xmlState.get() != nullptr){
-            juce::ValueTree newState = Helpers::createNewStateFromCurrentSatate(state);
+            juce::ValueTree newState = SourceHelpers::createNewStateFromCurrentSatate(state);
             juce::ValueTree presetState = juce::ValueTree::fromXml(*xmlState.get());
             // Check if preset has old format, and if so transform it to the new format
             // In old format, root preset node type is "SourcePresetState", in the new one it is "PRESET"
             if (presetState.getType().toString() == "SourcePresetState"){
                 DBG("Old preset file found, transforming to new format");
-                juce::ValueTree modifiedPresetState = Helpers::createEmptyPresetState();
+                juce::ValueTree modifiedPresetState = SourceHelpers::createEmptyPresetState();
                 // Preset is of new format, we can add it to the new state without modification
                 modifiedPresetState.setProperty(SourceIDs::name, presetState.getProperty("presetName", "old preset no name"), nullptr);
                 modifiedPresetState.setProperty(SourceIDs::noteLayoutType, presetState.getProperty("noteLayoutType", SourceDefaults::noteLayoutType), nullptr);
@@ -371,7 +371,7 @@ bool SourceSampler::loadPresetFromFile (const juce::String& fileName)
                     auto samplerSound = soundInfo.getChildWithName("SamplerSound");
                     juce::BigInteger midiNotes = 0;
                     midiNotes.parseString(samplerSound.getProperty("midiNotes", SourceDefaults::midiNotes).toString(), 16);
-                    juce::ValueTree sound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
+                    juce::ValueTree sound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
                     sound.getChildWithName(SourceIDs::SOUND_SAMPLE).setProperty(SourceIDs::usesPreview, true, nullptr);
                     
                     sound.setProperty(SourceIDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
@@ -431,8 +431,8 @@ void SourceSampler::loadPresetFromIndex(int index)
     } else {
         // If no file was loaded (no file found or errors ocurred), create a new empty preset
         DBG("Creating new empty preset");
-        juce::ValueTree newState = Helpers::createNewStateFromCurrentSatate(state);
-        juce::ValueTree newPresetState = Helpers::createEmptyPresetState();
+        juce::ValueTree newState = SourceHelpers::createNewStateFromCurrentSatate(state);
+        juce::ValueTree newPresetState = SourceHelpers::createEmptyPresetState();
         newState.addChild(newPresetState, -1, nullptr);
         loadPresetFromStateInformation(newState);
         currentPresetIndex = index;
@@ -1197,7 +1197,7 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
             midiRootNote = sound->getMidiNoteFromFirstSourceSamplerSound();
         }
         
-        juce::ValueTree sourceSound = Helpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
+        juce::ValueTree sourceSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
         
         juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
         if (existingSoundIndex > -1){
@@ -1223,7 +1223,7 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
         // Note that when adding new sample sound to an existing sound,the midiNotes argument is ignored as this affects the main sound only
         auto* sound = sounds->getSoundWithUUID(soundUUID);
         if (sound != nullptr){
-            juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiRootNote, midiVelocityLayer);
+            juce::ValueTree sourceSamplerSound = SourceHelpers::createSourceSampleSoundState(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiRootNote, midiVelocityLayer);
             sound->addNewSourceSamplerSoundFromValueTree(sourceSamplerSound);
         }
     }

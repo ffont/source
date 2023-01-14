@@ -50,21 +50,21 @@ SourceSamplerSound::~SourceSamplerSound()
 
 void SourceSamplerSound::bindState ()
 {
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::name, SourceDefaults::name);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::name, SourceDefaults::name);
     name.referTo(state, SourceIDs::name, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::soundId, SourceDefaults::soundId);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::soundId, SourceDefaults::soundId);
     soundId.referTo(state, SourceIDs::soundId, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiRootNote, SourceDefaults::midiRootNote);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiRootNote, SourceDefaults::midiRootNote);
     midiRootNote.referTo(state, SourceIDs::midiRootNote, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiVelocityLayer, SourceDefaults::midiVelocityLayer);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiVelocityLayer, SourceDefaults::midiVelocityLayer);
     midiVelocityLayer.referTo(state, SourceIDs::midiVelocityLayer, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleStartPosition, SourceDefaults::sampleStartPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleStartPosition, SourceDefaults::sampleStartPosition);
     sampleStartPosition.referTo(state, SourceIDs::sampleStartPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleEndPosition, SourceDefaults::sampleEndPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleEndPosition, SourceDefaults::sampleEndPosition);
     sampleEndPosition.referTo(state, SourceIDs::sampleEndPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopStartPosition, SourceDefaults::sampleLoopStartPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopStartPosition, SourceDefaults::sampleLoopStartPosition);
     sampleLoopStartPosition.referTo(state, SourceIDs::sampleLoopStartPosition, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopEndPosition, SourceDefaults::sampleLoopEndPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopEndPosition, SourceDefaults::sampleLoopEndPosition);
     sampleLoopEndPosition.referTo(state, SourceIDs::sampleLoopEndPosition, nullptr);
     checkSampleSampleStartEndAndLoopPositions();
 }
@@ -285,85 +285,85 @@ SourceSound::~SourceSound ()
 
 void SourceSound::bindState ()
 {
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::willBeDeleted, SourceDefaults::willBeDeleted);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::willBeDeleted, SourceDefaults::willBeDeleted);
     willBeDeleted.referTo(state, SourceIDs::willBeDeleted, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::allSoundsLoaded, SourceDefaults::allSoundsLoaded);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::allSoundsLoaded, SourceDefaults::allSoundsLoaded);
     allSoundsLoaded.referTo(state, SourceIDs::allSoundsLoaded, nullptr);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiNotes, SourceDefaults::midiNotes);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiNotes, SourceDefaults::midiNotes);
     midiNotesAsString.referTo(state, SourceIDs::midiNotes, nullptr);
     
     // --> Start auto-generated code C
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::launchMode, SourceDefaults::launchMode);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::launchMode, SourceDefaults::launchMode);
     launchMode.referTo(state, SourceIDs::launchMode, nullptr, SourceDefaults::launchMode);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::startPosition, SourceDefaults::startPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::startPosition, SourceDefaults::startPosition);
     startPosition.referTo(state, SourceIDs::startPosition, nullptr, SourceDefaults::startPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::endPosition, SourceDefaults::endPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::endPosition, SourceDefaults::endPosition);
     endPosition.referTo(state, SourceIDs::endPosition, nullptr, SourceDefaults::endPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopStartPosition, SourceDefaults::loopStartPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopStartPosition, SourceDefaults::loopStartPosition);
     loopStartPosition.referTo(state, SourceIDs::loopStartPosition, nullptr, SourceDefaults::loopStartPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopEndPosition, SourceDefaults::loopEndPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopEndPosition, SourceDefaults::loopEndPosition);
     loopEndPosition.referTo(state, SourceIDs::loopEndPosition, nullptr, SourceDefaults::loopEndPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopXFadeNSamples, SourceDefaults::loopXFadeNSamples);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::loopXFadeNSamples, SourceDefaults::loopXFadeNSamples);
     loopXFadeNSamples.referTo(state, SourceIDs::loopXFadeNSamples, nullptr, SourceDefaults::loopXFadeNSamples);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::reverse, SourceDefaults::reverse);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::reverse, SourceDefaults::reverse);
     reverse.referTo(state, SourceIDs::reverse, nullptr, SourceDefaults::reverse);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::noteMappingMode, SourceDefaults::noteMappingMode);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::noteMappingMode, SourceDefaults::noteMappingMode);
     noteMappingMode.referTo(state, SourceIDs::noteMappingMode, nullptr, SourceDefaults::noteMappingMode);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::numSlices, SourceDefaults::numSlices);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::numSlices, SourceDefaults::numSlices);
     numSlices.referTo(state, SourceIDs::numSlices, nullptr, SourceDefaults::numSlices);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::playheadPosition, SourceDefaults::playheadPosition);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::playheadPosition, SourceDefaults::playheadPosition);
     playheadPosition.referTo(state, SourceIDs::playheadPosition, nullptr, SourceDefaults::playheadPosition);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freezePlayheadSpeed, SourceDefaults::freezePlayheadSpeed);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freezePlayheadSpeed, SourceDefaults::freezePlayheadSpeed);
     freezePlayheadSpeed.referTo(state, SourceIDs::freezePlayheadSpeed, nullptr, SourceDefaults::freezePlayheadSpeed);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterCutoff, SourceDefaults::filterCutoff);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterCutoff, SourceDefaults::filterCutoff);
     filterCutoff.referTo(state, SourceIDs::filterCutoff, nullptr, SourceDefaults::filterCutoff);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRessonance, SourceDefaults::filterRessonance);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRessonance, SourceDefaults::filterRessonance);
     filterRessonance.referTo(state, SourceIDs::filterRessonance, nullptr, SourceDefaults::filterRessonance);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterKeyboardTracking, SourceDefaults::filterKeyboardTracking);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterKeyboardTracking, SourceDefaults::filterKeyboardTracking);
     filterKeyboardTracking.referTo(state, SourceIDs::filterKeyboardTracking, nullptr, SourceDefaults::filterKeyboardTracking);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterAttack, SourceDefaults::filterAttack);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterAttack, SourceDefaults::filterAttack);
     filterAttack.referTo(state, SourceIDs::filterAttack, nullptr, SourceDefaults::filterAttack);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterDecay, SourceDefaults::filterDecay);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterDecay, SourceDefaults::filterDecay);
     filterDecay.referTo(state, SourceIDs::filterDecay, nullptr, SourceDefaults::filterDecay);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterSustain, SourceDefaults::filterSustain);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterSustain, SourceDefaults::filterSustain);
     filterSustain.referTo(state, SourceIDs::filterSustain, nullptr, SourceDefaults::filterSustain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRelease, SourceDefaults::filterRelease);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterRelease, SourceDefaults::filterRelease);
     filterRelease.referTo(state, SourceIDs::filterRelease, nullptr, SourceDefaults::filterRelease);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterADSR2CutoffAmt, SourceDefaults::filterADSR2CutoffAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::filterADSR2CutoffAmt, SourceDefaults::filterADSR2CutoffAmt);
     filterADSR2CutoffAmt.referTo(state, SourceIDs::filterADSR2CutoffAmt, nullptr, SourceDefaults::filterADSR2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::gain, SourceDefaults::gain);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::gain, SourceDefaults::gain);
     gain.referTo(state, SourceIDs::gain, nullptr, SourceDefaults::gain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::attack, SourceDefaults::attack);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::attack, SourceDefaults::attack);
     attack.referTo(state, SourceIDs::attack, nullptr, SourceDefaults::attack);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::decay, SourceDefaults::decay);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::decay, SourceDefaults::decay);
     decay.referTo(state, SourceIDs::decay, nullptr, SourceDefaults::decay);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sustain, SourceDefaults::sustain);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sustain, SourceDefaults::sustain);
     sustain.referTo(state, SourceIDs::sustain, nullptr, SourceDefaults::sustain);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::release, SourceDefaults::release);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::release, SourceDefaults::release);
     release.referTo(state, SourceIDs::release, nullptr, SourceDefaults::release);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pan, SourceDefaults::pan);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pan, SourceDefaults::pan);
     pan.referTo(state, SourceIDs::pan, nullptr, SourceDefaults::pan);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitch, SourceDefaults::pitch);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitch, SourceDefaults::pitch);
     pitch.referTo(state, SourceIDs::pitch, nullptr, SourceDefaults::pitch);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeUp, SourceDefaults::pitchBendRangeUp);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeUp, SourceDefaults::pitchBendRangeUp);
     pitchBendRangeUp.referTo(state, SourceIDs::pitchBendRangeUp, nullptr, SourceDefaults::pitchBendRangeUp);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeDown, SourceDefaults::pitchBendRangeDown);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeDown, SourceDefaults::pitchBendRangeDown);
     pitchBendRangeDown.referTo(state, SourceIDs::pitchBendRangeDown, nullptr, SourceDefaults::pitchBendRangeDown);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2CutoffAmt, SourceDefaults::mod2CutoffAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2CutoffAmt, SourceDefaults::mod2CutoffAmt);
     mod2CutoffAmt.referTo(state, SourceIDs::mod2CutoffAmt, nullptr, SourceDefaults::mod2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2GainAmt, SourceDefaults::mod2GainAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2GainAmt, SourceDefaults::mod2GainAmt);
     mod2GainAmt.referTo(state, SourceIDs::mod2GainAmt, nullptr, SourceDefaults::mod2GainAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PitchAmt, SourceDefaults::mod2PitchAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PitchAmt, SourceDefaults::mod2PitchAmt);
     mod2PitchAmt.referTo(state, SourceIDs::mod2PitchAmt, nullptr, SourceDefaults::mod2PitchAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PlayheadPos, SourceDefaults::mod2PlayheadPos);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PlayheadPos, SourceDefaults::mod2PlayheadPos);
     mod2PlayheadPos.referTo(state, SourceIDs::mod2PlayheadPos, nullptr, SourceDefaults::mod2PlayheadPos);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2CutoffAmt, SourceDefaults::vel2CutoffAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2CutoffAmt, SourceDefaults::vel2CutoffAmt);
     vel2CutoffAmt.referTo(state, SourceIDs::vel2CutoffAmt, nullptr, SourceDefaults::vel2CutoffAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2GainAmt, SourceDefaults::vel2GainAmt);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2GainAmt, SourceDefaults::vel2GainAmt);
     vel2GainAmt.referTo(state, SourceIDs::vel2GainAmt, nullptr, SourceDefaults::vel2GainAmt);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::velSensitivity, SourceDefaults::velSensitivity);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::velSensitivity, SourceDefaults::velSensitivity);
     velSensitivity.referTo(state, SourceIDs::velSensitivity, nullptr, SourceDefaults::velSensitivity);
-    Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiChannel, SourceDefaults::midiChannel);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiChannel, SourceDefaults::midiChannel);
     midiChannel.referTo(state, SourceIDs::midiChannel, nullptr, SourceDefaults::midiChannel);
     // --> End auto-generated code C
     
@@ -706,7 +706,7 @@ void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::St
     } else {
         // No mapping with uuid found, create a new one
         // TODO: move this to the MidiCCMappingList class?
-        juce::ValueTree newMapping = Helpers::createMidiMappingState(ccNumber, parameterName, juce::jlimit(0.0f, 1.0f, minRange), juce::jlimit(0.0f, 1.0f, maxRange));
+        juce::ValueTree newMapping = SourceHelpers::createMidiMappingState(ccNumber, parameterName, juce::jlimit(0.0f, 1.0f, minRange), juce::jlimit(0.0f, 1.0f, maxRange));
         state.addChild(newMapping, -1, nullptr);
     }
 }

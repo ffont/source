@@ -31,7 +31,7 @@ struct GlobalContextStruct {
 };
 
 
-namespace Helpers
+namespace SourceHelpers
 {
 
     inline juce::ValueTree createUuidProperty (juce::ValueTree& v)
@@ -72,7 +72,7 @@ namespace Helpers
     inline juce::ValueTree createNewEmptyState()
     {
         juce::ValueTree state (SourceIDs::SOURCE_STATE);
-        Helpers::createUuidProperty (state);
+        SourceHelpers::createUuidProperty (state);
         state.setProperty (SourceIDs::currentPresetIndex, SourceDefaults::currentPresetIndex, nullptr);
         state.setProperty (SourceIDs::globalMidiInChannel, SourceDefaults::globalMidiInChannel, nullptr);
         state.setProperty (SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn, nullptr);
@@ -100,7 +100,7 @@ namespace Helpers
     inline juce::ValueTree createEmptyPresetState()
     {
         juce::ValueTree preset (SourceIDs::PRESET);
-        Helpers::createUuidProperty (preset);
+        SourceHelpers::createUuidProperty (preset);
         preset.setProperty (SourceIDs::name, defaultPresetName(), nullptr);
         preset.setProperty (SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType, nullptr);
         preset.setProperty (SourceIDs::numVoices, SourceDefaults::numVoices, nullptr);
@@ -139,7 +139,7 @@ namespace Helpers
                                                         int midiVelocityLayer)
     {
         juce::ValueTree ss (SourceIDs::SOUND_SAMPLE);
-        Helpers::createUuidProperty (ss);
+        SourceHelpers::createUuidProperty (ss);
         ss.setProperty (SourceIDs::name, soundName, nullptr);
         ss.setProperty (SourceIDs::downloadProgress, 0, nullptr);
         ss.setProperty (SourceIDs::downloadCompleted, false, nullptr);
@@ -159,7 +159,7 @@ namespace Helpers
             ss.setProperty (SourceIDs::midiRootNote, SourceDefaults::midiRootNote, nullptr);
         }
         if (slices.size() > 0){
-            juce::ValueTree soundAnalysis = Helpers::createAnalysisFromSlices(slices);
+            juce::ValueTree soundAnalysis = SourceHelpers::createAnalysisFromSlices(slices);
             ss.addChild(soundAnalysis, -1, nullptr);
         }
         ss.setProperty(SourceIDs::midiVelocityLayer, midiVelocityLayer, nullptr);
@@ -169,7 +169,7 @@ namespace Helpers
     inline juce::ValueTree createMidiMappingState(int ccNumber, juce::String parameterName, float minRange, float maxRange)
     {
         juce::ValueTree mapping (SourceIDs::MIDI_CC_MAPPING);
-        Helpers::createUuidProperty (mapping);
+        SourceHelpers::createUuidProperty (mapping);
         mapping.setProperty (SourceIDs::ccNumber, ccNumber, nullptr);
         mapping.setProperty (SourceIDs::parameterName, parameterName, nullptr);
         mapping.setProperty (SourceIDs::minRange, minRange, nullptr);
@@ -180,7 +180,7 @@ namespace Helpers
     inline juce::ValueTree createEmptySourceSoundState()
     {
         juce::ValueTree sound (SourceIDs::SOUND);
-        Helpers::createUuidProperty (sound);
+        SourceHelpers::createUuidProperty (sound);
         sound.setProperty (SourceIDs::willBeDeleted, false, nullptr);
         sound.setProperty (SourceIDs::allSoundsLoaded, false, nullptr);
         // --> Start auto-generated code A
@@ -236,8 +236,8 @@ namespace Helpers
                                                                                 juce::BigInteger midiNotes,
                                                                                 int midiRootNote,
                                                                                 int midiVelocityLayer){
-        juce::ValueTree sourceSound = Helpers::createEmptySourceSoundState();
-        juce::ValueTree sourceSamplerSound = Helpers::createSourceSampleSoundState(soundID,
+        juce::ValueTree sourceSound = SourceHelpers::createEmptySourceSoundState();
+        juce::ValueTree sourceSamplerSound = SourceHelpers::createSourceSampleSoundState(soundID,
                                                                                    soundName,
                                                                                    soundUser,
                                                                                    soundLicense,
@@ -281,13 +281,13 @@ public:
     juce::ValueTree state;
     void bindState ()
     {
-        Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::ccNumber, SourceDefaults::ccNumber);
+        SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::ccNumber, SourceDefaults::ccNumber);
         ccNumber.referTo(state, SourceIDs::ccNumber, nullptr, SourceDefaults::ccNumber);
-        Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::minRange, SourceDefaults::minRange);
+        SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::minRange, SourceDefaults::minRange);
         minRange.referTo(state, SourceIDs::minRange, nullptr, SourceDefaults::minRange);
-        Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::maxRange, SourceDefaults::maxRange);
+        SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::maxRange, SourceDefaults::maxRange);
         maxRange.referTo(state, SourceIDs::maxRange, nullptr, SourceDefaults::maxRange);
-        Helpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::parameterName, SourceDefaults::parameterName);
+        SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::parameterName, SourceDefaults::parameterName);
         parameterName.referTo(state, SourceIDs::parameterName, nullptr);
     }
     
