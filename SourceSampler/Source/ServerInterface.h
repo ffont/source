@@ -280,6 +280,13 @@ void HTTPServer::run() {
     HttpServer server(static_cast<const char*> (certFile.getFullPathName().toUTF8()), static_cast<const char*> (keyFile.getFullPathName().toUTF8()));
     #else
     HttpServer server;
+    // Copy static files to the /tmp folder 
+    juce::File staticFiles = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp/StaticBundle");
+    if (!staticFiles.exists()){
+        juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("SourceSampler/tmp");
+        juce::File baseSourceDirectory = juce::File::getCurrentWorkingDirectory().getParentDirectory().getParentDirectory().getParentDirectory().getFullPathName() + "/3rdParty/StaticBundle";
+        baseSourceDirectory.copyDirectoryTo(baseLocation);
+    }
     #endif
 
     #if !ELK_BUILD
