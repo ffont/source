@@ -41,6 +41,7 @@
 		2B8C98F0120F16EF371CD6D8 /* include_juce_gui_extra.mm */ = {isa = PBXBuildFile; fileRef = 7EA54F98BDA2739089629A6C; };
 		2F91ACE53009BBF1787062F8 /* Cocoa.framework */ = {isa = PBXBuildFile; fileRef = 129B2FA0A9E3ECEE9589F0CA; };
 		303F7F9231F6AF065CE4E7FD /* Shared Code */ = {isa = PBXBuildFile; fileRef = 75A6FDD2862C71EDF00FD6B3; };
+		3051526C1768F32EB7A42BE2 /* Clip.cpp */ = {isa = PBXBuildFile; fileRef = 85C46356C50C4F19D00540E8; };
 		30D6F52683EFBA7C8450906E /* include_juce_cryptography.mm */ = {isa = PBXBuildFile; fileRef = 8E697AC7EC717E5F9AFBDC48; };
 		332C87C6F36E349E37C4E660 /* SourceSampler.cpp */ = {isa = PBXBuildFile; fileRef = 81C399931B0DB13A690E16D7; };
 		39A0A3E4216481B5D1B8E5D5 /* include_juce_audio_devices.mm */ = {isa = PBXBuildFile; fileRef = 4AA605BB6A5FDA9F4F543C4F; };
@@ -49,14 +50,18 @@
 		43B01F81DA08E2B73BFB9278 /* AudioUnit.framework */ = {isa = PBXBuildFile; fileRef = 6D32FB9D9274AC704883201F; };
 		46C22EE393D0F2167F00B295 /* include_juce_audio_plugin_client_VST_utils.mm */ = {isa = PBXBuildFile; fileRef = 78ABE786057179569A93B04F; };
 		500576E0DB3D0DA2546AE058 /* include_juce_audio_plugin_client_AU_1.mm */ = {isa = PBXBuildFile; fileRef = BAE103B86B787351607637A6; };
+		50DB65C5854B91D42870B90E /* HardwareDevice.cpp */ = {isa = PBXBuildFile; fileRef = 8A1CD4840B7B68488E3C90B4; };
 		5222B4F51D12D82A8C299DB6 /* Icon.icns */ = {isa = PBXBuildFile; fileRef = 5484510AED0F6B29577E7953; };
 		58FE7A7CDC7D531C6F776B7A /* CoreAudio.framework */ = {isa = PBXBuildFile; fileRef = 94EC2E86D4D9B5415450FD7C; };
+		5EB8419FF9D1885561139701 /* MusicalContext.cpp */ = {isa = PBXBuildFile; fileRef = 132BB6A01AECF917A7A133AA; };
+		69D14E3014E6315468ADE475 /* Track.cpp */ = {isa = PBXBuildFile; fileRef = 13D2491E4D9FA22C82F412D7; };
 		6C91BDCC0504140C1426B09E /* include_juce_audio_plugin_client_AU_2.mm */ = {isa = PBXBuildFile; fileRef = 546E5C94581589536369E97E; };
 		782BD2192BF72160D7B5CE23 /* VST3 */ = {isa = PBXBuildFile; fileRef = A7F15CCA91692BBC43414E81; };
 		7CA241889649439177FBCC0E /* SourceSamplerSynthesiser.cpp */ = {isa = PBXBuildFile; fileRef = 6890C3E0045A04E713CAA3BB; };
 		7CAEDEE61CA9036900FEC535 /* CoreAudioKit.framework */ = {isa = PBXBuildFile; fileRef = F5DAE94341AADD7DA7CA3949; };
 		7DD8B8A853D846A860A86461 /* include_juce_audio_processors.mm */ = {isa = PBXBuildFile; fileRef = 750DD7B579F6D47DA8B86F05; };
 		825EA73629D2C8FF7FE208C4 /* VST */ = {isa = PBXBuildFile; fileRef = B0238AED8FE0635FBFEB6E0D; };
+		86BEC7C5D58CE26451931F1B /* Sequencer.cpp */ = {isa = PBXBuildFile; fileRef = 643F133900B0D1E417009C5D; };
 		86FA18539B1EBA0FBD77984F /* RecentFilesMenuTemplate.nib */ = {isa = PBXBuildFile; fileRef = 7B7047A307A218418CB0612C; };
 		88B88E5E16A02A73CFA8FC48 /* include_juce_audio_plugin_client_AU.r */ = {isa = PBXBuildFile; fileRef = 5CD3B3FC87940B9B55B2FB81; };
 		89184CDA5AE452757FE148B2 /* Foundation.framework */ = {isa = PBXBuildFile; fileRef = 7365B0F0DBEEBA97510002BD; };
@@ -68,6 +73,7 @@
 		B06039822313899CEB5EDC06 /* WebKit.framework */ = {isa = PBXBuildFile; fileRef = 27CEEE49C13AAE788093DFAC; };
 		B58C60BACA8618E13ADBB692 /* include_juce_events.mm */ = {isa = PBXBuildFile; fileRef = F834FF9950575DB0902CA127; };
 		B5B93216BD5C267A93138702 /* twine.cpp */ = {isa = PBXBuildFile; fileRef = 39B46750D7C6962A170A9ABF; };
+		C143808AF425A1F271291857 /* Playhead.cpp */ = {isa = PBXBuildFile; fileRef = 819CA760948836B002778947; };
 		C4EB0B2F6C721BC3EF8344AB /* Accelerate.framework */ = {isa = PBXBuildFile; fileRef = DF7838E5326A9AA75DA6BAE8; };
 		D68AA53B57DD38E3843C1B97 /* SourceSamplerVoice.cpp */ = {isa = PBXBuildFile; fileRef = C3C3273D2684FD53BA90D751; };
 		DF8FB1342E15E248CF2BB8FB /* PluginProcessor.cpp */ = {isa = PBXBuildFile; fileRef = 0093CD2C1A4C423E37B299BC; };
@@ -90,21 +96,25 @@
 		0BE2918EC1169D1062E517C8 /* juce_cryptography */ /* juce_cryptography */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_cryptography; path = ../../3rdParty/JUCE/modules/juce_cryptography; sourceTree = SOURCE_ROOT; };
 		0C636102DF04538D9FF9ADB2 /* include_juce_audio_utils.mm */ /* include_juce_audio_utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_utils.mm; path = ../../JuceLibraryCode/include_juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
 		129B2FA0A9E3ECEE9589F0CA /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		132BB6A01AECF917A7A133AA /* MusicalContext.cpp */ /* MusicalContext.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MusicalContext.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/MusicalContext.cpp; sourceTree = SOURCE_ROOT; };
+		13D2491E4D9FA22C82F412D7 /* Track.cpp */ /* Track.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Track.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/Track.cpp; sourceTree = SOURCE_ROOT; };
 		160F33129C21F39682D768BC /* Info-AU.plist */ /* Info-AU.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-AU.plist"; path = "Info-AU.plist"; sourceTree = SOURCE_ROOT; };
-		1A8A4277B5B42AC4D7977AA2 /* drow_ValueTreeObjectList.h */ /* drow_ValueTreeObjectList.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = drow_ValueTreeObjectList.h; path = ../../Source/common/drow_ValueTreeObjectList.h; sourceTree = SOURCE_ROOT; };
 		1D60E7D5B1EF58ED10B71F7D /* xenomai_stubs.h */ /* xenomai_stubs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xenomai_stubs.h; path = ../../3rdParty/twine/src/xenomai_stubs.h; sourceTree = SOURCE_ROOT; };
 		1DEE04B05B79DF8EA3A9E5DD /* include_juce_dsp.mm */ /* include_juce_dsp.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_dsp.mm; path = ../../JuceLibraryCode/include_juce_dsp.mm; sourceTree = SOURCE_ROOT; };
+		228A658265F0B6373FB5162C /* Sequencer.h */ /* Sequencer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Sequencer.h; path = ../../3rdParty/shepherd/Shepherd/Source/Sequencer.h; sourceTree = SOURCE_ROOT; };
 		231731DB1E7A71CF246DF02C /* SourceSamplerSynthesiser.h */ /* SourceSamplerSynthesiser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SourceSamplerSynthesiser.h; path = ../../Source/SourceSamplerSynthesiser.h; sourceTree = SOURCE_ROOT; };
 		242B201E0F057EFCA955DD58 /* AudioToolbox.framework */ /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		27CEEE49C13AAE788093DFAC /* WebKit.framework */ /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		2BA4D99B69EAE02FB77A8D14 /* include_juce_audio_basics.mm */ /* include_juce_audio_basics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_basics.mm; path = ../../JuceLibraryCode/include_juce_audio_basics.mm; sourceTree = SOURCE_ROOT; };
 		3485D5DFA60AF29BE167340A /* include_juce_core.mm */ /* include_juce_core.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_core.mm; path = ../../JuceLibraryCode/include_juce_core.mm; sourceTree = SOURCE_ROOT; };
+		35AFF42CCC08CE3B6516B28A /* Track.h */ /* Track.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Track.h; path = ../../3rdParty/shepherd/Shepherd/Source/Track.h; sourceTree = SOURCE_ROOT; };
 		372BAC76C5A8F2B77569BB78 /* ServerInterface.h */ /* ServerInterface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ServerInterface.h; path = ../../Source/ServerInterface.h; sourceTree = SOURCE_ROOT; };
 		391AD90B5B87E1AE9170709A /* BinaryData.h */ /* BinaryData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BinaryData.h; path = ../../Source/BinaryData.h; sourceTree = SOURCE_ROOT; };
 		39B46750D7C6962A170A9ABF /* twine.cpp */ /* twine.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = twine.cpp; path = ../../3rdParty/twine/src/twine.cpp; sourceTree = SOURCE_ROOT; };
 		3B4E30020341734D174E0FFD /* juce_audio_devices */ /* juce_audio_devices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_devices; path = ../../3rdParty/JUCE/modules/juce_audio_devices; sourceTree = SOURCE_ROOT; };
 		3C967D93FC7CD367F61FBB98 /* juce_graphics */ /* juce_graphics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_graphics; path = ../../3rdParty/JUCE/modules/juce_graphics; sourceTree = SOURCE_ROOT; };
 		3CAABA94EAA743182819A1D8 /* PluginEditor.cpp */ /* PluginEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PluginEditor.cpp; path = ../../Source/PluginEditor.cpp; sourceTree = SOURCE_ROOT; };
+		3F77307BBBECBB0511889B7B /* DevelopmentUIComponent.h */ /* DevelopmentUIComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = DevelopmentUIComponent.h; path = ../../3rdParty/shepherd/Shepherd/Source/DevelopmentUIComponent.h; sourceTree = SOURCE_ROOT; };
 		4051B4439BEC462B61990EBB /* juce_audio_plugin_client */ /* juce_audio_plugin_client */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_plugin_client; path = ../../3rdParty/JUCE/modules/juce_audio_plugin_client; sourceTree = SOURCE_ROOT; };
 		44653B6229E904DA958D5D3D /* IOKit.framework */ /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		46278B863145FE835AB2CCC7 /* JucePluginDefines.h */ /* JucePluginDefines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JucePluginDefines.h; path = ../../JuceLibraryCode/JucePluginDefines.h; sourceTree = SOURCE_ROOT; };
@@ -121,10 +131,12 @@
 		5CD3B3FC87940B9B55B2FB81 /* include_juce_audio_plugin_client_AU.r */ /* include_juce_audio_plugin_client_AU.r */ = {isa = PBXFileReference; lastKnownFileType = file.r; name = include_juce_audio_plugin_client_AU.r; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU.r; sourceTree = SOURCE_ROOT; };
 		5CF30F550442F175107D86F0 /* include_juce_audio_formats.mm */ /* include_juce_audio_formats.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_formats.mm; path = ../../JuceLibraryCode/include_juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
 		63E83AC6DCE44B9FB257A26D /* twine_internal.h */ /* twine_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = twine_internal.h; path = ../../3rdParty/twine/src/twine_internal.h; sourceTree = SOURCE_ROOT; };
+		643F133900B0D1E417009C5D /* Sequencer.cpp */ /* Sequencer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Sequencer.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/Sequencer.cpp; sourceTree = SOURCE_ROOT; };
 		65A0D5DA36D845821F5E8616 /* include_juce_audio_plugin_client_VST2.cpp */ /* include_juce_audio_plugin_client_VST2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_VST2.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_VST2.cpp; sourceTree = SOURCE_ROOT; };
 		6890C3E0045A04E713CAA3BB /* SourceSamplerSynthesiser.cpp */ /* SourceSamplerSynthesiser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SourceSamplerSynthesiser.cpp; path = ../../Source/SourceSamplerSynthesiser.cpp; sourceTree = SOURCE_ROOT; };
 		6A463BCE492C7AF8B1EE0AF4 /* juce_audio_utils */ /* juce_audio_utils */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_utils; path = ../../3rdParty/JUCE/modules/juce_audio_utils; sourceTree = SOURCE_ROOT; };
 		6D32FB9D9274AC704883201F /* AudioUnit.framework */ /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
+		6FD62A2BAAB822FA047E3D4F /* ReleasePool.h */ /* ReleasePool.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ReleasePool.h; path = ../../3rdParty/shepherd/Shepherd/Source/common/ReleasePool.h; sourceTree = SOURCE_ROOT; };
 		7365B0F0DBEEBA97510002BD /* Foundation.framework */ /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		74B0C74F1B02CE4876111261 /* worker_pool_common.h */ /* worker_pool_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = worker_pool_common.h; path = ../../3rdParty/twine/src/worker_pool_common.h; sourceTree = SOURCE_ROOT; };
 		750DD7B579F6D47DA8B86F05 /* include_juce_audio_processors.mm */ /* include_juce_audio_processors.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors.mm; path = ../../JuceLibraryCode/include_juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
@@ -133,15 +145,23 @@
 		78ABE786057179569A93B04F /* include_juce_audio_plugin_client_VST_utils.mm */ /* include_juce_audio_plugin_client_VST_utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_VST_utils.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_VST_utils.mm; sourceTree = SOURCE_ROOT; };
 		7B14D666DF33F10A426D2D16 /* ui_plugin_ws_lazy.html */ /* ui_plugin_ws_lazy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = ui_plugin_ws_lazy.html; path = ../../Resources/ui_plugin_ws_lazy.html; sourceTree = SOURCE_ROOT; };
 		7B7047A307A218418CB0612C /* RecentFilesMenuTemplate.nib */ /* RecentFilesMenuTemplate.nib */ = {isa = PBXFileReference; lastKnownFileType = file.nib; name = RecentFilesMenuTemplate.nib; path = RecentFilesMenuTemplate.nib; sourceTree = SOURCE_ROOT; };
+		7BC8C8DBF7E30CC467F47146 /* defines_shepherd.h */ /* defines_shepherd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = defines_shepherd.h; path = ../../3rdParty/shepherd/Shepherd/Source/defines_shepherd.h; sourceTree = SOURCE_ROOT; };
 		7EA54F98BDA2739089629A6C /* include_juce_gui_extra.mm */ /* include_juce_gui_extra.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_extra.mm; path = ../../JuceLibraryCode/include_juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
+		819CA760948836B002778947 /* Playhead.cpp */ /* Playhead.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Playhead.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/Playhead.cpp; sourceTree = SOURCE_ROOT; };
 		81C399931B0DB13A690E16D7 /* SourceSampler.cpp */ /* SourceSampler.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SourceSampler.cpp; path = ../../Source/SourceSampler.cpp; sourceTree = SOURCE_ROOT; };
+		837811FE8954D6E814CEE37B /* MusicalContext.h */ /* MusicalContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MusicalContext.h; path = ../../3rdParty/shepherd/Shepherd/Source/MusicalContext.h; sourceTree = SOURCE_ROOT; };
 		8399535889E4E09A2BCE7015 /* QuartzCore.framework */ /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		84CA75090AED0C1FBC0375F7 /* helpers_shepherd.h */ /* helpers_shepherd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = helpers_shepherd.h; path = ../../3rdParty/shepherd/Shepherd/Source/helpers_shepherd.h; sourceTree = SOURCE_ROOT; };
 		852695CCF020E7741DFB5239 /* LevelMeterSource.h */ /* LevelMeterSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LevelMeterSource.h; path = ../../3rdParty/ff_meters/LevelMeter/LevelMeterSource.h; sourceTree = SOURCE_ROOT; };
+		85C46356C50C4F19D00540E8 /* Clip.cpp */ /* Clip.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Clip.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/Clip.cpp; sourceTree = SOURCE_ROOT; };
+		8A1CD4840B7B68488E3C90B4 /* HardwareDevice.cpp */ /* HardwareDevice.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HardwareDevice.cpp; path = ../../3rdParty/shepherd/Shepherd/Source/HardwareDevice.cpp; sourceTree = SOURCE_ROOT; };
 		8A9786F9B4B67D81403D0B29 /* juce_audio_formats */ /* juce_audio_formats */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_formats; path = ../../3rdParty/JUCE/modules/juce_audio_formats; sourceTree = SOURCE_ROOT; };
 		8A9B9D84270C0D541733DDAC /* juce_data_structures */ /* juce_data_structures */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_data_structures; path = ../../3rdParty/JUCE/modules/juce_data_structures; sourceTree = SOURCE_ROOT; };
+		8B25AE50530309C9863BCF3D /* Fifo.h */ /* Fifo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Fifo.h; path = ../../3rdParty/shepherd/Shepherd/Source/common/Fifo.h; sourceTree = SOURCE_ROOT; };
 		8D12357A0A13731509D377E5 /* Info-Standalone_Plugin.plist */ /* Info-Standalone_Plugin.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-Standalone_Plugin.plist"; path = "Info-Standalone_Plugin.plist"; sourceTree = SOURCE_ROOT; };
 		8DE2AF40D194C4508C5151C7 /* twine.h */ /* twine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = twine.h; path = ../../3rdParty/twine/include/twine/twine.h; sourceTree = SOURCE_ROOT; };
 		8E697AC7EC717E5F9AFBDC48 /* include_juce_cryptography.mm */ /* include_juce_cryptography.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_cryptography.mm; path = ../../JuceLibraryCode/include_juce_cryptography.mm; sourceTree = SOURCE_ROOT; };
+		8E6A84A03651FCD65DB76CC8 /* SynthAudioSource.h */ /* SynthAudioSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SynthAudioSource.h; path = ../../3rdParty/shepherd/Shepherd/Source/SynthAudioSource.h; sourceTree = SOURCE_ROOT; };
 		9228145D2E132F51E8605108 /* SourceSamplerSound.cpp */ /* SourceSamplerSound.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SourceSamplerSound.cpp; path = ../../Source/SourceSamplerSound.cpp; sourceTree = SOURCE_ROOT; };
 		94EC2E86D4D9B5415450FD7C /* CoreAudio.framework */ /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		99817F73B57DA17C68D98557 /* juce_dsp */ /* juce_dsp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_dsp; path = ../../3rdParty/JUCE/modules/juce_dsp; sourceTree = SOURCE_ROOT; };
@@ -167,6 +187,7 @@
 		CAF159EE43BED805AECE3E10 /* helpers_source.h */ /* helpers_source.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = helpers_source.h; path = ../../Source/helpers_source.h; sourceTree = SOURCE_ROOT; };
 		D0658F1793EAF839A61A4BAC /* juce_gui_basics */ /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = ../../3rdParty/JUCE/modules/juce_gui_basics; sourceTree = SOURCE_ROOT; };
 		D1C18AA6321D8651CB293A22 /* SourceSamplerVoice.h */ /* SourceSamplerVoice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SourceSamplerVoice.h; path = ../../Source/SourceSamplerVoice.h; sourceTree = SOURCE_ROOT; };
+		D38FDB3F3F46659283D145B0 /* drow_ValueTreeObjectList.h */ /* drow_ValueTreeObjectList.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = drow_ValueTreeObjectList.h; path = ../../3rdParty/shepherd/Shepherd/Source/common/drow_ValueTreeObjectList.h; sourceTree = SOURCE_ROOT; };
 		DF6C7463FDF28DD60A44BDC9 /* CoreMIDI.framework */ /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		DF7838E5326A9AA75DA6BAE8 /* Accelerate.framework */ /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		E175BFFA3DFBEE3429E07EB6 /* juce_events */ /* juce_events */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_events; path = ../../3rdParty/JUCE/modules/juce_events; sourceTree = SOURCE_ROOT; };
@@ -175,8 +196,11 @@
 		E8B87AD77D80AAC0BF6059A4 /* include_juce_audio_plugin_client_utils.cpp */ /* include_juce_audio_plugin_client_utils.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_utils.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_utils.cpp; sourceTree = SOURCE_ROOT; };
 		F4B467BBE140488419BA9D8B /* Info-VST.plist */ /* Info-VST.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST.plist"; path = "Info-VST.plist"; sourceTree = SOURCE_ROOT; };
 		F5DAE94341AADD7DA7CA3949 /* CoreAudioKit.framework */ /* CoreAudioKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioKit.framework; path = System/Library/Frameworks/CoreAudioKit.framework; sourceTree = SDKROOT; };
+		F6CC8226EE2C10EE0AFC0B73 /* Playhead.h */ /* Playhead.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Playhead.h; path = ../../3rdParty/shepherd/Shepherd/Source/Playhead.h; sourceTree = SOURCE_ROOT; };
 		F834FF9950575DB0902CA127 /* include_juce_events.mm */ /* include_juce_events.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_events.mm; path = ../../JuceLibraryCode/include_juce_events.mm; sourceTree = SOURCE_ROOT; };
 		F913441AFAB33F45033E472D /* PluginEditor.h */ /* PluginEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PluginEditor.h; path = ../../Source/PluginEditor.h; sourceTree = SOURCE_ROOT; };
+		FB74D9080990C5091D4966F9 /* Clip.h */ /* Clip.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Clip.h; path = ../../3rdParty/shepherd/Shepherd/Source/Clip.h; sourceTree = SOURCE_ROOT; };
+		FEADC192EA60E8C70DEEEBE3 /* HardwareDevice.h */ /* HardwareDevice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HardwareDevice.h; path = ../../3rdParty/shepherd/Shepherd/Source/HardwareDevice.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -396,7 +420,9 @@
 		B51DEA0DCE7EF3E63BCF7044 /* Other */ = {
 			isa = PBXGroup;
 			children = (
-				1A8A4277B5B42AC4D7977AA2,
+				D38FDB3F3F46659283D145B0,
+				8B25AE50530309C9863BCF3D,
+				6FD62A2BAAB822FA047E3D4F,
 				9A72388A5D6940CDD807D379,
 				A2685F1639A6FDB636BE458D,
 				852695CCF020E7741DFB5239,
@@ -412,6 +438,7 @@
 			isa = PBXGroup;
 			children = (
 				D6F4544776E0B949F646A967,
+				E1FEC2847EE5D9E7B8BA5874,
 				B51DEA0DCE7EF3E63BCF7044,
 				8C9715A3E0AF5980A2D12F0A,
 				CC7523ACA440D9FDC6A9E7C7,
@@ -441,7 +468,7 @@
 			name = Resources;
 			sourceTree = "<group>";
 		};
-		D6F4544776E0B949F646A967 /* Main */ = {
+		D6F4544776E0B949F646A967 /* Sampler */ = {
 			isa = PBXGroup;
 			children = (
 				01E8EBA3D4906EA04401361F,
@@ -460,7 +487,30 @@
 				C3C3273D2684FD53BA90D751,
 				D1C18AA6321D8651CB293A22,
 			);
-			name = Main;
+			name = Sampler;
+			sourceTree = "<group>";
+		};
+		E1FEC2847EE5D9E7B8BA5874 /* Sequencer */ = {
+			isa = PBXGroup;
+			children = (
+				7BC8C8DBF7E30CC467F47146,
+				84CA75090AED0C1FBC0375F7,
+				643F133900B0D1E417009C5D,
+				228A658265F0B6373FB5162C,
+				8A1CD4840B7B68488E3C90B4,
+				FEADC192EA60E8C70DEEEBE3,
+				132BB6A01AECF917A7A133AA,
+				837811FE8954D6E814CEE37B,
+				819CA760948836B002778947,
+				F6CC8226EE2C10EE0AFC0B73,
+				13D2491E4D9FA22C82F412D7,
+				35AFF42CCC08CE3B6516B28A,
+				85C46356C50C4F19D00540E8,
+				FB74D9080990C5091D4966F9,
+				3F77307BBBECBB0511889B7B,
+				8E6A84A03651FCD65DB76CC8,
+			);
+			name = Sequencer;
 			sourceTree = "<group>";
 		};
 		EE281F9F5F2E0753353448A0 /* Source */ = {
@@ -899,6 +949,12 @@
 				7CA241889649439177FBCC0E,
 				F203ECFB5C279CD9C3FB3054,
 				D68AA53B57DD38E3843C1B97,
+				86BEC7C5D58CE26451931F1B,
+				50DB65C5854B91D42870B90E,
+				5EB8419FF9D1885561139701,
+				C143808AF425A1F271291857,
+				69D14E3014E6315468ADE475,
+				3051526C1768F32EB7A42BE2,
 				0B78AB794346591B2CEE1603,
 				185705B1CABA064D6E3B2F91,
 				B5B93216BD5C267A93138702,
@@ -983,6 +1039,9 @@
 					"_NDEBUG=1",
 					"NDEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1007,7 +1066,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1017,7 +1077,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1143,6 +1203,9 @@
 					"_NDEBUG=1",
 					"NDEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1166,7 +1229,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1174,7 +1238,7 @@
 				INFOPLIST_PREPROCESS = NO;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1203,6 +1267,9 @@
 					"_NDEBUG=1",
 					"NDEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1227,14 +1294,15 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
 				INSTALL_PATH = "@executable_path/../Frameworks";
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1266,6 +1334,9 @@
 					"_DEBUG=1",
 					"DEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1290,7 +1361,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1299,7 +1371,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/VST3/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1331,6 +1403,9 @@
 					"_DEBUG=1",
 					"DEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1355,7 +1430,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1364,7 +1440,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/Components/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1397,6 +1473,9 @@
 					"_DEBUG=1",
 					"DEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1421,7 +1500,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1430,7 +1510,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Audio/Plug-Ins/VST/";
 				LIBRARY_STYLE = Bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1462,6 +1542,9 @@
 					"_NDEBUG=1",
 					"NDEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1486,7 +1569,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1496,7 +1580,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1535,6 +1619,9 @@
 					"_DEBUG=1",
 					"DEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1559,13 +1646,14 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
 				INSTALL_PATH = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1595,6 +1683,9 @@
 					"_DEBUG=1",
 					"DEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1618,14 +1709,15 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Info-Standalone_Plugin.plist;
 				INFOPLIST_PREPROCESS = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";
@@ -1664,6 +1756,9 @@
 					"_NDEBUG=1",
 					"NDEBUG=1",
 					"ASIO_STANDALONE=1",
+					"SOURCE_APP_DIRECTORY_NAME=\\\"Source\\\"",
+					"SHEPHERD_DATA_DIRECTORY_NAME=\\\"Source/sequencer\\\"",
+					"CREATE_INTERNAL_HW_OUTPUT_DEVICES=1",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
 					"JUCE_APP_VERSION=0.6",
 					"JUCE_APP_VERSION_HEX=0x600",
@@ -1688,7 +1783,8 @@
 					"$(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/",
 					"$(SRCROOT)/../../3rdParty/Simple-Web-Server/",
 					"$(SRCROOT)/../../3rdParty/asio/asio/include/",
-					"$(SRCROOT)/../../Source/common/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/",
+					"$(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common",
 					"$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client",
 					"$(inherited)",
 				);
@@ -1698,7 +1794,7 @@
 				LIBRARY_STYLE = Bundle;
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../Source/common/ $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
+				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_processors/format_types/VST3_SDK $(SRCROOT)/../../../../VST_SDK/VST2_SDK $(SRCROOT)/../../JuceLibraryCode $(SRCROOT)/../../3rdParty/JUCE/modules $(SRCROOT)/../../3rdParty/ff_meters/LevelMeter/ $(SRCROOT)/../../3rdParty/twine/include/ $(SRCROOT)/../../3rdParty/Simple-WebSocket-Server/ $(SRCROOT)/../../3rdParty/Simple-Web-Server/ $(SRCROOT)/../../3rdParty/asio/asio/include/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/ $(SRCROOT)/../../3rdParty/shepherd/Shepherd/Source/common $(SRCROOT)/../../3rdParty/JUCE/modules/juce_audio_plugin_client";
 				OTHER_CFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_CPLUSPLUSFLAGS = "-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include";
 				OTHER_LDFLAGS = "-bundle -lSourceSampler -L/usr/local/opt/openssl/lib -lssl  -lcrypto";

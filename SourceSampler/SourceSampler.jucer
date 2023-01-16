@@ -5,11 +5,12 @@
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../Source/common/"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
-              defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
+              defines="ASIO_STANDALONE=1&#10;SOURCE_APP_DIRECTORY_NAME=&quot;Source&quot;&#10;SHEPHERD_DATA_DIRECTORY_NAME=&quot;Source/sequencer&quot;&#10;CREATE_INTERNAL_HW_OUTPUT_DEVICES=1"
+              addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
-    <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Main">
+    <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Sampler">
       <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"
             file="Source/defines_source.h"/>
       <FILE id="VMg3xj" name="helpers_source.h" compile="0" resource="0"
@@ -39,9 +40,37 @@
       <FILE id="y59xCA" name="SourceSamplerVoice.h" compile="0" resource="0"
             file="Source/SourceSamplerVoice.h"/>
     </GROUP>
+    <GROUP id="{6CE987A5-C399-A111-7F4C-BD196DE2AC7F}" name="Sequencer">
+      <FILE id="iBMkHe" name="defines_shepherd.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/defines_shepherd.h"/>
+      <FILE id="lRk5mJ" name="helpers_shepherd.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/helpers_shepherd.h"/>
+      <FILE id="vKTmRb" name="Sequencer.cpp" compile="1" resource="0" file="3rdParty/shepherd/Shepherd/Source/Sequencer.cpp"/>
+      <FILE id="qDTf0q" name="Sequencer.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/Sequencer.h"/>
+      <FILE id="yiK25Q" name="HardwareDevice.cpp" compile="1" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/HardwareDevice.cpp"/>
+      <FILE id="JAC6RW" name="HardwareDevice.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/HardwareDevice.h"/>
+      <FILE id="HD0lTt" name="MusicalContext.cpp" compile="1" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/MusicalContext.cpp"/>
+      <FILE id="xbq3gJ" name="MusicalContext.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/MusicalContext.h"/>
+      <FILE id="W1tdVG" name="Playhead.cpp" compile="1" resource="0" file="3rdParty/shepherd/Shepherd/Source/Playhead.cpp"/>
+      <FILE id="zY0Rfq" name="Playhead.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/Playhead.h"/>
+      <FILE id="V2eZ2F" name="Track.cpp" compile="1" resource="0" file="3rdParty/shepherd/Shepherd/Source/Track.cpp"/>
+      <FILE id="uVoMgn" name="Track.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/Track.h"/>
+      <FILE id="HBm1kT" name="Clip.cpp" compile="1" resource="0" file="3rdParty/shepherd/Shepherd/Source/Clip.cpp"/>
+      <FILE id="K2GFI3" name="Clip.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/Clip.h"/>
+      <FILE id="A8MVWS" name="DevelopmentUIComponent.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/DevelopmentUIComponent.h"/>
+      <FILE id="whdzRl" name="SynthAudioSource.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/SynthAudioSource.h"/>
+    </GROUP>
     <GROUP id="{2DC6F67B-501C-9F38-87E3-661FF13778B5}" name="Other">
-      <FILE id="FiRqK4" name="drow_ValueTreeObjectList.h" compile="0" resource="0"
-            file="Source/common/drow_ValueTreeObjectList.h"/>
+      <FILE id="Zq49h8" name="drow_ValueTreeObjectList.h" compile="0" resource="0"
+            file="3rdParty/shepherd/Shepherd/Source/common/drow_ValueTreeObjectList.h"/>
+      <FILE id="CCU9mE" name="Fifo.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/common/Fifo.h"/>
+      <FILE id="J1m0HD" name="ReleasePool.h" compile="0" resource="0" file="3rdParty/shepherd/Shepherd/Source/common/ReleasePool.h"/>
       <FILE id="HPsP8H" name="api_key.example.h" compile="0" resource="0"
             file="Source/api_key.example.h"/>
       <FILE id="kc9gDZ" name="api_key.h" compile="0" resource="0" file="Source/api_key.h"/>

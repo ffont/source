@@ -16,3 +16,6 @@
 [submodule "SourceSampler/3rdParty/Simple-Web-Server"]
 	path = SourceSampler/3rdParty/Simple-Web-Server
 	url = https://gitlab.com/eidheim/Simple-Web-Server.git
+[submodule "SourceSampler/3rdParty/shepherd"]
+	path = SourceSampler/3rdParty/shepherd
+	url = https://github.com/ffont/shepherd.git

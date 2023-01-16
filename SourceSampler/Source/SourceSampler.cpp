@@ -55,7 +55,7 @@ SourceSampler::SourceSampler():
     #endif
     sendWSMessage(juce::OSCMessage("/plugin_started"));
     
-    std::cout << "SOURCE plugin is up and running!" << std::endl;
+    std::cout << "SOURCE sampler is up and running!" << std::endl;
 }
 
 SourceSampler::~SourceSampler()

@@ -11,6 +11,9 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "BinaryData.h"
+#if INCLUDE_SEQUENCER
+#include "defines_shepherd.h"
+#endif
 
 
 //==============================================================================
@@ -39,6 +42,12 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     openInBrowser.addListener(this);
     openInBrowser.setButtonText("Open UI in browser");
     addAndMakeVisible (openInBrowser);
+    
+    #if INCLUDE_SEQUENCER
+    openSequencerInBrowser.addListener(this);
+    openSequencerInBrowser.setButtonText("Open sequencer UI in browser");
+    addAndMakeVisible (openSequencerInBrowser);
+    #endif
     
     reloadUI.addListener(this);
     reloadUI.setButtonText("Reload UI");
@@ -86,12 +95,13 @@ juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
 }
 
 void SourceSamplerAudioProcessorEditor::buttonClicked (juce::Button* button){
-    if (button == &openInBrowser)
-    {
+    if (button == &openInBrowser){
         makeUIURL().launchInDefaultBrowser();
-     
-    } else if (button == &reloadUI)
-    {
+    #if INCLUDE_SEQUENCER
+    } else if (button == &openSequencerInBrowser){
+        juce::URL(DEV_UI_SIMULATOR_URL).launchInDefaultBrowser();
+    #endif
+    } else if (button == &reloadUI){
         #if !ELK_BUILD
             hadBrowserError = false; // Reset browser error property
             browser.goToURL(makeUIURL().toString(true));
@@ -114,7 +124,10 @@ void SourceSamplerAudioProcessorEditor::resized()
         float height = 800;
         #if JUCE_DEBUG
         setSize(width, height + 20);
-        openInBrowser.setBounds(0, 0, 150, 20);
+        openInBrowser.setBounds(5, 0, 150, 20);
+        #if INCLUDE_SEQUENCER
+        openSequencerInBrowser.setBounds(160, 0, 150, 20);
+        #endif
         browser.setBounds(0, 20, width, height);
         #else
         setSize(width, height);
@@ -124,7 +137,10 @@ void SourceSamplerAudioProcessorEditor::resized()
         browser.setBounds(0, 0, 0, 0);
         explanation.setBounds(10, 10, 590, 150);
         openInBrowser.setBounds(10, 160, 150, 20);
-        reloadUI.setBounds(170, 160, 90, 20);
+        #if INCLUDE_SEQUENCER
+        openSequencerInBrowser.setBounds(165, 160, 150, 20);
+        #endif
+        reloadUI.setBounds(320, 160, 90, 20);
         setSize(600, 190);
     }
     #endif

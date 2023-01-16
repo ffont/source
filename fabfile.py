@@ -180,11 +180,19 @@ def compile_elk_debug(ctx):
     compile_elk(ctx, configuration='Debug')
 
 
-def compile_macos(configuration='Release'):
+def get_sequencer_extra_flags():
+    return "INCLUDE_SEQUENCER=1"
+
+
+def compile_macos(configuration='Release', wsequencer=False):
     # Compile release Source for macOS platform
     print('Compiling Source for macOS platform...')
     print('*********************************************\n')
-    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration {0}".format(configuration))    
+    processor_definitions = ''
+    if wsequencer:
+        # Include shepherd sequencer in compilation
+        processor_definitions = "GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS {0}'".format(get_sequencer_extra_flags())
+    os.system("cd SourceSampler/Builds/MacOSX/;xcodebuild -configuration {0} {1}".format(configuration, processor_definitions))    
 
     print('\nAll done!')
 
@@ -205,11 +213,14 @@ def compile_binary_builder_macos():
     print('\nAll done!')
 
 
-def compile_linux(configuration='Release'):
+def compile_linux(configuration='Release', wsequencer=False):
     print('Compiling Source for Linux platform...')
     print('*********************************************\n')
+    if wsequencer:
+        # Include shepherd sequencer in compilation
+        cflags = "CFLAGS='{0}'".format(get_sequencer_extra_flags())
     os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")    
-    os.system("cd SourceSampler/Builds/LinuxMakefile;make CONFIG={} -j4".format(configuration))    
+    os.system("cd SourceSampler/Builds/LinuxMakefile;make CONFIG={} -j4 {}".format(configuration, cflags))    
 
     print('\nAll done!')
 
@@ -231,15 +242,15 @@ def compile_binary_builder_linux():
 
 
 @task
-def compile(ctx, configuration='Release'):
+def compile(ctx, configuration='Release', wsequencer=False):
     if platform.system() == 'Darwin':
         if not os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/build/Release/BinaryBuilder'):
             compile_binary_builder_macos()
-        compile_macos(configuration=configuration)
+        compile_macos(configuration=configuration, wsequencer=wsequencer)
     elif platform.system() == 'Linux':
         if not os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder'):
             compile_binary_builder_linux()
-        compile_linux(configuration=configuration)
+        compile_linux(configuration=configuration, wsequencer=wsequencer)
     else:
         raise Exception('Unsupported compilation platform')
 

@@ -81,6 +81,9 @@ private:
     juce::TextButton reloadUI;
     juce::Label explanation;
     juce::String uiHTMLFilePath;
+    #if INCLUDE_SEQUENCER
+    juce::TextButton openSequencerInBrowser;
+    #endif
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSamplerAudioProcessorEditor)
 };

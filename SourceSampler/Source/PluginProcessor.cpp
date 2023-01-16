@@ -11,6 +11,10 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#if INCLUDE_SEQUENCER
+#include "defines_shepherd.h"
+#endif
+
 
 //==============================================================================
 SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
@@ -26,6 +30,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #endif
 {
     source.setTotalNumOutputChannels(getTotalNumOutputChannels());
+    #if INCLUDE_SEQUENCER
+    sequencerCombinedBuffer.ensureSize(512 * 10);
+    #endif
 }
 
 SourceSamplerAudioProcessor::~SourceSamplerAudioProcessor()
@@ -101,6 +108,9 @@ void SourceSamplerAudioProcessor::changeProgramName (int index, const juce::Stri
 void SourceSamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     source.prepareToPlay(sampleRate, samplesPerBlock);
+    #if INCLUDE_SEQUENCER
+    sequencer.prepareSequencer(samplesPerBlock, sampleRate);
+    #endif
 }
 
 void SourceSamplerAudioProcessor::releaseResources()
@@ -134,6 +144,17 @@ bool SourceSamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 
 void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    #if INCLUDE_SEQUENCER
+    int sliceNumSamples = buffer.getNumSamples();
+    sequencer.getNextMIDISlice(sliceNumSamples);
+    sequencerCombinedBuffer.clear();
+    for (auto deviceData: *sequencer.getMidiOutDevices()){
+        if (deviceData != nullptr && deviceData->name == INTERNAL_OUTPUT_MIDI_DEVICE_NAME){
+            sequencerCombinedBuffer.addEvents(deviceData->buffer, 0, sliceNumSamples, 0);
+        }
+    }
+    midiMessages.addEvents(sequencerCombinedBuffer, 0, sliceNumSamples, 0);  // Combine sequencer MIDI messages with plugin's input message stream
+    #endif
     source.processBlock(buffer, midiMessages);
 }
 

@@ -10,6 +10,10 @@
 
 #pragma once
 
+#ifndef INCLUDE_SEQUENCER
+#define INCLUDE_SEQUENCER 0
+#endif
+
 #define USE_OSC_SERVER 0  // OSC can be used as well as an alternative to Websockets, keeping this here for legacy reasons but not really used
 #define SYNC_STATE_WITH_OSC 0
 

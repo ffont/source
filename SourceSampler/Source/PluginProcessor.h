@@ -12,6 +12,7 @@
 
 #include <JuceHeader.h>
 #include "SourceSampler.h"
+#include "Sequencer.h"
 
 
 //==============================================================================
@@ -57,6 +58,11 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     SourceSampler source;
+    
+    #if INCLUDE_SEQUENCER
+    Sequencer sequencer;
+    juce::MidiBuffer sequencerCombinedBuffer;
+    #endif
 
 private:
 
