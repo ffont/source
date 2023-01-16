@@ -15,6 +15,7 @@ Table of Contents
          * [Running SOURCE in the Elk hardware stack](#running-source-in-the-elk-hardware-stack)
          * [Running SOURCE as an audio plugin or standalone app in desktop/laptop computers](#running-source-as-an-audio-plugin-or-standalone-app-in-desktoplaptop-computers)
    * [Instructions for developers](#instructions-for-developers)
+   * [SOURCE + Shepherd](#source-+-shepherd)
    * [License](#license)
 
 
@@ -169,6 +170,11 @@ We don't include pre-compiled binaries for windows as part of the releases, so S
 For particular compilation instructions and notes for development, please see the [DEVELOPERS](DEVELOPERS.md) file.
 
 
+# SOURCE + Shepherd
+
+There is an experimental *version* of SOURCE which incorporate an open source MIDI sequencer in which I've also been working named [Shepherd](http://github.com/ffont/shepherd). This integrates with SOURCE to provide sequencing capabilities using a grid of MIDI clips *a la* Ableton Live. The functionalities of the sequencer are rather basic, but when used in combination with SOURCE can work a stand alone music making machine. As a user interface, the combination of SOURCE + Shepherd uses Albeton's Push2. More information about this combination and how to make it work can be provided upon request.
+
+
 # License
 
 SOURCE is released under the **GPLv3** open source software license (see [LICENSE](https://github.com/ffont/source/blob/master/LICENSE) file) with the code being available at  [https://github.com/ffont/source](https://github.com/ffont/source). Source uses the following open source software libraries: 
@@ -179,6 +185,7 @@ SOURCE is released under the **GPLv3** open source software license (see [LICENS
 * [asio](https://github.com/chriskohlhoff/asio), available under Boost Sofrware License] ([@f0a1e1c](https://github.com/chriskohlhoff/asio/tree/f0a1e1c7c0387ad16358c81eb52528f190df625c))
 * [Simple-WebSocket-Server](https://gitlab.com/eidheim/Simple-WebSocket-Server), available under MIT license ([@a091e7c](https://gitlab.com/eidheim/Simple-WebSocket-Server/-/tree/a091e7cfb1587e3c0340bc7d2d850a4e44c03e11))
 * [Simple-Web-Server](https://gitlab.com/eidheim/Simple-Web-Server), available under MIT license ([@bdb1057](https://gitlab.com/eidheim/Simple-Web-Server/-/tree/bdb105712bc4cebc993de89b62e382b92102b347))
+* [shepherd](https://github.com/ffont/shepherd), available under GPLv3 license ([@ce1b874](https://github.com/ffont/shepherd/commit/ce1b874406fd59ecadab41eb10ccd05519a0ff47))
 
 <br><br>
 <p align="center">

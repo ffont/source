@@ -181,7 +181,7 @@ def compile_elk_debug(ctx):
 
 
 def get_sequencer_extra_flags():
-    return "INCLUDE_SEQUENCER=1"
+    return 'INCLUDE_SEQUENCER=1 SOURCE_APP_DIRECTORY_NAME=\\"SourceShepherd\\" SHEPHERD_DATA_DIRECTORY_NAME=\\"SourceShepherd/sequencer\\" CREATE_INTERNAL_HW_OUTPUT_DEVICES=1'
 
 
 def compile_macos(configuration='Release', wsequencer=False):

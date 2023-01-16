@@ -7,8 +7,7 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
-              defines="ASIO_STANDALONE=1&#10;SOURCE_APP_DIRECTORY_NAME=&quot;Source&quot;&#10;SHEPHERD_DATA_DIRECTORY_NAME=&quot;Source/sequencer&quot;&#10;CREATE_INTERNAL_HW_OUTPUT_DEVICES=1"
-              addUsingNamespaceToJuceHeader="0">
+              defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Sampler">
       <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"
