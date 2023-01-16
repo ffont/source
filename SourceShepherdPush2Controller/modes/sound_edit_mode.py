@@ -58,6 +58,8 @@ class SoundEditMode(ShepherdControllerMode):
             # If settings mode is active, don't draw the upper parts of the screen because settings page will
             # "cover them"
 
+            current_track_color = self.get_current_track_color_helper()
+
             # Draw tab names
             tab_names = ["Tab {}".format(count + 1) for count, _ in enumerate(self.tabs)]
             if tab_names:
@@ -65,7 +67,6 @@ class SoundEditMode(ShepherdControllerMode):
                 for i, tab_name in enumerate(tab_names):
                     show_text(ctx, i, 0, tab_name, background_color=definitions.RED)
                     is_selected = self.current_tab == i
-                    current_track_color = self.get_current_track_color_helper()
                     if is_selected:
                         background_color = current_track_color
                         font_color = definitions.BLACK
@@ -76,6 +77,9 @@ class SoundEditMode(ShepherdControllerMode):
                               font_color=font_color, background_color=background_color)
 
             # TODO: Draw actual controls
+            sound_name = self.app.source_interface.get_sound_property(self.app.track_selection_mode.selected_track, 'name_sound', default='Unknown sound')
+            show_text(ctx, 0, 25, sound_name, height=30,
+                      font_color=current_track_color, background_color=definitions.BLACK)
 
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
         if button_name in self.tabs_button_names:

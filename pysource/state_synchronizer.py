@@ -1,11 +1,10 @@
 from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
-from helpers import PlStateNames, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state, log_sound_used
+from .helpers import PlStateNames
 import threading
 import asyncio
 from bs4 import BeautifulSoup
 import time
-import sys
 import websocket
 import ssl
 import traceback
@@ -251,7 +250,8 @@ class SourceStateSynchronizer(object):
         self.last_update_id = -1
         self.state_soup = None
         self.should_request_full_state = True
-        self.ui_state_manager.current_state.spi.send_oauth_token_to_plugin()
+        if self.ui_state_manager is not None:
+            self.ui_state_manager.current_state.spi.send_oauth_token_to_plugin()
 
     def plugin_is_alive(self):
         self.last_time_plugin_alive = time.time()
@@ -277,17 +277,19 @@ class SourceStateSynchronizer(object):
         self.state_soup = BeautifulSoup(full_state_raw, "lxml").findAll("source_state")[0]
         self.full_state_requested = False
         self.should_request_full_state = False
-        self.ui_state_manager.current_state.on_source_state_update()
+        if self.ui_state_manager is not None:
+            self.ui_state_manager.current_state.on_source_state_update()
 
         # Update sound usage log with all the sounds received in this full state
         # Note that sounds already loaded in this session will be ignored in the usage log
         for sound_element in self.state_soup.findAll("sound"):
             for sound_sample_element in sound_element.findAll("sound_sample"):
-                log_sound_used(sound_sample_element)
+                if self.ui_state_manager is not None:
+                    self.ui_state_manager.log_sound_used(sound_sample_element)
 
         # Configure some stuff that requires the data paths to be known
-        configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
-        #self.ui_state_manager.current_state.spi.check_if_fs_oauth_token_should_be_set()
+        if self.ui_state_manager is not None:
+            self.ui_state_manager.configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self.state_soup['sourceDataLocation'.lower()], self.state_soup['tmpFilesLocation'.lower()])
 
     def set_volatile_state_from_string(self, volatile_state_string):
         # Do it from string serialized version of the state
@@ -349,7 +351,7 @@ class SourceStateSynchronizer(object):
                     # Found 0 results, initial state is not ready yet so we ignore
                     pass
                 elif len(results) == 1:
-                    child_soup =  next(BeautifulSoup(update_data[3], "lxml").find("body").children)
+                    child_soup = next(BeautifulSoup(update_data[3], "lxml").find("body").children)
                     if index_in_parent_childs == -1:
                         results[0].append(child_soup)
                     else:
@@ -358,7 +360,8 @@ class SourceStateSynchronizer(object):
                     # If the new child added is of type sound, add all corresponding sound samples to the sound usage log
                     if child_soup.name == "sound":
                         for sound_sample_element in child_soup.findAll("sound_sample"):
-                            log_sound_used(sound_sample_element)
+                            if self.ui_state_manager is not None:
+                                self.ui_state_manager.log_sound_used(sound_sample_element)
                     
                 else:
                     # Should never return more than one, request a full state as there will be sync issues
@@ -386,5 +389,5 @@ class SourceStateSynchronizer(object):
                 self.should_request_full_state = True
             self.last_update_id = update_id
 
-            self.ui_state_manager.current_state.on_source_state_update()
-            #self.ui_state_manager.current_state.spi.check_if_fs_oauth_token_should_be_set()
+            if self.ui_state_manager is not None:
+                self.ui_state_manager.current_state.on_source_state_update()

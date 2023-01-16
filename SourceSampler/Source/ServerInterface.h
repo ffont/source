@@ -242,7 +242,7 @@ void SourceWebSocketsServer::run()
     WsServer server;
     #endif
     
-    #if !ELK_BUILD
+    #if !ELK_BUILD && !INCLUDE_SEQUENCER
         #if !JUCE_DEBUG
         // In non debug desktop builds we want each instace to use a separate port so that each instance has its own interface
         server.config.port = 0;

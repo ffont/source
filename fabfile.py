@@ -256,8 +256,8 @@ def compile(ctx, configuration='Release', wsequencer=False):
 
 
 @task
-def compile_debug(ctx):
-    compile(ctx, configuration="Debug")
+def compile_debug(ctx, wsequencer=False):
+    compile(ctx, configuration="Debug", wsequencer=wsequencer)
 
 
 @task

@@ -1,11 +1,16 @@
+import os
+import sys
 import time
 
-from source_plugin_interface import SourcePluginInterface
-from helpers import add_global_message_to_frame, clear_moving_text_cache
+from helpers import add_global_message_to_frame, clear_moving_text_cache, log_sound_used, configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state
 from elk_bridge import N_LEDS, N_FADERS
+from freesound_interface import get_stored_access_token
 from .states_base import EnterDataViaWebInterfaceState, EnterTextViaHWOrWebInterfaceState
 from .states_sound_selected import SoundSelectedState
 
+# Add parent directory to python path and import pysource
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+from pysource.pysource import SourcePluginInterface
 
 
 def state_class_import(name):
@@ -128,6 +133,15 @@ class UIStateManager(object):
     def process_data_from_web(self, data):
         if self.is_waiting_for_data_from_web():
             self.current_state.on_data_received(data)
+
+    def log_sound_used(self, sound_sample_element):
+        log_sound_used(sound_sample_element)
+
+    def configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(self, data_location, tmp_files_location):
+        configure_recent_queries_sound_usage_log_tmp_base_path_from_source_state(data_location, tmp_files_location)
+
+    def get_stored_access_token(self):
+        return get_stored_access_token()
 
     @property
     def current_state(self):

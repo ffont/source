@@ -30,6 +30,10 @@ from utils import show_notification
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SourceSampler/3rdParty/shepherd/'))
 from pyshepherd.pyshepherd import ShepherdBackendControllerApp
 
+# Add specific directory to python so we can import pysource
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+from pysource.pysource import SourcePluginInterface
+
 
 class SourceShepherdPush2ControllerApp(ShepherdBackendControllerApp):
     # midi
@@ -67,6 +71,9 @@ class SourceShepherdPush2ControllerApp(ShepherdBackendControllerApp):
     # interface with shepherd
     shepherd_interface = None
 
+    # interface with source
+    source_interface = None
+
     def __init__(self, *args, **kwargs):
 
         # Start push
@@ -88,6 +95,9 @@ class SourceShepherdPush2ControllerApp(ShepherdBackendControllerApp):
         super().__init__(*args, **kwargs)
 
         # NOTE: app modes will be initialized once first state has been received
+
+        # Start source interface
+        self.source_interface = SourcePluginInterface(None)
 
     def load_settings_from_file(self):
         if os.path.exists(definitions.SETTINGS_FILE_PATH):
