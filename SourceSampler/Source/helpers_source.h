@@ -235,7 +235,8 @@ namespace SourceHelpers
                                                                                 juce::StringArray slices,
                                                                                 juce::BigInteger midiNotes,
                                                                                 int midiRootNote,
-                                                                                int midiVelocityLayer){
+                                                                                int midiVelocityLayer,
+                                                                                int midiChannel){
         juce::ValueTree sourceSound = SourceHelpers::createEmptySourceSoundState();
         juce::ValueTree sourceSamplerSound = SourceHelpers::createSourceSampleSoundState(soundID,
                                                                                    soundName,
@@ -253,6 +254,7 @@ namespace SourceHelpers
             // Note that MIDI notes are stored in Sound (not SourceSamplerSound)
             sourceSound.setProperty(SourceIDs::midiNotes, midiNotes.toString(16), nullptr);
         }
+        sourceSound.setProperty(SourceIDs::midiChannel, midiChannel, nullptr);
         
         sourceSound.addChild(sourceSamplerSound, -1, nullptr);
         

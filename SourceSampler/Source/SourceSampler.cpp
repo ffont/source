@@ -373,7 +373,7 @@ bool SourceSampler::loadPresetFromFile (const juce::String& fileName)
                     auto samplerSound = soundInfo.getChildWithName("SamplerSound");
                     juce::BigInteger midiNotes = 0;
                     midiNotes.parseString(samplerSound.getProperty("midiNotes", SourceDefaults::midiNotes).toString(), 16);
-                    juce::ValueTree sound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0);
+                    juce::ValueTree sound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0, (int)samplerSound.getChildWithProperty("parameter_name", "midiChannel").getProperty("parameter_value", SourceDefaults::midiChannel));
                     sound.getChildWithName(SourceIDs::SOUND_SAMPLE).setProperty(SourceIDs::usesPreview, true, nullptr);
                     
                     sound.setProperty(SourceIDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
@@ -794,9 +794,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
         int midiRootNote = parameters[10].getIntValue();
         int midiVelocityLayer = SourceDefaults::midiVelocityLayer;
+        int midiChannel = SourceDefaults::midiChannel;
         bool addToExistingSourceSampleSounds = false;
 
-        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
     }
     else if (actionName == ACTION_REPLACE_SOUND){
         juce::String soundUUID = parameters[0];
@@ -820,9 +821,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
         int midiRootNote = parameters[11].getIntValue();
         int midiVelocityLayer = SourceDefaults::midiVelocityLayer;
+        int midiChannel = -1;
         bool addToExistingSourceSampleSounds = false;
 
-        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+        addOrReplaceSoundFromBasicSoundProperties(soundUUID, soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
     }
     else if (actionName == ACTION_REMOVE_SOUND){
         juce::String soundUUID = parameters[0];
@@ -924,9 +926,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
         int midiRootNote = parameters[10].getIntValue();
         int midiVelocityLayer = parameters[11].getIntValue();
+        int midiChannel = SourceDefaults::midiChannel;
         bool addToExistingSourceSampleSounds = true;
 
-        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+        addOrReplaceSoundFromBasicSoundProperties("", soundID, soundName, soundUser, soundLicense, oggDownloadURL, localFilePath, type, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
     }
     else if (actionName == ACTION_REMOVE_SAMPLER_SOUND){
         juce::String soundUUID = parameters[0];
@@ -1096,6 +1099,7 @@ void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrRepla
             
             // Calculate assigned notes
             int midiRootNote = -1;
+            int midiChannel = SourceDefaults::midiChannel;
             juce::BigInteger midiNotes = 0;
             
             if (soundUUIDToReplace == ""){
@@ -1116,17 +1120,19 @@ void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrRepla
                 } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
                     // Map all notes to the sound
                     midiNotes.setRange(0, 127, true);
+                    midiChannel = (i % 16) + 1;
                 }
             } else {
                 // If a specific sound is being replaced, no need to calcualte any mapping here because it will be copied from the
-                // sound being replaced in addOrReplaceSoundFromBasicSoundProperties
+                // sound being replaced in addOrReplaceSoundFromBasicSoundProperties. Also set midiChannel to -1 so it is copied from the sound being replaced
+                midiChannel = -1;
             }
             
             // Create sound
             // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
             int midiVelocityLayer = SourceDefaults::midiVelocityLayer; // Always use default velocity layer as we're not layering sounds
             bool addToExistingSourceSampleSounds = false;
-            addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+            addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
         }
         
         if (addReplaceOrReplaceSound == "add"){
@@ -1173,19 +1179,20 @@ void SourceSampler::removeAllSounds()
 }
 
 void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
-                                                                            int soundID,
-                                                                            const juce::String& soundName,
-                                                                            const juce::String& soundUser,
-                                                                            const juce::String& soundLicense,
-                                                                            const juce::String& previewURL,
-                                                                            const juce::String& localFilePath,
-                                                                            const juce::String& format,
-                                                                            int sizeBytes,
-                                                                            juce::StringArray slices,
-                                                                            juce::BigInteger midiNotes,
-                                                                            int midiRootNote,
-                                                                            int midiVelocityLayer,
-                                                                            bool addToExistingSourceSampleSounds)
+                                                              int soundID,
+                                                              const juce::String& soundName,
+                                                              const juce::String& soundUser,
+                                                              const juce::String& soundLicense,
+                                                              const juce::String& previewURL,
+                                                              const juce::String& localFilePath,
+                                                              const juce::String& format,
+                                                              int sizeBytes,
+                                                              juce::StringArray slices,
+                                                              juce::BigInteger midiNotes,
+                                                              int midiRootNote,
+                                                              int midiVelocityLayer,
+                                                              int midiChannel,
+                                                              bool addToExistingSourceSampleSounds)
 {
     if (!addToExistingSourceSampleSounds){
         // If not adding this sound as a new sample sound to an existing sound, follow the "normal" process for either adding a new sound or replacing an existing one
@@ -1197,9 +1204,12 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
             auto* sound = sounds->getSoundWithUUID(soundUUID);
             midiNotes = sound->getMappedMidiNotes();
             midiRootNote = sound->getMidiNoteFromFirstSourceSamplerSound();
+            if (midiChannel == -1){ // If replacing a sound, keep the assigned midi channel
+                midiChannel = sound->getParameterInt(SourceIDs::midiChannel);
+            }
         }
         
-        juce::ValueTree sourceSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer);
+        juce::ValueTree sourceSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel);
         
         juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
         if (existingSoundIndex > -1){
@@ -1232,11 +1242,12 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
 }
 
 void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
-                                                                            FSSound sound,
-                                                                            juce::BigInteger midiNotes,
-                                                                            int midiRootNote,
-                                                                            int midiVelocityLayer,
-                                                                            bool addToExistingSourceSampleSounds)
+                                                              FSSound sound,
+                                                              juce::BigInteger midiNotes,
+                                                              int midiRootNote,
+                                                              int midiVelocityLayer,
+                                                              int midiChannel,
+                                                              bool addToExistingSourceSampleSounds)
 {
     // Prepare slices
     juce::StringArray slices;
@@ -1249,7 +1260,7 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
     }
     
     // Create sound
-    addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote, midiVelocityLayer, addToExistingSourceSampleSounds);
+    addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
 }
 
 void SourceSampler::reapplyNoteLayout(int newNoteLayoutType)
@@ -1268,6 +1279,7 @@ void SourceSampler::reapplyNoteLayout(int newNoteLayoutType)
                     midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
                     sound->setMappedMidiNotes(midiNotes);
                     sound->setMidiRootNote(rootNote);
+                    sound->setParameterByNameInt(SourceIDs::midiChannel, SourceDefaults::midiChannel);
                 } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
                     int rootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
                     juce::BigInteger midiNotes;
@@ -1279,11 +1291,13 @@ void SourceSampler::reapplyNoteLayout(int newNoteLayoutType)
                     }
                     sound->setMappedMidiNotes(midiNotes);
                     sound->setMidiRootNote(rootNote);
+                    sound->setParameterByNameInt(SourceIDs::midiChannel, SourceDefaults::midiChannel);
                 } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
                     juce::BigInteger midiNotes;
                     midiNotes.setRange(0, 127, true);
                     sound->setMappedMidiNotes(midiNotes);
                     sound->setMidiRootNote(64);
+                    sound->setParameterByNameInt(SourceIDs::midiChannel, (i % 16) + 1); // In All mode, sounds have "consecutive" midi channels because all notes of the channel are assigned to them
                 }
             }
         }

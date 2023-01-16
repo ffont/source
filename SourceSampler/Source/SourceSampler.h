@@ -129,12 +129,14 @@ public:
                                                    juce::BigInteger midiNotes,
                                                    int midiRootNote,
                                                    int midiVelocityLayer,
+                                                   int midiChannel,
                                                    bool addToExistingSourceSampleSounds);
     void addOrReplaceSoundFromBasicSoundProperties(const juce::String& soundUUID,
                                                    FSSound sound,  // Uses FSSound object from Freesound API
                                                    juce::BigInteger midiNotes,
                                                    int midiRootNote,
                                                    int midiVelocityLayer,
+                                                   int midiChannel,
                                                    bool addToExistingSourceSampleSounds);
     void reapplyNoteLayout(int newNoteLayoutType);
     void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);
