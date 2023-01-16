@@ -73,7 +73,7 @@ class ClipTriggeringMode(definitions.ShepherdControllerMode):
         return playing_clips_info
 
     def update_display(self, ctx, w, h):
-        if not self.app.is_mode_active(self.app.settings_mode) and not self.app.is_mode_active(self.app.ddrm_tone_selector_mode):
+        if not self.app.is_mode_active(self.app.settings_mode):
             # Draw clip progress bars
             playing_clips_info = self.get_playing_clips_info()
             for track_num, playing_clips_info in playing_clips_info.items():

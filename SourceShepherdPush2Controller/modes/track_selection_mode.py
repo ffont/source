@@ -105,7 +105,6 @@ class TrackSelectionMode(definitions.ShepherdControllerMode):
             self.send_select_track(self.selected_track)
             self.clean_currently_notes_being_played()
             try:
-                self.app.midi_cc_mode.new_track_selected()
                 self.app.preset_selection_mode.new_track_selected()
                 self.app.clip_triggering_mode.new_track_selected()
                 self.app.melodic_mode.send_all_note_offs_to_lumi()

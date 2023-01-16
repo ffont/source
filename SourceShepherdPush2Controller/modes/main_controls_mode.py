@@ -15,7 +15,6 @@ class MainControlsMode(definitions.ShepherdControllerMode):
     melodic_rhythmic_toggle_button = push2_python.constants.BUTTON_NOTE
     track_triggering_button = push2_python.constants.BUTTON_SESSION
     preset_selection_mode_button = push2_python.constants.BUTTON_ADD_DEVICE
-    ddrm_tone_selection_mode_button = push2_python.constants.BUTTON_DEVICE
     shift_button = push2_python.constants.BUTTON_SHIFT
     select_button = push2_python.constants.BUTTON_SELECT
     play_button = push2_python.constants.BUTTON_PLAY
@@ -26,7 +25,7 @@ class MainControlsMode(definitions.ShepherdControllerMode):
     record_automation_button = push2_python.constants.BUTTON_AUTOMATE
 
     buttons_used = [toggle_display_button, settings_button, melodic_rhythmic_toggle_button, track_triggering_button, preset_selection_mode_button, 
-                    ddrm_tone_selection_mode_button, shift_button, select_button, play_button, record_button, metronome_button, fixed_length_button,
+                    shift_button, select_button, play_button, record_button, metronome_button, fixed_length_button,
                     record_automation_button]
 
     def activate(self):
@@ -63,12 +62,6 @@ class MainControlsMode(definitions.ShepherdControllerMode):
 
         # Preset selection mode
         self.set_button_color_if_expression(self.preset_selection_mode_button, self.app.is_mode_active(self.app.preset_selection_mode), animation=definitions.DEFAULT_ANIMATION)
-
-        # DDRM tone selector mode
-        if self.app.ddrm_tone_selector_mode.should_be_enabled():
-            self.set_button_color_if_expression(self.ddrm_tone_selection_mode_button, self.app.is_mode_active(self.app.ddrm_tone_selector_mode), animation=definitions.DEFAULT_ANIMATION)
-        else:
-            self.set_button_color(self.ddrm_tone_selection_mode_button, definitions.BLACK)
 
         # Play/stop/metronome buttons
         is_playing, is_recording, metronome_on = self.get_transport_buttons_state()
@@ -121,11 +114,6 @@ class MainControlsMode(definitions.ShepherdControllerMode):
             self.app.use_push2_display = not self.app.use_push2_display
             if not self.app.use_push2_display:
                 self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
-            return True
-
-        elif button_name == self.ddrm_tone_selection_mode_button:
-            if self.app.ddrm_tone_selector_mode.should_be_enabled():
-                self.app.toggle_ddrm_tone_selector_mode()
             return True
 
         elif button_name == self.play_button:
