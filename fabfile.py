@@ -2,6 +2,8 @@ import os
 import platform
 import time
 
+from bs4 import BeautifulSoup as bs
+
 from fabric import task, Connection
 
 
@@ -205,6 +207,14 @@ def compile_binary_builder_macos():
 def compile_linux(configuration='Release'):
     print('Compiling Source for Linux platform...')
     print('*********************************************\n')
+
+    #Bundle all JS Files
+    print('Bundling all JS modules...')
+    print('*********************************************\n')
+    os.system("cd SourceSampler/3rdParty/StaticBundle; mkdir dist; npx webpack")
+    #Beautify bundle file 
+    os.system("cd SourceSampler/3rdParty/StaticBundle/dist; js-beautify -f main.js -o mainBF.js")
+    #Compile 
     os.system("SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder SourceSampler/Resources SourceSampler/Source/ BinaryData")    
     os.system("cd SourceSampler/Builds/LinuxMakefile;make CONFIG={} -j4".format(configuration))    
 
@@ -234,8 +244,8 @@ def compile(ctx, configuration='Release'):
             compile_binary_builder_macos()
         compile_macos(configuration=configuration)
     elif platform.system() == 'Linux':
-        if not os.path.exists('SourceSampler/3rdParty/JUCE/extras/BinaryBuilder/Builds/LinuxMakefile/build/BinaryBuilder'):
-            compile_binary_builder_linux()
+        compile_binary_builder_linux()
+        compile_projucer_linux()
         compile_linux(configuration=configuration)
     else:
         raise Exception('Unsupported compilation platform')
