@@ -42,13 +42,15 @@ brew install openssl
 
 3. Before compiling, note SOURCE requires a Freesound API key to connect to Freesound. You should make an account in Freesound (if you don't have one) and go to [this URL to generate an APi key](https://freesound.org/apiv2/apply). Then you should edit the file `/source/SourceSampler/Source/api_key.example.h`, add your key, and then then save and rename the file to `/source/SourceSampler/Source/api_key.h`.
 
-4. Then you can compile SOURCE using the XCode project files in `/source/SourceSampler/Builds/MacOSX/` (see note below about compiling `BinaryBuilder` as this will be required if compiling from XCode project files). Alternatively, you can use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
+4. Make sure the VST2 SDK files are placed in a folder named `VST_SDK` which lies at the same hierarchy level where the main `source` folder is. You can also opt to disable building the VST2 target (see NOTE 2 below). I can't share these SDK files, but you might find them somewhere.
+
+5. Then you can compile SOURCE using the XCode project files in `/source/SourceSampler/Builds/MacOSX/` (see note below about compiling `BinaryBuilder` as this will be required if compiling from XCode project files). Alternatively, you can use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
 
 ```
 fab compile
 ```
 
-This will create *Release* versions of SOURCE (VST3, VST2, AU and Standalone) ready to work on the mac. If you need *Debug* build, you can run `fab compile-debug`.
+This will create *Release* versions of SOURCE (VST3, VST2, AU and Standalone) ready to work on the mac. If you need *Debug* build, you can run `fab compile-debug`. If you want to compile the version of SOURCE which includes the sequencer, then you should run `fab compile-with-sequencer` (or `fab compile-debug-with-sequencer`). Note that the created binaries are names `SourceShepherd.app`, whereas when compiling without the sequencer the binaries are simply called `Source.app`. You'll find binaries somwhere in the `source/SourceSampler/Builds/MacOSX/build/` folde
 
 
 **NOTE**: For development you might need to edit the `SourceSampler.jucer` Projucer file. To do that, you need a compatible version of Projucer installed. You can compile it (for macOS) from JUCE source files using a the deploy script running: `fab compile-projucer`. The generated executable will be in `/source/SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/MacOSX/build/Release/Projucer.app`.
@@ -82,13 +84,15 @@ sudo apt-get install xvfb
 
 3. Before compiling, note SOURCE requires a Freesound API key to connect to Freesound. You should make an account in Freesound (if you don't have one) and go to [this URL to generate an APi key](https://freesound.org/apiv2/apply). Then you should edit the file `/source/SourceSampler/Source/api_key.example.h`, add your key, and then then save and rename the file to `/source/SourceSampler/Source/api_key.h`.
 
-4. Use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
+4. Make sure the VST2 SDK files are placed in a folder named `VST_SDK` which lies at the same hierarchy level where the main `source` folder is. You can also opt to disable building the VST2 target (see NOTE 2 below). I can't share these SDK files, but you might find them somewhere.
+
+5. Use the Python3 deploy script bundled in this repo to run the compilation step (note that you need to install dependencies for the deploy script by running `pip install -r requirements_fabfile.txt`):
 
 ```
 fab compile
 ```
 
-This will create *Release* versions of SOURCE (VST3, VST2, and Standalone) ready to work on linux. If you need *Debug* build, you can run `fab compile-debug`.
+This will create *Release* versions of SOURCE (VST3, VST2, and Standalone) ready to work on linux. If you need *Debug* build, you can run `fab compile-debug`. If you want to compile the version of SOURCE which includes the sequencer, then you should run `fab compile-with-sequencer` (or `fab compile-debug-with-sequencer`).  Note that the created binaries are names `SourceShepherd`, whereas when compiling without the sequencer the binaries are simply called `Source`. You'll find binaries somwhere in the `source/SourceSampler/Builds/LinuxMakefile/build/` folder.
 
 
 **NOTE**: For development you might need to edit the `SourceSampler.jucer` Projucer file. To do that, you need a compatible version of Projucer installed. You can compile it (for macOS) from JUCE source files using a the deploy script running: `fab compile-projucer`. The generated executable will be in `/source/SourceSampler/3rdParty/JUCE/extras/Projucer/Builds/LinuxMakefile/build/Projucer.app`.
