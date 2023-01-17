@@ -185,7 +185,7 @@ SOURCE is released under the **GPLv3** open source software license (see [LICENS
 * [asio](https://github.com/chriskohlhoff/asio), available under Boost Sofrware License] ([@f0a1e1c](https://github.com/chriskohlhoff/asio/tree/f0a1e1c7c0387ad16358c81eb52528f190df625c))
 * [Simple-WebSocket-Server](https://gitlab.com/eidheim/Simple-WebSocket-Server), available under MIT license ([@a091e7c](https://gitlab.com/eidheim/Simple-WebSocket-Server/-/tree/a091e7cfb1587e3c0340bc7d2d850a4e44c03e11))
 * [Simple-Web-Server](https://gitlab.com/eidheim/Simple-Web-Server), available under MIT license ([@bdb1057](https://gitlab.com/eidheim/Simple-Web-Server/-/tree/bdb105712bc4cebc993de89b62e382b92102b347))
-* [shepherd](https://github.com/ffont/shepherd), available under GPLv3 license ([@ce1b874](https://github.com/ffont/shepherd/commit/ce1b874406fd59ecadab41eb10ccd05519a0ff47))
+* [shepherd](https://github.com/ffont/shepherd), available under GPLv3 license ([@9adc415](https://github.com/ffont/shepherd/commit/9adc4151105d3ecaaca2c3478fdb120484558e25))
 
 <br><br>
 <p align="center">
