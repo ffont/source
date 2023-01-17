@@ -45,6 +45,7 @@ class SourceShepherdPush2ControllerApp(ShepherdBackendControllerApp):
     push = None
     use_push2_display = None
     target_frame_rate = None
+    using_push_simulator = False
 
     # frame rate measurements
     actual_frame_rate = 0
@@ -332,12 +333,13 @@ class SourceShepherdPush2ControllerApp(ShepherdBackendControllerApp):
 
     def init_push(self):
         print('Configuring Push...')
-        use_simulator = not definitions.RUNNING_ON_RPI
+        real_push_available = any(['Ableton Push' in port_name for port_name in mido.get_output_names()])
+        self.using_push_simulator = not real_push_available
         simulator_port = 6128
-        if use_simulator:
+        if self.using_push_simulator:
             print('Using Push2 simulator at http://localhost:{}'.format(simulator_port))
-        self.push = push2_python.Push2(run_simulator=use_simulator, simulator_port=simulator_port,
-                                       simulator_use_virtual_midi_out=use_simulator)
+        self.push = push2_python.Push2(run_simulator=self.using_push_simulator, simulator_port=simulator_port,
+                                       simulator_use_virtual_midi_out=self.using_push_simulator)
         if definitions.RUNNING_ON_RPI:
             # When this app runs in Linux is because it is running on the Raspberrypi
             # I've overved problems trying to reconnect many times without success on the Raspberrypi, resulting in

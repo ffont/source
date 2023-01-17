@@ -162,12 +162,12 @@ class MIDICCMode(ShepherdControllerMode):
         mapping[1] = 1  # Always allow modulation wheel
         mapping[64] = 64  # Always allow sustain pedal
         mapping[71:71+8] = topPushEncoders
-        device = self.state.get_input_hardware_device_by_name("Push")
+        device = self.state.get_input_hardware_device_by_name("PushSimulator" if self.app.using_push_simulator else "Push")
         if device is not None:
             device.set_control_change_mapping(mapping)
 
     def clear_encoders_backend_mapping(self):
-        device = self.state.get_input_hardware_device_by_name("Push")
+        device = self.state.get_input_hardware_device_by_name("PushSimulator" if self.app.using_push_simulator else "Push")
         if device is not None:
             device.set_control_change_mapping([-1 for i in range(0, 128)])
 

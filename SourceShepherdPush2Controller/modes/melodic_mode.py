@@ -169,12 +169,12 @@ class MelodicMode(definitions.ShepherdControllerMode):
             for j in range(0, 8):
                 self.pad_ij_to_midi_note((7 - i, j))
                 mapping[36 + i * 8 + j] = self.pad_ij_to_midi_note((7 - i, j))
-        device = self.state.get_input_hardware_device_by_name("Push")
+        device = self.state.get_input_hardware_device_by_name("PushSimulator" if self.app.using_push_simulator else "Push")
         if device is not None:
             device.set_notes_mapping(mapping)
 
     def clear_pads_backend_mapping(self):
-        device = self.state.get_input_hardware_device_by_name("Push")
+        device = self.state.get_input_hardware_device_by_name("PushSimulator" if self.app.using_push_simulator else "Push")
         if device is not None:
             device.set_notes_mapping([-1 for i in range(0, 128)])
 
