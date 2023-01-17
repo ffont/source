@@ -89,7 +89,12 @@ juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
     #else
     juce::String useWss = "0";
     #endif
-    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.source.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.source.getServerInterfaceHttpPort());
+    #if INCLUDE_SEQUENCER
+    juce::String withSequencer = "1";
+    #else
+    juce::String withSequencer = "0";
+    #endif
+    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.source.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.source.getServerInterfaceHttpPort()).withParameter("withSequencer", withSequencer);
     DBG("> Satic UI URL: " << url.toString(true));
     return url;
 }

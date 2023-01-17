@@ -172,7 +172,7 @@ For particular compilation instructions and notes for development, please see th
 
 # SOURCE + Shepherd
 
-There is an experimental *version* of SOURCE which incorporate an open source MIDI sequencer in which I've also been working named [Shepherd](http://github.com/ffont/shepherd). This integrates with SOURCE to provide sequencing capabilities using a grid of MIDI clips *a la* Ableton Live. The functionalities of the sequencer are rather basic, but when used in combination with SOURCE can work a stand alone music making machine. As a user interface, the combination of SOURCE + Shepherd uses Albeton's Push2. More information about this combination and how to make it work can be provided upon request.
+There is an experimental *version* of SOURCE which incorporate an open source MIDI sequencer in which I've also been working named [Shepherd](http://github.com/ffont/shepherd). This integrates with SOURCE to provide sequencing capabilities using a grid of MIDI clips *a la* Ableton Live. The functionalities of the sequencer are rather basic, but when used in combination with SOURCE can work a stand-alone music making machine. As a user interface, the combination of SOURCE + Shepherd uses Ableton's Push2. More information about this combination and how to make it work can be provided upon request.
 
 
 # License

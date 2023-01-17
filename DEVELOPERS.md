@@ -20,7 +20,7 @@
 
 ## Building SOURCE sampler engine
 
-The sampler engine of source SOURCE is implemented as a JUCE audio plug-in and can be edited and built using standard JUCE workflows. The first step is to clone this repository and init the submodules. Then, different steps apply to build SOURCE for desktop computers or for the Elk platform (see below).
+The sampler engine of SOURCE is implemented as a JUCE audio plug-in and can be edited and built using standard JUCE workflows. The first step is to clone this repository and init the submodules. Then, different steps apply to build SOURCE for desktop computers or for the Elk platform (see below).
 
 ```
 git clone https://github.com/ffont/source.git && cd source && git submodule update --init

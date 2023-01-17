@@ -146,7 +146,11 @@
 
 namespace SourceDefaults
 {
+#if INCLUDE_SEQUENCER
+inline int noteLayoutType = NOTE_MAPPING_TYPE_ALL;
+#else
 inline int noteLayoutType = NOTE_MAPPING_TYPE_INTERLEAVED;
+#endif
 inline int currentPresetIndex = -1;
 inline int globalMidiInChannel = 0;
 inline int numVoices = 8;

@@ -285,6 +285,8 @@
         let useHttps = undefined;
         let hostname = undefined;
         
+        let withSequencer = undefined;
+        
         const useDirectCommunicationMethod = false;
         
         var expStrength = 2;  // For sliders
@@ -624,7 +626,7 @@
 
             replaceAllSoundsByQuery(){
                 var query = document.getElementsByName('query')[0].value;
-                var numSounds = document.getElementsByName('numSounds')[0].value || 16;
+                var numSounds = document.getElementsByName('numSounds')[0].value || (withSequencer ? 8 :16);
                 var minSoundLength = document.getElementsByName('minSoundLength')[0].value || 0.0;
                 var maxSoundLength = document.getElementsByName('maxSoundLength')[0].value || 0.5;
                 var noteMappingType = document.getElementsByName('noteMappingType')[0].value;
@@ -794,7 +796,20 @@
                 httpPort = "8124";
             }
             useHttps = useWss;
-
+            
+            // Check if backend is compiled with the sequencer and store in global variable
+            if (urlParams.get('withSequencer') !== null){
+                withSequencer = urlParams.get('withSequencer') == '1';
+            } else {
+                withSequencer = false;
+            }
+            if (withSequencer) {
+                var noteMappingType = document.getElementsByName('noteMappingType')[0];
+                noteMappingType.selectedIndex = 2;  // Set "ALL" method to be selected by default
+                var numSounds = document.getElementsByName('numSounds')[0];
+                numSounds.placeholder = "8";
+            }
+            
             // Start state synchronizer
             ss = new StateSynchronizer(wsPort, useWss);
         });
