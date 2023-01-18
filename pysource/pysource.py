@@ -13,7 +13,7 @@ class SourcePluginInterface(object):
     ui_state_manager = None
 
     def __init__(self, ui_state_manager):
-        self.sss = SourceStateSynchronizer(ui_state_manager, verbose=True)
+        self.sss = SourceStateSynchronizer(ui_state_manager, verbose=False)
 
     def send_msg_to_plugin(self, address, values):
         self.sss.send_msg_to_plugin(address, values)
