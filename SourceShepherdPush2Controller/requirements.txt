@@ -5,3 +5,5 @@ websocket-client
 lxml
 bs4
 mido
+torch # Optional ,needed for groove transformer to run
+numpy

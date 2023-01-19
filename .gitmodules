@@ -19,3 +19,6 @@
 [submodule "SourceSampler/3rdParty/shepherd"]
 	path = SourceSampler/3rdParty/shepherd
 	url = https://github.com/ffont/shepherd.git
+[submodule "SourceShepherdPush2Controller/modes/GrooveTransformerExample"]
+	path = SourceShepherdPush2Controller/modes/GrooveTransformerExample
+	url = https://github.com/behzadhaki/GrooveTransformerExample.git

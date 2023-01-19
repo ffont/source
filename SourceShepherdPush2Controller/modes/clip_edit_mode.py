@@ -7,7 +7,7 @@ import math
 from utils import show_title, show_value, draw_clip, clamp, clamp01, draw_knob
 
 import pyshepherd.pyshepherd
-from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
+from .generator_algorithms import RandomGeneratorAlgorithm, GrooveTransfomer
 
 
 class ClipEditgMode(definitions.ShepherdControllerMode):
@@ -78,8 +78,8 @@ class ClipEditgMode(definitions.ShepherdControllerMode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generator_algorithms = [
-            RandomGeneratorAlgorithm(),
-            RandomGeneratorAlgorithmPlus()
+            GrooveTransfomer(self),
+            RandomGeneratorAlgorithm(self)
         ]
 
     @property
@@ -210,11 +210,12 @@ class ClipEditgMode(definitions.ShepherdControllerMode):
 
     def set_new_generated_sequence(self):
         random_sequence, new_clip_length = self.generator_algorithm.generate_sequence()
-        self.clip.set_sequence({
-                'clipLength': new_clip_length,
-                'sequenceEvents': random_sequence,
-        })
-        self.adjust_pads_to_sequence()
+        if random_sequence is not None and new_clip_length is not None:
+            self.clip.set_sequence({
+                    'clipLength': new_clip_length,
+                    'sequenceEvents': random_sequence,
+            })
+            self.adjust_pads_to_sequence()
 
     def update_display(self, ctx, w, h):
         if not self.app.is_mode_active(self.app.settings_mode):
