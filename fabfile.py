@@ -211,7 +211,9 @@ def compile_linux(configuration='Release'):
     #Bundle all JS Files
     print('Bundling all JS modules...')
     print('*********************************************\n')
-    os.system("cd SourceSampler/3rdParty/StaticBundle; mkdir dist; npx webpack")
+    if not os.path.isdir('SourceSampler/3rdParty/StaticBundle/dist'):
+        os.mkdir("SourceSampler/3rdParty/StaticBundle/dist")
+    os.system("cd SourceSampler/3rdParty/StaticBundle; npx webpack")
     #Beautify bundle file 
     os.system("cd SourceSampler/3rdParty/StaticBundle/dist; js-beautify -f main.js -o mainBF.js")
     #Compile 
