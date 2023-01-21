@@ -53,6 +53,8 @@
 #define ACTION_PLAY_SOUND_FILE_FROM_PATH "/play_sound_from_path"
 #define ACTION_SET_USE_ORIGINAL_FILES_PREFERENCE "/set_use_original_files"
 #define ACTION_SET_GLOBAL_MIDI_IN_CHANNEL "/set_midi_in_channel"
+#define ACTION_NOTE_ON "/note_on"
+#define ACTION_NOTE_OFF "note_off"
 
 // Preset actions
 #define ACTION_LOAD_PRESET "/load_preset"
