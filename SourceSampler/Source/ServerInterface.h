@@ -319,7 +319,7 @@ void SourceHTTPServer::run() {
     #if ELK_BUILD
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     #else
-    #if APP_GROUP_ID
+    #if USE_APP_GROUP_ID
     juce::String tmpFilesPathName = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
     #else
     juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();

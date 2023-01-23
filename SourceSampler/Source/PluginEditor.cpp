@@ -26,7 +26,7 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    #if APP_GROUP_ID
+    #if USE_APP_GROUP_ID
     juce::File baseLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");
     #else
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");

@@ -78,7 +78,13 @@ void SourceSamplerSound::writeBufferToDisk()
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
     #else
+    #if USE_APP_GROUP_ID
+    juce::File outputLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
+    #else
     juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
+    #endif
+    
+    
     #endif
     writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
                                           16000,  // Write files with lower resolution as it will be enough for waveform visualization
@@ -949,7 +955,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         child.setProperty(SourceIDs::usesPreview, false, nullptr);
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
-                        # if APP_GROUP_ID
+                        # if USE_APP_GROUP_ID
                         options = options.withSharedContainer(APP_GROUP_ID);
                         #endif
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
@@ -975,7 +981,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         juce::String previewURL = child.getProperty(SourceIDs::previewURL, "").toString();
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withListener(this);
-                        # if APP_GROUP_ID
+                        # if USE_APP_GROUP_ID
                         options = options.withSharedContainer(APP_GROUP_ID);
                         #endif
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
