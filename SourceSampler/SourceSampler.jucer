@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.6"
+<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.7"
               projectLineFeed="&#10;" companyName="Music Technology Group"
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
-              reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
+              reportAppUsage="0" pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
-              defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0">
+              defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0"
+              compilerFlagSchemes="NewScheme">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Sampler">
       <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"
@@ -201,6 +202,34 @@
         <MODULEPATH id="juce_osc" path="3rdParty/JUCE/modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
+    <XCODE_IPHONE targetFolder="Builds/iOS" customPList="&lt;plist&gt;&#10;&lt;dict&gt;&#10;&lt;key&gt;NSAppTransportSecurity&lt;/key&gt;&#10;&lt;dict&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoads&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsForMedia&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsInWebContent&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsLocalNetworking&lt;/key&gt;&#10;    &lt;true/&gt;&#10;&lt;/dict&gt;&#10;&lt;/dict&gt;&#10;&lt;/plist&gt;"
+                  prebuildCommand="if [[ $TARGET_NAME == *&quot;Shared Code&quot;* ]]; then&#10;    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/&#10;    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO&#10;    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData&#10;fi"
+                  iosBackgroundAudio="1" iosBackgroundBle="1" smallIcon="tDxeWY"
+                  bigIcon="tDxeWY" extraDefs="SOURCE_DISABLE_HTTP_SERVER=0&#10;USING_DIRECT_COMMUNICATION_METHOD=1&#10;USE_WS_SERVER=0"
+                  iosDevelopmentTeamID="5EJK62P4MU" UISupportsDocumentBrowser="1"
+                  iosAppGroups="1" iosAppGroupsId="group.ritaiaurora.source">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="Source"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="Source"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="3rdParty/JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="3rdParty/JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_IPHONE>
   </EXPORTFORMATS>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

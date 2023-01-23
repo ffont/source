@@ -14,12 +14,16 @@
 #include "defines_source.h"
 #if USE_SSL_FOR_HTTP_AND_WS
     #include "BinaryData.h"
+    #if USE_WS_SERVER
     #include "server_wss.hpp"
+    #endif
     #if USE_HTTP_SERVER
     #include "server_https.hpp"
     #endif
 #else
+    #if USE_WS_SERVER
     #include "server_ws.hpp"
+    #endif
     #if USE_HTTP_SERVER
     #include "server_http.hpp"
     #endif
@@ -31,6 +35,7 @@
 class ServerInterface;  // Forward delcaration
 
 
+#if USE_WS_SERVER
 #if USE_SSL_FOR_HTTP_AND_WS
 using WsServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
 #else
@@ -62,6 +67,7 @@ public:
     ServerInterface* interfacePtr;
     std::unique_ptr<WsServer> serverPtr;
 };
+#endif
 
 
 class SourceOSCServer: private juce::OSCReceiver,
@@ -98,10 +104,7 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 #else
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 #endif
-#endif
 
-
-#if USE_HTTP_SERVER
 class SourceHTTPServer: public juce::Thread
 {
 public:
@@ -144,16 +147,21 @@ public:
         oscServer.setInterfacePointer(this);
         #endif
         
+        #if USE_WS_SERVER
         wsServer.setInterfacePointer(this);
         wsServer.startThread(0);
+        #endif
+        
     }
     
     ~ServerInterface ()
     {
+        #if USE_WS_SERVER
         if (wsServer.serverPtr != nullptr){
             wsServer.serverPtr->stop();
         }
         wsServer.stopThread(5000);  // Give it enough time to stop the websockets server...
+        #endif
         
         #if USE_HTTP_SERVER
         if (httpServer.serverPtr != nullptr){
@@ -187,6 +195,7 @@ public:
     
     void sendMessageToWebSocketClients(const juce::OSCMessage& message)
     {
+        #if USE_WS_SERVER
         if (wsServer.serverPtr == nullptr){
             // If ws server is not yet running, don't try to send any message
             return;
@@ -196,6 +205,7 @@ public:
             juce::String serializedMessage = serliaizeOSCMessage(message);
             a_connection->send(serializedMessage.toStdString());
         }
+        #endif
     }
         
     void processActionFromOSCMessage (const juce::OSCMessage& message)
@@ -216,12 +226,14 @@ public:
     #if USE_OSC_SERVER
     SourceOSCServer oscServer;
     #endif
+    #if USE_WS_SERVER
     SourceWebSocketsServer wsServer;
+    #endif
 
     std::function<GlobalContextStruct()> getGlobalContext;
 };
 
-
+#if USE_WS_SERVER
 void SourceWebSocketsServer::run()
 {
     #if USE_SSL_FOR_HTTP_AND_WS
@@ -268,6 +280,7 @@ void SourceWebSocketsServer::run()
         DBG("Started Websockets Server listening at 0.0.0.0:" << port);
     });
 }
+#endif
 
 #if USE_HTTP_SERVER
 void SourceHTTPServer::run() {
@@ -306,7 +319,11 @@ void SourceHTTPServer::run() {
     #if ELK_BUILD
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     #else
+    #if APP_GROUP_ID
+    juce::String tmpFilesPathName = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
+    #else
     juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
+    #endif
     #endif
     server.resource["^/sounds_data/.*$"]["GET"] = [tmpFilesPathName](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
         try {

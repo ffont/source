@@ -130,10 +130,15 @@ void SourceSampler::createDirectories(const juce::String& appDirectoryName)
     presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
     tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
-    sourceDataLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName);
-    soundsDownloadLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/sounds");
-    presetFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/presets");
-    tmpFilesLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile(appDirectoryName + "/tmp");
+    #if JUCE_IOS
+    juce::File baseLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier("group.ritaiaurora.source");
+    #else
+    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    #endif
+    sourceDataLocation = baseLocation.getChildFile(appDirectoryName);
+    soundsDownloadLocation = baseLocation.getChildFile(appDirectoryName + "/sounds");
+    presetFilesLocation = baseLocation.getChildFile(appDirectoryName + "/presets");
+    tmpFilesLocation = baseLocation.getChildFile(appDirectoryName + "/tmp");
     #endif
 
     if (!sourceDataLocation.exists()){
@@ -1394,7 +1399,11 @@ int SourceSampler::getServerInterfaceHttpPort()
 
 int SourceSampler::getServerInterfaceWSPort()
 {
+    #if USE_WS_SERVER
     return serverInterface.wsServer.assignedPort;
+    #else
+    return 0;
+    #endif
 }
 
 
@@ -1467,15 +1476,15 @@ void SourceSampler::sendOSCMessage(const juce::OSCMessage& message)
 
 void SourceSampler::sendWSMessage(const juce::OSCMessage& message)
 {
-    // Send message to all connected WS clients (if WS server is up and running)
-    if (serverInterface.wsServer.serverPtr != nullptr){
-        serverInterface.sendMessageToWebSocketClients(message);
-    }
-    
     #if USING_DIRECT_COMMUNICATION_METHOD
     // Send message to the browser-based UI loaed in the WebComponenet of the PluginEditor
     // NOTE: for some reason calling this crashes the app sometimes. need to be further investigated...
     sendActionMessage(serverInterface.serliaizeOSCMessage(message));
+    #else
+    // Send message to all connected WS clients (if WS server is up and running)
+    if (serverInterface.wsServer.serverPtr != nullptr){
+        serverInterface.sendMessageToWebSocketClients(message);
+    }
     #endif
 }
 

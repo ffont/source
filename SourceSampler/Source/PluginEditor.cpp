@@ -26,7 +26,12 @@ SourceSamplerAudioProcessorEditor::SourceSamplerAudioProcessorEditor (SourceSamp
     #if ELK_BUILD
     juce::File baseLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
     #else
+    #if APP_GROUP_ID
+    juce::File baseLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");
+    #else
     juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp");
+    #endif
+    
     #endif
     if (!baseLocation.exists()){
         baseLocation.createDirectory();
@@ -94,7 +99,12 @@ juce::URL SourceSamplerAudioProcessorEditor::makeUIURL(){
     #else
     juce::String withSequencer = "0";
     #endif
-    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.source.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.source.getServerInterfaceHttpPort()).withParameter("withSequencer", withSequencer);
+    #if USING_DIRECT_COMMUNICATION_METHOD
+    bool useDC = true;
+    #else
+    bool useDC = false;
+    #endif
+    juce::URL url = juce::URL("file://" + uiHTMLFilePath).withParameter("wsPort", (juce::String)processor.source.getServerInterfaceWSPort()).withParameter("useWss", useWss).withParameter("httpPort", (juce::String)processor.source.getServerInterfaceHttpPort()).withParameter("withSequencer", withSequencer).withParameter("useDC", useDC ? "1": "0");
     DBG("> Satic UI URL: " << url.toString(true));
     return url;
 }
@@ -125,9 +135,14 @@ void SourceSamplerAudioProcessorEditor::resized()
 {
     #if !ELK_BUILD
     if (!hadBrowserError){
+        #if !JUCE_IOS
         float width = 980;
         float height = 800;
-        #if JUCE_DEBUG
+        #else
+        float width = getWidth();
+        float height = getHeight();
+        #endif
+        #if JUCE_DEBUG && !JUCE_IOS
         setSize(width, height + 20);
         openInBrowser.setBounds(5, 0, 150, 20);
         #if INCLUDE_SEQUENCER

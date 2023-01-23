@@ -287,7 +287,7 @@
         
         let withSequencer = undefined;
         
-        const useDirectCommunicationMethod = false;
+        let useDirectCommunicationMethod = false;
         
         var expStrength = 2;  // For sliders
 
@@ -796,6 +796,11 @@
                 httpPort = "8124";
             }
             useHttps = useWss;
+            if (urlParams.get('useDC') !== null){
+                useDirectCommunicationMethod = urlParams.get('useDC') == '1';
+            } else {
+                useDirectCommunicationMethod = false;
+            }
             
             // Check if backend is compiled with the sequencer and store in global variable
             if (urlParams.get('withSequencer') !== null){

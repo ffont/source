@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist>
+  <dict>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <true/>
+      <key>NSAllowsArbitraryLoadsForMedia</key>
+      <true/>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
+      <true/>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+    </dict>
+    <key>CFBundleExecutable</key>
+    <string>${EXECUTABLE_NAME}</string>
+    <key>CFBundleIconFile</key>
+    <string>Icon.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.RitaAurora.SourceSampler.SourceSamplerAUv3</string>
+    <key>CFBundleName</key>
+    <string>SourceSampler</string>
+    <key>CFBundleDisplayName</key>
+    <string>SourceSampler</string>
+    <key>CFBundlePackageType</key>
+    <string>XPC!</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.7</string>
+    <key>CFBundleVersion</key>
+    <string>0.7</string>
+    <key>NSHumanReadableCopyright</key>
+    <string></string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSExtension</key>
+    <dict>
+      <key>NSExtensionPrincipalClass</key>
+      <string>SourceSamplerAUFactoryAUv3</string>
+      <key>NSExtensionPointIdentifier</key>
+      <string>com.apple.AudioUnit-UI</string>
+      <key>NSExtensionAttributes</key>
+      <dict>
+        <key>AudioComponents</key>
+        <array>
+          <dict>
+            <key>name</key>
+            <string>Music Technology Group: SourceSampler</string>
+            <key>description</key>
+            <string>SourceSampler</string>
+            <key>factoryFunction</key>
+            <string>SourceSamplerAUFactoryAUv3</string>
+            <key>manufacturer</key>
+            <string>RaAu</string>
+            <key>type</key>
+            <string>aumu</string>
+            <key>subtype</key>
+            <string>SoSa</string>
+            <key>version</key>
+            <integer>1792</integer>
+            <key>sandboxSafe</key>
+            <true/>
+            <key>tags</key>
+            <array>
+              <string>Synth</string>
+            </array>
+          </dict>
+        </array>
+      </dict>
+    </dict>
+  </dict>
+</plist>

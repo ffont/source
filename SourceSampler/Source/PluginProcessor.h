@@ -12,7 +12,9 @@
 
 #include <JuceHeader.h>
 #include "SourceSampler.h"
+#if INCLUDE_SEQUENCER
 #include "Sequencer.h"
+#endif
 
 
 //==============================================================================

@@ -95,7 +95,7 @@ void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 
 const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
 {
-    source.getPresetNameByIndex(index);
+    return source.getPresetNameByIndex(index);
 }
 
 void SourceSamplerAudioProcessor::changeProgramName (int index, const juce::String& newName)

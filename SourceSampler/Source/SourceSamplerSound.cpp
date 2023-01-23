@@ -949,6 +949,9 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         child.setProperty(SourceIDs::usesPreview, false, nullptr);
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
+                        # if APP_GROUP_ID
+                        options = options.withSharedContainer(APP_GROUP_ID);
+                        #endif
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());
@@ -972,6 +975,9 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                         juce::String previewURL = child.getProperty(SourceIDs::previewURL, "").toString();
                         # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
                         juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withListener(this);
+                        # if APP_GROUP_ID
+                        options = options.withSharedContainer(APP_GROUP_ID);
+                        #endif
                         std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
                         downloadTasks.push_back(std::move(downloadTask));
                         DBG("Downloading sound to " << locationInDisk.getFullPathName());

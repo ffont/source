@@ -30,7 +30,16 @@
 #define USE_HTTP_SERVER 0
 #endif
 
-#define USING_DIRECT_COMMUNICATION_METHOD 0  // Direct communication method (without ws server) is implemented, but it does not seem to perform better than ws method
+#ifndef USING_DIRECT_COMMUNICATION_METHOD
+#define USING_DIRECT_COMMUNICATION_METHOD 0  // Direct communication method (without ws server) is implemented, but it does not seem to perform better than ws method. However, it removes the openSSL dependency which is great when compiling in iOS
+#endif
+
+#if !USING_DIRECT_COMMUNICATION_METHOD
+#define USE_WS_SERVER 1  // If not using direct communication method, enable WebSockets server
+#else
+#define USE_WS_SERVER 0  // If using direct communicaiton method, don't enable WebSockets server
+#endif
+
 
 #define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
 
@@ -55,6 +64,7 @@
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
 #define ELK_SOURCE_TMP_LOCATION "/tmp/source/"
+#define APP_GROUP_ID 0 // "group.ritaiaurora.source"
 
 #define OSC_LISTEN_PORT 9001
 #define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening
