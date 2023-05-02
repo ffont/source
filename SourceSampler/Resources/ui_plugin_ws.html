@@ -886,7 +886,7 @@
         
         function getAllSoundParameterNames(){
             // --> Start auto-generated code C
-            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "velSensitivity", "midiChannel"]
+            parameterNames = ["launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "noteMappingMode", "numSlices", "playheadPosition", "freezePlayheadSpeed", "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "gain", "attack", "decay", "sustain", "release", "pan", "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos", "vel2CutoffAmt", "vel2GainAmt", "velSensitivity", "midiChannel", "pitchShift", "timeStretch"]
             // --> End auto-generated code C
             return parameterNames;
         }
@@ -897,7 +897,7 @@
         
         function getAllSoundParameterTypes(){
             // --> Start auto-generated code D
-            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int"]
+            parameterTypes = ["int", "float", "float", "float", "float", "int", "int", "int", "int", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "int", "float", "float"]
             // --> End auto-generated code D
             return parameterTypes;
         }
@@ -1025,6 +1025,8 @@
             html += '<input type="range" id="' + soundUUID + '_vel2GainAmt" name="vel2GainAmt" min="0.0" max="1.0" value="0.5" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > vel2GainAmt: <span id="' + soundUUID + '_vel2GainAmtLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_velSensitivity" name="velSensitivity" min="0.0" max="6.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > velSensitivity: <span id="' + soundUUID + '_velSensitivityLabel"></span><br>'
             html += '<input type="range" id="' + soundUUID + '_midiChannel" name="midiChannel" min="0" max="16" value="0" step="1" oninput="ss.setSoundParameterInt(\'' + soundUUID + '\', this)" > midiChannel: <span id="' + soundUUID + '_midiChannelLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_pitchShift" name="pitchShift" min="-36.0" max="36.0" value="0.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > pitchShift: <span id="' + soundUUID + '_pitchShiftLabel"></span><br>'
+            html += '<input type="range" id="' + soundUUID + '_timeStretch" name="timeStretch" min="0.1" max="4.0" value="1.0" step="0.01" oninput="ss.setSoundParameter(\'' + soundUUID + '\', this)" > timeStretch: <span id="' + soundUUID + '_timeStretchLabel"></span><br>'
             // --> End auto-generated code A
             return html;
         }

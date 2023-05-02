@@ -95,7 +95,7 @@ def generate_code(controls_data_filename):
     # Generate SourceSamplerSound.h code to bind state
     current_code = ''
     for count, control_data in enumerate([control_data for control_data in controls_list]):
-        current_code += "    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::{name}, Defaults::{name});\n    {name}.referTo(state, SourceIDs::{name}, nullptr, Defaults::{name});\n".format(**control_data)
+        current_code += "    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::{name}, SourceDefaults::{name});\n    {name}.referTo(state, SourceIDs::{name}, nullptr, SourceDefaults::{name});\n".format(**control_data)
     current_code += '    '
     code_dict['Source/SourceSamplerSound.cpp']['C'] = current_code
 
@@ -115,9 +115,9 @@ def generate_code(controls_data_filename):
         else:
             # Don't know what to do with other types
             pass
-    code_dict['Source/defines.h'] = {}
-    code_dict['Source/defines.h']['A'] = current_code_a
-    code_dict['Source/defines.h']['B'] = current_code_b
+    code_dict['Source/defines_source.h'] = {}
+    code_dict['Source/defines_source.h']['A'] = current_code_a
+    code_dict['Source/defines_source.h']['B'] = current_code_b
 
     # Generate helpers_source.h code to include all sound parameters when creating an empry sound
     current_code_a = ''

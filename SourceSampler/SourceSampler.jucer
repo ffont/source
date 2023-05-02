@@ -3,9 +3,9 @@
 <JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.7"
               projectLineFeed="&#10;" companyName="Music Technology Group"
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
-              reportAppUsage="0" pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST,buildVST3"
+              reportAppUsage="0" pluginFormats="buildAU,buildStandalone,buildVST,buildVST3"
               pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
-              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common"
+              pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common&#10;../../3rdParty/signalsmith-stretch/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0"
               compilerFlagSchemes="NewScheme">

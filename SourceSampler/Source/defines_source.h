@@ -56,6 +56,8 @@
 
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200
+#define SAMPLER_SOUND_TIMER_MS 20
+#define STRETCH_PROCESSING_TIME_DEBOUNCE_MS 200.0
 
 #ifndef SOURCE_APP_DIRECTORY_NAME
 #define SOURCE_APP_DIRECTORY_NAME "SourceSampler"  // Note this is ignored in ELK builds
@@ -213,6 +215,8 @@ inline float vel2CutoffAmt = 0.0f;
 inline float vel2GainAmt = 0.5f;
 inline float velSensitivity = 1.0f;
 inline int midiChannel = 0;
+inline float pitchShift = 0.0f;
+inline float timeStretch = 1.0f;
 // --> End auto-generated code A
 
 inline float sampleStartPosition = -1.0f;
@@ -339,6 +343,8 @@ DECLARE_ID (vel2CutoffAmt)
 DECLARE_ID (vel2GainAmt)
 DECLARE_ID (velSensitivity)
 DECLARE_ID (midiChannel)
+DECLARE_ID (pitchShift)
+DECLARE_ID (timeStretch)
 // --> End auto-generated code B
 
 DECLARE_ID (sampleStartPosition)

@@ -35,3 +35,5 @@ vel2CutoffAmt;float;0;100;0;;velocity to cutoff amount (multiplier to cutoff fre
 vel2GainAmt;float;0;1;0.5;;percentage of how much velocity affects gain
 velSensitivity;float;0;6;1.0;;modifier to velocity values applies as X^velSensitivity
 midiChannel;int;0;16;0;;global,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+pitchShift;float;-36;36;0;0;semitones (with respect to midi root note)
+timeStretch;float;0.1;4.0;1.0;0;time stretch ratio (1=no change, 2=2x slower)

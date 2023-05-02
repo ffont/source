@@ -11,12 +11,16 @@
 #pragma once
 #include <JuceHeader.h>
 #include "helpers_source.h"
+#include "signalsmith-stretch.h"
+
+
+using Stretch = signalsmith::stretch::SignalsmithStretch<float>;
 
 
 class SourceSound;
 
 
-class SourceSamplerSound: public juce::SynthesiserSound
+class SourceSamplerSound: public juce::SynthesiserSound, juce::Timer
 {
 public:
     //==============================================================================
@@ -45,10 +49,15 @@ public:
     juce::ValueTree state;
     void bindState ();
     
+    void timerCallback() override;
+    
     SourceSound* getSourceSound() { return sourceSoundPointer; };
     
     juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     void writeBufferToDisk();
+    
+    void preProcessAudioWithStretch();
+    void setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio);
     
     juce::String getUUID() { return state.getProperty(SourceIDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
@@ -113,6 +122,7 @@ private:
 
     // "Volatile" properties that are not binded in state
     std::unique_ptr<juce::AudioBuffer<float>> data;
+    std::unique_ptr<juce::AudioBuffer<float>> stretchProcessedData;  // used for storing pre-processed pitch shifted/time stretched versions of the audio
     int lengthInSamples = 0;
     double soundSampleRate;
     double pluginSampleRate;
@@ -120,6 +130,17 @@ private:
     std::vector<int> onsetTimesSamples = {};
     juce::BigInteger midiNotes = 0;
     juce::BigInteger midiVelocities = 0;
+    
+    // 3rd party time stretcher/pitch shifter
+    int maxTimeStretchRatio = 4; // Set a maximum time stretch ratio so we allocate enough samples for the processed buffer and don't do re-allocations in real time thread
+    float timeStretchRatio = 1.0;
+    float pitchShiftSemitones = 0.0;
+    Stretch stretch;
+    double shouldProcessWithStretchAtTime = 0.0;
+    double lastTimeProcessedWithStretchAtTime = 0.0;
+    bool computingTimeStretch = false;
+    float nextTimeStretchRatio = 1.0;
+    float nextPitchShiftSemitones = 0.0;
     
     // we use these properties to specify when a sample sound will be deleted. Unlike SourceSound, we don't bind this to state
     bool willBeDeleted = false;
@@ -268,6 +289,8 @@ private:
     juce::CachedValue<float> vel2GainAmt;
     juce::CachedValue<float> velSensitivity;
     juce::CachedValue<int> midiChannel;
+    juce::CachedValue<float> pitchShift;
+    juce::CachedValue<float> timeStretch;
     // --> End auto-generated code A
     
     // Other

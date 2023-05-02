@@ -22,3 +22,6 @@
 [submodule "SourceShepherdPush2Controller/modes/GrooveTransformerExample"]
 	path = SourceShepherdPush2Controller/modes/GrooveTransformerExample
 	url = https://github.com/behzadhaki/GrooveTransformerExample.git
+[submodule "SourceSampler/3rdParty/signalsmith-stretch"]
+	path = SourceSampler/3rdParty/signalsmith-stretch
+	url = https://github.com/Signalsmith-Audio/signalsmith-stretch

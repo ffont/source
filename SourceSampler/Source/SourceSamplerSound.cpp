@@ -28,7 +28,7 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
     
     // Load audio
     if (soundSampleRate > 0 && source.lengthInSamples > 0) {
-        lengthInSamples = juce::jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));
+        lengthInSamples = juce::jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));  // note this will be re-setted when doing preProcessAudioWithStretch
         data.reset (new juce::AudioBuffer<float> (juce::jmin (2, (int) source.numChannels), lengthInSamples + 4));
         source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
         
@@ -36,16 +36,26 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
         state.setProperty(SourceIDs::duration, getLengthInSeconds(), nullptr);
     }
     
+    // Pre-allocate space for stretched audio buffer
+    stretchProcessedData.reset (new juce::AudioBuffer<float> (data->getNumChannels(), data->getNumSamples() * maxTimeStretchRatio));
+    
     // Load calculated onsets (if any)
     loadOnsetTimesSamplesFromAnalysis();
     
     // Write PCM version of the audio to disk so it can be used in the UI for displaying waveforms
     // (either by serving through the http server or directly loading from disk)
     writeBufferToDisk();
+    
+    // Schecule pre-processing of audio data with stretch (so time stretching/pitch shifting is not computed in real time)
+    setStretchParameters(getParameterFloat(SourceIDs::pitchShift), getParameterFloat(SourceIDs::timeStretch));
+    
+    // Start timer that will periodically check if "async" tasks need to be done like re-processing with stretch
+    startTimer(SAMPLER_SOUND_TIMER_MS);
 }
 
 SourceSamplerSound::~SourceSamplerSound()
 {
+    stopTimer();
 }
 
 void SourceSamplerSound::bindState ()
@@ -67,6 +77,16 @@ void SourceSamplerSound::bindState ()
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::sampleLoopEndPosition, SourceDefaults::sampleLoopEndPosition);
     sampleLoopEndPosition.referTo(state, SourceIDs::sampleLoopEndPosition, nullptr);
     checkSampleSampleStartEndAndLoopPositions();
+}
+
+void SourceSamplerSound::timerCallback()
+{
+    if (shouldProcessWithStretchAtTime > -1){
+        if ((juce::Time::getMillisecondCounterHiRes() > shouldProcessWithStretchAtTime) || ((juce::Time::getMillisecondCounterHiRes() - lastTimeProcessedWithStretchAtTime > STRETCH_PROCESSING_TIME_DEBOUNCE_MS) && !computingTimeStretch)){
+            shouldProcessWithStretchAtTime = -1;
+            preProcessAudioWithStretch();
+        }
+    }
 }
 
 void SourceSamplerSound::writeBufferToDisk()
@@ -94,6 +114,37 @@ void SourceSamplerSound::writeBufferToDisk()
                                           0));
     if (writer != nullptr)
         writer->writeFromAudioSampleBuffer (*buffer, 0, buffer->getNumSamples());
+}
+
+void SourceSamplerSound::preProcessAudioWithStretch()
+{
+    DBG("Pre-processing with stretch...");
+    
+    computingTimeStretch = true;
+    timeStretchRatio = nextTimeStretchRatio;
+    pitchShiftSemitones = nextPitchShiftSemitones;
+    
+    int newStretchedBufferNumSamples = int(timeStretchRatio * data->getNumSamples());
+    if (stretchProcessedData->getNumSamples() != newStretchedBufferNumSamples){
+        stretchProcessedData->setSize(data->getNumChannels(), newStretchedBufferNumSamples, false, true, true);
+    }
+    stretchProcessedData->clear();
+    stretch.configure(data->getNumChannels(), pluginSampleRate*0.1, pluginSampleRate*0.04);
+    stretch.reset();
+    stretch.setTransposeSemitones(pitchShiftSemitones);
+    stretch.process(data->getArrayOfReadPointers(), data->getNumSamples(), stretchProcessedData->getArrayOfWritePointers(), stretchProcessedData->getNumSamples());
+    
+    // Update stored property of length in samples which is used at playback time by sound voice
+    lengthInSamples = stretchProcessedData->getNumSamples();
+    
+    lastTimeProcessedWithStretchAtTime = juce::Time::getMillisecondCounterHiRes();
+    computingTimeStretch = false;
+}
+
+void SourceSamplerSound::setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio) {
+    nextTimeStretchRatio = (float)juce::jmax(0.1, juce::jmin((double)newTimeStretchRatio, (double)maxTimeStretchRatio));
+    nextPitchShiftSemitones = newPitchShiftSemitones;
+    shouldProcessWithStretchAtTime = juce::Time::getMillisecondCounterHiRes() + STRETCH_PROCESSING_TIME_DEBOUNCE_MS;
 }
 
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
@@ -371,6 +422,10 @@ void SourceSound::bindState ()
     velSensitivity.referTo(state, SourceIDs::velSensitivity, nullptr, SourceDefaults::velSensitivity);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiChannel, SourceDefaults::midiChannel);
     midiChannel.referTo(state, SourceIDs::midiChannel, nullptr, SourceDefaults::midiChannel);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchShift, SourceDefaults::pitchShift);
+    pitchShift.referTo(state, SourceIDs::pitchShift, nullptr, SourceDefaults::pitchShift);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::timeStretch, SourceDefaults::timeStretch);
+    timeStretch.referTo(state, SourceIDs::timeStretch, nullptr, SourceDefaults::timeStretch);
     // --> End auto-generated code C
     
     midiCCmappings = std::make_unique<MidiCCMappingList>(state);
@@ -485,6 +540,8 @@ float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
         else if (identifier == SourceIDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::velSensitivity) { return !normed ? velSensitivity.get() : juce::jmap(velSensitivity.get(), 0.0f, 6.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::pitchShift) { return !normed ? pitchShift.get() : juce::jmap(pitchShift.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
+        else if (identifier == SourceIDs::timeStretch) { return !normed ? timeStretch.get() : juce::jmap(timeStretch.get(), 0.1f, 4.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
     throw std::runtime_error("No float parameter with this name");
 }
@@ -521,6 +578,8 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
         else if (identifier == SourceIDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
         else if (identifier == SourceIDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::velSensitivity) { velSensitivity = !normed ? juce::jlimit(0.0f, 6.0f, value) : juce::jmap(value, 0.0f, 6.0f); }
+        else if (identifier == SourceIDs::pitchShift) { pitchShift = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
+        else if (identifier == SourceIDs::timeStretch) { timeStretch = !normed ? juce::jlimit(0.1f, 4.0f, value) : juce::jmap(value, 0.1f, 4.0f); }
         // --> End auto-generated code B
     else { throw std::runtime_error("No float parameter with this name"); }
     
@@ -536,6 +595,13 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
     }
     if (loopStartPosition > loopEndPosition){
         loopStartPosition = loopEndPosition.get();
+    }
+    
+    // If setting pitch shift/time stretch properties, also trigger re pre-processing of audio data
+    if ((identifier == SourceIDs::pitchShift) || (identifier == SourceIDs::timeStretch)) {
+        for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
+            sourceSamplerSound->setStretchParameters(pitchShift, timeStretch);
+        }
     }
 }
 

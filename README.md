@@ -186,6 +186,7 @@ SOURCE is released under the **GPLv3** open source software license (see [LICENS
 * [Simple-WebSocket-Server](https://gitlab.com/eidheim/Simple-WebSocket-Server), available under MIT license ([@a091e7c](https://gitlab.com/eidheim/Simple-WebSocket-Server/-/tree/a091e7cfb1587e3c0340bc7d2d850a4e44c03e11))
 * [Simple-Web-Server](https://gitlab.com/eidheim/Simple-Web-Server), available under MIT license ([@bdb1057](https://gitlab.com/eidheim/Simple-Web-Server/-/tree/bdb105712bc4cebc993de89b62e382b92102b347))
 * [shepherd](https://github.com/ffont/shepherd), available under GPLv3 license ([@9adc415](https://github.com/ffont/shepherd/commit/9adc4151105d3ecaaca2c3478fdb120484558e25))
+* [signalsmith-stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch), available under MIT license ([@37db3a7](https://github.com/Signalsmith-Audio/signalsmith-stretch/commit/37db3a75a40ce1f8b596302a8277d7b41eeb1f5b))
 
 <br><br>
 <p align="center">

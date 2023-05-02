@@ -220,6 +220,8 @@ namespace SourceHelpers
         sound.setProperty (SourceIDs::vel2GainAmt, 0.5f, nullptr);
         sound.setProperty (SourceIDs::velSensitivity, 1.0f, nullptr);
         sound.setProperty (SourceIDs::midiChannel, 0, nullptr);
+        sound.setProperty (SourceIDs::pitchShift, 0.0f, nullptr);
+        sound.setProperty (SourceIDs::timeStretch, 1.0f, nullptr);
         // --> End auto-generated code A
         return sound;
     }

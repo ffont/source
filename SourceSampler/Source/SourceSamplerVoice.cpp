@@ -390,7 +390,7 @@ void SourceSamplerVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer
         updateParametersFromSourceSamplerSound(sound);
         
         // Sampler reading and rendering
-        auto& data = *sound->data;
+        auto& data = *sound->stretchProcessedData;
         const float* const inL = data.getReadPointer (0);
         const float* const inR = data.getNumChannels() > 1 ? data.getReadPointer (1) : nullptr;
         
