@@ -21,7 +21,8 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
     : state(_state),
       soundSampleRate (source.sampleRate),
       pluginSampleRate (_pluginSampleRate),
-      pluginBlockSize (_pluginBlockSize)
+      pluginBlockSize (_pluginBlockSize),
+      stretchProcessorThread (*this)
 {
     sourceSoundPointer = _sourceSoundPointer;
     bindState();
@@ -55,6 +56,7 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
 
 SourceSamplerSound::~SourceSamplerSound()
 {
+    stretchProcessorThread.stopThread(0);
     stopTimer();
 }
 
@@ -84,7 +86,8 @@ void SourceSamplerSound::timerCallback()
     if (shouldProcessWithStretchAtTime > -1){
         if ((juce::Time::getMillisecondCounterHiRes() > shouldProcessWithStretchAtTime) || ((juce::Time::getMillisecondCounterHiRes() - lastTimeProcessedWithStretchAtTime > STRETCH_PROCESSING_TIME_DEBOUNCE_MS) && !computingTimeStretch)){
             shouldProcessWithStretchAtTime = -1;
-            preProcessAudioWithStretch();
+            DBG("Pre-processing with stretch...");
+            stretchProcessorThread.startThread(); // Runs preProcessAudioWithStretch() in thread
         }
     }
 }
@@ -118,21 +121,25 @@ void SourceSamplerSound::writeBufferToDisk()
 
 void SourceSamplerSound::preProcessAudioWithStretch()
 {
-    DBG("Pre-processing with stretch...");
-    
     computingTimeStretch = true;
     timeStretchRatio = nextTimeStretchRatio;
     pitchShiftSemitones = nextPitchShiftSemitones;
     
-    int newStretchedBufferNumSamples = int(timeStretchRatio * data->getNumSamples());
-    if (stretchProcessedData->getNumSamples() != newStretchedBufferNumSamples){
-        stretchProcessedData->setSize(data->getNumChannels(), newStretchedBufferNumSamples, false, true, true);
+    if ((timeStretchRatio != 1.0) || (pitchShiftSemitones != 0.0)){
+        // Compute stretched version of audio into new tmp buffer
+        int newStretchedBufferNumSamples = int(timeStretchRatio * data->getNumSamples());
+        auto tmpBuffer = juce::AudioBuffer<float>(data->getNumChannels(), newStretchedBufferNumSamples);
+        stretch.configure(data->getNumChannels(), pluginSampleRate*0.1, pluginSampleRate*0.04);
+        stretch.reset();
+        stretch.setTransposeSemitones(pitchShiftSemitones);
+        stretch.process(data->getArrayOfReadPointers(), data->getNumSamples(), tmpBuffer.getArrayOfWritePointers(), tmpBuffer.getNumSamples());
+        
+        // Replace stretchProcessedData buffer with new data (and resize buffer if needed)
+        stretchProcessedData->makeCopyOf(tmpBuffer, true);
+    } else {
+        // If the stretching parameters are to leave the sound as it is, then we just copy the original audio data and avoid unnecessary computations
+        stretchProcessedData->makeCopyOf(*getAudioData(), true);
     }
-    stretchProcessedData->clear();
-    stretch.configure(data->getNumChannels(), pluginSampleRate*0.1, pluginSampleRate*0.04);
-    stretch.reset();
-    stretch.setTransposeSemitones(pitchShiftSemitones);
-    stretch.process(data->getArrayOfReadPointers(), data->getNumSamples(), stretchProcessedData->getArrayOfWritePointers(), stretchProcessedData->getNumSamples());
     
     // Update stored property of length in samples which is used at playback time by sound voice
     lengthInSamples = stretchProcessedData->getNumSamples();

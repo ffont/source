@@ -56,9 +56,6 @@ public:
     juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
     void writeBufferToDisk();
     
-    void preProcessAudioWithStretch();
-    void setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio);
-    
     juce::String getUUID() { return state.getProperty(SourceIDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
     juce::String getSoundName() { return name.get(); };
@@ -103,6 +100,23 @@ public:
     bool isScheduledForDeletion();
     void scheduleSampleSoundDeletion();
     bool shouldBeDeleted();
+    
+    //==============================================================================
+    void preProcessAudioWithStretch();
+    void setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio);
+    
+    class StretchProcessorThread : public juce::Thread
+    {
+    public:
+        StretchProcessorThread(SourceSamplerSound& s) : juce::Thread ("StretchProcessorThread"), samplerSound (s){}
+        
+        void run() override
+        {
+            samplerSound.preProcessAudioWithStretch();
+        }
+        SourceSamplerSound& samplerSound;
+    };
+    StretchProcessorThread stretchProcessorThread;
     
 private:
     //==============================================================================
