@@ -17,7 +17,7 @@
 
 
 
-class SourceSamplerSynthesiser: public juce::Synthesiser,
+class SourceSamplerSynthesiser: public juce::MPESynthesiser,
                                 public juce::ActionBroadcaster
 {
 public:
@@ -30,15 +30,25 @@ public:
     //==============================================================================
     void noteOn (const int midiChannel,
                  const int midiNoteNumber,
-                 const float velocity) override;
+                 const float velocity);
     void handleMidiEvent (const juce::MidiMessage& m) override;
+    
+    void noteAdded (juce::MPENote newNote) override {
+        if (!mpeEnabled) {
+            noteOn(newNote.midiChannel, newNote.initialNote, newNote.noteOnVelocity.asUnsignedFloat());
+        } else {
+            // Call method from super class! (?)
+        }
+        
+    };
     
     //==============================================================================
     void setReverbParameters (juce::Reverb::Parameters params);
     
 private:
     //==============================================================================
-    void renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples) override;
+    void renderNextSubBlock (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples) override;
+
     enum
     {
         reverbIndex
@@ -47,4 +57,6 @@ private:
     int currentNumChannels = 0;
     int currentBlockSize = 0;
     juce::dsp::ProcessorChain<juce::dsp::Reverb> fxChain;
+    
+    bool mpeEnabled = false;
 };

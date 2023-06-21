@@ -13,6 +13,14 @@
 
 SourceSamplerSynthesiser::SourceSamplerSynthesiser()
 {
+    // Configure MPE stuff
+    // As an intitial test, we want an MPE synth which actually does not do any MPE and responds normally to "normal" messages
+    enableLegacyMode();
+    setPressureTrackingMode  (juce::MPEInstrument::allNotesOnChannel);
+    setPitchbendTrackingMode (juce::MPEInstrument::allNotesOnChannel);
+    setTimbreTrackingMode    (juce::MPEInstrument::allNotesOnChannel);
+    
+    // Pre-allocate synth voices
     setSamplerVoices(maxNumVoices);
     
     // Configure effects chain
@@ -49,7 +57,7 @@ void SourceSamplerSynthesiser::setSamplerVoices(int nVoices)
             dynamic_cast<SourceSamplerVoice*> (v)->prepare ({ getSampleRate(), (juce::uint32) currentBlockSize, (juce::uint32) currentNumChannels });
     }
     
-    setNoteStealingEnabled (true);
+    setVoiceStealingEnabled (true);
 }
 
 void SourceSamplerSynthesiser::prepare (const juce::dsp::ProcessSpec& spec) noexcept
@@ -149,9 +157,9 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
     }
 }
 
-void SourceSamplerSynthesiser::renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples)
+void SourceSamplerSynthesiser::renderNextSubBlock (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples)
 {
-    Synthesiser::renderVoices (outputAudio, startSample, numSamples);
+    MPESynthesiser::renderNextSubBlock (outputAudio, startSample, numSamples);
     auto block = juce::dsp::AudioBlock<float> (outputAudio);
     auto blockToUse = block.getSubBlock ((size_t) startSample, (size_t) numSamples);
     auto contextToUse = juce::dsp::ProcessContextReplacing<float> (blockToUse);
