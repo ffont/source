@@ -14,7 +14,7 @@
 #include "SourceSamplerSound.h"
 
 
-class SourceSamplerVoice: public juce::SynthesiserVoice
+class SourceSamplerVoice: public juce::MPESynthesiserVoice
 {
 public:
     //==============================================================================
@@ -23,20 +23,39 @@ public:
     ~SourceSamplerVoice() override;
 
     //==============================================================================
-    bool canPlaySound (juce::SynthesiserSound*) override;
+    bool canPlaySound (juce::SynthesiserSound*);  // NOT NEEDED FOR MPE?
     
     void updateParametersFromSourceSamplerSound(SourceSamplerSound* sound);
 
-    void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int pitchWheel) override;
-    void stopNote (float velocity, bool allowTailOff) override;
+    void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int pitchWheel);
+    void stopNote (float velocity, bool allowTailOff);
+    
+    void noteStopped (bool allowTailOff) override
+    {
+        jassert (currentlyPlayingNote.keyState == juce::MPENote::off);
+        stopNote(0, allowTailOff);
+    }
+    
+    void noteStarted() override
+    {
+        jassert (currentlyPlayingNote.isValid());
+        jassert (currentlyPlayingNote.keyState == juce::MPENote::keyDown
+                 || currentlyPlayingNote.keyState == juce::MPENote::keyDownAndSustained);
 
-    void pitchWheelMoved (int newValue) override;
-    void controllerMoved (int controllerNumber, int newValue) override;
-    void aftertouchChanged (int newAftertouchValue) override;
-    void channelPressureChanged  (int newChannelPressureValue) override;
+        startNote(currentlyPlayingNote.initialNote,
+                  currentlyPlayingNote.noteOnVelocity.asUnsignedFloat(),
+                  ,
+                  currentlyPlayingNote.pitchbend.as14BitInt());
+    }
+
+
+    void pitchWheelMoved (int newValue);
+    void controllerMoved (int controllerNumber, int newValue);
+    void aftertouchChanged (int newAftertouchValue);
+    void channelPressureChanged  (int newChannelPressureValue);
 
     void renderNextBlock (juce::AudioBuffer<float>&, int startSample, int numSamples) override;
-    using SynthesiserVoice::renderNextBlock;
+    using juce::MPESynthesiserVoice::renderNextBlock;
     
     //==============================================================================
     void prepare (const juce::dsp::ProcessSpec& spec);

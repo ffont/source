@@ -79,6 +79,7 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
              const int midiNoteNumber,
              const float velocity)
 {
+    /*
     const juce::ScopedLock sl (lock);
     int velocityInMidiRange = (int)std::round(127.0 * velocity);
     for (auto* sound : sounds)
@@ -96,10 +97,12 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
             startVoice (voice, sound, midiChannel, midiNoteNumber, velocity);
         }
     }
+     */
 }
 
-void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
+void SourceSamplerSynthesiser::handleMidiEvent2 (const juce::MidiMessage& m)
 {
+    /*
     const int channel = m.getChannel();
     
     if (m.isNoteOn())
@@ -154,7 +157,7 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
         int index = m.getProgramChangeNumber();  // Preset index, this is 0-based so MIDI value 0 will be also 0 here
         juce::String actionMessage = juce::String(ACTION_LOAD_PRESET) + ":" + (juce::String)index;
         sendActionMessage(actionMessage);
-    }
+    }*/
 }
 
 void SourceSamplerSynthesiser::renderNextSubBlock (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples)

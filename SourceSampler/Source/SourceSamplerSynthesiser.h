@@ -31,16 +31,7 @@ public:
     void noteOn (const int midiChannel,
                  const int midiNoteNumber,
                  const float velocity);
-    void handleMidiEvent (const juce::MidiMessage& m) override;
-    
-    void noteAdded (juce::MPENote newNote) override {
-        if (!mpeEnabled) {
-            noteOn(newNote.midiChannel, newNote.initialNote, newNote.noteOnVelocity.asUnsignedFloat());
-        } else {
-            // Call method from super class! (?)
-        }
-        
-    };
+    void handleMidiEvent2 (const juce::MidiMessage& m);
     
     //==============================================================================
     void setReverbParameters (juce::Reverb::Parameters params);
