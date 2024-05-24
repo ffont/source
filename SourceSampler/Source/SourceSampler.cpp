@@ -762,7 +762,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         
         // Trigger query in a separate thread so that we don't block UI
         queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
-        queryMakerThread.startThread(0);  // Lowest thread priority
+        queryMakerThread.startThread();  // Lowest thread priority
     }
     else if (actionName == ACTION_REPLACE_SOUND_FROM_QUERY){
         juce::String addReplaceOrReplaceSound = parameters[0]; // Will be UUID of the sound to replace
@@ -774,7 +774,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         
         // Trigger query in a separate thread so that we don't block UI
         queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, 1, minSoundLength, maxSoundLength);
-        queryMakerThread.startThread(0);  // Lowest thread priority
+        queryMakerThread.startThread();  // Lowest thread priority
     }
 
     // Sound actions -----------------------------------------------------------------------------------

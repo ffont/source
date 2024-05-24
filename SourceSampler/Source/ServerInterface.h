@@ -140,7 +140,7 @@ public:
         
         #if USE_HTTP_SERVER
         httpServer.setInterfacePointer(this);
-        httpServer.startThread(0);
+        httpServer.startThread();
         #endif
         
         #if USE_OSC_SERVER
@@ -149,7 +149,7 @@ public:
         
         #if USE_WS_SERVER
         wsServer.setInterfacePointer(this);
-        wsServer.startThread(0);
+        wsServer.startThread();
         #endif
         
     }
