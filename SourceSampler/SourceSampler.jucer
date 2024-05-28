@@ -7,7 +7,7 @@
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common&#10;../../3rdParty/signalsmith-stretch/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0"
-              compilerFlagSchemes="NewScheme" pluginFormats="buildAUv3,buildStandalone">
+              compilerFlagSchemes="NewScheme" pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Sampler">
       <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"

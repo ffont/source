@@ -56,8 +56,12 @@
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
       launchAutomaticallySubstyle = "2">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <RemoteRunnable
+         runnableDebuggingMode = "0"
+         BundleIdentifier = "com.example.apple-samplecode.AUv3Host5EJK62P4MU"
+         RemotePath = "/var/containers/Bundle/Application/A4B65D9D-63B2-49E9-B353-BBC6A86DDFF7/AUv3Host.app">
+      </RemoteRunnable>
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F448398A8CB917793106AE71"
@@ -65,7 +69,7 @@
             BlueprintName = "SourceSampler - Standalone Plugin"
             ReferencedContainer = "container:SourceSampler.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
