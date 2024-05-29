@@ -46,7 +46,7 @@ namespace ProjectInfo
 {
     const char* const  projectName    = "SourceSampler";
     const char* const  companyName    = "Music Technology Group";
-    const char* const  versionString  = "0.7";
-    const int          versionNumber  = 0x700;
+    const char* const  versionString  = "0.8";
+    const int          versionNumber  = 0x800;
 }
 #endif
