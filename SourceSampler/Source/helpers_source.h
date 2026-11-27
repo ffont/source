@@ -378,11 +378,11 @@ namespace SourceHelpers
     //==============================================================================
     // MPE
 
-    enum class MpeSource { press = 0, slide, glide, strike, numSources };
+    enum class MpeSource { slide = 0, glide, strike, numSources };
 
     inline juce::StringArray getMpeSourceNames()
     {
-        return { MPE_SOURCE_PRESS, MPE_SOURCE_SLIDE, MPE_SOURCE_GLIDE, MPE_SOURCE_STRIKE };
+        return { MPE_SOURCE_SLIDE, MPE_SOURCE_GLIDE, MPE_SOURCE_STRIKE };
     }
 
     /** Returns the source with the given name, or MpeSource::numSources if the name is not valid. */

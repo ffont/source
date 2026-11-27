@@ -358,7 +358,6 @@ void MidiMappingsComponent::resized()
 
 static juce::String getMpeSourceDisplayName (const juce::String& name)
 {
-    if (name == MPE_SOURCE_PRESS)  return "Press";
     if (name == MPE_SOURCE_SLIDE)  return "Slide";
     if (name == MPE_SOURCE_GLIDE)  return "Glide";
     if (name == MPE_SOURCE_STRIKE) return "Strike";
@@ -371,7 +370,7 @@ MpeMappingsComponent::MappingRow::MappingRow (MpeMappingsComponent& owner)
     for (int i = 0; i < sourceNames.size(); ++i)
         source.addItem (getMpeSourceDisplayName (sourceNames[i]), i + 1);
     source.setSelectedItemIndex (0, juce::dontSendNotification);
-    source.setTooltip ("Press: per-note pressure, Slide: CC74, Glide: per-note pitch bend, Strike: note velocity");
+    source.setTooltip ("Slide: CC74, Glide: per-note pitch bend, Strike: note velocity. Per-note pressure is aftertouch: use the Modulation section");
     addAndMakeVisible (source);
 
     int itemId = 1;

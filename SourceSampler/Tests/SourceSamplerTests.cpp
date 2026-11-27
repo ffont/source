@@ -235,10 +235,10 @@ public:
             auto sound = f.addLocalSound ("a", 440.0);
             const auto soundUUID = sound.getProperty (SourceIDs::uuid).toString();
             const auto mappingUUID = juce::Uuid().toString();
-            f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, mappingUUID, MPE_SOURCE_PRESS, "filterCutoff", "0.1", "0.9", "0.5" });
+            f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, mappingUUID, MPE_SOURCE_STRIKE, "filterCutoff", "0.1", "0.9", "0.5" });
             auto mapping = sound.getChildWithProperty (SourceIDs::uuid, mappingUUID);
             expect (mapping.hasType (SourceIDs::MPE_MAPPING));
-            expectEquals (mapping.getProperty (SourceIDs::mpeSource).toString(), juce::String (MPE_SOURCE_PRESS));
+            expectEquals (mapping.getProperty (SourceIDs::mpeSource).toString(), juce::String (MPE_SOURCE_STRIKE));
             expectEquals ((float) mapping.getProperty (SourceIDs::curve), 0.5f);
 
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, mappingUUID, MPE_SOURCE_SLIDE, "pan", "0", "1", "5" });
@@ -247,6 +247,7 @@ public:
 
             // Invalid sources / parameters (or int parameters) are ignored
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), "notASource", "pan", "0", "1", "0" });
+            f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), "press", "pan", "0", "1", "0" });  // Pressure uses the mod2* parameters
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), MPE_SOURCE_SLIDE, "notAParameter", "0", "1", "0" });
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), MPE_SOURCE_SLIDE, "launchMode", "0", "1", "0" });
             int numMappings = 0;

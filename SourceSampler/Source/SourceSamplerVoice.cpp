@@ -367,7 +367,6 @@ float SourceSamplerVoice::getMpeSourceValue (SourceHelpers::MpeSource source) co
 {
     switch (source)
     {
-        case SourceHelpers::MpeSource::press:  return mpePress;
         case SourceHelpers::MpeSource::slide:  return mpeSlide;
         case SourceHelpers::MpeSource::glide:  return (mpeGlide + 1.0f) * 0.5f;
         case SourceHelpers::MpeSource::strike: return currentNoteVelocity;

@@ -231,12 +231,13 @@ public:
     void applyMidiCCModulations(int channel, int number, int value);
     
     // ------------------------------------------------------------------------------------------------
-    // MPE mappings: map per-note MPE dimensions (press, slide, glide, strike) to sound parameters. Unlike MIDI CC
+    // MPE mappings: map per-note MPE dimensions (slide, glide, strike) to sound parameters
+    // (per-note pressure is handled by the aftertouch modulation parameters, mod2*). Unlike MIDI CC
     // mappings (which change the sound parameter for all notes), these are applied per voice in the audio thread.
     
     struct MpeMapping
     {
-        SourceHelpers::MpeSource source = SourceHelpers::MpeSource::press;
+        SourceHelpers::MpeSource source = SourceHelpers::MpeSource::slide;
         juce::Identifier parameter;
         float minRange = 0.0f;
         float maxRange = 1.0f;

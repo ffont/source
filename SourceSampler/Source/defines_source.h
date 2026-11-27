@@ -188,7 +188,8 @@
 // MPE (MIDI Polyphonic Expression). SOURCE implements the MPE lower zone: master channel 1, member channels 2-16
 #define MPE_MASTER_CHANNEL 1
 #define MPE_SLIDE_CC 74
-#define MPE_SOURCE_PRESS "press"    // Per-note channel pressure (0..1)
+// Per-note pressure is not an MPE mapping source: it is the same signal as aftertouch, which already drives the
+// sound's modulation parameters (mod2*) per note
 #define MPE_SOURCE_SLIDE "slide"    // Per-note CC74 (0..1)
 #define MPE_SOURCE_GLIDE "glide"    // Per-note pitch bend (-1..1, mapped to 0..1 for mappings)
 #define MPE_SOURCE_STRIKE "strike"  // Note-on velocity (0..1)
