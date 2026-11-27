@@ -19,6 +19,7 @@
 //==============================================================================
 SourceSampler::SourceSampler(juce::File baseDataLocation):
     queryMakerThread (*this),
+    freesoundSearch (FREESOUND_API_KEY),
     serverInterface ([this]{return getGlobalContext();})
 {
     weakThis = this;
@@ -884,6 +885,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         if (soundPath == ""){
             stopPreviewingFile();  // Send empty string to stop currently previewing sound
         } else {
+            lastRequestedPreviewPath = soundPath;
             previewFile(soundPath);
         }
     }
@@ -1650,10 +1652,11 @@ void SourceSampler::previewFile(const juce::String& path)
                 while (!task->isFinished())
                     juce::Thread::sleep(20);
                 const bool ok = !task->hadError();
-                juce::MessageManager::callAsync([weak, location, ok]{
+                juce::MessageManager::callAsync([weak, path, location, ok]{
                     if (auto* sampler = weak.get()){
-                        if (ok) sampler->previewFile(location.getFullPathName());
-                        else location.deleteFile();
+                        // Only play it if it is still the last preview that was requested
+                        if (ok && sampler->lastRequestedPreviewPath == path) sampler->previewFile(location.getFullPathName());
+                        else if (!ok) location.deleteFile();
                     }
                 });
             }
@@ -1676,6 +1679,7 @@ void SourceSampler::previewFile(const juce::String& path)
 }
 
 void SourceSampler::stopPreviewingFile(){
+    lastRequestedPreviewPath = {};
     if (transportSource.isPlaying()){
         transportSource.stop();
     }

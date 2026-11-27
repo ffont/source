@@ -14,6 +14,7 @@
 #include <array>
 #include "helpers_source.h"
 #include "FreesoundAPI.h"
+#include "FreesoundSearch.h"
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
@@ -156,6 +157,11 @@ public:
     void previewFile(const juce::String& path);
     void stopPreviewingFile();
     juce::String currentlyLoadedPreviewFilePath = "";
+    juce::String lastRequestedPreviewPath;  // Only the last requested preview is played (downloads can finish in any order)
+    bool isPreviewPlaying() const { return transportSource.isPlaying(); }
+    
+    /** Freesound searches of the "Search" tab (owned here so the results are kept when the editor is closed). */
+    FreesoundSearch freesoundSearch;
     
     //==============================================================================
     // Information for UIs which is not part of the state ("volatile" state). Call from the message thread.

@@ -45,6 +45,7 @@ set(SOURCE_3RDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
 # the plugin and into the test runner.
 set(SOURCE_CORE_SOURCES
     Source/FreesoundAPI.cpp
+    Source/FreesoundSearch.cpp
     Source/SourceSampler.cpp
     Source/SourceSamplerSound.cpp
     Source/SourceSamplerSynthesiser.cpp
@@ -255,6 +256,7 @@ if(SOURCE_BUILD_TESTS)
         Tests/HelpersTests.cpp
         Tests/DownloadPoolTests.cpp
         Tests/FxTests.cpp
+        Tests/SearchTests.cpp
         Tests/SamplerRenderTests.cpp
         Tests/SourceSamplerTests.cpp)
 
