@@ -7,6 +7,7 @@
 */
 
 #include "NativeEditor.h"
+#include "SourceUIBinaryData.h"
 
 
 //==============================================================================
@@ -87,6 +88,59 @@ static void setupNumberSlider (juce::Slider& slider, double min, double max, dou
 }
 
 
+/** Returns the "SOURCE" lettering of the title image used by the web UI: the black badge is made transparent and the
+    image is cropped to the first block of lettering (the "A Freesound Community Sampler" subtitle below is dropped). */
+static juce::Image makeTitleImage()
+{
+    auto source = juce::ImageCache::getFromMemory (SourceUIBinaryData::source_title_png, SourceUIBinaryData::source_title_pngSize);
+    if (! source.isValid())
+        return {};
+
+    juce::Image image = source.convertedToFormat (juce::Image::ARGB);
+    image.duplicateIfShared();
+    const auto isLettering = [] (juce::Colour c) { return c.getAlpha() > 128 && c.getBrightness() > 0.16f; };
+
+    int minX = image.getWidth(), maxX = -1, firstRow = -1, lastRow = -1;
+    {
+        juce::Image::BitmapData pixels (image, juce::Image::BitmapData::readWrite);
+        for (int y = 0; y < image.getHeight(); ++y)
+        {
+            bool rowHasLettering = false;
+            for (int x = 0; x < image.getWidth(); ++x)
+            {
+                const auto c = pixels.getPixelColour (x, y);
+                if (isLettering (c))
+                {
+                    rowHasLettering = true;
+                    if (lastRow < 0 || lastRow == y - 1 || firstRow < 0)
+                    {
+                        minX = juce::jmin (minX, x);
+                        maxX = juce::jmax (maxX, x);
+                    }
+                }
+                else if (c.getBrightness() < 0.05f)
+                {
+                    pixels.setPixelColour (x, y, juce::Colours::transparentBlack);
+                }
+            }
+
+            if (rowHasLettering && (firstRow < 0 || lastRow == y - 1))
+            {
+                if (firstRow < 0)
+                    firstRow = y;
+                lastRow = y;
+            }
+            else if (! rowHasLettering && firstRow >= 0)
+            {
+                break;  // End of the first block of lettering
+            }
+        }
+    }
+    if (firstRow < 0)
+        return image;
+    return image.getClippedImage (juce::Rectangle<int>::leftTopRightBottom (minX, firstRow, maxX + 1, lastRow + 1));
+}
+
 SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     : AudioProcessorEditor (&p),
       audioProcessor (p),
@@ -100,9 +154,9 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     addAndMakeVisible (content);
 
     // Header
-    titleLabel.setText ("SOURCE", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (juce::FontOptions (28.0f, juce::Font::bold)));
-    content.addAndMakeVisible (titleLabel);
+    titleImage.setImage (makeTitleImage());
+    titleImage.setImagePlacement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
+    content.addAndMakeVisible (titleImage);
     statusLabel.setJustificationType (juce::Justification::centredRight);
     statusLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     content.addAndMakeVisible (statusLabel);
@@ -469,8 +523,12 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
 {
     auto b = bounds.reduced (8);
 
-    auto header = b.removeFromTop (36);
-    titleLabel.setBounds (header.removeFromLeft (200));
+    // Title (the image keeps its aspect ratio)
+    auto header = b.removeFromTop (44);
+    const auto& title = titleImage.getImage();
+    const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
+    titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
+    header.removeFromLeft (8);
     statusLabel.setBounds (header);
     b.removeFromTop (4);
 

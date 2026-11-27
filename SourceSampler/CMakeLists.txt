@@ -181,6 +181,14 @@ else()
         Source/UI/NativeEditor.cpp
         Source/UI/SoundListComponent.cpp
         Source/UI/SoundEditorComponent.cpp)
+    # Title image shown in the header of the native UI
+    # (named differently from the legacy Source/BinaryData.h, which would otherwise be found first)
+    juce_add_binary_data(SourceSamplerBinaryData
+        HEADER_NAME SourceUIBinaryData.h
+        NAMESPACE SourceUIBinaryData
+        SOURCES
+            Resources/source_title.png)
+    target_link_libraries(SourceSampler PRIVATE SourceSamplerBinaryData)
     target_compile_definitions(SourceSampler PRIVATE
         SOURCE_WEB_UI=0
         JUCE_WEB_BROWSER=0

@@ -90,7 +90,8 @@ private:
     bool isDraggingFiles = false;
 
     // Header
-    juce::Label titleLabel, statusLabel;
+    juce::ImageComponent titleImage;
+    juce::Label statusLabel;
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };
