@@ -216,7 +216,7 @@ The builds are not signed, so Windows SmartScreen may show a warning the first t
 
 **iPad**
 
-SOURCE also runs on iPad, as a standalone app and as an AUv3 plugin for hosts like AUM or Cubasis, but it is not distributed in the App Store: it has to be built and installed from Xcode (see [building SOURCE for iPad](DEVELOPERS.md#build-for-ipad-iosipados)).
+SOURCE also runs on iPad, as a standalone app and as an AUv3 plugin for hosts like AUM or Cubasis, but it is not distributed in the App Store: it has to be built and installed from Xcode (see [building SOURCE for iPad](DEVELOPERS.md#build-for-ipad-iosipados)). On iPad, SOURCE can send its audio to Ableton Live or other apps through the network with Ableton Link Audio (in the "Settings" tab).
 
 **Building from source**
 

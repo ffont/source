@@ -16,6 +16,8 @@
 #   TEAM_ID     Apple development team ID (10 characters), needed to run on a real iPad
 #   APP_GROUP   iOS app group shared by the app and the AUv3 (default: group.ffont.source). It must be registered
 #               in your team, otherwise use APP_GROUP="" to disable it (the app then uses its own Documents folder).
+#   MULTICAST   Set to 1 to add the multicast entitlement, needed by Ableton Link on iPadOS 17+ (Apple must approve it
+#               for your team first, otherwise signing fails)
 #   DEVICE_ID   Device to install on (UDID or name, see "xcrun devicectl list devices"). Default: the first connected
 #               iPad.
 #   CMAKE_ARGS  Extra CMake arguments (e.g. "-DSOURCE_FREESOUND_API_KEY=xxxx")
@@ -32,7 +34,7 @@ for arg in "$@"; do
         --simulator) MODE="simulator" ;;
         --device)    MODE="device" ;;
         --install)   INSTALL=1 ;;
-        -h|--help)   sed -n '2,21p' "$0"; exit 0 ;;
+        -h|--help)   sed -n '2,23p' "$0"; exit 0 ;;
         *) echo "Unknown option: $arg" >&2; exit 1 ;;
     esac
 done
@@ -57,6 +59,11 @@ if [[ -n "${TEAM_ID:-}" ]]; then
     CONFIGURE_ARGS+=(-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$TEAM_ID"
                      -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic
                      -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Apple Development")
+fi
+if [[ "${MULTICAST:-0}" == "1" ]]; then
+    CONFIGURE_ARGS+=(-DSOURCE_IOS_MULTICAST_ENTITLEMENT=ON)
+else
+    CONFIGURE_ARGS+=(-DSOURCE_IOS_MULTICAST_ENTITLEMENT=OFF)
 fi
 if [[ -n "${APP_GROUP+x}" ]]; then
     CONFIGURE_ARGS+=(-DSOURCE_IOS_APP_GROUP="$APP_GROUP")

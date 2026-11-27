@@ -45,6 +45,9 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
         // app, so presets copied to the app's Documents folder (visible in the Files app) are imported from there
         source.enablePresetImportFolder(juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                                             .getChildFile(SOURCE_APP_DIRECTORY_NAME).getChildFile("presets"));
+        #if SOURCE_LINK
+        link = std::make_unique<SourceLink>(source.sourceDataLocation.getChildFile("link_settings.xml"));
+        #endif
     }
     #endif
     #if INCLUDE_SEQUENCER
@@ -175,6 +178,10 @@ void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     #endif
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
     source.processBlock(buffer, midiMessages);
+    #if SOURCE_LINK
+    if (link != nullptr)
+        link->process(buffer, buffer.getNumSamples(), getSampleRate());  // Link Audio: SOURCE's output to the Link session
+    #endif
 }
 
 //==============================================================================

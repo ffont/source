@@ -12,6 +12,9 @@
 
 #include <JuceHeader.h>
 #include "SourceSampler.h"
+#if SOURCE_LINK
+#include "SourceLink.h"
+#endif
 #if INCLUDE_SEQUENCER
 #include "Sequencer.h"
 #endif
@@ -63,6 +66,11 @@ public:
     
     /** On-screen keyboard state (notes played from the editor's keyboard are merged into the MIDI input). */
     juce::MidiKeyboardState keyboardState;
+    
+    #if SOURCE_LINK
+    /** Ableton Link and Link Audio (only in the iPad standalone app, nullptr otherwise). */
+    std::unique_ptr<SourceLink> link;
+    #endif
     
     #if INCLUDE_SEQUENCER
     Sequencer sequencer;
