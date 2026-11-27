@@ -179,6 +179,15 @@ public:
     juce::File getSessionAutosaveFile() const { return sessionAutosaveFile; }
     void saveSessionNow();
     
+    /** Preset import folder (used by the iOS standalone app, where the presets folder is in the app group container
+        shared with the AUv3, which is not visible in the Files app). Preset files ("<index>.xml") copied to the import
+        folder (which is visible in the Files app) are moved to the presets folder, replacing presets with the same
+        index. The folder is checked now and then periodically. Does nothing if the folder is the presets folder. */
+    void enablePresetImportFolder (const juce::File& folder);
+    juce::File getPresetImportFolder() const { return presetImportFolder; }
+    /** Moves valid preset files from the import folder to the presets folder. Returns the number of imported presets. */
+    int importPresetsFromImportFolder();
+    
     /** Runs the function in the message thread: synchronously if already in the message thread, asynchronously otherwise. */
     void runOnMessageThread (std::function<void(SourceSampler&)> fn);
     
@@ -246,6 +255,8 @@ private:
     // Session autosave
     juce::File sessionAutosaveFile;
     bool sessionNeedsSaving = false;
+    juce::File presetImportFolder;
+    double lastPresetImportCheckTime = 0.0;
     double lastStateChangeTime = 0.0;
     
     // MIDI CC mappings and program changes received in the audio thread are applied here (message thread)

@@ -530,6 +530,50 @@ void SourceSampler::enableSessionAutosave (const juce::File& file)
     });
 }
 
+void SourceSampler::enablePresetImportFolder (const juce::File& folder)
+{
+    if (folder == juce::File() || folder == presetFilesLocation)
+        return;
+    presetImportFolder = folder;
+    if (!presetImportFolder.isDirectory())
+        presetImportFolder.createDirectory();
+    auto readme = presetImportFolder.getChildFile("README.txt");
+    if (!readme.existsAsFile())
+        readme.replaceWithText("Copy SOURCE preset files here (named <preset number>.xml, e.g. 4.xml) to import them. "
+                               "They are moved to the presets folder used by the SOURCE app and plugin, replacing the "
+                               "preset with the same number.\n");
+    importPresetsFromImportFolder();
+}
+
+int SourceSampler::importPresetsFromImportFolder()
+{
+    lastPresetImportCheckTime = juce::Time::getMillisecondCounterHiRes();
+    if (presetImportFolder == juce::File() || !presetImportFolder.isDirectory())
+        return 0;
+    
+    int numImported = 0;
+    for (const auto& file : presetImportFolder.findChildFiles(juce::File::findFiles, false, "*.xml")){
+        // Preset files are named by their index
+        const auto indexString = file.getFileNameWithoutExtension();
+        if (!indexString.containsOnly("0123456789") || indexString.isEmpty()){
+            DBG("Not importing " << file.getFileName() << ": preset files must be named <preset number>.xml");
+            continue;
+        }
+        auto xml = juce::XmlDocument::parse(file);
+        if (xml == nullptr || !(xml->hasTagName(SourceIDs::PRESET.toString()) || xml->hasTagName("SourcePresetState"))){
+            DBG("Not importing " << file.getFileName() << ": not a SOURCE preset file");
+            continue;
+        }
+        auto destination = getPresetFilePath(getPresetFilenameByIndex(indexString.getIntValue()));
+        if (file.copyFileTo(destination)){
+            file.deleteFile();
+            DBG("Imported preset " << file.getFileName() << " to " << destination.getFullPathName());
+            ++numImported;
+        }
+    }
+    return numImported;
+}
+
 void SourceSampler::saveSessionNow()
 {
     sessionNeedsSaving = false;
@@ -575,12 +619,12 @@ void SourceSampler::processPendingControlEvents()
 
 std::vector<SourceSampler::VoiceInfo> SourceSampler::getVoicesInfo()
 {
-    // Reads only the state published (atomically) by the voices in the audio thread. The published SourceSound
+    // Message thread only. Reads only the state published (atomically) by the voices in the audio thread. The published SourceSound
     // pointer is only used as an identifier to look up the sound in our own list (it is never dereferenced).
     std::vector<VoiceInfo> info;
     for (int i=0; i<sampler.getNumVoices(); i++){
         VoiceInfo voiceInfo;
-        if (auto* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i))){
+        if (auto* voice = static_cast<SourceSamplerVoice*> (sampler.getVoiceFromMessageThread(i))){
             const auto published = voice->getPublishedState();
             if (published.active && sounds != nullptr){
                 for (auto* sound: sounds->objects){
@@ -1475,6 +1519,11 @@ void SourceSampler::timerCallback()
     // Session autosave (debounced so we don't write on every slider movement or download progress update)
     if (sessionNeedsSaving && (juce::Time::getMillisecondCounterHiRes() - lastStateChangeTime) > SESSION_AUTOSAVE_DELAY_MS){
         saveSessionNow();
+    }
+    
+    // Preset import folder (files can be added from the Files app while the app is running)
+    if (presetImportFolder != juce::File() && (juce::Time::getMillisecondCounterHiRes() - lastPresetImportCheckTime) > PRESET_IMPORT_CHECK_INTERVAL_MS){
+        importPresetsFromImportFolder();
     }
     
     const juce::ScopedLock sl (soundDeleteLock);

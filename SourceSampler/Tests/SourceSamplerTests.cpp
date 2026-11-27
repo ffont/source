@@ -378,6 +378,61 @@ public:
             expect (TestUtils::runMessageLoopUntil ([sound] { return (bool) sound.getProperty (SourceIDs::allSoundsLoaded); }), "Restored sound not loaded");
         }
 
+        beginTest ("Preset import folder (iOS standalone) moves valid preset files to the presets folder");
+        {
+            Fixture f;
+            f.addLocalSound ("a", 440.0);
+            f.send (ACTION_SAVE_PRESET, { "Imported preset", "7" });
+            auto savedPreset = f.sampler.presetFilesLocation.getChildFile ("7.xml");
+            expect (savedPreset.existsAsFile());
+
+            TestUtils::TemporaryFolder importTmp;
+            auto importFolder = importTmp.folder.getChildFile ("presets");
+            importFolder.createDirectory();
+            expect (savedPreset.moveFileTo (importFolder.getChildFile ("12.xml")));
+            importFolder.getChildFile ("notAPreset.xml").replaceWithText ("<PRESET/>");
+            importFolder.getChildFile ("13.xml").replaceWithText ("<SomethingElse/>");
+            importFolder.getChildFile ("14.xml").replaceWithText ("not xml");
+
+            f.sampler.enablePresetImportFolder (importFolder);
+            expect (importFolder.getChildFile ("README.txt").existsAsFile());
+            expect (f.sampler.presetFilesLocation.getChildFile ("12.xml").existsAsFile(), "Valid preset was not imported");
+            expect (! importFolder.getChildFile ("12.xml").exists(), "Imported preset is moved, not copied");
+            for (auto name : { "notAPreset.xml", "13.xml", "14.xml" })
+            {
+                expect (importFolder.getChildFile (name).existsAsFile(), juce::String ("Invalid file should stay: ") + name);
+                expect (! f.sampler.presetFilesLocation.getChildFile (name).exists(), juce::String ("Invalid file imported: ") + name);
+            }
+
+            // Files added later are picked up by the timer
+            expect (f.sampler.presetFilesLocation.getChildFile ("12.xml").copyFileTo (importFolder.getChildFile ("15.xml")));
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.sampler.presetFilesLocation.getChildFile ("15.xml").existsAsFile(); }, 5000),
+                    "Preset added later was not imported");
+
+            f.send (ACTION_LOAD_PRESET, { "12" });
+            expectEquals (f.preset().getProperty (SourceIDs::name).toString(), juce::String ("Imported preset"));
+
+            // The presets folder itself is never used as import folder
+            f.sampler.enablePresetImportFolder (f.sampler.presetFilesLocation);
+            expect (f.sampler.getPresetImportFolder() == importFolder);
+        }
+
+        beginTest ("Failed downloads don't block loading and never block the message thread");
+        {
+            Fixture f;
+            // A Freesound sound whose preview can't be downloaded (nothing listens on that port)
+            const auto start = juce::Time::getMillisecondCounterHiRes();
+            f.send (ACTION_ADD_SOUND, { "123456", "unreachable", "user", "license", "http://127.0.0.1:9/unreachable.ogg", "", "ogg", "1000", "", "", "60" });
+            expect (juce::Time::getMillisecondCounterHiRes() - start < 500.0, "Adding a sound must not wait for the download");
+            auto sound = f.preset().getChild (0);
+            expect (TestUtils::runMessageLoopUntil ([sound] { return (bool) sound.getProperty (SourceIDs::allSoundsLoaded); }, 20000),
+                    "Sound never finished loading after a failed download");
+            auto sample = sound.getChildWithName (SourceIDs::SOUND_SAMPLE);
+            expect ((bool) sample.getProperty (SourceIDs::downloadFailed));
+            expect (! (bool) sample.getProperty (SourceIDs::downloadCompleted));
+            expect (! f.sampler.sourceDataLocation.getChildFile (sample.getProperty (SourceIDs::filePath).toString()).existsAsFile());
+        }
+
         beginTest ("Program changes load presets");
         {
             Fixture f;

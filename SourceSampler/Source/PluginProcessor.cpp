@@ -39,7 +39,13 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
     // iOS can kill the standalone app at any time without letting it save its state, so keep the session autosaved
     // (plugin instances like the AUv3 have their state saved by the host)
     if (wrapperType == wrapperType_Standalone)
+    {
         source.enableSessionAutosave(source.sourceDataLocation.getChildFile("last_session.xml"));
+        // The presets folder is in the app group container (shared with the AUv3), which is not visible in the Files
+        // app, so presets copied to the app's Documents folder (visible in the Files app) are imported from there
+        source.enablePresetImportFolder(juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                                            .getChildFile(SOURCE_APP_DIRECTORY_NAME).getChildFile("presets"));
+    }
     #endif
     #if INCLUDE_SEQUENCER
     sequencerCombinedBuffer.ensureSize(512 * 10);

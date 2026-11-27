@@ -45,7 +45,15 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
             item.soundId = child.getProperty (SourceIDs::soundId, -1);
             item.rootNote = child.getProperty (SourceIDs::midiRootNote, -1);
         }
-        progressSum += (float) child.getProperty (SourceIDs::downloadProgress, 0.0f);
+        if ((bool) child.getProperty (SourceIDs::downloadFailed, false))
+        {
+            item.numFailedDownloads += 1;
+            progressSum += 100.0f;
+        }
+        else
+        {
+            progressSum += (float) child.getProperty (SourceIDs::downloadProgress, 0.0f);
+        }
         item.numSamples += 1;
     }
     item.downloadProgress = item.numSamples > 0 ? progressSum / (float) item.numSamples : 0.0f;
@@ -94,6 +102,20 @@ public:
         auto bounds = getLocalBounds().reduced (0, 1).toFloat();
         g.setColour (isSelected ? SourceColours::control.brighter (0.15f) : SourceColours::card);
         g.fillRoundedRectangle (bounds, 4.0f);
+
+        // Download/loading progress, drawn as the background of the row: the filled part grows while the sound's files
+        // are downloaded, then the whole row stays dimly filled while the audio is being decoded and loaded
+        if (! isAllSoundsRow && ! item.loaded && ! item.willBeDeleted)
+        {
+            const float progress = juce::jlimit (0.0f, 1.0f, item.downloadProgress / 100.0f);
+            const bool downloading = progress < 1.0f;
+            juce::Graphics::ScopedSaveState saveState (g);
+            juce::Path clip;
+            clip.addRoundedRectangle (bounds, 4.0f);
+            g.reduceClipRegion (clip);
+            g.setColour (SourceColours::accent.withAlpha (downloading ? 0.28f : 0.16f));
+            g.fillRect (bounds.withWidth (bounds.getWidth() * (downloading ? progress : 1.0f)));
+        }
         if (isSelected)
         {
             g.setColour (SourceColours::accent);
@@ -130,17 +152,16 @@ public:
         details << item.notesDescription;
         if (! item.loaded)
         {
-            // Download/loading progress bar
-            auto bar = content.removeFromRight (70).withSizeKeepingCentre (70, 6).toFloat();
-            g.setColour (SourceColours::control);
-            g.fillRoundedRectangle (bar, 3.0f);
-            g.setColour (SourceColours::accent);
-            g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * juce::jlimit (0.0f, 1.0f, item.downloadProgress / 100.0f)), 3.0f);
-            content.removeFromRight (6);
             if (item.downloadProgress >= 100.0f)
-                details = "loading... " + details;
+                details = "loading...  " + details;
             else
-                details = "downloading... " + details;
+                details = "downloading " + juce::String (juce::roundToInt (item.downloadProgress)) + "%  " + details;
+        }
+        if (item.numFailedDownloads > 0)
+        {
+            details = (item.numSamples > 1 ? juce::String (item.numFailedDownloads) + " sample(s) could not be downloaded  "
+                                            : juce::String ("could not be downloaded  ")) + details;
+            g.setColour (juce::Colour (0xffe07a7a));
         }
         g.drawText (details, content, juce::Justification::centredLeft, true);
     }

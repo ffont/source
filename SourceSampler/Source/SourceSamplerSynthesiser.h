@@ -44,6 +44,9 @@ public:
     
     /** The lock used by the synth while rendering/triggering voices. Hold it when modifying voices from another thread. */
     const juce::CriticalSection& getVoicesLock() const noexcept { return lock; }
+    /** Returns a voice without taking the voices lock (which the audio thread holds while rendering), so the UI never
+        waits for the audio thread. Only call from the message thread: voices are only added/removed there. */
+    juce::SynthesiserVoice* getVoiceFromMessageThread (int index) const noexcept { return voices[index]; }
     
     void setGlobalMidiInChannel (int channel) noexcept { globalMidiInChannel = channel; }
     

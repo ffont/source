@@ -360,8 +360,8 @@ SourceSound::SourceSound (const juce::ValueTree& _state,
 
 SourceSound::~SourceSound ()
 {
+    downloadsCancelFlag->store(true);  // Cancels pending downloads (without waiting for them)
     soundLoaderThread.stopThread(20000);
-    downloadTasks.clear();  // Cancels any pending downloads
 }
 
 void SourceSound::bindState ()
@@ -1024,6 +1024,7 @@ void SourceSound::startLoading()
     allSoundsLoaded = false;
     loaderStateSnapshot = state.createCopy();
     loaderContext = getGlobalContext();
+    loaderFailedDownloads = failedDownloads;
     soundLoaderThread.startThread();
 }
 
@@ -1077,11 +1078,16 @@ void SourceSound::loadSounds(std::function<bool()> shouldStopLoading)
                     setSampleProperty(child, SourceIDs::usesPreview, !locationInDisk.getFullPathName().contains("-original"));
                     setSampleProperty(child, SourceIDs::downloadProgress, 100.0);
                     setSampleProperty(child, SourceIDs::downloadCompleted, true);
+                    setSampleProperty(child, SourceIDs::downloadFailed, false);
+                } else if (loaderFailedDownloads.contains(locationInDisk.getFullPathName())){
+                    // The download already failed: load the sound without this sample (it is retried when the sound is loaded again)
+                    setSampleProperty(child, SourceIDs::downloadFailed, true);
                 } else {
                     // If the sound does not exist, then trigger the download
                     allAlreadyDownloaded = false;
                     setSampleProperty(child, SourceIDs::downloadProgress, 0.0);
                     setSampleProperty(child, SourceIDs::downloadCompleted, false);
+                    setSampleProperty(child, SourceIDs::downloadFailed, false);
                     juce::String downloadURL;
                     juce::String downloadHeaders;
                     if (shouldUseOriginalQualityFile(child, context)){
@@ -1176,20 +1182,28 @@ void SourceSound::loadSounds(std::function<bool()> shouldStopLoading)
 
 void SourceSound::startDownloads(const std::vector<PendingDownload>& downloads)
 {
+    // Message thread. Downloads run in the shared download pool (this never blocks), progress and results are posted
+    // back to the message thread
+    juce::WeakReference<SourceSound> weak = weakThis;
     for (const auto& download: downloads){
-        auto options = juce::URL::DownloadTaskOptions().withListener(this);
-        if (download.extraHeaders.isNotEmpty())
-            options = options.withExtraHeaders(download.extraHeaders);
-        if (SourceHelpers::canUseSharedContainerForDownloads())
-            options = options.withSharedContainer(APP_GROUP_ID);
-        download.location.getParentDirectory().createDirectory();
-        if (auto downloadTask = juce::URL(download.url).downloadToFile(download.location, options)){
-            downloadTasks.push_back(std::move(downloadTask));
-            DBG("Downloading sound to " << download.location.getFullPathName());
-        } else {
-            DBG("Could not start download of " << download.url);
-            downloadFinished(download.location, false);
-        }
+        DownloadPool::Request request { juce::URL(download.url), download.extraHeaders, download.location };
+        downloadPool->download(request, downloadsCancelFlag,
+            [weak](const juce::File& target, juce::int64 downloaded, juce::int64 total){
+                if (total <= 0)
+                    return;
+                const float percentageCompleted = 100.0f * (float) downloaded / (float) total;
+                juce::MessageManager::callAsync([weak, target, percentageCompleted]{
+                    if (auto* sound = weak.get())
+                        sound->downloadProgressUpdate(target, percentageCompleted);
+                });
+            },
+            [weak](const juce::File& target, bool succeeded){
+                juce::MessageManager::callAsync([weak, target, succeeded]{
+                    if (auto* sound = weak.get())
+                        sound->downloadFinished(target, succeeded);
+                });
+            });
+        DBG("Queued download of " << download.location.getFullPathName());
     }
 }
 
@@ -1282,48 +1296,32 @@ void SourceSound::downloadProgressUpdate(juce::File targetFileLocation, float pe
 void SourceSound::downloadFinished(juce::File targetFileLocation, bool taskSucceeded)
 {
     // Message thread
-    bool allAlreadyDownloaded = true;
+    if (!taskSucceeded){
+        DBG("Download failed for " << targetFileLocation.getFullPathName());
+        failedDownloads.addIfNotAlreadyThere(targetFileLocation.getFullPathName());
+    }
+    bool allDownloadsFinished = true;
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
-            // Find the sample that corresponds to this download task and update state
-            // To consider a download as succeeded, check that the the task returned succes
-            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
-            if (taskSucceeded && (targetFileLocation == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
+        if (!child.hasType(SourceIDs::SOUND_SAMPLE))
+            continue;
+        juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
+        if (targetFileLocation == locationInDisk){
+            if (taskSucceeded && fileAlreadyInDisk(locationInDisk)){
                 child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
                 child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
             } else {
-                if (!taskSucceeded && (targetFileLocation == locationInDisk)){
-                    DBG("Download failed for " << locationInDisk.getFullPathName());
-                    targetFileLocation.deleteFile();  // Remove partially downloaded files
-                }
-                if (!child.getProperty(SourceIDs::downloadCompleted, false)){
-                    allAlreadyDownloaded = false;
-                }
+                child.setProperty(SourceIDs::downloadFailed, true, nullptr);
             }
         }
+        // Samples not from Freesound which are not in disk can't be downloaded, so don't wait for them
+        const bool canBeDownloaded = child.getProperty(SourceIDs::soundFromFreesound, false);
+        if (canBeDownloaded && !child.getProperty(SourceIDs::downloadCompleted, false) && !child.getProperty(SourceIDs::downloadFailed, false))
+            allDownloadsFinished = false;
     }
-    if (allAlreadyDownloaded){
-        // If all sounds finished downloading, re-start the loading process which will now decode the downloaded files
-        downloadTasks.clear();
+    if (allDownloadsFinished){
+        // Re-start the loading process, which will now decode the downloaded files (skipping the failed ones)
         startLoading();
     }
 }
 
-void SourceSound::progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength)
-{
-    // Called from the download thread
-    if (totalLength <= 0)
-        return;
-    float percentageCompleted = 100.0f*(float)bytesDownloaded/(float)totalLength;
-    juce::File target = task->getTargetLocation();
-    postToMessageThread([target, percentageCompleted](SourceSound& sound){ sound.downloadProgressUpdate(target, percentageCompleted); });
-}
-
-void SourceSound::finished(juce::URL::DownloadTask *task, bool success)
-{
-    // Called from the download thread
-    juce::File target = task->getTargetLocation();
-    bool succeeded = success && !task->hadError() && (task->statusCode() == 0 || task->statusCode() < 400);
-    postToMessageThread([target, succeeded](SourceSound& sound){ sound.downloadFinished(target, succeeded); });
-}

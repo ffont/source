@@ -12,6 +12,7 @@
 #include <JuceHeader.h>
 #include "helpers_source.h"
 #include "signalsmith-stretch.h"
+#include "DownloadPool.h"
 #include <array>
 
 
@@ -183,7 +184,7 @@ private:
 // or sounds sampled at different pitches.
 
 
-class SourceSound: public juce::URL::DownloadTask::Listener
+class SourceSound
 {
 public:
     SourceSound (const juce::ValueTree& _state,
@@ -276,10 +277,6 @@ public:
     void downloadProgressUpdate(juce::File targetFileLocation, float percentageCompleted);
     void downloadFinished(juce::File targetFileLocation, bool taskSucceeded);
     
-    // DownloadTask::Listener callbacks (called from the download thread, they forward work to the message thread)
-    void progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength) override;
-    void finished(juce::URL::DownloadTask *task, bool success) override;
-    
     juce::Synthesiser* getSampler() const noexcept { return sampler; }
     
     //==============================================================================
@@ -361,14 +358,17 @@ private:
     };
     void loadSounds(std::function<bool()> shouldStopLoading);  // Runs in the loader thread
     void onSamplesLoaded(std::vector<LoadedSample>& loadedSamples);  // Runs in the message thread
-    void startDownloads(const std::vector<PendingDownload>& downloads);  // Runs in the message thread
+    void startDownloads(const std::vector<PendingDownload>& downloads);  // Runs in the message thread (never blocks)
     void postToMessageThread(std::function<void(SourceSound&)> callback);
     juce::ValueTree loaderStateSnapshot;  // Copy of the state used by the loader thread (so it never reads the live state)
     GlobalContextStruct loaderContext;  // Copy of the global context used by the loader thread
+    juce::StringArray failedDownloads;  // Files whose download failed (not retried until the sound is loaded again)
+    juce::StringArray loaderFailedDownloads;  // Copy of failedDownloads used by the loader thread
     
     // Other
     juce::Synthesiser* sampler = nullptr;
-    std::vector<std::unique_ptr<juce::URL::DownloadTask>> downloadTasks;
+    juce::SharedResourcePointer<DownloadPool> downloadPool;
+    DownloadPool::CancelFlag downloadsCancelFlag = DownloadPool::makeCancelFlag();
     double scheduledForDeletionTime = 0.0;
     juce::CriticalSection samplerSoundCreateDeleteLock;
     juce::CriticalSection midiMappingCreateDeleteLock;

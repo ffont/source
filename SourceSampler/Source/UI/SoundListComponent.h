@@ -23,7 +23,8 @@ struct SoundListItem
     juce::String username;
     juce::String license;
     int soundId = -1;
-    float downloadProgress = 0.0f;  // 0-100
+    float downloadProgress = 0.0f;  // 0-100 (failed downloads count as finished)
+    int numFailedDownloads = 0;
     bool loaded = false;
     bool willBeDeleted = false;
     int numSamples = 0;

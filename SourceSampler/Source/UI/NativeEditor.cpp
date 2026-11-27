@@ -297,6 +297,14 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
             if (safe != nullptr)
                 safe->filesDropped ({ debugFile }, 0, 0);
         });
+    //  SOURCE_DEBUG_LOAD_PRESET=<index>    loads that preset when the editor opens
+    const auto debugPreset = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_LOAD_PRESET", {});
+    if (debugPreset.isNotEmpty())
+        juce::Timer::callAfterDelay (500, [safe = juce::Component::SafePointer<SourceNativeEditor> (this), debugPreset]
+        {
+            if (safe != nullptr)
+                safe->sendAction (ACTION_LOAD_PRESET, { debugPreset });
+        });
     const auto snapshotPath = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT", {});
     if (snapshotPath.isNotEmpty())
         juce::Timer::callAfterDelay (3500, [safe = juce::Component::SafePointer<SourceNativeEditor> (this), snapshotPath]
