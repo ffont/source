@@ -24,6 +24,8 @@ option(SOURCE_WEB_UI "Use the legacy browser-based (WebBrowserComponent) editor 
 option(SOURCE_INCLUDE_SEQUENCER "Build the SourceShepherd variant that embeds the Shepherd sequencer" OFF)
 option(SOURCE_BUILD_TESTS "Build the unit test runner" ON)
 option(SOURCE_BUILD_AUV3 "Also build the AUv3 format (needs code signing / app extension setup)" OFF)
+option(SOURCE_IOS_LINK "Ableton Link and Link Audio in the iPad standalone app" ON)
+option(SOURCE_IOS_MULTICAST_ENTITLEMENT "Add the multicast entitlement (needed for Link on iPadOS 17+, must be approved by Apple)" OFF)
 set(SOURCE_IOS_APP_GROUP "group.ffont.source" CACHE STRING
     "iOS app group shared by the standalone app and the AUv3 (holds sounds and presets). Must belong to your development team")
 set(SOURCE_FREESOUND_API_KEY "" CACHE STRING
@@ -157,6 +159,8 @@ juce_add_plugin(SourceSampler
     PLIST_TO_MERGE [[
 <plist>
 <dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>SOURCE uses the local network for Ableton Link (sharing tempo and sending audio to other devices)</string>
   <key>NSAppTransportSecurity</key>
   <dict>
     <key>NSAllowsLocalNetworking</key>
@@ -246,6 +250,31 @@ target_link_libraries(SourceSampler
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+# Ableton Link and Link Audio in the iPad standalone app (open source Link, GPLv2+: not for App Store builds)
+if(SOURCE_IOS AND SOURCE_IOS_LINK)
+    set(SOURCE_CXX_STANDARD_BEFORE_LINK ${CMAKE_CXX_STANDARD})
+    include(${SOURCE_3RDPARTY}/link/AbletonLinkConfig.cmake)
+    set(CMAKE_CXX_STANDARD ${SOURCE_CXX_STANDARD_BEFORE_LINK})  # AbletonLinkConfig.cmake sets it to 17
+    target_link_libraries(SourceSampler PRIVATE Ableton::Link)
+    target_sources(SourceSampler PRIVATE Source/SourceLink.cpp)
+    target_compile_definitions(SourceSampler PUBLIC SOURCE_LINK=1)
+
+    # Since iPadOS 17, discovering Link peers needs the multicast entitlement, which Apple has to approve for the
+    # development team. Once approved, configure with -DSOURCE_IOS_MULTICAST_ENTITLEMENT=ON (build_ios.sh: MULTICAST=1).
+    if(SOURCE_IOS_MULTICAST_ENTITLEMENT)
+        set(SOURCE_STANDALONE_ENTITLEMENTS "${CMAKE_CURRENT_BINARY_DIR}/SourceSampler_Standalone_Link.entitlements")
+        set(SOURCE_APP_GROUPS_ENTITLEMENT "")
+        if(SOURCE_IOS_APP_GROUP)
+            set(SOURCE_APP_GROUPS_ENTITLEMENT "<key>com.apple.security.application-groups</key><array><string>${SOURCE_IOS_APP_GROUP}</string></array>")
+        endif()
+        file(WRITE ${SOURCE_STANDALONE_ENTITLEMENTS} "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>${SOURCE_APP_GROUPS_ENTITLEMENT}<key>com.apple.developer.networking.multicast</key><true/></dict></plist>
+")
+        set_target_properties(SourceSampler_Standalone PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${SOURCE_STANDALONE_ENTITLEMENTS})
+    endif()
+endif()
 
 # JUCE uses libcurl for web requests on Linux (Freesound searches and downloads)
 if(UNIX AND NOT APPLE)

@@ -211,6 +211,9 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
         settingsPanel = std::make_unique<SettingsPanel> (holder->deviceManager, audioProcessor.getTotalNumOutputChannels(),
                                                          [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->saveAudioDeviceState(); });
         content.addChildComponent (*settingsPanel);
+       #if SOURCE_LINK
+        settingsPanel->setLink (audioProcessor.link.get());
+       #endif
     }
    #endif
 

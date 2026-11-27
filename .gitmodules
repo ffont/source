@@ -25,3 +25,6 @@
 [submodule "SourceSampler/3rdParty/signalsmith-stretch"]
 	path = SourceSampler/3rdParty/signalsmith-stretch
 	url = https://github.com/Signalsmith-Audio/signalsmith-stretch
+[submodule "SourceSampler/3rdParty/link"]
+	path = SourceSampler/3rdParty/link
+	url = https://github.com/Ableton/link.git
