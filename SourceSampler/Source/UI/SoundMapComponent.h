@@ -36,6 +36,9 @@ public:
     void resetView();
 
     std::function<void (int index)> onSoundClicked;
+    /** Called when a sound should be auditioned: hovering it with Cmd pressed (desktop) or dragging a finger over it
+        (touch screens, where the map is moved with two fingers). */
+    std::function<void (int index)> onSoundAuditioned;
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -73,6 +76,8 @@ private:
     std::map<int, juce::Point<float>> pointers;
     float totalMovement = 0.0f;
     bool gestureHadMultiplePointers = false;
+    int lastAuditionedIndex = -1;
+    void audition (juce::Point<float> position, bool isTouch);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundMapComponent)
 };

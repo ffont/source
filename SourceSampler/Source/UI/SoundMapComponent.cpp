@@ -202,9 +202,9 @@ void SoundMapComponent::paint (juce::Graphics& g)
     g.setColour (SourceColours::dimText.withAlpha (0.7f));
     g.setFont (juce::Font (juce::FontOptions (11.0f)));
    #if JUCE_IOS || JUCE_ANDROID
-    const juce::String hint = "Drag to move, pinch to zoom, two fingers to rotate, double tap to reset";
+    const juce::String hint = "Drag a finger to listen, two fingers to move, zoom and rotate, double tap to reset";
    #else
-    const juce::String hint = "Drag to move, scroll or pinch to zoom, Alt+drag to rotate, double-click to reset";
+    const juce::String hint = "Drag to move, scroll or pinch to zoom, Alt+drag to rotate, Cmd+hover to listen, double-click to reset";
    #endif
     g.drawText (hint, getLocalBounds().reduced (8, 4).removeFromBottom (14), juce::Justification::bottomLeft);
 }
@@ -234,6 +234,19 @@ void SoundMapComponent::applyGesture (juce::Point<float> fromCentre, juce::Point
                                                   .translated (toCentre));
     userMovedView = true;
     repaint();
+}
+
+void SoundMapComponent::audition (juce::Point<float> position, bool isTouch)
+{
+    const int index = getSoundAt (position, getDotRadius() + (isTouch ? 10.0f : 3.0f));
+    if (index != hoverIndex)
+    {
+        hoverIndex = index;
+        repaint();
+    }
+    if (index >= 0 && index != lastAuditionedIndex && onSoundAuditioned != nullptr)
+        onSoundAuditioned (index);
+    lastAuditionedIndex = index;
 }
 
 void SoundMapComponent::mouseDown (const juce::MouseEvent& e)
@@ -277,6 +290,11 @@ void SoundMapComponent::mouseDrag (const juce::MouseEvent& e)
             applyGesture ((previous + other) * 0.5f, (current + other) * 0.5f, scale, rotation);
         }
     }
+    else if (e.source.isTouch())
+    {
+        // One finger plays the sounds it goes over (the map is moved with two fingers)
+        audition (current, true);
+    }
     else if (e.mods.isAltDown() || e.mods.isPopupMenu())
     {
         // Rotate around the centre of the component
@@ -295,6 +313,7 @@ void SoundMapComponent::mouseDrag (const juce::MouseEvent& e)
 void SoundMapComponent::mouseUp (const juce::MouseEvent& e)
 {
     pointers.erase (e.source.getIndex());
+    lastAuditionedIndex = -1;
     if (pointers.empty() && ! gestureHadMultiplePointers && totalMovement < 6.0f && ! e.mods.isPopupMenu())
     {
         const int index = getSoundAt (e.position, getDotRadius() + (e.source.isTouch() ? 12.0f : 5.0f));
@@ -324,6 +343,14 @@ void SoundMapComponent::mouseMagnify (const juce::MouseEvent& e, float scaleFact
 
 void SoundMapComponent::mouseMove (const juce::MouseEvent& e)
 {
+    if (e.mods.isCommandDown())
+    {
+        // Cmd + hover plays the sounds under the pointer
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+        audition (e.position, false);
+        return;
+    }
+    lastAuditionedIndex = -1;
     const int index = getSoundAt (e.position, getDotRadius() + 3.0f);
     if (index != hoverIndex)
     {

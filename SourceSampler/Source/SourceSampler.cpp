@@ -225,6 +225,9 @@ void SourceSampler::prepareToPlay (double _sampleRate, int _samplesPerBlock)
     
     // Prepare preview player
     transportSource.prepareToPlay (blockSize, sampleRate);
+    for (auto& preview : hoverPreviews)
+        preview.transport.prepareToPlay (blockSize, sampleRate);
+    hoverPreviewBuffer.setSize (juce::jmax (2, getTotalNumOutputChannels()), juce::jmax (blockSize, 4096));
     outputGain.reset (sampleRate, 0.02);
     outputGain.setCurrentAndTargetValue (outputMuted.load() ? 0.0f : 1.0f);
     
@@ -256,6 +259,8 @@ void SourceSampler::releaseResources()
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
     transportSource.releaseResources();
+    for (auto& preview : hoverPreviews)
+        preview.transport.releaseResources();
 }
 
 void SourceSampler::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
@@ -287,6 +292,19 @@ void SourceSampler::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
     
     // Render preview player into buffer
     transportSource.getNextAudioBlock(juce::AudioSourceChannelInfo(buffer));
+    
+    // Add the polyphonic previews (the scratch buffer is only reallocated for unusually big blocks)
+    for (auto& preview : hoverPreviews){
+        if (!preview.transport.isPlaying())
+            continue;
+        if (hoverPreviewBuffer.getNumSamples() < buffer.getNumSamples() || hoverPreviewBuffer.getNumChannels() < buffer.getNumChannels())
+            hoverPreviewBuffer.setSize(juce::jmax(buffer.getNumChannels(), hoverPreviewBuffer.getNumChannels()), buffer.getNumSamples(), false, false, true);
+        juce::AudioSourceChannelInfo info (&hoverPreviewBuffer, 0, buffer.getNumSamples());
+        info.clearActiveBufferRegion();
+        preview.transport.getNextAudioBlock(info);
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            buffer.addFrom(ch, 0, hoverPreviewBuffer, ch, 0, buffer.getNumSamples());
+    }
     
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
@@ -983,12 +1001,17 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         // Trigger query in a separate thread so that we don't block UI
         if (!queryMakerThread.isThreadRunning()){
             queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
+            queryExtraFilter = parameters[5];  // Optional extra filter (e.g. "brightness:[0 TO 33.33]")
             isQuerying = true;
             state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
             queryMakerThread.startThread();
         } else {
             DBG("Skip query as already querying...");
         }
+    }
+    else if (actionName == ACTION_PLAY_HOVER_PREVIEW){
+        if (parameters[0].isNotEmpty())
+            playHoverPreview(parameters[0]);
     }
     else if (actionName == ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY){
         // Parameters: number of sounds, min length, max length, note layout type
@@ -1001,7 +1024,9 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
             noteLayoutType = parameters[3].getIntValue();
             isQuerying = true;
             state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
-            const juce::String filter = "duration:[" + juce::String(minLength) + " TO " + (maxLength > 0.0f ? juce::String(maxLength) : juce::String("*")) + "]";
+            juce::String filter = "duration:[" + juce::String(minLength) + " TO " + (maxLength > 0.0f ? juce::String(maxLength) : juce::String("*")) + "]";
+            if (parameters[4].isNotEmpty())
+                filter += " " + parameters[4];  // Optional extra filter (e.g. acoustic properties)
             juce::WeakReference<SourceSampler> weak = weakThis;
             freesoundSearch.findRandomSounds(numSounds, filter, [weak](std::vector<FreesoundSearchResult> found, int numMatching, juce::String error){
                 auto* sampler = weak.get();
@@ -1037,6 +1062,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         // Trigger query in a separate thread so that we don't block UI
         if (!queryMakerThread.isThreadRunning()){
             queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, 1, minSoundLength, maxSoundLength);
+            queryExtraFilter = {};
             isQuerying = true;
             state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
             queryMakerThread.startThread();
@@ -1373,6 +1399,8 @@ void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrRepla
     } else {
         DBG("Querying new sounds for: " + textQuery);
         filter = "duration:[" + (juce::String)minSoundLength + " TO " + (juce::String)maxSoundLength + "]";
+        if (queryExtraFilter.isNotEmpty())
+            filter += " " + queryExtraFilter;
         query = textQuery;
         pageSize = 100;
     }
@@ -1812,6 +1840,65 @@ void SourceSampler::previewFile(const juce::String& path)
     transportSource.start();
 }
 
+void SourceSampler::playHoverPreview(const juce::String& path)
+{
+    // Message thread
+    if (!path.startsWith("http")){
+        startHoverPreview(juce::File(path));
+        return;
+    }
+    juce::StringArray tokens;
+    tokens.addTokens (path, "/", "");
+    juce::File location = tmpFilesLocation.getChildFile("preview-" + tokens[tokens.size() - 1]);
+    if (location.existsAsFile()){
+        startHoverPreview(location);
+        return;
+    }
+    # if !ELK_BUILD
+    // Download it (shared with the other previews' cache) and play it only if it arrives soon enough
+    const double requestTime = juce::Time::getMillisecondCounterHiRes();
+    juce::WeakReference<SourceSampler> weak = weakThis;
+    previewDownloadPool->download({ juce::URL(path), {}, location }, hoverPreviewDownloadsCancelFlag, nullptr,
+        [weak, requestTime](const juce::File& target, bool ok){
+            juce::MessageManager::callAsync([weak, requestTime, target, ok]{
+                if (auto* sampler = weak.get())
+                    if (ok && juce::Time::getMillisecondCounterHiRes() - requestTime < maxHoverPreviewDelayMs)
+                        sampler->startHoverPreview(target);
+            });
+        });
+    # endif
+}
+
+void SourceSampler::startHoverPreview(const juce::File& file)
+{
+    std::unique_ptr<juce::AudioFormatReader> reader (file.existsAsFile() ? audioFormatManager.createReaderFor(file) : nullptr);
+    if (reader == nullptr){
+        if (file.isAChildOf(tmpFilesLocation))
+            file.deleteFile();  // Don't keep broken downloads
+        return;
+    }
+    // Use a free voice, or the oldest one
+    HoverPreview* voice = nullptr;
+    for (auto& preview : hoverPreviews)
+        if (!preview.transport.isPlaying() && (voice == nullptr || preview.startTime < voice->startTime))
+            voice = &preview;
+    if (voice == nullptr){
+        voice = &hoverPreviews[0];
+        for (auto& preview : hoverPreviews)
+            if (preview.startTime < voice->startTime)
+                voice = &preview;
+    }
+    const double fileSampleRate = reader->sampleRate;
+    auto newSource = std::make_unique<juce::AudioFormatReaderSource>(reader.release(), true);
+    voice->transport.stop();
+    voice->transport.setSource(newSource.get(), 0, nullptr, fileSampleRate);
+    voice->reader = std::move(newSource);
+    voice->transport.setGain(0.6f);  // Many previews can play at the same time
+    voice->transport.setPosition(0.0);
+    voice->transport.start();
+    voice->startTime = juce::Time::getMillisecondCounterHiRes();
+}
+
 SourceSampler::PreviewState SourceSampler::getPreviewState() const
 {
     if (transportSource.isPlaying()) return PreviewState::playing;
@@ -1821,6 +1908,8 @@ SourceSampler::PreviewState SourceSampler::getPreviewState() const
 }
 
 void SourceSampler::stopPreviewingFile(){
+    for (auto& preview : hoverPreviews)
+        preview.transport.stop();
     lastRequestedPreviewPath = {};
     previewLoading = false;
     previewDownloadPool->cancel(previewDownloadCancelFlag);

@@ -49,6 +49,16 @@ FreesoundSearchResult FreesoundSearchResult::fromJson (const juce::var& json)
 
 
 //==============================================================================
+juce::String FreesoundSearchOptions::getAcousticFilter() const
+{
+    static const std::array<const char*, 3> ranges { "[0 TO 33.33]", "[33.33 TO 66.67]", "[66.67 TO 100]" };
+    juce::StringArray filters;
+    for (size_t i = 0; i < acousticLevels.size(); ++i)
+        if (acousticLevels[i] != Level::any)
+            filters.add (getAcousticPropertyNames()[(int) i] + ":" + ranges[(size_t) acousticLevels[i]]);
+    return filters.joinIntoString (" ");
+}
+
 juce::String FreesoundSearchOptions::getFilter() const
 {
     juce::StringArray filters;
@@ -61,10 +71,8 @@ juce::String FreesoundSearchOptions::getFilter() const
     }
     if (minDuration > 0.0f || maxDuration > 0.0f)
         filters.add ("duration:[" + juce::String (minDuration) + " TO " + (maxDuration > 0.0f ? juce::String (maxDuration) : juce::String ("*")) + "]");
-    static const std::array<const char*, 3> ranges { "[0 TO 33.33]", "[33.33 TO 66.67]", "[66.67 TO 100]" };
-    for (size_t i = 0; i < acousticLevels.size(); ++i)
-        if (acousticLevels[i] != Level::any)
-            filters.add (getAcousticPropertyNames()[(int) i] + ":" + ranges[(size_t) acousticLevels[i]]);
+    if (getAcousticFilter().isNotEmpty())
+        filters.add (getAcousticFilter());
     return filters.joinIntoString (" ");
 }
 

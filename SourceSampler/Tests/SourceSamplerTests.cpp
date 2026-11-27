@@ -510,6 +510,23 @@ public:
             expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.01f);
         }
 
+        beginTest ("Hover previews play polyphonically (up to 10)");
+        {
+            Fixture f;
+            juce::AudioBuffer<float> buffer (2, blockSize);
+            juce::MidiBuffer midi;
+            for (int i = 0; i < 12; ++i)
+            {
+                auto file = TestUtils::writeSineWav (f.tmp.folder.getChildFile ("hover" + juce::String (i) + ".wav"), 220.0 + 20.0 * i, 1.0, sampleRate);
+                f.send (ACTION_PLAY_HOVER_PREVIEW, { file.getFullPathName() });
+                expectEquals (f.sampler.getNumHoverPreviewsPlaying(), juce::jmin (i + 1, 10));
+            }
+            f.sampler.processBlock (buffer, midi);
+            expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.1f);
+            f.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { "" });  // Stopping previews stops these too
+            expectEquals (f.sampler.getNumHoverPreviewsPlaying(), 0);
+        }
+
         beginTest ("Program changes load presets");
         {
             Fixture f;

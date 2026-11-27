@@ -19,6 +19,7 @@
 #include "SoundEditorComponent.h"
 #include "FxPanel.h"
 #include "SearchPanel.h"
+#include "AcousticFilterComponent.h"
 
 
 /** Shows the RMS level of each output channel. */
@@ -120,7 +121,7 @@ private:
 
     // Header
     juce::ImageComponent titleImage, logoImage;
-    juce::Label statusLabel;  // Status of the "Get new sounds" queries
+    LoadingIndicator queryLoadingIndicator;  // Shown while a "Get new sounds" query runs
     juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" };
     Tab currentTab = Tab::general;
 
@@ -142,11 +143,14 @@ private:
     // Get new sounds
     CardComponent querySoundsCard { "Get new sounds" };
     juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel;
+    juce::OwnedArray<AcousticFilterComponent> queryAcousticFilters;
+    juce::String getQueryAcousticFilter() const;
+    int getQueryCardHeight() const;
     juce::TextEditor queryEditor;
     juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider;
     juce::ComboBox noteLayoutCombo;
-    juce::TextButton replaceAllButton { "Search and replace all sounds" };
-    juce::TextButton replaceRandomlyButton { "Search and replace all sounds randomly" };
+    juce::TextButton replaceAllButton { "Replace all with query" };
+    juce::TextButton replaceRandomlyButton { "Replace all randomly" };
 
     // Output meters (in the header)
     LevelMetersComponent levelMeters;

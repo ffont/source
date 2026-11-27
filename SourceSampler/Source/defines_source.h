@@ -129,7 +129,8 @@
 #define ACTION_ADD_NEW_SOUNDS_FROM_QUERY "/add_sounds_from_query"
 #define ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY "/replace_sounds_from_query"
 #define ACTION_REPLACE_SOUND_FROM_QUERY "/replace_sound_from_query"
-#define ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY "/replace_sounds_random"  // numSounds;minLength;maxLength;noteLayoutType
+#define ACTION_PLAY_HOVER_PREVIEW "/play_hover_preview"  // path or URL: plays a preview polyphonically (e.g. hovering sounds in the map)
+#define ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY "/replace_sounds_random"  // numSounds;minLength;maxLength;noteLayoutType[;extraFilter]
 
 // Sound actions
 #define ACTION_ADD_SOUND "/add_sound"

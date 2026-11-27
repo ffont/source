@@ -133,6 +133,45 @@ private:
 };
 
 
+/** Spinning arc shown while something is loading (visible only while active). */
+class LoadingIndicator : public juce::Component,
+                         private juce::Timer
+{
+public:
+    LoadingIndicator() { setInterceptsMouseClicks (false, false); }
+
+    void setActive (bool shouldBeActive)
+    {
+        if (shouldBeActive == isTimerRunning())
+            return;
+        setVisible (shouldBeActive);
+        if (shouldBeActive)
+            startTimerHz (30);
+        else
+            stopTimer();
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        const auto bounds = getLocalBounds().toFloat().reduced (2.0f);
+        const float size = juce::jmin (bounds.getWidth(), bounds.getHeight());
+        const auto centre = bounds.getCentre();
+        juce::Path arc;
+        arc.addCentredArc (centre.x, centre.y, size * 0.5f, size * 0.5f, angle, 0.0f, juce::MathConstants<float>::pi * 1.4f, true);
+        g.setColour (SourceColours::accent);
+        g.strokePath (arc, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+private:
+    void timerCallback() override
+    {
+        angle += 0.25f;
+        repaint();
+    }
+    float angle = 0.0f;
+};
+
+
 /** Small button that draws an icon (play, stop, remove) instead of text. */
 class IconButton : public juce::Button
 {
