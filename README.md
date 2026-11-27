@@ -144,7 +144,7 @@ Note that to get **MIDI input** working you'll need to use a USB MIDI controller
 
 ### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers
 
-SOURCE can also run as a standalone app or as an audio plugin in desktop/laptop computers: **AU** and **VST3** on macOS, and **VST3** and **LV2** on Linux. It has its own interface, organised in three tabs:
+SOURCE can also run as a standalone app or as an audio plugin in desktop/laptop computers: **AU** and **VST3** on macOS, **VST3** and **LV2** on Linux, and **VST3** on Windows. It has its own interface, organised in three tabs:
 
 **General**: presets (128 slots), getting new sounds from Freesound (by query or randomly, with license, duration and acoustic property filters), the list of sounds of the preset (replace any of them with a similar sound with one click) and the sound editor with all the sound parameters.
 
@@ -202,13 +202,22 @@ Unzip the files you need and copy them to these locations:
 * **VST3**: `SourceSampler.vst3` to `~/.vst3` (or `/usr/lib/vst3`).
 * **LV2**: `SourceSampler.lv2` to `~/.lv2` (or `/usr/lib/lv2`).
 
+**Windows**
+
+The Windows builds (`SOURCE-<version>-windows-x64-*.zip`) run on 64-bit Windows 10 and 11. Unzip the files you need and copy them to these locations:
+
+* **Standalone app**: `SourceSampler.exe` anywhere (e.g. `C:\Program Files\SOURCE`), and run it. Select the audio device in the *Options* menu.
+* **VST3**: `SourceSampler.vst3` to `C:\Program Files\Common Files\VST3`.
+
+The builds are not signed, so Windows SmartScreen may show a warning the first time you open the app: click *More info* and then *Run anyway*. Then restart your DAW (or rescan plugins) so that it finds SOURCE.
+
 **iPad**
 
 SOURCE also runs on iPad, as a standalone app and as an AUv3 plugin for hosts like AUM or Cubasis, but it is not distributed in the App Store: it has to be built and installed from Xcode (see [building SOURCE for iPad](DEVELOPERS.md#build-for-ipad-iosipados)).
 
 **Building from source**
 
-See the [instructions for developers](DEVELOPERS.md) to build SOURCE yourself (macOS, Linux and iPad).
+See the [instructions for developers](DEVELOPERS.md) to build SOURCE yourself (macOS, Linux, Windows and iPad).
 
 
 # Instructions for developers

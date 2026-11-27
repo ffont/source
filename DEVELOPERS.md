@@ -62,11 +62,20 @@ sudo apt-get install $(cat linux/dependencies.txt)
 CC=gcc-12 CXX=g++-12 ./linux/build_linux.sh
 ```
 
+### Build for Windows
+
+The CMake project builds the standalone app and the VST3 plugin on Windows (x64) with Visual Studio 2022 (C++ workload). `windows/build_windows.sh` (run it in Git Bash) builds them (Release), runs the tests and packages each format in a zip file in `dist/`:
+
+```
+cd SourceSampler
+./windows/build_windows.sh
+```
+
 ### Make a release
 
-`make_release.sh` builds universal (Apple Silicon and Intel) Release versions of the macOS standalone app, Audio Unit and VST3 plugin (running the tests), packages each in a zip file and creates a GitHub release (tag `v<version>`, by default the version in `CMakeLists.txt`) with them, using the GitHub CLI (`gh`). Publishing the release starts the "Linux release builds" GitHub Actions workflow (`.github/workflows/linux-release.yml`), which builds the Linux standalone app, VST3 and LV2 plugins for x86_64 and arm64 and attaches them to the release; the script waits for it. The working tree must be clean and the current commit pushed. Builds are ad-hoc signed, not notarized.
+`make_release.sh` builds universal (Apple Silicon and Intel) Release versions of the macOS standalone app, Audio Unit and VST3 plugin (running the tests), packages each in a zip file and creates a GitHub release (tag `v<version>`, by default the version in `CMakeLists.txt`) with them, using the GitHub CLI (`gh`). Publishing the release starts the "Linux and Windows release builds" GitHub Actions workflow (`.github/workflows/linux-release.yml`), which builds the Linux standalone app, VST3 and LV2 plugins for x86_64 and arm64 and the Windows standalone app and VST3 plugin for x64, and attaches them to the release; the script waits for it. The working tree must be clean and the current commit pushed. Builds are ad-hoc signed, not notarized.
 
-The Linux builds get the Freesound API key from the `FREESOUND_API_KEY` repository secret (set it once with `gh secret set FREESOUND_API_KEY`).
+The Linux and Windows builds get the Freesound API key from the `FREESOUND_API_KEY` repository secret (set it once with `gh secret set FREESOUND_API_KEY`).
 
 ```
 cd SourceSampler
@@ -75,7 +84,7 @@ cd SourceSampler
 ./make_release.sh 1.0.1 --notes-file notes.md --prerelease
 ```
 
-The workflow can also be run manually from GitHub (Actions tab) for an existing tag, or with an empty tag to only build.
+The workflow can also be run manually (Actions tab, or `gh workflow run linux-release.yml --ref <branch> -f tag=<tag> -f platforms=windows`): it builds the selected branch and, if a tag is given, attaches the builds to that release (e.g. to add a platform to an existing release).
 
 ### Build for iPad (iOS/iPadOS)
 
