@@ -52,16 +52,30 @@ Threading notes for developers: the sampler state (`SourceSampler::state` ValueT
 
 In debug builds, setting `SOURCE_DEBUG_ADD_FILE=<audio file>` loads a local file as a sound when the editor opens, and `SOURCE_DEBUG_SNAPSHOT=<png>` renders the editor to a PNG (handy for checking UI changes without screen access).
 
-### Make a release (macOS)
+### Build for Linux
 
-`make_release.sh` builds universal (Apple Silicon and Intel) Release versions of the standalone app, the Audio Unit and the VST3 plugin (running the tests), packages each in a zip file and creates a GitHub release (tag `v<version>`, by default the version in `CMakeLists.txt`) with them, using the GitHub CLI (`gh`). The working tree must be clean and the current commit pushed. Builds are ad-hoc signed, not notarized.
+The CMake project builds the standalone app (ALSA and JACK), VST3 and LV2 plugins on Linux. The packages needed are listed in `SourceSampler/linux/dependencies.txt` (Ubuntu names). `linux/build_linux.sh` builds them (Release), runs the tests and packages each format in a zip file in `dist/`. On a Mac, `linux/build_in_docker.sh` does the same in an Ubuntu 22.04 container (Docker or OrbStack; `PLATFORM=linux/amd64` builds for x86_64).
 
 ```
 cd SourceSampler
-./make_release.sh --dry-run                # build and package only (files in dist/)
-./make_release.sh --prerelease             # release the version in CMakeLists.txt
-./make_release.sh 1.0.0 --notes-file notes.md --draft
+sudo apt-get install $(cat linux/dependencies.txt)
+CC=gcc-12 CXX=g++-12 ./linux/build_linux.sh
 ```
+
+### Make a release
+
+`make_release.sh` builds universal (Apple Silicon and Intel) Release versions of the macOS standalone app, Audio Unit and VST3 plugin (running the tests), packages each in a zip file and creates a GitHub release (tag `v<version>`, by default the version in `CMakeLists.txt`) with them, using the GitHub CLI (`gh`). Publishing the release starts the "Linux release builds" GitHub Actions workflow (`.github/workflows/linux-release.yml`), which builds the Linux standalone app, VST3 and LV2 plugins for x86_64 and arm64 and attaches them to the release; the script waits for it. The working tree must be clean and the current commit pushed. Builds are ad-hoc signed, not notarized.
+
+The Linux builds get the Freesound API key from the `FREESOUND_API_KEY` repository secret (set it once with `gh secret set FREESOUND_API_KEY`).
+
+```
+cd SourceSampler
+./make_release.sh --dry-run                # build and package the macOS version only (files in dist/)
+./make_release.sh                          # release the version in CMakeLists.txt
+./make_release.sh 1.0.1 --notes-file notes.md --prerelease
+```
+
+The workflow can also be run manually from GitHub (Actions tab) for an existing tag, or with an empty tag to only build.
 
 ### Build for iPad (iOS/iPadOS)
 

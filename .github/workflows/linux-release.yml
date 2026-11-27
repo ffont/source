@@ -1,0 +1,75 @@
+# Builds the Linux version of SourceSampler (standalone app, VST3 and LV2) for x86_64 and arm64 and attaches the zip
+# files to the GitHub release. Runs when a release is published (make_release.sh creates the release with the macOS
+# builds), and can be run manually for an existing release tag (or just to build, with an empty tag).
+#
+# The Freesound API key is read from the FREESOUND_API_KEY repository secret (without it, searching Freesound won't
+# work in the Linux builds).
+
+name: Linux release builds
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach the builds to (empty: build the selected branch without releasing)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+
+      - name: Check out the submodules needed by the build
+        run: git submodule update --init --depth 1 SourceSampler/3rdParty/JUCE SourceSampler/3rdParty/signalsmith-stretch
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq $(cat SourceSampler/linux/dependencies.txt)
+
+      - name: Build, test and package
+        working-directory: SourceSampler
+        env:
+          CC: gcc-12
+          CXX: g++-12
+          FREESOUND_API_KEY: ${{ secrets.FREESOUND_API_KEY }}
+        run: |
+          if [ -n "$FREESOUND_API_KEY" ]; then
+            export CMAKE_ARGS="-DSOURCE_FREESOUND_API_KEY=$FREESOUND_API_KEY"
+          else
+            echo "::warning::The FREESOUND_API_KEY secret is not set: searching Freesound won't work in this build"
+          fi
+          ./linux/build_linux.sh
+
+      - name: Keep the builds as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOURCE-linux-${{ matrix.arch }}
+          path: SourceSampler/dist/*
+
+      - name: Attach the builds to the release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" SourceSampler/dist/* --clobber

@@ -75,7 +75,7 @@ private:
 //==============================================================================
 SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, std::function<juce::ValueTree()> presetGetter)
     : search (s), actions (std::move (actionSender)), getPreset (std::move (presetGetter)), searchCard ("Search Freesound"),
-      selectedCard ({})
+      selectedCard (juce::String())
 {
     const auto& lastOptions = search.getLastOptions();
 
