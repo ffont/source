@@ -248,6 +248,135 @@ public:
 };
 
 
+
+class ModulatorHelpersTests : public juce::UnitTest
+{
+public:
+    ModulatorHelpersTests() : juce::UnitTest ("Modulator helpers", "Source") {}
+
+    void runTest() override
+    {
+        using namespace SourceHelpers;
+
+        beginTest ("Modulator type names round trip, invalid names are rejected");
+        expect (modulatorTypeFromName (MODULATOR_TYPE_LFO) == ModulatorType::lfo);
+        expect (modulatorTypeFromName (MODULATOR_TYPE_ADSR) == ModulatorType::adsr);
+        expect (modulatorTypeFromName ("nope") == ModulatorType::numTypes);
+        expectEquals (getLfoWaveformNames().size(), (int) numLfoWaveforms);
+
+        beginTest ("LFO waveforms stay in 0..1 and start at their minimum (except square and saw down)");
+        for (int waveform = 0; waveform < numLfoWaveforms; ++waveform)
+            for (double phase = 0.0; phase < 2.0; phase += 0.01)
+            {
+                const float v = lfoSignal (waveform, phase, 0.3f);
+                expect (v >= 0.0f && v <= 1.0f);
+            }
+        expectWithinAbsoluteError (lfoSignal (lfoSine, 0.0, 0.0f), 0.0f, 1.0e-6f);
+        expectWithinAbsoluteError (lfoSignal (lfoSine, 0.5, 0.0f), 1.0f, 1.0e-6f);
+        expectWithinAbsoluteError (lfoSignal (lfoTriangle, 0.25, 0.0f), 0.5f, 1.0e-6f);
+        expectWithinAbsoluteError (lfoSignal (lfoSawUp, 0.75, 0.0f), 0.75f, 1.0e-6f);
+        expectWithinAbsoluteError (lfoSignal (lfoSawDown, 0.75, 0.0f), 0.25f, 1.0e-6f);
+        expectEquals (lfoSignal (lfoSquare, 0.25, 0.0f), 1.0f);
+        expectEquals (lfoSignal (lfoSquare, 0.75, 0.0f), 0.0f);
+        expectEquals (lfoSignal (lfoRandom, 0.6, 0.3f), 0.3f);
+
+        beginTest ("Envelope: attack, decay, sustain and release");
+        {
+            ModulatorEnvelope env;
+            expectEquals (env.advance (0.1f, 0.2f, 0.2f, 0.5f, 0.4f), 0.0f, "Idle envelopes output 0");
+            env.noteOn();
+            expectWithinAbsoluteError (env.advance (0.1f, 0.2f, 0.2f, 0.5f, 0.4f), 0.5f, 1.0e-4f);   // Half attack
+            expectWithinAbsoluteError (env.advance (0.2f, 0.2f, 0.2f, 0.5f, 0.4f), 0.75f, 1.0e-4f);  // 0.1 s attack + 0.1 s decay
+            expectWithinAbsoluteError (env.advance (1.0f, 0.2f, 0.2f, 0.5f, 0.4f), 0.5f, 1.0e-4f);   // Sustain
+            env.noteOff();
+            expectWithinAbsoluteError (env.advance (0.2f, 0.2f, 0.2f, 0.5f, 0.4f), 0.25f, 1.0e-4f);  // Half release
+            expectEquals (env.advance (1.0f, 0.2f, 0.2f, 0.5f, 0.4f), 0.0f);
+            expect (env.stage == ModulatorEnvelope::Stage::idle);
+        }
+
+        beginTest ("Envelope: note off during the attack releases from the current level; zero times are instantaneous");
+        {
+            ModulatorEnvelope env;
+            env.noteOn();
+            env.advance (0.05f, 0.1f, 0.1f, 1.0f, 0.1f);
+            env.noteOff();
+            expectWithinAbsoluteError (env.advance (0.05f, 0.1f, 0.1f, 1.0f, 0.1f), 0.25f, 1.0e-4f);
+            env.noteOn();
+            expectWithinAbsoluteError (env.advance (0.001f, 0.0f, 0.0f, 0.3f, 0.0f), 0.3f, 1.0e-4f);
+        }
+
+        beginTest ("Sync divisions: longest first, binary, dotted and triplet relations, attack starts with Off");
+        {
+            const auto& divisions = getSyncDivisions();
+            // Grouped by note value (dotted, straight, triplet), straight values from longest to shortest
+            double previous = 1000.0;
+            for (const auto& d : divisions)
+            {
+                const juce::String name (d.name);
+                if (name.endsWith (" D") || name.endsWith (" T"))
+                    continue;
+                expectLessThan (d.beats, previous);
+                previous = d.beats;
+            }
+            expectEquals (juce::String (divisions[(size_t) SourceDefaults::lfoSyncDivision].name), juce::String ("1/4"));
+            expectEquals (getSyncDivisionBeats (SourceDefaults::lfoSyncDivision), 1.0);
+            auto beatsOf = [&divisions] (const juce::String& name)
+            {
+                for (const auto& d : divisions)
+                    if (name == d.name)
+                        return d.beats;
+                return -1.0;
+            };
+            expectWithinAbsoluteError (beatsOf ("1/8 T") * 3.0, beatsOf ("1/4"), 1.0e-9, "Three 1/8 triplets in a beat");
+            expectWithinAbsoluteError (beatsOf ("1/4 D"), beatsOf ("1/4") * 1.5, 1.0e-9);
+            expectEquals (beatsOf ("1 bar"), 4.0);
+            expectEquals (getSyncAttackNames()[0], juce::String ("Off"));
+            expectEquals (getSyncAttackNames().size(), (int) divisions.size() + 1);
+            expectEquals (getSyncAttackBeats (0), 0.0);
+            expectEquals (getSyncAttackBeats (1), 32.0);
+        }
+
+        beginTest ("Steps: parsing, defaults and the step at each phase");
+        {
+            expect (modulatorTypeFromName (MODULATOR_TYPE_STEPS) == ModulatorType::steps);
+            auto values = parseStepValues ("0.1, 0.9,,2,-1");
+            expectWithinAbsoluteError (values[0], 0.1f, 1.0e-6f);
+            expectWithinAbsoluteError (values[1], 0.9f, 1.0e-6f);
+            expectEquals (values[2], getDefaultStepValues()[2], "Empty values take the default");
+            expectEquals (values[3], 1.0f, "Values are clamped");
+            expectEquals (values[4], 0.0f);
+            expectEquals (values[31], getDefaultStepValues()[31]);
+            const auto roundTrip = parseStepValues (formatStepValues (values));
+            for (int i = 0; i < maxSteps; ++i)
+                expectWithinAbsoluteError (roundTrip[(size_t) i], values[(size_t) i], 1.0e-3f);
+            expectEquals (stepsSignal (values, 4, 0.0), values[0]);
+            expectEquals (stepsSignal (values, 4, 0.30), values[1]);
+            expectEquals (stepsSignal (values, 4, 0.99), values[3]);
+            expectEquals (stepsSignal (values, 4, 1.10), values[0], "Cycles repeat");
+            expectEquals (stepsSignal (values, 0, 0.7), values[0], "At least one step");
+            const auto& lengths = getStepsCycleLengths();
+            expectEquals (juce::String (lengths[(size_t) SourceDefaults::stepsSyncLength].name), juce::String ("1 bar"));
+            for (size_t i = 1; i < lengths.size(); ++i)
+                expectGreaterThan (lengths[i].beats, lengths[i - 1].beats);
+        }
+
+        beginTest ("LFO attack: the rate grows exponentially from 0 to 1 during the attack");
+        expectEquals (lfoAttackRateFactor (0.3, 0.0), 1.0, "No attack");
+        expectEquals (lfoAttackRateFactor (0.0, 1.0), 0.0);
+        expectEquals (lfoAttackRateFactor (1.0, 1.0), 1.0);
+        expectEquals (lfoAttackRateFactor (5.0, 1.0), 1.0);
+        expectLessThan (lfoAttackRateFactor (0.5, 1.0), 0.15, "Slow start (exponential)");
+        for (double t = 0.05; t < 1.0; t += 0.05)
+            expectGreaterThan (lfoAttackRateFactor (t, 1.0), lfoAttackRateFactor (t - 0.05, 1.0));
+
+        beginTest ("Modulation offsets are added in the normalised range and clamped");
+        expectWithinAbsoluteError (applyModulationOffset (-10.0f, 0.5f, -80.0f, 12.0f), 12.0f, 1.0e-4f);
+        expectWithinAbsoluteError (applyModulationOffset (0.0f, -0.25f, -36.0f, 36.0f), -18.0f, 1.0e-4f);
+        expectWithinAbsoluteError (applyModulationOffset (5.0f, 0.0f, 0.0f, 10.0f), 5.0f, 1.0e-6f);
+    }
+};
+
+static ModulatorHelpersTests modulatorHelpersTests;
 static NoteLayoutTests noteLayoutTests;
 static MpeHelpersTests mpeHelpersTests;
 static NoteIndexTests noteIndexTests;

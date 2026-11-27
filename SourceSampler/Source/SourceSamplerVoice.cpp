@@ -9,6 +9,7 @@
 */
 
 #include "SourceSamplerVoice.h"
+#include "SourceSamplerSynthesiser.h"
 
 
 SourceSamplerVoice::SourceSamplerVoice() {}
@@ -78,7 +79,9 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
         // Reset processor chain internal state
         processorChain.reset();
         auto& gain = processorChain.get<masterGainIndex>();
-        gain.setRampDurationSeconds(sound->pluginBlockSize/pluginSampleRate);
+        // Sounds with modulators update the gain every modulatorChunkSize samples, so use a shorter ramp
+        const int gainRampSamples = sound->getSourceSound()->hasModulators() ? modulatorChunkSize : sound->pluginBlockSize;
+        gain.setRampDurationSeconds(gainRampSamples/pluginSampleRate);
         
         // Reset some parameters
         adsr.reset();
@@ -91,6 +94,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
         masterPitchBendSemitones = 0.0;
         numParameterOverrides = 0;
         numMpeMappings = 0;
+        modulatorSampleRate = pluginSampleRate;
+        resetModulators(sound);
         
         if (mpeMode){
             // Initial per-note expression values (sent by MPE controllers on the note's channel before the note-on)
@@ -318,6 +323,9 @@ void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
                 adsr.noteOff();
                 adsrFilter.noteOff();
             }
+            // Modulator envelopes are released on note off in all launch modes
+            for (auto& modulatorState: modulatorStates)
+                modulatorState.envelope.noteOff();
         }
     } else {
         // This is the case when we reached the end of the sound (or the end of the release stage) or for some other reason we want to cut abruptly
@@ -379,14 +387,21 @@ void SourceSamplerVoice::updateMpeParameterOverrides (SourceSamplerSound* sound)
 {
     // Computes the parameter values set by the sound's MPE mappings for this voice (audio thread, no allocations)
     numParameterOverrides = 0;
-    if (!mpeMode)
+    if (!mpeMode){
+        publishedNumMpeValues.store (0, std::memory_order_release);
         return;
+    }
     const int numCopied = sound->getSourceSound()->copyMpeMappings (mpeMappings);
     if (numCopied >= 0)
         numMpeMappings = numCopied;  // Otherwise (mappings being edited) keep using the previous copy
     for (int i = 0; i < numMpeMappings; ++i)
     {
         const auto& mapping = mpeMappings[(size_t) i];
+        const bool bipolar = SourceHelpers::isBipolarMpeSource (mapping.source);
+        publishedMpeValues[(size_t) i].store (juce::jmap (SourceHelpers::applyMpeCurve (getMpeSourceValue (mapping.source), mapping.curve, bipolar),
+                                                          mapping.minRange, mapping.maxRange), std::memory_order_relaxed);
+        if (mapping.parameter.isNull())
+            continue;
         const float value = SourceHelpers::mapMpeValueToParameter (getMpeSourceValue (mapping.source), mapping.curve,
                                                                    SourceHelpers::isBipolarMpeSource (mapping.source),
                                                                    mapping.minRange, mapping.maxRange,
@@ -398,6 +413,7 @@ void SourceSamplerVoice::updateMpeParameterOverrides (SourceSamplerSound* sound)
         parameterOverrides[(size_t) index] = { mapping.parameter, value };
         numParameterOverrides = juce::jmax (numParameterOverrides, index + 1);
     }
+    publishedNumMpeValues.store (numMpeMappings, std::memory_order_release);
 }
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
@@ -448,7 +464,119 @@ static inline float interpolateSample (double samplePosition, const float* const
 }
 
 //==============================================================================
+void SourceSamplerVoice::resetModulators (SourceSamplerSound* sound)
+{
+    numModulators = 0;
+    numModulationOffsets = 0;
+    for (auto& modulatorState: modulatorStates){
+        modulatorState.phase = 0.0;
+        modulatorState.elapsedSeconds = 0.0;
+        modulatorState.randomValue = modulatorRandom.nextFloat();
+        modulatorState.envelope.reset();
+        modulatorState.envelope.noteOn();
+        modulatorState.output = 0.0f;
+    }
+    modulatorNoteCounter.fetch_add (1, std::memory_order_release);
+    samplesSinceLastHistoryPoint = modulatorSampleRate / modulatorHistoryRate;  // Write the first point now
+    updateModulators (sound, 0);  // Outputs at the start of the note
+}
+
+void SourceSamplerVoice::updateModulators (SourceSamplerSound* sound, int numSamples)
+{
+    const int numCopied = sound->getSourceSound()->copyModulators (modulators);
+    if (numCopied >= 0)
+        numModulators = numCopied;  // Otherwise (modulators being edited) keep using the previous copy
+    numModulationOffsets = 0;
+    const float seconds = (float) ((double) numSamples / modulatorSampleRate);
+    double bpm = SourceDefaults::bpm;
+    if (auto* synth = static_cast<SourceSamplerSynthesiser*> (sound->getSourceSound()->getSampler()))
+        bpm = synth->getCurrentBpm();
+    const double beatSeconds = 60.0 / juce::jlimit (SourceHelpers::minBpm, SourceHelpers::maxBpm, bpm);
+    for (int i = 0; i < numModulators; ++i)
+    {
+        const auto& modulator = modulators[(size_t) i];
+        auto& modulatorState = modulatorStates[(size_t) i];
+        float signal = 0.0f;
+        if (modulator.type == SourceHelpers::ModulatorType::lfo)
+        {
+            signal = SourceHelpers::lfoSignal (modulator.lfoWaveform, modulatorState.phase, modulatorState.randomValue);
+            // Synced LFOs: one cycle per note division, attack in note divisions
+            const double rate = modulator.lfoSync ? 1.0 / (SourceHelpers::getSyncDivisionBeats (modulator.lfoSyncDivision) * beatSeconds)
+                                                  : (double) modulator.lfoRate;
+            const double attackSeconds = modulator.lfoSync ? SourceHelpers::getSyncAttackBeats (modulator.lfoAttackDivision) * beatSeconds
+                                                           : (double) modulator.lfoAttack;
+            // The rate grows from 0 Hz during the attack (factor evaluated at the middle of the chunk)
+            const double rateFactor = SourceHelpers::lfoAttackRateFactor (modulatorState.elapsedSeconds + 0.5 * seconds, attackSeconds);
+            modulatorState.phase += rate * rateFactor * (double) seconds;
+            modulatorState.elapsedSeconds += (double) seconds;
+            if (modulatorState.phase >= 1.0)
+            {
+                modulatorState.phase -= std::floor (modulatorState.phase);
+                modulatorState.randomValue = modulatorRandom.nextFloat();  // New value for each cycle (random waveform)
+            }
+        }
+        else if (modulator.type == SourceHelpers::ModulatorType::steps)
+        {
+            signal = SourceHelpers::stepsSignal (modulator.stepValues, modulator.numSteps, modulatorState.phase);
+            // Whole cycles per second, or synced: one cycle per cycle length (beats/bars)
+            const double rate = modulator.lfoSync ? 1.0 / (SourceHelpers::getStepsCycleBeats (modulator.stepsSyncLength) * beatSeconds)
+                                                  : (double) modulator.stepsRate;
+            modulatorState.phase += rate * (double) seconds;
+            modulatorState.phase -= std::floor (modulatorState.phase);
+        }
+        else
+        {
+            signal = modulatorState.envelope.level;
+            modulatorState.envelope.advance (seconds, modulator.attack, modulator.decay, modulator.sustain, modulator.release);
+        }
+        modulatorState.output = juce::jmap (signal, modulator.minRange, modulator.maxRange);
+        if (modulator.parameter.isNull() || modulatorState.output == 0.0f)
+            continue;
+        // Offsets of several modulators with the same target are added
+        int index = 0;
+        while (index < numModulationOffsets && modulationOffsets[(size_t) index].parameter != modulator.parameter)
+            ++index;
+        if (index == numModulationOffsets)
+        {
+            modulationOffsets[(size_t) index] = { modulator.parameter, 0.0f, modulator.parameterMin, modulator.parameterMax };
+            ++numModulationOffsets;
+        }
+        modulationOffsets[(size_t) index].offset += modulatorState.output;
+    }
+
+    // History for the UI
+    if (numModulators > 0)
+    {
+        const double interval = modulatorSampleRate / modulatorHistoryRate;
+        samplesSinceLastHistoryPoint += numSamples;
+        while (samplesSinceLastHistoryPoint >= interval)
+        {
+            const auto count = modulatorHistoryCount.load (std::memory_order_relaxed);
+            for (int i = 0; i < numModulators; ++i)
+                modulatorHistory[(size_t) i][count % modulatorHistorySize].store (modulatorStates[(size_t) i].output, std::memory_order_relaxed);
+            modulatorHistoryCount.store (count + 1, std::memory_order_release);
+            samplesSinceLastHistoryPoint -= interval;
+        }
+    }
+}
+
 void SourceSamplerVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
+{
+    auto* sound = getCurrentlyPlayingSourceSamplerSound();
+    if (sound == nullptr)
+        return;
+    // Sounds with modulators are rendered in small chunks so that the modulations are updated often
+    const int chunkSize = (sound->getSourceSound()->hasModulators() || numModulators > 0) ? modulatorChunkSize : numSamples;
+    while (numSamples > 0 && getCurrentlyPlayingSound() != nullptr)
+    {
+        const int numChunkSamples = juce::jmin (chunkSize, numSamples);
+        renderChunk (outputBuffer, startSample, numChunkSamples);
+        startSample += numChunkSamples;
+        numSamples -= numChunkSamples;
+    }
+}
+
+void SourceSamplerVoice::renderChunk (juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
 {
     if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
     {
@@ -462,6 +590,7 @@ void SourceSamplerVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer
         float previousPitchBendModSemitones = (float) (pitchBendModSemitones + masterPitchBendSemitones);
         float previousPan = pan;
         bool noteStoppedHard = false;
+        updateModulators(sound, numSamples);
         updateParametersFromSourceSamplerSound(sound);
         
         // Sampler reading and rendering
@@ -477,7 +606,7 @@ void SourceSamplerVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer
         // The playback buffer might have changed length (e.g. after re-computing time stretch), make sure the playhead is in range
         playheadSamplePosition = juce::jlimit (0.0, (double) juce::jmax (0, dataLength - 1), playheadSamplePosition);
         
-        tmpVoiceBuffer.clear();
+        tmpVoiceBuffer.clear (0, numSamples);
         float* outL = tmpVoiceBuffer.getWritePointer (0, 0);
         float* outR = tmpVoiceBuffer.getNumChannels() > 1 ? tmpVoiceBuffer.getWritePointer (1, 0) : nullptr;
         

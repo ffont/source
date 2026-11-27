@@ -46,7 +46,7 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
         source.enablePresetImportFolder(juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                                             .getChildFile(SOURCE_APP_DIRECTORY_NAME).getChildFile("presets"));
         #if SOURCE_LINK
-        link = std::make_unique<SourceLink>(source.sourceDataLocation.getChildFile("link_settings.xml"));
+        link = std::make_unique<SourceLink>(source.sourceDataLocation.getChildFile("link_settings.xml"), source.getGlobalBpm());
         #endif
     }
     #endif
@@ -177,6 +177,28 @@ void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     midiMessages.addEvents(sequencerCombinedBuffer, 0, sliceNumSamples, 0);  // Combine sequencer MIDI messages with plugin's input message stream
     #endif
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
+    
+    // Tempo for synced LFOs: Ableton Link (when on), the host's tempo (plugins) or the global tempo setting
+    double bpm = source.getGlobalBpm();
+    auto tempoSource = SourceSampler::TempoSource::internal;
+    #if SOURCE_LINK
+    if (link != nullptr && link->isEnabled()){
+        bpm = link->getTempoAudioThread();
+        tempoSource = SourceSampler::TempoSource::link;
+    }
+    #endif
+    if (tempoSource == SourceSampler::TempoSource::internal && wrapperType != wrapperType_Standalone){
+        if (auto* playHead = getPlayHead()){
+            if (auto position = playHead->getPosition()){
+                if (auto hostBpm = position->getBpm(); hostBpm.hasValue() && *hostBpm > 0.0){
+                    bpm = *hostBpm;
+                    tempoSource = SourceSampler::TempoSource::host;
+                }
+            }
+        }
+    }
+    source.setCurrentTempo(juce::jlimit(SourceHelpers::minBpm, SourceHelpers::maxBpm, bpm), tempoSource);
+    
     source.processBlock(buffer, midiMessages);
     #if SOURCE_LINK
     if (link != nullptr)

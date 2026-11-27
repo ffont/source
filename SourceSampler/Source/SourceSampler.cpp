@@ -106,11 +106,15 @@ void SourceSampler::bindState()
     mpeEnabled.referTo(state, SourceIDs::mpeEnabled, nullptr, SourceDefaults::mpeEnabled);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mpePitchBendRange, SourceDefaults::mpePitchBendRange);
     mpePitchBendRange.referTo(state, SourceIDs::mpePitchBendRange, nullptr, SourceDefaults::mpePitchBendRange);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::bpm, (float)SourceDefaults::bpm);
+    bpm.referTo(state, SourceIDs::bpm, nullptr, SourceDefaults::bpm);
     
     // Load global settings stored in file, now before sounds are created as these might need the oauth token
     loadGlobalPersistentStateFromFile();
     sampler.setGlobalMidiInChannel(globalMidiInChannel.get());
     sampler.setMpeSettings(mpeEnabled.get(), mpePitchBendRange.get());
+    globalBpm.store(bpm.get());
+    setCurrentTempo(bpm.get(), TempoSource::internal);
     
     juce::ValueTree preset = state.getChildWithName(SourceIDs::PRESET);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::numVoices, SourceDefaults::numVoices);
@@ -672,6 +676,24 @@ void SourceSampler::processPendingControlEvents()
     });
 }
 
+void SourceSampler::forEachVoicePlayingSound(const juce::String& soundUUID, const std::function<void(int, const SourceSamplerVoice&)>& callback)
+{
+    // Message thread only (voices are only added/removed in the message thread). Like getVoicesInfo, the published
+    // SourceSound pointer is only compared with our own sounds.
+    if (sounds == nullptr)
+        return;
+    const SourceSound* sound = sounds->getSoundWithUUID(soundUUID);
+    if (sound == nullptr)
+        return;
+    for (int i=0; i<sampler.getNumVoices(); i++){
+        if (auto* voice = static_cast<SourceSamplerVoice*> (sampler.getVoiceFromMessageThread(i))){
+            const auto published = voice->getPublishedState();
+            if (published.active && published.sourceSound == sound)
+                callback(i, *voice);
+        }
+    }
+}
+
 std::vector<SourceSampler::VoiceInfo> SourceSampler::getVoicesInfo()
 {
     // Message thread only. Reads only the state published (atomically) by the voices in the audio thread. The published SourceSound
@@ -720,6 +742,7 @@ void SourceSampler::saveGlobalPersistentStateToFile()
     settings.setProperty(SourceIDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
     settings.setProperty(SourceIDs::mpeEnabled, mpeEnabled.get(), nullptr);
     settings.setProperty(SourceIDs::mpePitchBendRange, mpePitchBendRange.get(), nullptr);
+    settings.setProperty(SourceIDs::bpm, bpm.get(), nullptr);
     settings.setProperty(SourceIDs::pluginVersion, juce::String(ProjectInfo::versionString), nullptr);
     
     std::unique_ptr<juce::XmlElement> xml (settings.createXml());
@@ -756,6 +779,9 @@ void SourceSampler::loadGlobalPersistentStateFromFile()
             }
             if (settings.hasProperty(SourceIDs::mpePitchBendRange)){
                 mpePitchBendRange = (int)settings.getProperty(SourceIDs::mpePitchBendRange);
+            }
+            if (settings.hasProperty(SourceIDs::bpm)){
+                bpm = juce::jlimit(SourceHelpers::minBpm, SourceHelpers::maxBpm, (double)settings.getProperty(SourceIDs::bpm));
             }
             if (settings.hasProperty(SourceIDs::freesoundOauthAccessToken)){
                 freesoundOauthAccessToken = settings.getProperty(SourceIDs::freesoundOauthAccessToken).toString();
@@ -1279,6 +1305,11 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
     }
     
+    else if (actionName == ACTION_SET_BPM){
+        if (parameters[0].isNotEmpty())
+            setBpm(parameters[0].getDoubleValue());
+    }
+    
     // MPE actions -----------------------------------------------------------------------------------
     else if (actionName == ACTION_SET_MPE_SETTINGS){
         bool enabled = parameters[0].getIntValue() != 0;
@@ -1300,6 +1331,29 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
     else if (actionName == ACTION_REMOVE_MPE_MAPPING){
         if (auto* sound = sounds->getSoundWithUUID(parameters[0])){
             sound->removeMpeMapping(parameters[1]);
+        }
+    }
+    
+    // Modulator actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_ADD_OR_UPDATE_MODULATOR){
+        // Missing or empty values use the defaults
+        auto floatParam = [&parameters](int index, float defaultValue){ return parameters.size() > index && parameters[index].isNotEmpty() ? parameters[index].getFloatValue() : defaultValue; };
+        if (auto* sound = sounds->getSoundWithUUID(parameters[0])){
+            sound->addOrEditModulator(parameters[1], parameters[2],
+                                      parameters.size() > 3 && parameters[3].isNotEmpty() ? parameters[3] : SourceDefaults::modulatorParameterName,
+                                      floatParam(4, SourceDefaults::modulatorMinRange), floatParam(5, SourceDefaults::modulatorMaxRange),
+                                      (int)floatParam(6, (float)SourceDefaults::lfoWaveform), floatParam(7, SourceDefaults::lfoRate),
+                                      floatParam(8, SourceDefaults::modAttack), floatParam(9, SourceDefaults::modDecay),
+                                      floatParam(10, SourceDefaults::modSustain), floatParam(11, SourceDefaults::modRelease),
+                                      floatParam(12, SourceDefaults::lfoAttack), floatParam(13, SourceDefaults::lfoSync ? 1.0f : 0.0f) != 0.0f,
+                                      (int)floatParam(14, (float)SourceDefaults::lfoSyncDivision), (int)floatParam(15, (float)SourceDefaults::lfoAttackDivision),
+                                      (int)floatParam(16, (float)SourceDefaults::numSteps), floatParam(17, SourceDefaults::stepsRate),
+                                      (int)floatParam(18, (float)SourceDefaults::stepsSyncLength), parameters.size() > 19 ? parameters[19] : juce::String());
+        }
+    }
+    else if (actionName == ACTION_REMOVE_MODULATOR){
+        if (auto* sound = sounds->getSoundWithUUID(parameters[0])){
+            sound->removeModulator(parameters[1]);
         }
     }
     
@@ -1360,6 +1414,22 @@ void SourceSampler::setGlobalMidiInChannel(int channel)
     globalMidiInChannel = channel;
     sampler.setGlobalMidiInChannel(channel);
     saveGlobalPersistentStateToFile();
+}
+
+void SourceSampler::setBpm(double newBpm)
+{
+    bpm = juce::jlimit(SourceHelpers::minBpm, SourceHelpers::maxBpm, newBpm);
+    globalBpm.store(bpm.get());
+    if (getTempoSource() == TempoSource::internal)
+        setCurrentTempo(bpm.get(), TempoSource::internal);  // Also when audio is not running
+    saveGlobalPersistentStateToFile();
+}
+
+void SourceSampler::setCurrentTempo(double newBpm, TempoSource source) noexcept
+{
+    currentBpm.store(newBpm, std::memory_order_relaxed);
+    tempoSource.store((int)source, std::memory_order_relaxed);
+    sampler.setCurrentBpm(newBpm);
 }
 
 void SourceSampler::setMpeSettings(bool enabled, int perNotePitchBendRange)
@@ -1542,7 +1612,7 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
             juce::ValueTree soundToReplaceState = presetState.getChildWithProperty(SourceIDs::uuid, soundUUID);
             for (int i=0; i<soundToReplaceState.getNumChildren(); i++){
                 auto child = soundToReplaceState.getChild(i);
-                if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING)){
+                if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING) || child.hasType(SourceIDs::MODULATOR)){
                     juce::ValueTree copyChild = child.createCopy();
                     sourceSound.addChild(copyChild, -1, nullptr);
                 }
@@ -1613,7 +1683,7 @@ bool SourceSampler::replaceSoundAudio(const juce::String& soundUUID, int soundID
     }
     for (int i = 0; i < oldSound.getNumChildren(); ++i){
         auto child = oldSound.getChild(i);
-        if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING))
+        if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING) || child.hasType(SourceIDs::MODULATOR))
             newSound.addChild(child.createCopy(), -1, nullptr);
     }
     presetState.removeChild(index, nullptr);

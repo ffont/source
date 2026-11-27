@@ -68,16 +68,91 @@ public:
     void setMasterPitchBend (int pitchWheelValue);
     float getMpeSourceValue (SourceHelpers::MpeSource source) const noexcept;  // Normalised 0..1
 
+    //==============================================================================
+    // Modulators
+    
+    /** History of the output of each modulator of the sound being played, written by the audio thread at
+        modulatorHistoryRate (points per second) while the voice plays a sound with modulators. Read it from the
+        message thread: positions in [count - modulatorHistorySize / 2, count) are safe to read. */
+    static constexpr int modulatorHistorySize = 256;
+    static constexpr double modulatorHistoryRate = 200.0;
+    uint32_t getModulatorHistoryCount() const noexcept { return modulatorHistoryCount.load (std::memory_order_acquire); }
+    float getModulatorHistoryValue (int modulatorIndex, uint32_t position) const noexcept
+    {
+        return modulatorHistory[(size_t) juce::jlimit (0, SourceSound::maxModulators - 1, modulatorIndex)][position % modulatorHistorySize].load (std::memory_order_relaxed);
+    }
+    /** Incremented each time a note starts (so readers know when a new note started in this voice). */
+    uint32_t getModulatorNoteCounter() const noexcept { return modulatorNoteCounter.load (std::memory_order_acquire); }
+    /** Current value of each MPE mapping of the sound for this voice (normalised parameter value, 0..1), published by
+        the audio thread. getPublishedNumMpeValues() is 0 when MPE is off. */
+    int getPublishedNumMpeValues() const noexcept { return publishedNumMpeValues.load (std::memory_order_acquire); }
+    float getPublishedMpeValue (int index) const noexcept
+    {
+        return publishedMpeValues[(size_t) juce::jlimit (0, SourceSound::maxMpeMappings - 1, index)].load (std::memory_order_relaxed);
+    }
+    /** Size of the chunks in which voices playing sounds with modulators are rendered (modulators are updated once per chunk). */
+    static constexpr int modulatorChunkSize = 32;
+
 
 private:
-    /** Returns the value of a sound parameter for this voice: the sound's value, or the value set by an MPE mapping. */
+    /** Returns the value of a sound parameter for this voice: the sound's value, or the value set by an MPE mapping,
+        plus the offsets of the modulators that target the parameter. */
     float getParam (SourceSamplerSound* sound, const juce::Identifier& identifier) const noexcept
     {
+        float value = 0.0f;
+        bool overridden = false;
         for (int i = 0; i < numParameterOverrides; ++i)
+        {
             if (parameterOverrides[(size_t) i].first == identifier)
-                return parameterOverrides[(size_t) i].second;
-        return sound->getParameterFloat (identifier);
+            {
+                value = parameterOverrides[(size_t) i].second;
+                overridden = true;
+                break;
+            }
+        }
+        if (! overridden)
+            value = sound->getParameterFloat (identifier);
+        for (int i = 0; i < numModulationOffsets; ++i)
+        {
+            const auto& offset = modulationOffsets[(size_t) i];
+            if (offset.parameter == identifier)
+                return SourceHelpers::applyModulationOffset (value, offset.offset, offset.parameterMin, offset.parameterMax);
+        }
+        return value;
     }
+    
+    void renderChunk (juce::AudioBuffer<float>&, int startSample, int numSamples);
+    /** Computes the modulators' outputs at the current time (and the resulting parameter offsets), then advances them
+        by numSamples. Audio thread. */
+    void updateModulators (SourceSamplerSound* sound, int numSamples);
+    void resetModulators (SourceSamplerSound* sound);
+    struct ModulatorVoiceState
+    {
+        double phase = 0.0;
+        double elapsedSeconds = 0.0;  // Since the note started (LFO attack)
+        float randomValue = 0.5f;
+        SourceHelpers::ModulatorEnvelope envelope;
+        float output = 0.0f;
+    };
+    struct ModulationOffset
+    {
+        juce::Identifier parameter;
+        float offset = 0.0f;
+        float parameterMin = 0.0f, parameterMax = 1.0f;
+    };
+    SourceSound::Modulators modulators;  // Copy of the sound's modulators
+    int numModulators = 0;
+    std::array<ModulatorVoiceState, SourceSound::maxModulators> modulatorStates;
+    std::array<ModulationOffset, SourceSound::maxModulators> modulationOffsets;
+    int numModulationOffsets = 0;
+    double modulatorSampleRate = 44100.0;
+    double samplesSinceLastHistoryPoint = 0.0;
+    juce::Random modulatorRandom;
+    std::array<std::array<std::atomic<float>, modulatorHistorySize>, SourceSound::maxModulators> modulatorHistory {};
+    std::atomic<uint32_t> modulatorHistoryCount { 0 };
+    std::atomic<uint32_t> modulatorNoteCounter { 0 };
+    std::array<std::atomic<float>, SourceSound::maxMpeMappings> publishedMpeValues {};
+    std::atomic<int> publishedNumMpeValues { 0 };
     void updateMpeParameterOverrides (SourceSamplerSound* sound);
     void publishState (SourceSamplerSound* playingSound) noexcept;  // Audio thread, pass nullptr when the voice stops
     std::atomic<bool> publishedActive { false };

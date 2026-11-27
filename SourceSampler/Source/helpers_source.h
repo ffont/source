@@ -217,6 +217,24 @@ namespace SourceHelpers
         return mapping;
     }
 
+    inline juce::ValueTree createModulatorState(const juce::String& type, const juce::String& parameterName, float minRange, float maxRange,
+                                                int lfoWaveform, float lfoRate, float attack, float decay, float sustain, float release)
+    {
+        juce::ValueTree modulator (SourceIDs::MODULATOR);
+        SourceHelpers::createUuidProperty (modulator);
+        modulator.setProperty (SourceIDs::modulatorType, type, nullptr);
+        modulator.setProperty (SourceIDs::parameterName, parameterName, nullptr);
+        modulator.setProperty (SourceIDs::minRange, minRange, nullptr);
+        modulator.setProperty (SourceIDs::maxRange, maxRange, nullptr);
+        modulator.setProperty (SourceIDs::lfoWaveform, lfoWaveform, nullptr);
+        modulator.setProperty (SourceIDs::lfoRate, lfoRate, nullptr);
+        modulator.setProperty (SourceIDs::modAttack, attack, nullptr);
+        modulator.setProperty (SourceIDs::modDecay, decay, nullptr);
+        modulator.setProperty (SourceIDs::modSustain, sustain, nullptr);
+        modulator.setProperty (SourceIDs::modRelease, release, nullptr);
+        return modulator;
+    }
+
     inline juce::ValueTree createEmptySourceSoundState()
     {
         juce::ValueTree sound (SourceIDs::SOUND);
@@ -417,6 +435,241 @@ namespace SourceHelpers
     {
         const float normalised = juce::jmap (applyMpeCurve (value01, curve, bipolar), minRange, maxRange);
         return juce::jmap (normalised, parameterMin, parameterMax);
+    }
+
+    //==============================================================================
+    // Modulators: internal signals (LFO, ADSR) that modulate a sound parameter, independently for each voice.
+    // A modulator's signal goes from 0 to 1 and its output is jmap (signal, minRange, maxRange), an offset added to
+    // the target parameter in its normalised (0..1) range. With minRange = maxRange = 0 (the default) there is no
+    // modulation.
+
+    enum class ModulatorType { lfo = 0, adsr, steps, numTypes };
+
+    inline juce::StringArray getModulatorTypeNames()
+    {
+        return { MODULATOR_TYPE_LFO, MODULATOR_TYPE_ADSR, MODULATOR_TYPE_STEPS };
+    }
+
+    /** Returns the type with the given name, or ModulatorType::numTypes if the name is not valid. */
+    inline ModulatorType modulatorTypeFromName (const juce::String& name)
+    {
+        const int index = getModulatorTypeNames().indexOf (name);
+        return index >= 0 ? (ModulatorType) index : ModulatorType::numTypes;
+    }
+
+    enum LfoWaveform { lfoSine = 0, lfoTriangle, lfoSawUp, lfoSawDown, lfoSquare, lfoRandom, numLfoWaveforms };
+
+    inline juce::StringArray getLfoWaveformNames()
+    {
+        return { "Sine", "Triangle", "Saw up", "Saw down", "Square", "Random" };
+    }
+
+    constexpr float minLfoRate = 0.01f, maxLfoRate = 30.0f;  // Hz
+    constexpr float maxModulatorEnvelopeTime = 10.0f;  // Seconds
+    constexpr double minBpm = 20.0, maxBpm = 300.0;
+
+    /** Note divisions for synced LFOs (rate: one LFO cycle per division; attack: the attack lasts one division):
+        bars and binary divisions, dotted (3/2) and triplet (2/3) relations. Length in beats (quarter notes). */
+    struct SyncDivision
+    {
+        const char* name;
+        double beats;
+    };
+    inline const std::vector<SyncDivision>& getSyncDivisions()
+    {
+        static const std::vector<SyncDivision> divisions {
+            { "8 bars", 32.0 }, { "4 bars", 16.0 }, { "2 bars", 8.0 }, { "1 bar", 4.0 },
+            { "1/2 D", 3.0 }, { "1/2", 2.0 }, { "1/2 T", 4.0 / 3.0 },
+            { "1/4 D", 1.5 }, { "1/4", 1.0 }, { "1/4 T", 2.0 / 3.0 },
+            { "1/8 D", 0.75 }, { "1/8", 0.5 }, { "1/8 T", 1.0 / 3.0 },
+            { "1/16 D", 0.375 }, { "1/16", 0.25 }, { "1/16 T", 1.0 / 6.0 },
+            { "1/32", 0.125 }, { "1/32 T", 1.0 / 12.0 },
+        };
+        return divisions;
+    }
+    inline double getSyncDivisionBeats (int index)
+    {
+        const auto& divisions = getSyncDivisions();
+        return divisions[(size_t) juce::jlimit (0, (int) divisions.size() - 1, index)].beats;
+    }
+    /** Synced LFO attack choices: "Off" and then the sync divisions. */
+    inline juce::StringArray getSyncAttackNames()
+    {
+        juce::StringArray names { "Off" };
+        for (const auto& division : getSyncDivisions())
+            names.add (division.name);
+        return names;
+    }
+    inline double getSyncAttackBeats (int index)
+    {
+        return index <= 0 ? 0.0 : getSyncDivisionBeats (index - 1);
+    }
+
+    //==============================================================================
+    // Steps modulators: a sequence of values (0..1) cycled at a rate (whole cycles per second) or, synced, in a cycle
+    // length of beats/bars.
+
+    constexpr int maxSteps = 32;
+    constexpr float minStepsRate = 0.005f, maxStepsRate = 10.0f;  // Cycles per second
+
+    /** Synced steps: length of the whole cycle (binary and ternary relations), in beats. */
+    inline const std::vector<SyncDivision>& getStepsCycleLengths()
+    {
+        static const std::vector<SyncDivision> lengths {
+            { "1/2 beat", 0.5 }, { "1 beat", 1.0 }, { "2 beats", 2.0 }, { "3 beats", 3.0 }, { "1 bar", 4.0 },
+            { "2 bars", 8.0 }, { "3 bars", 12.0 }, { "4 bars", 16.0 }, { "6 bars", 24.0 }, { "8 bars", 32.0 },
+            { "12 bars", 48.0 }, { "16 bars", 64.0 }, { "32 bars", 128.0 },
+        };
+        return lengths;
+    }
+    inline double getStepsCycleBeats (int index)
+    {
+        const auto& lengths = getStepsCycleLengths();
+        return lengths[(size_t) juce::jlimit (0, (int) lengths.size() - 1, index)].beats;
+    }
+
+    using StepValues = std::array<float, (size_t) maxSteps>;
+
+    /** Default step values: a ramp over 8 steps, repeated. */
+    inline StepValues getDefaultStepValues()
+    {
+        StepValues values {};
+        for (int i = 0; i < maxSteps; ++i)
+            values[(size_t) i] = (float) (i % 8) / 7.0f;
+        return values;
+    }
+
+    /** Parses comma-separated step values (missing values take the defaults, values are clamped to 0..1). */
+    inline StepValues parseStepValues (const juce::String& text)
+    {
+        auto values = getDefaultStepValues();
+        const auto tokens = juce::StringArray::fromTokens (text, ",", {});
+        for (int i = 0; i < juce::jmin (tokens.size(), maxSteps); ++i)
+            if (tokens[i].trim().isNotEmpty())
+                values[(size_t) i] = juce::jlimit (0.0f, 1.0f, tokens[i].getFloatValue());
+        return values;
+    }
+
+    inline juce::String formatStepValues (const StepValues& values)
+    {
+        juce::StringArray tokens;
+        for (auto v : values)
+            tokens.add (juce::String (v, 3));
+        return tokens.joinIntoString (",");
+    }
+
+    /** Value of the step at the given phase of the cycle [0, 1). */
+    inline float stepsSignal (const StepValues& values, int numSteps, double phase) noexcept
+    {
+        numSteps = juce::jlimit (1, maxSteps, numSteps);
+        const double p = phase - std::floor (phase);
+        const int index = juce::jlimit (0, numSteps - 1, (int) (p * numSteps));
+        return values[(size_t) index];
+    }
+
+    /** LFO attack: the LFO rate goes from 0 Hz to its rate following an exponential curve (slow start, fast end).
+        Returns the factor (0..1) to apply to the rate after elapsedSeconds. */
+    inline double lfoAttackRateFactor (double elapsedSeconds, double attackSeconds) noexcept
+    {
+        if (attackSeconds <= 0.0 || elapsedSeconds >= attackSeconds)
+            return 1.0;
+        constexpr double k = 5.0;  // Curvature
+        const double x = juce::jmax (0.0, elapsedSeconds / attackSeconds);
+        return (std::exp (k * x) - 1.0) / (std::exp (k) - 1.0);
+    }
+
+    /** LFO signal (0..1) for a phase in [0, 1). All waveforms start at 0 (sine and triangle start at their minimum,
+        so a note always starts at the modulator's min value). randomValue is the value held during this cycle
+        (random waveform). */
+    inline float lfoSignal (int waveform, double phase, float randomValue) noexcept
+    {
+        const float p = (float) (phase - std::floor (phase));
+        switch (waveform)
+        {
+            case lfoSine:     return 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * p);
+            case lfoTriangle: return p < 0.5f ? 2.0f * p : 2.0f - 2.0f * p;
+            case lfoSawUp:    return p;
+            case lfoSawDown:  return 1.0f - p;
+            case lfoSquare:   return p < 0.5f ? 1.0f : 0.0f;
+            case lfoRandom:   return juce::jlimit (0.0f, 1.0f, randomValue);
+            default:          return 0.0f;
+        }
+    }
+
+    /** Linear ADSR envelope (0..1) advanced in time steps (used by ADSR modulators, per voice). */
+    struct ModulatorEnvelope
+    {
+        enum class Stage { idle, attack, decay, sustain, release };
+        Stage stage = Stage::idle;
+        float level = 0.0f;
+        float releaseStartLevel = 0.0f;
+
+        void noteOn() noexcept { stage = Stage::attack; level = 0.0f; }
+        void noteOff() noexcept
+        {
+            if (stage != Stage::idle && stage != Stage::release)
+            {
+                stage = Stage::release;
+                releaseStartLevel = level;
+            }
+        }
+        void reset() noexcept { stage = Stage::idle; level = 0.0f; }
+
+        /** Advances the envelope by seconds and returns the new level. */
+        float advance (float seconds, float attack, float decay, float sustain, float release) noexcept
+        {
+            constexpr float minTime = 0.0005f;
+            sustain = juce::jlimit (0.0f, 1.0f, sustain);
+            while (seconds > 0.0f)
+            {
+                switch (stage)
+                {
+                    case Stage::idle:
+                        level = 0.0f;
+                        return level;
+                    case Stage::attack:
+                    {
+                        const float time = juce::jmax (minTime, attack);
+                        const float remaining = (1.0f - level) * time;  // Seconds left to reach 1
+                        if (seconds < remaining) { level += seconds / time; return level; }
+                        seconds -= remaining;
+                        level = 1.0f;
+                        stage = Stage::decay;
+                        break;
+                    }
+                    case Stage::decay:
+                    {
+                        const float time = juce::jmax (minTime, decay);
+                        const float slope = (1.0f - sustain) / time;  // Per second
+                        if (slope <= 0.0f || level <= sustain) { level = sustain; stage = Stage::sustain; break; }
+                        const float remaining = (level - sustain) / slope;
+                        if (seconds < remaining) { level -= seconds * slope; return level; }
+                        seconds -= remaining;
+                        level = sustain;
+                        stage = Stage::sustain;
+                        break;
+                    }
+                    case Stage::sustain:
+                        level = sustain;
+                        return level;
+                    case Stage::release:
+                    {
+                        const float time = juce::jmax (minTime, release);
+                        const float slope = juce::jmax (releaseStartLevel, 0.0001f) / time;
+                        level -= seconds * slope;
+                        if (level <= 0.0f) { level = 0.0f; stage = Stage::idle; }
+                        return level;
+                    }
+                }
+            }
+            return level;
+        }
+    };
+
+    /** Adds a modulation offset (in the parameter's normalised range) to a parameter value. */
+    inline float applyModulationOffset (float value, float normalisedOffset, float parameterMin, float parameterMax) noexcept
+    {
+        return juce::jlimit (parameterMin, parameterMax, value + normalisedOffset * (parameterMax - parameterMin));
     }
 
     //==============================================================================

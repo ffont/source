@@ -230,6 +230,8 @@ public:
     std::vector<MidiCCMapping*> getMidiMappingsForCcNumber(int ccNumber);
     void removeMidiMapping(juce::String uuid);
     void applyMidiCCModulations(int channel, int number, int value);
+    /** Last value (0..1) received for a CC number on this sound's channel, or -1 if none was received (message thread). */
+    float getLastCcValue(int ccNumber) const { return ccNumber >= 0 && ccNumber < 128 ? lastCcValues[(size_t)ccNumber] : -1.0f; }
     
     // ------------------------------------------------------------------------------------------------
     // MPE mappings: map per-note MPE dimensions (slide, glide, strike) to sound parameters
@@ -255,6 +257,52 @@ public:
     /** Audio thread: copies the current mappings to dest. Returns the number of mappings, or -1 if the mappings are
         being updated (in that case dest is not modified and the caller should keep using its previous copy). */
     int copyMpeMappings(MpeMappings& dest) noexcept;
+    
+    // ------------------------------------------------------------------------------------------------
+    // Modulators: internal signals (LFO, ADSR) that modulate a sound parameter independently for each voice (see
+    // SourceHelpers::ModulatorType). Like MPE mappings, the audio thread uses a copy of the modulators.
+    
+    struct Modulator
+    {
+        SourceHelpers::ModulatorType type = SourceHelpers::ModulatorType::lfo;
+        juce::Identifier parameter;
+        float minRange = 0.0f;  // Normalised offsets (-1..1) added to the parameter
+        float maxRange = 0.0f;
+        int lfoWaveform = 0;
+        float lfoRate = 1.0f;
+        float attack = 0.5f, decay = 0.5f, sustain = 0.5f, release = 0.5f;
+        float lfoAttack = 0.0f;  // Seconds (free LFOs)
+        bool lfoSync = false;
+        int lfoSyncDivision = 8;  // Index in SourceHelpers::getSyncDivisions (synced LFOs)
+        int lfoAttackDivision = 0;  // Index in SourceHelpers::getSyncAttackNames (synced LFOs)
+        int numSteps = 8;
+        float stepsRate = 0.25f;  // Cycles per second (free steps)
+        int stepsSyncLength = 4;  // Index in SourceHelpers::getStepsCycleLengths (synced steps)
+        SourceHelpers::StepValues stepValues {};
+        float parameterMin = 0.0f;
+        float parameterMax = 1.0f;
+    };
+    static constexpr int maxModulators = 16;
+    using Modulators = std::array<Modulator, maxModulators>;
+    
+    /** Adds a modulator, or edits the one with the given UUID. */
+    void addOrEditModulator(const juce::String& uuid, const juce::String& type, const juce::String& parameterName, float minRange, float maxRange,
+                            int lfoWaveform, float lfoRate, float attack, float decay, float sustain, float release,
+                            float lfoAttack = SourceDefaults::lfoAttack, bool lfoSync = SourceDefaults::lfoSync,
+                            int lfoSyncDivision = SourceDefaults::lfoSyncDivision, int lfoAttackDivision = SourceDefaults::lfoAttackDivision,
+                            int numSteps = SourceDefaults::numSteps, float stepsRate = SourceDefaults::stepsRate,
+                            int stepsSyncLength = SourceDefaults::stepsSyncLength, const juce::String& stepValues = {});
+    void removeModulator(const juce::String& uuid);
+    void updateModulatorsSnapshot();  // Message thread: rebuilds the copy of the modulators used by the audio thread
+    /** Audio thread: copies the current modulators to dest. Returns the number of modulators, or -1 if they are being
+        updated (dest is then not modified and the caller should keep using its previous copy). */
+    int copyModulators(Modulators& dest) noexcept;
+    bool hasModulators() const noexcept { return numModulatorsAtomic.load (std::memory_order_relaxed) > 0; }
+    /** Modulators, MPE mappings and MIDI CC mappings share this limit per sound (checked when adding new ones). */
+    static constexpr int maxModulationsPerSound = 16;
+    int getNumModulations() const;  // Number of modulators, MPE mappings and MIDI CC mappings
+    /** Parameters that can be modulated (float parameters). */
+    static juce::StringArray getModulatableParameterNames();
     
     // ------------------------------------------------------------------------------------------------
     
@@ -377,6 +425,12 @@ private:
     MpeMappings mpeMappings;
     int numMpeMappings = 0;
     juce::SpinLock mpeMappingsLock;
+    std::array<float, 128> lastCcValues = makeNoCcValues();
+    static std::array<float, 128> makeNoCcValues() { std::array<float, 128> values; values.fill(-1.0f); return values; }
+    Modulators modulators;
+    int numModulators = 0;
+    std::atomic<int> numModulatorsAtomic { 0 };
+    juce::SpinLock modulatorsLock;
     
     JUCE_DECLARE_WEAK_REFERENCEABLE (SourceSound)
     juce::WeakReference<SourceSound> weakThis;  // Created in the message thread so it can be safely copied from other threads

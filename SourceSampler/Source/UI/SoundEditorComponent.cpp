@@ -221,141 +221,6 @@ void ParameterControl::resized()
 }
 
 
-//==============================================================================
-// MidiMappingsComponent
-
-MidiMappingsComponent::MappingRow::MappingRow (MidiMappingsComponent& owner)
-{
-    ccNumber.setSliderStyle (juce::Slider::IncDecButtons);
-    ccNumber.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 36, 20);
-    ccNumber.setRange (0, 127, 1);
-    ccNumber.setTooltip ("MIDI CC number");
-    addAndMakeVisible (ccNumber);
-
-    int itemId = 1;
-    for (const auto& info : getSoundParametersInfo())
-        if (info.midiCCEnabled)
-            parameter.addItem (info.name, itemId++);
-    parameter.setSelectedItemIndex (0, juce::dontSendNotification);
-    addAndMakeVisible (parameter);
-
-    for (auto* s : { &minRange, &maxRange })
-    {
-        s->setSliderStyle (juce::Slider::LinearHorizontal);
-        s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 34, 18);
-        s->setRange (0.0, 1.0, 0.01);
-        addAndMakeVisible (s);
-    }
-    minRange.setTooltip ("Minimum (normalised) parameter value");
-    maxRange.setTooltip ("Maximum (normalised) parameter value");
-    maxRange.setValue (1.0, juce::dontSendNotification);
-
-    saveButton.onClick = [this, &owner] { owner.sendMapping (*this); };
-    removeButton.onClick = [this, &owner] { owner.actions.send (ACTION_REMOVE_CC_MAPPING, { owner.currentSoundUUID, uuid }); };
-    addAndMakeVisible (saveButton);
-    addAndMakeVisible (removeButton);
-}
-
-void MidiMappingsComponent::MappingRow::resized()
-{
-    auto b = getLocalBounds();
-    removeButton.setBounds (b.removeFromRight (22).withSizeKeepingCentre (22, 20));
-    b.removeFromRight (4);
-    saveButton.setBounds (b.removeFromRight (44).withSizeKeepingCentre (44, 20));
-    b.removeFromRight (4);
-    ccNumber.setBounds (b.removeFromLeft (84));
-    b.removeFromLeft (4);
-    parameter.setBounds (b.removeFromLeft (juce::jmax (100, b.getWidth() / 3)).withSizeKeepingCentre (juce::jmax (100, b.getWidth() / 3), 20));
-    b.removeFromLeft (4);
-    minRange.setBounds (b.removeFromLeft (b.getWidth() / 2));
-    maxRange.setBounds (b);
-}
-
-MidiMappingsComponent::MidiMappingsComponent (SourceActionSender actionSender) : actions (std::move (actionSender))
-{
-    addButton.onClick = [this]
-    {
-        auto* row = rows.add (new MappingRow (*this));
-        row->uuid = juce::Uuid().toString();
-        row->ccNumber.setValue (1, juce::dontSendNotification);
-        addAndMakeVisible (row);
-        sendMapping (*row);
-    };
-    addAndMakeVisible (addButton);
-}
-
-void MidiMappingsComponent::sendMapping (MappingRow& row)
-{
-    if (currentSoundUUID.isEmpty())
-        return;
-    actions.send (ACTION_ADD_OR_UPDATE_CC_MAPPING, {
-        currentSoundUUID, row.uuid, juce::String ((int) row.ccNumber.getValue()), row.parameter.getText(),
-        juce::String (row.minRange.getValue()), juce::String (row.maxRange.getValue()) });
-}
-
-void MidiMappingsComponent::updateFromState (const juce::String& soundUUID, const juce::ValueTree& soundState)
-{
-    currentSoundUUID = soundUUID;
-    addButton.setEnabled (soundUUID.isNotEmpty());
-
-    std::vector<juce::ValueTree> mappings;
-    for (const auto& child : soundState)
-        if (child.hasType (SourceIDs::MIDI_CC_MAPPING))
-            mappings.push_back (child);
-
-    const bool needsRebuild = (int) mappings.size() != rows.size();
-    if (needsRebuild)
-    {
-        rows.clear();
-        for (size_t i = 0; i < mappings.size(); ++i)
-            addAndMakeVisible (rows.add (new MappingRow (*this)));
-    }
-    for (size_t i = 0; i < mappings.size(); ++i)
-    {
-        auto* row = rows[(int) i];
-        const auto& mapping = mappings[i];
-        row->uuid = mapping.getProperty (SourceIDs::uuid).toString();
-        if (! row->ccNumber.isMouseButtonDown())
-            row->ccNumber.setValue ((int) mapping.getProperty (SourceIDs::ccNumber, 1), juce::dontSendNotification);
-        const juce::String paramName = mapping.getProperty (SourceIDs::parameterName).toString();
-        for (int item = 0; item < row->parameter.getNumItems(); ++item)
-            if (row->parameter.getItemText (item) == paramName)
-                row->parameter.setSelectedItemIndex (item, juce::dontSendNotification);
-        if (! row->minRange.isMouseButtonDown())
-            row->minRange.setValue ((float) mapping.getProperty (SourceIDs::minRange, 0.0f), juce::dontSendNotification);
-        if (! row->maxRange.isMouseButtonDown())
-            row->maxRange.setValue ((float) mapping.getProperty (SourceIDs::maxRange, 1.0f), juce::dontSendNotification);
-    }
-    if (needsRebuild)
-        resized();
-}
-
-int MidiMappingsComponent::getIdealHeight() const
-{
-    return 28 + 26 * rows.size() + 30;
-}
-
-void MidiMappingsComponent::paint (juce::Graphics& g)
-{
-    g.setColour (SourceColours::text);
-    g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
-    g.drawText ("MIDI CC mappings", getLocalBounds().removeFromTop (24), juce::Justification::centredLeft);
-}
-
-void MidiMappingsComponent::resized()
-{
-    auto b = getLocalBounds();
-    b.removeFromTop (28);
-    for (auto* row : rows)
-        row->setBounds (b.removeFromTop (26).reduced (0, 2));
-    b.removeFromTop (4);
-    addButton.setBounds (b.removeFromTop (22).removeFromLeft (120));
-}
-
-
-//==============================================================================
-// MpeMappingsComponent
-
 static juce::String getMpeSourceDisplayName (const juce::String& name)
 {
     if (name == MPE_SOURCE_SLIDE)  return "Slide";
@@ -364,162 +229,848 @@ static juce::String getMpeSourceDisplayName (const juce::String& name)
     return name;
 }
 
-MpeMappingsComponent::MappingRow::MappingRow (MpeMappingsComponent& owner)
+
+//==============================================================================
+// ModulatorScope
+
+juce::Colour ModulatorScope::getVoiceColour (int voiceIndex)
 {
-    const auto sourceNames = SourceHelpers::getMpeSourceNames();
-    for (int i = 0; i < sourceNames.size(); ++i)
-        source.addItem (getMpeSourceDisplayName (sourceNames[i]), i + 1);
-    source.setSelectedItemIndex (0, juce::dontSendNotification);
-    source.setTooltip ("Slide: CC74, Glide: per-note pitch bend, Strike: note velocity. Per-note pressure is aftertouch: use the Modulation section");
-    addAndMakeVisible (source);
+    // Distinct hues per voice (golden ratio steps), starting at the accent colour
+    const float hue = std::fmod (SourceColours::accent.getHue() + 0.618034f * (float) voiceIndex, 1.0f);
+    return juce::Colour::fromHSV (hue, 0.6f, 0.95f, 1.0f);
+}
 
-    int itemId = 1;
-    for (const auto& info : getSoundParametersInfo())
-        if (info.midiCCEnabled && ! info.isInt)
-            parameter.addItem (info.name, itemId++);
-    parameter.setSelectedItemIndex (0, juce::dontSendNotification);
-    addAndMakeVisible (parameter);
-
-    for (auto* s : { &minRange, &maxRange, &curve })
+void ModulatorScope::setRange (float newMinRange, float newMaxRange)
+{
+    if (newMinRange != minRange || newMaxRange != maxRange)
     {
-        s->setSliderStyle (juce::Slider::LinearHorizontal);
-        s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 34, 18);
-        s->setRange (0.0, 1.0, 0.01);
-        s->onDragEnd = [this, &owner] { owner.sendMapping (*this); };
-        addAndMakeVisible (s);
+        minRange = newMinRange;
+        maxRange = newMaxRange;
+        repaint();
     }
-    curve.setRange (-1.0, 1.0, 0.01);
-    curve.setDoubleClickReturnValue (true, 0.0);
-    minRange.setTooltip ("Parameter value (normalised) when the MPE dimension is at its minimum");
-    maxRange.setTooltip ("Parameter value (normalised) when the MPE dimension is at its maximum");
-    curve.setTooltip ("Response curve: 0 = linear, positive = slow start, negative = fast start");
-    maxRange.setValue (1.0, juce::dontSendNotification);
-
-    source.onChange = [this, &owner] { owner.sendMapping (*this); };
-    parameter.onChange = [this, &owner] { owner.sendMapping (*this); };
-    removeButton.onClick = [this, &owner] { owner.actions.send (ACTION_REMOVE_MPE_MAPPING, { owner.currentSoundUUID, uuid }); };
-    addAndMakeVisible (removeButton);
 }
 
-bool MpeMappingsComponent::MappingRow::isBeingEdited() const
+void ModulatorScope::setMessage (const juce::String& text, bool isWarning)
 {
-    return minRange.isMouseButtonDown() || maxRange.isMouseButtonDown() || curve.isMouseButtonDown()
-        || source.isPopupActive() || parameter.isPopupActive();
+    if (text != message || isWarning != messageIsWarning)
+    {
+        message = text;
+        messageIsWarning = isWarning;
+        repaint();
+    }
 }
 
-void MpeMappingsComponent::MappingRow::resized()
+void ModulatorScope::addValues (int voiceIndex, uint32_t noteCounter, const std::vector<float>& values, double rate, double now)
+{
+    auto& trace = traces[voiceIndex];
+    if (! trace.points.empty() && trace.noteCounter != noteCounter)
+        trace.points.emplace_back (trace.points.back().first, std::numeric_limits<float>::quiet_NaN());  // New note: break the line
+    trace.noteCounter = noteCounter;
+    const double lastTime = trace.points.empty() ? 0.0 : trace.points.back().first;
+    const int numValues = (int) values.size();
+    for (int i = 0; i < numValues; ++i)
+    {
+        const double time = juce::jmax (lastTime + 1.0e-4 * (i + 1), now - (double) (numValues - 1 - i) / rate);
+        trace.points.emplace_back (time, values[(size_t) i]);
+    }
+}
+
+void ModulatorScope::advanceTime (double now)
+{
+    currentTime = now;
+    for (auto it = traces.begin(); it != traces.end();)
+    {
+        auto& points = it->second.points;
+        while (points.size() > 1 && points[1].first < now - windowSeconds)
+            points.pop_front();
+        if (points.empty() || points.back().first < now - windowSeconds)
+            it = traces.erase (it);
+        else
+            ++it;
+    }
+    repaint();
+}
+
+void ModulatorScope::paint (juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour (juce::Colours::black);
+    g.fillRoundedRectangle (bounds, 3.0f);
+    const auto plot = bounds.reduced (2.0f, 4.0f);
+    // Vertical scale: -1..1 for modulators (normalised offset added to the target parameter), 0..1 for mappings
+    auto yFor = [this, &plot] (float value)
+    {
+        return juce::jmap (juce::jlimit (verticalBottom, verticalTop, value), verticalTop, verticalBottom, plot.getY(), plot.getBottom());
+    };
+
+    if (verticalBottom < 0.0f)
+    {
+        g.setColour (SourceColours::control);
+        g.drawHorizontalLine ((int) yFor (0.0f), plot.getX(), plot.getRight());
+    }
+    const float dashes[] = { 3.0f, 3.0f };
+    g.setColour (SourceColours::accent.withAlpha (0.5f));
+    for (float level : { minRange, maxRange })
+        g.drawDashedLine ({ plot.getX(), yFor (level), plot.getRight(), yFor (level) }, dashes, 2, 1.0f);
+
+    for (const auto& [voiceIndex, trace] : traces)
+    {
+        juce::Path path;
+        bool newSegment = true;
+        for (const auto& [time, value] : trace.points)
+        {
+            if (std::isnan (value))
+            {
+                newSegment = true;
+                continue;
+            }
+            const float x = juce::jmap ((float) (time - (currentTime - windowSeconds)), 0.0f, (float) windowSeconds, plot.getX(), plot.getRight());
+            if (newSegment)
+                path.startNewSubPath (x, yFor (value));
+            else
+                path.lineTo (x, yFor (value));
+            newSegment = false;
+        }
+        g.setColour (getVoiceColour (voiceIndex));
+        g.strokePath (path, juce::PathStrokeType (1.5f));
+    }
+
+    g.setColour (SourceColours::dimText.withAlpha (0.6f));
+    g.setFont (juce::Font (juce::FontOptions (10.0f)));
+    g.drawText (verticalTop > 0.999f && verticalBottom < -0.999f ? "+1" : juce::String (verticalTop, 0), bounds.reduced (3.0f, 1.0f), juce::Justification::topLeft);
+    g.drawText (juce::String (verticalBottom, 0), bounds.reduced (3.0f, 1.0f), juce::Justification::bottomLeft);
+    if (message.isNotEmpty())
+    {
+        g.setColour (messageIsWarning ? SourceColours::warning : SourceColours::dimText.withAlpha (0.8f));
+        g.drawFittedText (message, getLocalBounds().reduced (18, 2), juce::Justification::centred, 2);
+    }
+}
+
+//==============================================================================
+// StepsEditor
+
+void StepsEditor::setValues (const SourceHelpers::StepValues& newValues, int newNumSteps)
+{
+    if (dragging)
+        return;
+    newNumSteps = juce::jlimit (1, SourceHelpers::maxSteps, newNumSteps);
+    if (newValues != values || newNumSteps != numSteps)
+    {
+        values = newValues;
+        numSteps = newNumSteps;
+        repaint();
+    }
+}
+
+void StepsEditor::paint (juce::Graphics& g)
+{
+    g.setColour (juce::Colours::black);
+    g.fillRoundedRectangle (getLocalBounds().toFloat(), 3.0f);
+    const auto plot = getPlotArea();
+    const float stepWidth = plot.getWidth() / (float) numSteps;
+    for (int i = 0; i < numSteps; ++i)
+    {
+        auto column = juce::Rectangle<float> (plot.getX() + stepWidth * (float) i, plot.getY(), stepWidth, plot.getHeight()).reduced (juce::jmin (1.5f, stepWidth * 0.15f), 0.0f);
+        g.setColour (SourceColours::control.withAlpha (0.35f));
+        g.fillRect (column);
+        const float value = values[(size_t) i];
+        g.setColour (SourceColours::accent);
+        g.fillRect (column.withTop (column.getBottom() - juce::jmax (1.5f, value * column.getHeight())));
+    }
+    g.setColour (SourceColours::dimText.withAlpha (0.6f));
+    g.setFont (juce::Font (juce::FontOptions (10.0f)));
+    g.drawText ("max", getLocalBounds().reduced (3, 1), juce::Justification::topRight);
+    g.drawText ("min", getLocalBounds().reduced (3, 1), juce::Justification::bottomRight);
+}
+
+void StepsEditor::setValueAt (juce::Point<float> position)
+{
+    const auto plot = getPlotArea();
+    const int index = juce::jlimit (0, numSteps - 1, (int) ((position.x - plot.getX()) / plot.getWidth() * (float) numSteps));
+    const float value = juce::jlimit (0.0f, 1.0f, (plot.getBottom() - position.y) / plot.getHeight());
+    // Fill the steps between the previous and the current position (fast drags skip steps)
+    if (lastIndex >= 0 && lastIndex != index)
+    {
+        const int direction = index > lastIndex ? 1 : -1;
+        for (int i = lastIndex + direction; i != index; i += direction)
+            values[(size_t) i] = juce::jmap ((float) (i - lastIndex) / (float) (index - lastIndex), lastValue, value);
+    }
+    values[(size_t) index] = value;
+    lastIndex = index;
+    lastValue = value;
+    repaint();
+    if (onChange)
+        onChange();
+}
+
+void StepsEditor::mouseDown (const juce::MouseEvent& e)
+{
+    dragging = true;
+    lastIndex = -1;
+    setValueAt (e.position);
+}
+
+void StepsEditor::mouseDrag (const juce::MouseEvent& e)
+{
+    setValueAt (e.position);
+}
+
+void StepsEditor::mouseUp (const juce::MouseEvent&)
+{
+    dragging = false;
+    lastIndex = -1;
+    if (onChange)
+        onChange();
+}
+
+//==============================================================================
+// ModulatorsComponent
+
+ModulatorsComponent::LabelledSlider::LabelledSlider (const juce::String& name)
+{
+    label.setText (name, juce::dontSendNotification);
+    label.setFont (juce::Font (juce::FontOptions (11.0f)));
+    label.setColour (juce::Label::textColourId, SourceColours::dimText);
+    label.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (label);
+    slider.setSliderStyle (juce::Slider::LinearHorizontal);
+    slider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 48, 18);
+    addAndMakeVisible (slider);
+}
+
+void ModulatorsComponent::LabelledSlider::resized()
 {
     auto b = getLocalBounds();
-    removeButton.setBounds (b.removeFromRight (22).withSizeKeepingCentre (22, 20));
-    b.removeFromRight (4);
-    source.setBounds (b.removeFromLeft (76).withSizeKeepingCentre (76, 20));
-    b.removeFromLeft (4);
-    parameter.setBounds (b.removeFromLeft (juce::jmax (110, b.getWidth() / 4)).withSizeKeepingCentre (juce::jmax (110, b.getWidth() / 4), 20));
-    b.removeFromLeft (4);
-    const int sliderWidth = b.getWidth() / 3;
-    minRange.setBounds (b.removeFromLeft (sliderWidth));
-    maxRange.setBounds (b.removeFromLeft (sliderWidth));
-    curve.setBounds (b);
+    const int labelWidth = label.getText().length() > 4 ? 44 : (label.getText().length() > 1 ? 36 : 16);
+    label.setBounds (b.removeFromLeft (labelWidth));
+    slider.setBounds (b);
 }
 
-MpeMappingsComponent::MpeMappingsComponent (SourceActionSender actionSender) : actions (std::move (actionSender))
+ModulatorsComponent::LabelledCombo::LabelledCombo (const juce::String& name)
 {
-    addButton.onClick = [this]
-    {
-        auto* row = rows.add (new MappingRow (*this));
-        row->uuid = juce::Uuid().toString();
-        addAndMakeVisible (row);
-        sendMapping (*row);
-    };
-    addAndMakeVisible (addButton);
-    columnsLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
-    columnsLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
-    addAndMakeVisible (columnsLabel);
+    label.setText (name, juce::dontSendNotification);
+    label.setFont (juce::Font (juce::FontOptions (11.0f)));
+    label.setColour (juce::Label::textColourId, SourceColours::dimText);
+    label.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (label);
+    addAndMakeVisible (combo);
 }
 
-void MpeMappingsComponent::sendMapping (MappingRow& row)
+void ModulatorsComponent::LabelledCombo::resized()
+{
+    auto b = getLocalBounds();
+    label.setBounds (b.removeFromLeft (label.getText().length() > 4 ? 44 : 36));
+    b.removeFromLeft (4);
+    combo.setBounds (b.removeFromLeft (juce::jmin (b.getWidth(), 110)));
+}
+
+void ModulatorsComponent::ModulatorRow::updateSyncVisibility()
+{
+    const bool sync = syncButton.getToggleState();
+    if (type == SourceHelpers::ModulatorType::steps)
+    {
+        stepsRate.setVisible (! sync);
+        stepsLength.setVisible (sync);
+        return;
+    }
+    if (type != SourceHelpers::ModulatorType::lfo)
+        return;
+    rate.setVisible (! sync);
+    lfoAttack.setVisible (! sync);
+    rateDivision.setVisible (sync);
+    attackDivision.setVisible (sync);
+}
+
+ModulatorsComponent::ModulatorRow::ModulatorRow (ModulatorsComponent& owner, SourceHelpers::ModulatorType typeToUse) : type (typeToUse)
+{
+    kind = SourceIDs::MODULATOR;
+    const bool isLfo = type == SourceHelpers::ModulatorType::lfo;
+    typeLabel.setText (isLfo ? "LFO" : (type == SourceHelpers::ModulatorType::steps ? "Steps" : "ADSR"), juce::dontSendNotification);
+    typeLabel.setFont (juce::Font (juce::FontOptions (12.0f, juce::Font::bold)));
+    typeLabel.setColour (juce::Label::textColourId, SourceColours::accent);
+    addAndMakeVisible (typeLabel);
+
+    const auto parameterNames = SourceSound::getModulatableParameterNames();
+    for (int i = 0; i < parameterNames.size(); ++i)
+        target.addItem (getDisplayNameForParameter (parameterNames[i]), i + 1);
+    target.setSelectedItemIndex (juce::jmax (0, parameterNames.indexOf (SourceDefaults::modulatorParameterName)), juce::dontSendNotification);
+    target.setTooltip ("Parameter modulated by this modulator");
+    addAndMakeVisible (target);
+
+    auto setUp = [this, &owner] (LabelledSlider& s, double min, double max, double interval, double value, const juce::String& tooltip)
+    {
+        s.slider.setRange (min, max, interval);
+        s.slider.setValue (value, juce::dontSendNotification);
+        s.slider.setTooltip (tooltip);
+        s.slider.onValueChange = [this, &owner] { owner.sendModulator (*this); };
+        addAndMakeVisible (s);
+    };
+    setUp (minRange, -1.0, 1.0, 0.01, SourceDefaults::modulatorMinRange, "Output when the modulator's signal is at its minimum (normalised offset added to the parameter, -1..1)");
+    setUp (maxRange, -1.0, 1.0, 0.01, SourceDefaults::modulatorMaxRange, "Output when the modulator's signal is at its maximum (normalised offset added to the parameter, -1..1)");
+    minRange.slider.setDoubleClickReturnValue (true, 0.0);
+    maxRange.slider.setDoubleClickReturnValue (true, 0.0);
+
+    if (isLfo)
+    {
+        waveform.addItemList (SourceHelpers::getLfoWaveformNames(), 1);
+        waveform.setSelectedItemIndex (SourceDefaults::lfoWaveform, juce::dontSendNotification);
+        waveform.setTooltip ("LFO waveform");
+        waveform.onChange = [this, &owner] { owner.sendModulator (*this); };
+        addAndMakeVisible (waveform);
+        setUp (rate, SourceHelpers::minLfoRate, SourceHelpers::maxLfoRate, 0.01, SourceDefaults::lfoRate, "LFO rate (Hz)");
+        rate.slider.setSkewFactorFromMidPoint (2.0);
+        rate.slider.setTextValueSuffix (" Hz");
+        rate.slider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 64, 18);
+        setUp (lfoAttack, 0.0, SourceHelpers::maxModulatorEnvelopeTime, 0.01, SourceDefaults::lfoAttack,
+               "Time for the LFO to speed up from 0 Hz to its rate after the note starts (exponential, seconds)");
+        lfoAttack.slider.setSkewFactorFromMidPoint (1.0);
+        lfoAttack.slider.setTextValueSuffix (" s");
+        lfoAttack.slider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 56, 18);
+
+        // Synced: rate and attack as note divisions of the tempo
+        for (const auto& division : SourceHelpers::getSyncDivisions())
+            rateDivision.combo.addItem (division.name, rateDivision.combo.getNumItems() + 1);
+        rateDivision.combo.setSelectedItemIndex (SourceDefaults::lfoSyncDivision, juce::dontSendNotification);
+        rateDivision.combo.setTooltip ("One LFO cycle per note division (D = dotted, T = triplet)");
+        attackDivision.combo.addItemList (SourceHelpers::getSyncAttackNames(), 1);
+        attackDivision.combo.setSelectedItemIndex (SourceDefaults::lfoAttackDivision, juce::dontSendNotification);
+        attackDivision.combo.setTooltip ("Time for the LFO to speed up from 0 Hz to its rate after the note starts (exponential)");
+        for (auto* c : { &rateDivision, &attackDivision })
+        {
+            c->combo.onChange = [this, &owner] { owner.sendModulator (*this); };
+            addChildComponent (c);
+        }
+        syncButton.setClickingTogglesState (true);
+        syncButton.setToggleState (SourceDefaults::lfoSync, juce::dontSendNotification);
+        syncButton.setTooltip ("Sync the LFO to the tempo (Ableton Link, the host or the BPM next to the voices)");
+        syncButton.onClick = [this, &owner] { updateSyncVisibility(); owner.sendModulator (*this); };
+        addAndMakeVisible (syncButton);
+        updateSyncVisibility();
+    }
+    else if (type == SourceHelpers::ModulatorType::steps)
+    {
+        setUp (numSteps, 1.0, SourceHelpers::maxSteps, 1.0, SourceDefaults::numSteps, "Number of steps");
+        numSteps.slider.setSliderStyle (juce::Slider::IncDecButtons);
+        numSteps.slider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 36, 20);
+        numSteps.slider.setIncDecButtonsMode (juce::Slider::incDecButtonsDraggable_Vertical);
+        setUp (stepsRate, SourceHelpers::minStepsRate, SourceHelpers::maxStepsRate, 0.001, SourceDefaults::stepsRate,
+               "Cycles of the whole sequence per second");
+        stepsRate.slider.setSkewFactorFromMidPoint (0.5);
+        stepsRate.slider.setTextValueSuffix (" Hz");
+        stepsRate.slider.setNumDecimalPlacesToDisplay (3);
+        stepsRate.slider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 70, 18);
+        for (const auto& length : SourceHelpers::getStepsCycleLengths())
+            stepsLength.combo.addItem (length.name, stepsLength.combo.getNumItems() + 1);
+        stepsLength.combo.setSelectedItemIndex (SourceDefaults::stepsSyncLength, juce::dontSendNotification);
+        stepsLength.combo.setTooltip ("Length of the whole sequence");
+        stepsLength.combo.onChange = [this, &owner] { owner.sendModulator (*this); };
+        addChildComponent (stepsLength);
+        syncButton.setClickingTogglesState (true);
+        syncButton.setToggleState (SourceDefaults::lfoSync, juce::dontSendNotification);
+        syncButton.setTooltip ("Sync to the tempo (Ableton Link, the host or the BPM next to the voices): the cycle lasts a number of beats/bars");
+        syncButton.onClick = [this, &owner] { updateSyncVisibility(); owner.sendModulator (*this); };
+        addAndMakeVisible (syncButton);
+        stepsEditor.setTooltip ("Drag to draw the value of each step (bottom = min, top = max)");
+        stepsEditor.onChange = [this, &owner] { owner.sendModulator (*this); };
+        addAndMakeVisible (stepsEditor);
+        updateSyncVisibility();
+    }
+    else
+    {
+        const double maxTime = SourceHelpers::maxModulatorEnvelopeTime;
+        setUp (attack, 0.0, maxTime, 0.01, SourceDefaults::modAttack, "Attack time (seconds)");
+        setUp (decay, 0.0, maxTime, 0.01, SourceDefaults::modDecay, "Decay time (seconds)");
+        setUp (sustain, 0.0, 1.0, 0.01, SourceDefaults::modSustain, "Sustain level (0..1)");
+        setUp (release, 0.0, maxTime, 0.01, SourceDefaults::modRelease, "Release time (seconds)");
+        for (auto* s : { &attack, &decay, &release })
+            s->slider.setSkewFactorFromMidPoint (1.0);
+    }
+
+    target.onChange = [this, &owner] { owner.sendModulator (*this); };
+    removeButton.onClick = [this, &owner] { owner.actions.send (ACTION_REMOVE_MODULATOR, { owner.currentSoundUUID, uuid }); };
+    addAndMakeVisible (removeButton);
+    scope.setTooltip ("Output of the modulator (one line per voice playing the sound); dashed lines are min and max");
+    addAndMakeVisible (scope);
+}
+
+bool ModulatorsComponent::ModulatorRow::isBeingEdited() const
+{
+    for (auto* s : { &minRange, &maxRange, &rate, &lfoAttack, &attack, &decay, &sustain, &release, &numSteps, &stepsRate })
+        if (s->slider.isMouseButtonDown())
+            return true;
+    return target.isPopupActive() || waveform.isPopupActive() || rateDivision.combo.isPopupActive() || attackDivision.combo.isPopupActive()
+        || stepsLength.combo.isPopupActive() || stepsEditor.isDragging();
+}
+
+void ModulatorsComponent::Row::paint (juce::Graphics& g)
+{
+    g.setColour (SourceColours::control.withAlpha (0.35f));
+    g.fillRoundedRectangle (getLocalBounds().toFloat(), 4.0f);
+}
+
+//------------------------------------------------------------------------------
+ModulatorsComponent::MappingRow::MappingRow (ModulatorsComponent& owner, bool mpe) : isMpe (mpe)
+{
+    kind = isMpe ? SourceIDs::MPE_MAPPING : SourceIDs::MIDI_CC_MAPPING;
+    typeLabel.setText (isMpe ? "MPE" : "MIDI CC", juce::dontSendNotification);
+    typeLabel.setFont (juce::Font (juce::FontOptions (12.0f, juce::Font::bold)));
+    typeLabel.setColour (juce::Label::textColourId, SourceColours::accent);
+    addAndMakeVisible (typeLabel);
+
+    for (const auto& info : getSoundParametersInfo())
+        if (info.midiCCEnabled && ! info.isInt)
+            parameterNames.add (info.name);
+    for (int i = 0; i < parameterNames.size(); ++i)
+        target.addItem (getDisplayNameForParameter (parameterNames[i]), i + 1);
+    target.setSelectedItemIndex (0, juce::dontSendNotification);
+    target.setTooltip ("Parameter controlled by this mapping");
+    target.onChange = [this, &owner] { owner.sendMapping (*this); };
+    addAndMakeVisible (target);
+
+    auto setUp = [this, &owner] (LabelledSlider& s, double min, double max, double interval, double value, const juce::String& tooltip)
+    {
+        s.slider.setRange (min, max, interval);
+        s.slider.setValue (value, juce::dontSendNotification);
+        s.slider.setTooltip (tooltip);
+        s.slider.onValueChange = [this, &owner] { owner.sendMapping (*this); };
+        addAndMakeVisible (s);
+    };
+    const juce::String sourceName = isMpe ? "the MPE dimension" : "the CC";
+    setUp (minRange, 0.0, 1.0, 0.01, 0.0, "Parameter value (normalised) when " + sourceName + " is at its minimum");
+    setUp (maxRange, 0.0, 1.0, 0.01, 1.0, "Parameter value (normalised) when " + sourceName + " is at its maximum");
+    if (isMpe)
+    {
+        const auto sourceNames = SourceHelpers::getMpeSourceNames();
+        for (int i = 0; i < sourceNames.size(); ++i)
+            source.addItem (getMpeSourceDisplayName (sourceNames[i]), i + 1);
+        source.setSelectedItemIndex (0, juce::dontSendNotification);
+        source.setTooltip ("Slide: CC74, Glide: per-note pitch bend, Strike: note velocity. Per-note pressure is aftertouch: use the Modulation section");
+        source.onChange = [this, &owner] { owner.sendMapping (*this); };
+        addAndMakeVisible (source);
+        setUp (curve, -1.0, 1.0, 0.01, 0.0, "Response curve: 0 = linear, positive = slow start, negative = fast start");
+        curve.slider.setDoubleClickReturnValue (true, 0.0);
+    }
+    else
+    {
+        setUp (ccNumber, 0.0, 127.0, 1.0, 1.0, "MIDI CC number");
+        ccNumber.slider.setSliderStyle (juce::Slider::IncDecButtons);
+        ccNumber.slider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 36, 20);
+        ccNumber.slider.setIncDecButtonsMode (juce::Slider::incDecButtonsDraggable_Vertical);
+    }
+    removeButton.onClick = [this, &owner]
+    {
+        owner.actions.send (isMpe ? ACTION_REMOVE_MPE_MAPPING : ACTION_REMOVE_CC_MAPPING, { owner.currentSoundUUID, uuid });
+    };
+    addAndMakeVisible (removeButton);
+    scope.setVerticalRange (0.0f, 1.0f);
+    scope.setTooltip (isMpe ? "Value set by the mapping (normalised parameter value), one line per note"
+                            : "Value set by the mapping (normalised parameter value) when the CC is received; the last value is held");
+    addAndMakeVisible (scope);
+}
+
+bool ModulatorsComponent::MappingRow::isBeingEdited() const
+{
+    for (auto* s : { &minRange, &maxRange, &curve, &ccNumber })
+        if (s->slider.isMouseButtonDown())
+            return true;
+    return target.isPopupActive() || source.isPopupActive();
+}
+
+void ModulatorsComponent::MappingRow::resized()
+{
+    // Two lines: type, target, source or CC number | min, max (and curve). Information on the right.
+    auto b = getLocalBounds().reduced (6, 4);
+    scope.setBounds (b.removeFromRight (juce::jlimit (140, 260, b.getWidth() / 3)));
+    b.removeFromRight (8);
+    auto line1 = b.removeFromTop (b.getHeight() / 2);
+    auto line2 = b;
+    auto centred = [] (juce::Rectangle<int> r, int height) { return r.withSizeKeepingCentre (r.getWidth(), height); };
+    removeButton.setBounds (line1.removeFromRight (22).withSizeKeepingCentre (22, 20));
+    typeLabel.setBounds (line1.removeFromLeft (typeLabelWidth));
+    target.setBounds (centred (line1.removeFromLeft (juce::jmin (170, line1.getWidth() / 2)), 22));
+    line1.removeFromLeft (6);
+    if (isMpe)
+    {
+        source.setBounds (centred (line1.removeFromLeft (juce::jmin (120, line1.getWidth() - 6)), 22));
+        const int width = line2.getWidth() / 3;
+        minRange.setBounds (centred (line2.removeFromLeft (width), 22));
+        maxRange.setBounds (centred (line2.removeFromLeft (width), 22));
+        curve.setBounds (centred (line2, 22));
+    }
+    else
+    {
+        ccNumber.setBounds (centred (line1.removeFromLeft (juce::jmin (130, line1.getWidth() - 6)), 24));
+        const int halfWidth = line2.getWidth() / 2;
+        minRange.setBounds (centred (line2.removeFromLeft (halfWidth), 22));
+        maxRange.setBounds (centred (line2, 22));
+    }
+}
+
+
+
+void ModulatorsComponent::ModulatorRow::resized()
+{
+    // Three lines: type, target (and waveform) | min, max | rate or A, D, S, R. The oscilloscope on the right.
+    auto b = getLocalBounds().reduced (6, 4);
+    scope.setBounds (b.removeFromRight (juce::jlimit (140, 260, b.getWidth() / 3)));
+    b.removeFromRight (8);
+    const int lineHeight = type == SourceHelpers::ModulatorType::steps ? 28 : b.getHeight() / 3;
+    auto line1 = b.removeFromTop (lineHeight);
+    auto line2 = b.removeFromTop (lineHeight);
+    auto line3 = type == SourceHelpers::ModulatorType::steps ? b.removeFromTop (lineHeight) : b;
+    auto centred = [] (juce::Rectangle<int> r, int height) { return r.withSizeKeepingCentre (r.getWidth(), height); };
+
+    removeButton.setBounds (line1.removeFromRight (22).withSizeKeepingCentre (22, 20));
+    typeLabel.setBounds (line1.removeFromLeft (typeLabelWidth));
+    target.setBounds (centred (line1.removeFromLeft (juce::jmin (170, line1.getWidth() / 2)), 22));
+    line1.removeFromLeft (6);
+    if (type == SourceHelpers::ModulatorType::lfo || type == SourceHelpers::ModulatorType::steps)
+    {
+        line1.removeFromRight (6);
+        syncButton.setBounds (centred (line1.removeFromRight (54), 22));
+        line1.removeFromRight (6);
+        if (type == SourceHelpers::ModulatorType::lfo)
+            waveform.setBounds (centred (line1.removeFromLeft (juce::jmin (120, line1.getWidth())), 22));
+    }
+
+    const int halfWidth = line2.getWidth() / 2;
+    minRange.setBounds (centred (line2.removeFromLeft (halfWidth), 22));
+    maxRange.setBounds (centred (line2, 22));
+
+    if (type == SourceHelpers::ModulatorType::lfo)
+    {
+        const auto rateBounds = centred (line3.removeFromLeft (halfWidth), 22);
+        const auto attackBounds = centred (line3, 22);
+        rate.setBounds (rateBounds);
+        rateDivision.setBounds (rateBounds);
+        lfoAttack.setBounds (attackBounds);
+        attackDivision.setBounds (attackBounds);
+    }
+    else if (type == SourceHelpers::ModulatorType::steps)
+    {
+        const auto rateBounds = centred (line3.removeFromLeft (halfWidth), 22);
+        stepsRate.setBounds (rateBounds);
+        stepsLength.setBounds (rateBounds);
+        numSteps.setBounds (centred (line3.removeFromLeft (juce::jmin (line3.getWidth(), 150)), 24));
+        b.removeFromTop (2);
+        stepsEditor.setBounds (b);
+    }
+    else
+    {
+        const int width = line3.getWidth() / 4;
+        for (auto* s : { &attack, &decay, &sustain })
+            s->setBounds (centred (line3.removeFromLeft (width), 22));
+        release.setBounds (centred (line3, 22));
+    }
+}
+
+ModulatorsComponent::ModulatorsComponent (SourceActionSender actionSender) : actions (std::move (actionSender))
+{
+    addLfoButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::lfo); };
+    addAdsrButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::adsr); };
+    addStepsButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::steps); };
+    addStepsButton.setTooltip ("Add a sequence of steps (cycled at a rate or synced to the tempo; restarts with each note)");
+    addAndMakeVisible (addStepsButton);
+    addLfoButton.setTooltip ("Add a low frequency oscillator (restarts with each note)");
+    addAdsrButton.setTooltip ("Add an envelope (attack, decay, sustain, release; restarts with each note)");
+    addMpeButton.onClick = [this] { addMapping (true); };
+    addCcButton.onClick = [this] { addMapping (false); };
+    addMpeButton.setTooltip ("Map a per-note MPE expression (slide, glide, strike) to a parameter of the note");
+    addCcButton.setTooltip ("Map a MIDI CC to a parameter of the sound (changes the sound's value, for all notes)");
+    addAndMakeVisible (addLfoButton);
+    addAndMakeVisible (addAdsrButton);
+    addAndMakeVisible (addMpeButton);
+    addAndMakeVisible (addCcButton);
+}
+
+void ModulatorsComponent::addModulator (SourceHelpers::ModulatorType type)
+{
+    if (currentSoundUUID.isEmpty() || rows.size() >= SourceSound::maxModulationsPerSound)
+        return;
+    // Send the defaults of a new row (the row is then created from the state)
+    ModulatorRow row (*this, type);
+    row.uuid = juce::Uuid().toString();
+    sendModulator (row);
+}
+
+void ModulatorsComponent::addMapping (bool isMpe)
+{
+    if (currentSoundUUID.isEmpty() || rows.size() >= SourceSound::maxModulationsPerSound)
+        return;
+    MappingRow row (*this, isMpe);
+    row.uuid = juce::Uuid().toString();
+    row.target.setSelectedItemIndex (juce::jmax (0, row.parameterNames.indexOf ("filterCutoff")), juce::dontSendNotification);
+    sendMapping (row);
+}
+
+void ModulatorsComponent::sendMapping (MappingRow& row)
 {
     if (currentSoundUUID.isEmpty())
         return;
-    actions.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, {
-        currentSoundUUID, row.uuid, SourceHelpers::getMpeSourceNames()[row.source.getSelectedItemIndex()], row.parameter.getText(),
-        juce::String (row.minRange.getValue()), juce::String (row.maxRange.getValue()), juce::String (row.curve.getValue()) });
+    const auto parameterName = row.parameterNames[juce::jmax (0, row.target.getSelectedItemIndex())];
+    if (row.isMpe)
+        actions.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, {
+            currentSoundUUID, row.uuid, SourceHelpers::getMpeSourceNames()[juce::jmax (0, row.source.getSelectedItemIndex())], parameterName,
+            juce::String (row.minRange.slider.getValue()), juce::String (row.maxRange.slider.getValue()), juce::String (row.curve.slider.getValue()) });
+    else
+        actions.send (ACTION_ADD_OR_UPDATE_CC_MAPPING, {
+            currentSoundUUID, row.uuid, juce::String ((int) row.ccNumber.slider.getValue()), parameterName,
+            juce::String (row.minRange.slider.getValue()), juce::String (row.maxRange.slider.getValue()) });
 }
 
-void MpeMappingsComponent::updateFromState (const juce::String& soundUUID, const juce::ValueTree& soundState, bool mpeEnabled)
+void ModulatorsComponent::sendModulator (ModulatorRow& row)
 {
-    currentSoundUUID = soundUUID;
-    if (isMpeEnabled != mpeEnabled)
+    if (currentSoundUUID.isEmpty())
+        return;
+    const auto parameterNames = SourceSound::getModulatableParameterNames();
+    actions.send (ACTION_ADD_OR_UPDATE_MODULATOR, {
+        currentSoundUUID, row.uuid, SourceHelpers::getModulatorTypeNames()[(int) row.type],
+        parameterNames[juce::jmax (0, row.target.getSelectedItemIndex())],
+        juce::String (row.minRange.slider.getValue()), juce::String (row.maxRange.slider.getValue()),
+        juce::String (juce::jmax (0, row.waveform.getSelectedItemIndex())), juce::String (row.rate.slider.getValue()),
+        juce::String (row.attack.slider.getValue()), juce::String (row.decay.slider.getValue()),
+        juce::String (row.sustain.slider.getValue()), juce::String (row.release.slider.getValue()),
+        juce::String (row.lfoAttack.slider.getValue()), row.syncButton.getToggleState() ? "1" : "0",
+        juce::String (juce::jmax (0, row.rateDivision.combo.getSelectedItemIndex())), juce::String (juce::jmax (0, row.attackDivision.combo.getSelectedItemIndex())),
+        juce::String ((int) row.numSteps.slider.getValue()), juce::String (row.stepsRate.slider.getValue()),
+        juce::String (juce::jmax (0, row.stepsLength.combo.getSelectedItemIndex())), SourceHelpers::formatStepValues (row.stepsEditor.getValues()) });
+}
+
+void ModulatorsComponent::updateFromState (const juce::String& soundUUID, const juce::ValueTree& soundState, bool mpeEnabled)
+{
+    if (soundUUID != currentSoundUUID)
     {
-        isMpeEnabled = mpeEnabled;
-        repaint();
+        rows.clear();
+        modulatorRows.clear();
+        mpeRows.clear();
+        ccRows.clear();
+        lastReadCounts.clear();
     }
-    addButton.setEnabled (soundUUID.isNotEmpty());
+    currentSoundUUID = soundUUID;
 
-    std::vector<juce::ValueTree> mappings;
+    std::vector<juce::ValueTree> states;
     for (const auto& child : soundState)
-        if (child.hasType (SourceIDs::MPE_MAPPING))
-            mappings.push_back (child);
+        if (child.hasType (SourceIDs::MODULATOR) || child.hasType (SourceIDs::MPE_MAPPING) || child.hasType (SourceIDs::MIDI_CC_MAPPING))
+            states.push_back (child);
+    auto getModulatorType = [] (const juce::ValueTree& state)
+    {
+        const auto type = SourceHelpers::modulatorTypeFromName (state.getProperty (SourceIDs::modulatorType).toString());
+        return type == SourceHelpers::ModulatorType::numTypes ? SourceHelpers::ModulatorType::lfo : type;
+    };
 
-    const bool needsRebuild = (int) mappings.size() != rows.size();
+    // Rebuild the rows if the list (kinds or modulator types) changed
+    bool needsRebuild = (int) states.size() != rows.size();
+    for (size_t i = 0; i < states.size() && ! needsRebuild; ++i)
+    {
+        auto* row = rows[(int) i];
+        needsRebuild = row->kind != states[i].getType();
+        if (! needsRebuild && row->kind == SourceIDs::MODULATOR)
+            needsRebuild = static_cast<ModulatorRow*> (row)->type != getModulatorType (states[i]);
+    }
     if (needsRebuild)
     {
         rows.clear();
-        for (size_t i = 0; i < mappings.size(); ++i)
-            addAndMakeVisible (rows.add (new MappingRow (*this)));
+        modulatorRows.clear();
+        mpeRows.clear();
+        ccRows.clear();
+        for (const auto& state : states)
+        {
+            if (state.hasType (SourceIDs::MODULATOR))
+            {
+                auto* row = new ModulatorRow (*this, getModulatorType (state));
+                modulatorRows.push_back (row);
+                addAndMakeVisible (rows.add (row));
+            }
+            else
+            {
+                auto* row = new MappingRow (*this, state.hasType (SourceIDs::MPE_MAPPING));
+                (row->isMpe ? mpeRows : ccRows).push_back (row);
+                addAndMakeVisible (rows.add (row));
+            }
+        }
     }
-    const auto sourceNames = SourceHelpers::getMpeSourceNames();
-    for (size_t i = 0; i < mappings.size(); ++i)
+
+    for (size_t i = 0; i < states.size(); ++i)
     {
         auto* row = rows[(int) i];
-        const auto& mapping = mappings[i];
-        row->uuid = mapping.getProperty (SourceIDs::uuid).toString();
-        if (row->isBeingEdited())
-            continue;
-        row->source.setSelectedItemIndex (juce::jmax (0, sourceNames.indexOf (mapping.getProperty (SourceIDs::mpeSource).toString())), juce::dontSendNotification);
-        const juce::String paramName = mapping.getProperty (SourceIDs::parameterName).toString();
-        for (int item = 0; item < row->parameter.getNumItems(); ++item)
-            if (row->parameter.getItemText (item) == paramName)
-                row->parameter.setSelectedItemIndex (item, juce::dontSendNotification);
-        row->minRange.setValue ((float) mapping.getProperty (SourceIDs::minRange, 0.0f), juce::dontSendNotification);
-        row->maxRange.setValue ((float) mapping.getProperty (SourceIDs::maxRange, 1.0f), juce::dontSendNotification);
-        row->curve.setValue ((float) mapping.getProperty (SourceIDs::curve, 0.0f), juce::dontSendNotification);
+        row->uuid = states[i].getProperty (SourceIDs::uuid).toString();
+        if (row->kind == SourceIDs::MODULATOR)
+            updateModulatorRow (*static_cast<ModulatorRow*> (row), states[i]);
+        else
+            updateMappingRow (*static_cast<MappingRow*> (row), states[i], mpeEnabled);
     }
-    columnsLabel.setText (rows.isEmpty() ? juce::String() : "Source / parameter / min / max / curve", juce::dontSendNotification);
+    const bool canAdd = soundUUID.isNotEmpty() && rows.size() < SourceSound::maxModulationsPerSound;
+    for (auto* button : getAddButtons())
+        button->setEnabled (canAdd);
     if (needsRebuild)
         resized();
 }
 
-int MpeMappingsComponent::getIdealHeight() const
+void ModulatorsComponent::updateModulatorRow (ModulatorRow& modulatorRow, const juce::ValueTree& state)
 {
-    return 28 + 16 + 26 * rows.size() + 30;
+    auto* row = &modulatorRow;
+    const auto parameterNames = SourceSound::getModulatableParameterNames();
+        const float minRange = state.getProperty (SourceIDs::minRange, SourceDefaults::modulatorMinRange);
+        const float maxRange = state.getProperty (SourceIDs::maxRange, SourceDefaults::modulatorMaxRange);
+        row->scope.setRange (minRange, maxRange);
+        if (row->isBeingEdited())
+            return;
+        row->target.setSelectedItemIndex (juce::jmax (0, parameterNames.indexOf (state.getProperty (SourceIDs::parameterName).toString())), juce::dontSendNotification);
+        row->minRange.slider.setValue (minRange, juce::dontSendNotification);
+        row->maxRange.slider.setValue (maxRange, juce::dontSendNotification);
+        row->waveform.setSelectedItemIndex ((int) state.getProperty (SourceIDs::lfoWaveform, SourceDefaults::lfoWaveform), juce::dontSendNotification);
+        row->rate.slider.setValue ((float) state.getProperty (SourceIDs::lfoRate, SourceDefaults::lfoRate), juce::dontSendNotification);
+        row->attack.slider.setValue ((float) state.getProperty (SourceIDs::modAttack, SourceDefaults::modAttack), juce::dontSendNotification);
+        row->decay.slider.setValue ((float) state.getProperty (SourceIDs::modDecay, SourceDefaults::modDecay), juce::dontSendNotification);
+        row->sustain.slider.setValue ((float) state.getProperty (SourceIDs::modSustain, SourceDefaults::modSustain), juce::dontSendNotification);
+        row->release.slider.setValue ((float) state.getProperty (SourceIDs::modRelease, SourceDefaults::modRelease), juce::dontSendNotification);
+        row->lfoAttack.slider.setValue ((float) state.getProperty (SourceIDs::lfoAttack, SourceDefaults::lfoAttack), juce::dontSendNotification);
+        row->rateDivision.combo.setSelectedItemIndex ((int) state.getProperty (SourceIDs::lfoSyncDivision, SourceDefaults::lfoSyncDivision), juce::dontSendNotification);
+        row->attackDivision.combo.setSelectedItemIndex ((int) state.getProperty (SourceIDs::lfoAttackDivision, SourceDefaults::lfoAttackDivision), juce::dontSendNotification);
+        row->numSteps.slider.setValue ((int) state.getProperty (SourceIDs::numSteps, SourceDefaults::numSteps), juce::dontSendNotification);
+        row->stepsRate.slider.setValue ((float) state.getProperty (SourceIDs::stepsRate, SourceDefaults::stepsRate), juce::dontSendNotification);
+        row->stepsLength.combo.setSelectedItemIndex ((int) state.getProperty (SourceIDs::stepsSyncLength, SourceDefaults::stepsSyncLength), juce::dontSendNotification);
+        row->stepsEditor.setValues (SourceHelpers::parseStepValues (state.getProperty (SourceIDs::stepValues).toString()), (int) row->numSteps.slider.getValue());
+        const bool sync = state.getProperty (SourceIDs::lfoSync, SourceDefaults::lfoSync);
+        if (sync != row->syncButton.getToggleState())
+        {
+            row->syncButton.setToggleState (sync, juce::dontSendNotification);
+            row->updateSyncVisibility();
+        }
 }
 
-void MpeMappingsComponent::paint (juce::Graphics& g)
+void ModulatorsComponent::updateMappingRow (MappingRow& row, const juce::ValueTree& state, bool mpeEnabled)
+{
+    const juce::String parameterName = state.getProperty (SourceIDs::parameterName).toString();
+    juce::String info;
+    bool warning = false;
+    if (row.isMpe)
+    {
+        const auto source = state.getProperty (SourceIDs::mpeSource).toString();
+        info = mpeEnabled ? "Per note: " + getMpeSourceDisplayName (source).toLowerCase() + " sets the value of the note"
+                          : "MPE input is disabled (enable it in Preset & settings)";
+        warning = ! mpeEnabled;
+    }
+    else
+    {
+        info = "CC " + state.getProperty (SourceIDs::ccNumber, 1).toString() + " sets the sound's value (all notes)";
+    }
+    row.scope.setMessage (info, warning);
+    row.scope.setRange ((float) state.getProperty (SourceIDs::minRange, 0.0f), (float) state.getProperty (SourceIDs::maxRange, 1.0f));
+    if (row.isBeingEdited())
+        return;
+    row.target.setSelectedItemIndex (juce::jmax (0, row.parameterNames.indexOf (parameterName)), juce::dontSendNotification);
+    row.minRange.slider.setValue ((float) state.getProperty (SourceIDs::minRange, 0.0f), juce::dontSendNotification);
+    row.maxRange.slider.setValue ((float) state.getProperty (SourceIDs::maxRange, 1.0f), juce::dontSendNotification);
+    if (row.isMpe)
+    {
+        row.source.setSelectedItemIndex (juce::jmax (0, SourceHelpers::getMpeSourceNames().indexOf (state.getProperty (SourceIDs::mpeSource).toString())), juce::dontSendNotification);
+        row.curve.slider.setValue ((float) state.getProperty (SourceIDs::curve, 0.0f), juce::dontSendNotification);
+    }
+    else
+    {
+        row.ccNumber.slider.setValue ((int) state.getProperty (SourceIDs::ccNumber, 1), juce::dontSendNotification);
+    }
+}
+
+void ModulatorsComponent::updateScopes (SourceSampler& sampler)
+{
+    if (currentSoundUUID.isEmpty() || rows.isEmpty())
+        return;
+    const double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+
+    // MIDI CC mappings: the value set by the last CC received (held until a new one arrives)
+    if (! ccRows.empty())
+    {
+        if (auto* sound = sampler.getSoundWithUUID (currentSoundUUID))
+        {
+            for (auto* row : ccRows)
+            {
+                const float ccValue = sound->getLastCcValue ((int) row->ccNumber.slider.getValue());
+                if (ccValue >= 0.0f)
+                    row->scope.addValues (0, 0, { juce::jmap (ccValue, (float) row->minRange.slider.getValue(), (float) row->maxRange.slider.getValue()) },
+                                          SourceSamplerVoice::modulatorHistoryRate, now);
+            }
+        }
+    }
+
+    std::map<int, uint32_t> newReadCounts;
+    sampler.forEachVoicePlayingSound (currentSoundUUID, [&] (int voiceIndex, const SourceSamplerVoice& voice)
+    {
+        // MPE mappings: the value of each note (sampled at the UI rate, expressions change slowly)
+        const uint32_t voiceNoteCounter = voice.getModulatorNoteCounter();
+        const int numMpeValues = voice.getPublishedNumMpeValues();
+        for (int m = 0; m < juce::jmin ((int) mpeRows.size(), numMpeValues); ++m)
+            mpeRows[(size_t) m]->scope.addValues (voiceIndex, voiceNoteCounter, { voice.getPublishedMpeValue (m) }, SourceSamplerVoice::modulatorHistoryRate, now);
+        if (modulatorRows.empty())
+            return;
+
+        const uint32_t count = voice.getModulatorHistoryCount();
+        const uint32_t noteCounter = voice.getModulatorNoteCounter();
+        // New voices: show the last 100 ms. Never read the part of the history that may be being overwritten.
+        auto previous = lastReadCounts.find (voiceIndex);
+        uint32_t available = previous != lastReadCounts.end() ? count - previous->second : 20u;
+        available = juce::jmin (available, count, (uint32_t) SourceSamplerVoice::modulatorHistorySize / 2);
+        newReadCounts[voiceIndex] = count;
+        if (available == 0)
+            return;
+        std::vector<float> values (available);
+        for (int m = 0; m < juce::jmin ((int) modulatorRows.size(), SourceSound::maxModulators); ++m)
+        {
+            for (uint32_t k = 0; k < available; ++k)
+                values[k] = voice.getModulatorHistoryValue (m, count - available + k);
+            modulatorRows[(size_t) m]->scope.addValues (voiceIndex, noteCounter, values, SourceSamplerVoice::modulatorHistoryRate, now);
+        }
+    });
+    lastReadCounts = std::move (newReadCounts);  // Voices that stopped playing the sound are forgotten
+    for (auto* row : modulatorRows)
+        row->scope.advanceTime (now);
+    for (auto* row : mpeRows)
+        row->scope.advanceTime (now);
+    for (auto* row : ccRows)
+        row->scope.advanceTime (now);
+}
+
+int ModulatorsComponent::getIdealHeight() const
+{
+    int height = 28 + 30;
+    for (auto* row : rows)
+        height += row->getPreferredHeight() + 4;
+    return height;
+}
+
+void ModulatorsComponent::paint (juce::Graphics& g)
 {
     auto header = getLocalBounds().removeFromTop (24);
     g.setColour (SourceColours::text);
     g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
-    g.drawText ("MPE mappings", header, juce::Justification::centredLeft);
-    if (! isMpeEnabled)
-    {
-        g.setColour (SourceColours::warning);
-        g.setFont (juce::Font (juce::FontOptions (11.0f)));
-        g.drawText ("MPE input is disabled (enable it in Preset & settings)", header.withTrimmedLeft (110), juce::Justification::centredLeft);
-    }
+    g.drawText ("Modulators", header, juce::Justification::centredLeft);
+    g.setColour (SourceColours::dimText);
+    g.setFont (juce::Font (juce::FontOptions (11.0f)));
+    g.drawText (rows.isEmpty() ? "LFOs, envelopes, steps, MPE and MIDI CC mappings that modulate the sound's parameters"
+                               : "LFO/ADSR/steps output = min..max, added to the parameter (normalised); 0 = no modulation",
+                header.withTrimmedLeft (90), juce::Justification::centredLeft);
+    g.drawText (juce::String (rows.size()) + " / " + juce::String (SourceSound::maxModulationsPerSound), header, juce::Justification::centredRight);
 }
 
-void MpeMappingsComponent::resized()
+void ModulatorsComponent::resized()
 {
     auto b = getLocalBounds();
     b.removeFromTop (28);
-    columnsLabel.setBounds (b.removeFromTop (16));
     for (auto* row : rows)
-        row->setBounds (b.removeFromTop (26).reduced (0, 2));
-    b.removeFromTop (4);
-    addButton.setBounds (b.removeFromTop (22).removeFromLeft (130));
+    {
+        row->setBounds (b.removeFromTop (row->getPreferredHeight()));
+        b.removeFromTop (4);
+    }
+    auto buttons = b.removeFromTop (22);
+    const auto addButtons = getAddButtons();
+    const int width = juce::jmin (100, (buttons.getWidth() - 6 * ((int) addButtons.size() - 1)) / (int) addButtons.size());
+    for (auto* button : addButtons)
+    {
+        button->setBounds (buttons.removeFromLeft (width));
+        buttons.removeFromLeft (6);
+    }
 }
-
 
 //==============================================================================
 // SoundEditorComponent
@@ -543,7 +1094,7 @@ namespace
 }
 
 SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender actionSender)
-    : sampler (s), actions (actionSender), midiMappings (actionSender), mpeMappings (actionSender)
+    : sampler (s), actions (actionSender), modulators (actionSender)
 {
     titleLabel.setFont (juce::Font (juce::FontOptions (18.0f, juce::Font::bold)));
     addAndMakeVisible (titleLabel);
@@ -610,8 +1161,7 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
         for (auto* control : group.controls)
             parametersContent.addAndMakeVisible (control);
     }
-    parametersContent.addAndMakeVisible (midiMappings);
-    parametersContent.addAndMakeVisible (mpeMappings);
+    parametersContent.addAndMakeVisible (modulators);
 
     parametersViewport.setViewedComponent (&parametersContent, false);
     parametersViewport.setScrollBarsShown (true, false);
@@ -656,8 +1206,7 @@ void SoundEditorComponent::updateFromState()
     waveform.setVisible (! allSounds);
     rootNoteSlider.setVisible (! allSounds);
     rootNoteLabel.setVisible (! allSounds);
-    midiMappings.setVisible (! allSounds);
-    mpeMappings.setVisible (! allSounds);
+    modulators.setVisible (! allSounds);
 
     if (allSounds)
     {
@@ -719,9 +1268,8 @@ void SoundEditorComponent::updateFromState()
                          soundState.getProperty (SourceIDs::loopStartPosition, 0.0f), soundState.getProperty (SourceIDs::loopEndPosition, 1.0f),
                          launchMode == LAUNCH_MODE_LOOP || launchMode == LAUNCH_MODE_LOOP_FW_BW);
 
-    midiMappings.updateFromState (soundUUID, soundState);
-    mpeMappings.updateFromState (soundUUID, soundState, sampler.state.getProperty (SourceIDs::mpeEnabled, false));
-    if (midiMappings.getIdealHeight() != midiMappings.getHeight() || mpeMappings.getIdealHeight() != mpeMappings.getHeight())
+    modulators.updateFromState (soundUUID, soundState, sampler.state.getProperty (SourceIDs::mpeEnabled, false));
+    if (modulators.getIdealHeight() != modulators.getHeight())
         layoutParameters();
 }
 
@@ -777,15 +1325,10 @@ void SoundEditorComponent::layoutParameters()
         columnHeights[column] = y + 10;
     }
     int contentHeight = *std::max_element (columnHeights.begin(), columnHeights.end());
-    if (mpeMappings.isVisible())
+    if (modulators.isVisible())
     {
-        mpeMappings.setBounds (0, contentHeight, width - 12, mpeMappings.getIdealHeight());
-        contentHeight += mpeMappings.getIdealHeight() + 6;
-    }
-    if (midiMappings.isVisible())
-    {
-        midiMappings.setBounds (0, contentHeight, width - 12, midiMappings.getIdealHeight());
-        contentHeight += midiMappings.getIdealHeight();
+        modulators.setBounds (0, contentHeight, width - 12, modulators.getIdealHeight());
+        contentHeight += modulators.getIdealHeight() + 6;
     }
     parametersContent.setSize (width, contentHeight + 10);
 }
