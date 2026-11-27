@@ -96,10 +96,10 @@ case "$MODE" in
         echo "==> Built: $APP"
         if [[ $INSTALL -eq 1 ]]; then
             if [[ -z "${DEVICE_ID:-}" ]]; then
-                DEVICE_ID=$(xcrun devicectl list devices 2>/dev/null | awk '/connected/ && /physical/ && /iPad/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]+$/) { print $i; exit } }')
+                DEVICE_ID=$(xcrun devicectl list devices 2>/dev/null | awk '/(connected|available)/ && /physical/ && /iPad/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]+$/) { print $i; exit } }')
             fi
             if [[ -z "${DEVICE_ID:-}" ]]; then
-                echo "No connected iPad found (set DEVICE_ID)" >&2
+                echo "No connected or paired iPad found (set DEVICE_ID)" >&2
                 exit 1
             fi
             echo "==> Installing on device $DEVICE_ID"
