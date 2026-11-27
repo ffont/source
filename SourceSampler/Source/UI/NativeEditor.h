@@ -142,9 +142,10 @@ private:
 
     // Get new sounds
     CardComponent querySoundsCard { "Get new sounds" };
-    juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel;
+    juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel, queryLicenseLabel;
+    juce::ComboBox queryLicenseCombo;
     juce::OwnedArray<AcousticFilterComponent> queryAcousticFilters;
-    juce::String getQueryAcousticFilter() const;
+    juce::String getQueryExtraFilter() const;  // License and acoustic properties
     int getQueryCardHeight() const;
     juce::TextEditor queryEditor;
     juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider;

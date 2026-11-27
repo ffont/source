@@ -64,6 +64,8 @@ struct FreesoundSearchOptions
     enum class Level { any = -1, low = 0, mid = 1, high = 2 };
     std::array<Level, 7> acousticLevels { Level::any, Level::any, Level::any, Level::any, Level::any, Level::any, Level::any };
 
+    /** Filter for the license only (empty if any license is allowed). */
+    juce::String getLicenseFilter() const;
     /** Filter for the acoustic properties only (empty if none is set). */
     juce::String getAcousticFilter() const;
     /** The "filter" parameter of the search request. */

@@ -298,6 +298,13 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     querySoundsCard.addAndMakeVisible (replaceAllButton);
     querySoundsCard.addAndMakeVisible (replaceRandomlyButton);
     querySoundsCard.addChildComponent (queryLoadingIndicator);
+    setupLabel (queryLicenseLabel, "License", querySoundsCard);
+    queryLicenseCombo.addItem ("Any license", 1);
+    queryLicenseCombo.addItem ("CC0 only", 2);
+    queryLicenseCombo.addItem ("CC0 or Attribution", 3);
+    queryLicenseCombo.addItem ("No NonCommercial", 4);
+    queryLicenseCombo.setSelectedId (1, juce::dontSendNotification);
+    querySoundsCard.addAndMakeVisible (queryLicenseCombo);
     for (const auto& name : FreesoundSearchOptions::getAcousticPropertyNames())
         querySoundsCard.addAndMakeVisible (queryAcousticFilters.add (new AcousticFilterComponent (name)));
 
@@ -500,19 +507,20 @@ void SourceNativeEditor::showTab (Tab tab)
     fxTabButton.setToggleState (tab == Tab::fx, juce::dontSendNotification);
 }
 
-juce::String SourceNativeEditor::getQueryAcousticFilter() const
+juce::String SourceNativeEditor::getQueryExtraFilter() const
 {
     FreesoundSearchOptions options;
+    options.license = (FreesoundSearchOptions::License) juce::jmax (0, queryLicenseCombo.getSelectedId() - 1);
     for (int i = 0; i < queryAcousticFilters.size(); ++i)
         options.acousticLevels[(size_t) i] = queryAcousticFilters[i]->getLevel();
-    return options.getAcousticFilter();
+    return juce::StringArray { options.getLicenseFilter(), options.getAcousticFilter() }.joinIntoString (" ").trim();
 }
 
 int SourceNativeEditor::getQueryCardHeight() const
 {
     // Title, 3 rows of controls, the acoustic filters (3 rows) and 2 buttons
     const int filtersHeight = 3 * (AcousticFilterComponent::squareSize + 6) + 2 * 3;
-    return 26 + 16 + 3 * (22 + 5) + 2 + filtersHeight + 7 + 22;
+    return 26 + 16 + 4 * (22 + 5) + 2 + filtersHeight + 7 + 22;
 }
 
 void SourceNativeEditor::runQuery (const juce::String& queryActionName)
@@ -521,7 +529,7 @@ void SourceNativeEditor::runQuery (const juce::String& queryActionName)
     const juce::String minLength (minLengthSlider.getValue());
     const juce::String maxLength (maxLengthSlider.getValue());
     const juce::String layout (noteLayoutCombo.getSelectedId() > 0 ? noteLayoutCombo.getSelectedId() - 1 : SourceDefaults::noteLayoutType);
-    const auto acousticFilter = getQueryAcousticFilter();
+    const auto acousticFilter = getQueryExtraFilter();
     if (queryActionName == ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY)
         sendAction (queryActionName, { juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout, acousticFilter });
     else
@@ -794,6 +802,10 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         minLengthSlider.setBounds (row.removeFromLeft (96));
         lengthToLabel.setBounds (row.removeFromLeft (24));
         maxLengthSlider.setBounds (row.removeFromLeft (96));
+        c.removeFromTop (rowGap);
+        row = c.removeFromTop (rowHeight);
+        queryLicenseLabel.setBounds (row.removeFromLeft (queryLabelWidth));
+        queryLicenseCombo.setBounds (row.removeFromLeft (juce::jmin (180, row.getWidth())));
         c.removeFromTop (rowGap + 2);
         const int filtersHeight = layoutAcousticFilterRows (queryAcousticFilters, c, 3, false);
         layoutAcousticFilterRows (queryAcousticFilters, c.removeFromTop (filtersHeight), 3, true);

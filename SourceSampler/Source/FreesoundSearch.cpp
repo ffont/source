@@ -49,6 +49,18 @@ FreesoundSearchResult FreesoundSearchResult::fromJson (const juce::var& json)
 
 
 //==============================================================================
+juce::String FreesoundSearchOptions::getLicenseFilter() const
+{
+    switch (license)
+    {
+        case License::any: return {};
+        case License::cc0: return "license:\"Creative Commons 0\"";
+        case License::cc0OrAttribution: return "license:(\"Creative Commons 0\" OR \"Attribution\")";
+        case License::noNonCommercial: return "-license:\"Attribution NonCommercial\"";
+    }
+    return {};
+}
+
 juce::String FreesoundSearchOptions::getAcousticFilter() const
 {
     static const std::array<const char*, 3> ranges { "[0 TO 33.33]", "[33.33 TO 66.67]", "[66.67 TO 100]" };
@@ -62,13 +74,8 @@ juce::String FreesoundSearchOptions::getAcousticFilter() const
 juce::String FreesoundSearchOptions::getFilter() const
 {
     juce::StringArray filters;
-    switch (license)
-    {
-        case License::any: break;
-        case License::cc0: filters.add ("license:\"Creative Commons 0\""); break;
-        case License::cc0OrAttribution: filters.add ("license:(\"Creative Commons 0\" OR \"Attribution\")"); break;
-        case License::noNonCommercial: filters.add ("-license:\"Attribution NonCommercial\""); break;
-    }
+    if (getLicenseFilter().isNotEmpty())
+        filters.add (getLicenseFilter());
     if (minDuration > 0.0f || maxDuration > 0.0f)
         filters.add ("duration:[" + juce::String (minDuration) + " TO " + (maxDuration > 0.0f ? juce::String (maxDuration) : juce::String ("*")) + "]");
     if (getAcousticFilter().isNotEmpty())
