@@ -182,7 +182,10 @@ else()
     target_sources(SourceSampler PRIVATE
         Source/UI/NativeEditor.cpp
         Source/UI/SoundListComponent.cpp
-        Source/UI/SoundEditorComponent.cpp)
+        Source/UI/SoundEditorComponent.cpp
+        Source/UI/FxPanel.cpp
+        Source/UI/SearchPanel.cpp
+        Source/UI/SoundMapComponent.cpp)
     # Title and logo images shown in the header of the native UI
     # (named differently from the legacy Source/BinaryData.h, which would otherwise be found first)
     juce_add_binary_data(SourceSamplerBinaryData
@@ -257,6 +260,9 @@ if(SOURCE_BUILD_TESTS)
         Tests/DownloadPoolTests.cpp
         Tests/FxTests.cpp
         Tests/SearchTests.cpp
+        Tests/UITests.cpp
+        Source/UI/SearchPanel.cpp
+        Source/UI/SoundMapComponent.cpp
         Tests/SamplerRenderTests.cpp
         Tests/SourceSamplerTests.cpp)
 

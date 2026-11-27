@@ -75,6 +75,12 @@ public:
     int getTotalNumResults() const { return totalNumResults; }  // Number of sounds matching the query in Freesound
     const FreesoundSearchOptions& getLastOptions() const { return lastOptions; }
     std::shared_ptr<const std::vector<FreesoundSearchResult>> getResults() const { return results; }
+    /** Replaces the results (e.g. for tests). Listeners are notified. */
+    void setResults (std::shared_ptr<const std::vector<FreesoundSearchResult>> newResults)
+    {
+        results = std::move (newResults);
+        setStatus (Status::done, juce::String ((int) results->size()) + " sounds");
+    }
 
     /** Adds 2D positions to the results using t-SNE on their embeddings (results without embedding are placed
         around the others). Can be called from any thread. */

@@ -423,6 +423,23 @@ namespace SourceHelpers
     // Action message (internal API) builders. All UIs (web, Python, native) control the sampler by sending
     // these messages to SourceSampler::actionListenerCallback.
 
+    /** Short name for a Creative Commons license URL, e.g. "http://creativecommons.org/licenses/by-nc/3.0/" -> "CC BY-NC 3.0". */
+    inline juce::String getShortLicenseName (const juce::String& licenseURL)
+    {
+        if (licenseURL.contains ("publicdomain/zero"))
+            return "CC0";
+        if (licenseURL.contains ("sampling+"))
+            return "CC Sampling+";
+        if (licenseURL.contains ("/licenses/"))
+        {
+            auto parts = juce::StringArray::fromTokens (licenseURL.fromFirstOccurrenceOf ("/licenses/", false, false), "/", {});
+            parts.removeEmptyStrings();
+            if (parts.size() >= 1)
+                return "CC " + parts[0].toUpperCase() + (parts.size() >= 2 ? " " + parts[1] : juce::String());
+        }
+        return licenseURL;
+    }
+
     /** Freesound previews moved from freesound.org/data/previews/ to cdn.freesound.org/previews/. The old URLs (stored
         in old presets) still work but redirect, and the redirect adds a request to every download. Returns the URL
         pointing to the CDN (other URLs are returned unchanged). */

@@ -298,13 +298,28 @@ void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& r
     }
 
     const auto points = SourceTsne::project (std::move (data), {}, shouldStop);
-    if (points.size() == withEmbedding.size())
+    if (points.size() == withEmbedding.size() && ! points.empty())
     {
+        // Scale so that most points (95%) are within radius 1: a few outliers would otherwise squeeze all the other
+        // points in the centre of the map. Outliers are brought closer (up to radius 1.2), keeping their direction.
+        std::vector<float> radii;
+        for (const auto& p : points)
+            radii.push_back (std::sqrt (p[0] * p[0] + p[1] * p[1]));
+        auto sorted = radii;
+        std::sort (sorted.begin(), sorted.end());
+        const float referenceRadius = juce::jmax (1.0e-6f, sorted[(size_t) juce::jmin ((int) sorted.size() - 1, (int) std::ceil (0.95 * (double) sorted.size()) - 1)]);
         for (size_t k = 0; k < withEmbedding.size(); ++k)
         {
+            float x = points[k][0] / referenceRadius, y = points[k][1] / referenceRadius;
+            const float radius = radii[k] / referenceRadius;
+            if (radius > 1.2f)
+            {
+                x *= 1.2f / radius;
+                y *= 1.2f / radius;
+            }
             auto& r = results[withEmbedding[k]];
-            r.x = points[k][0];
-            r.y = points[k][1];
+            r.x = x;
+            r.y = y;
             r.hasPosition = true;
         }
     }
@@ -313,8 +328,8 @@ void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& r
     {
         auto& r = results[withoutEmbedding[k]];
         const float angle = juce::MathConstants<float>::twoPi * (float) k / (float) juce::jmax ((size_t) 1, withoutEmbedding.size());
-        r.x = 1.15f * std::cos (angle);
-        r.y = 1.15f * std::sin (angle);
+        r.x = 1.35f * std::cos (angle);
+        r.y = 1.35f * std::sin (angle);
         r.hasPosition = true;
     }
 }

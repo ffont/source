@@ -150,7 +150,7 @@ public:
             {
                 expect (r.hasPosition);
                 expect (std::isfinite (r.x) && std::isfinite (r.y));
-                expect (std::abs (r.x) <= 1.2f && std::abs (r.y) <= 1.2f);
+                expect (std::abs (r.x) <= 1.4f && std::abs (r.y) <= 1.4f);
             }
         }
     }

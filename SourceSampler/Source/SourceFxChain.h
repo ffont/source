@@ -29,7 +29,7 @@ namespace SourceFx
         driveEnabled, driveAmount, driveOutput, driveMix,
         chorusEnabled, chorusRate, chorusDepth, chorusCentreDelay, chorusFeedback, chorusMix,
         phaserEnabled, phaserRate, phaserDepth, phaserCentreFrequency, phaserFeedback, phaserMix,
-        delayEnabled, delayTime, delayFeedback, delayDamping, delayPingPong, delayMix,
+        delayEnabled, delayTime, delayFeedback, delayDamping, delayMix, delayPingPong,
         compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup,
         numParams
     };
@@ -74,8 +74,8 @@ namespace SourceFx
             { "fxDelayTime",              "Delay",      "Time",          1.0f, 2000.0f,  350.0f,   1.0f,   "ms", false, 300.0f },
             { "fxDelayFeedback",          "Delay",      "Feedback",      0.0f,    0.95f,   0.4f,   0.01f,  "",   false, 0.0f },
             { "fxDelayDamping",           "Delay",      "Damping",     500.0f, 20000.0f, 6000.0f, 1.0f,   "Hz", false, 4000.0f },
-            { "fxDelayPingPong",          "Delay",      "Ping-pong",     0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
             { "fxDelayMix",               "Delay",      "Mix",           0.0f,    1.0f,    0.35f,  0.01f,  "",   false, 0.0f },
+            { "fxDelayPingPong",          "Delay",      "Ping-pong",     0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
 
             { "fxCompressorEnabled",      "Compressor", "On",            0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
             { "fxCompressorThreshold",    "Compressor", "Threshold",   -60.0f,    0.0f,  -18.0f,   0.1f,   "dB", false, 0.0f },

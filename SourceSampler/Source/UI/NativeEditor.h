@@ -17,10 +17,13 @@
 #include "SourceLookAndFeel.h"
 #include "SoundListComponent.h"
 #include "SoundEditorComponent.h"
+#include "FxPanel.h"
+#include "SearchPanel.h"
 
 
 /** Shows the RMS level of each output channel. */
-class LevelMetersComponent : public juce::Component
+class LevelMetersComponent : public juce::Component,
+                             public juce::SettableTooltipClient
 {
 public:
     void setLevels (const std::vector<float>& newLevels);
@@ -79,7 +82,8 @@ private:
     void sendAction (const juce::String& actionName, const juce::StringArray& parameters = {});
     void updateFromState();
     void timerCallback() override;
-    void sendReverbParameters();
+    enum class Tab { general, search, fx };
+    void showTab (Tab tab);
     void runQuery (const juce::String& queryActionName);
     juce::ValueTree getPresetState() const { return sourceSampler.state.getChildWithName (SourceIDs::PRESET); }
     void layoutContent (juce::Rectangle<int> bounds, bool portrait);
@@ -116,7 +120,9 @@ private:
 
     // Header
     juce::ImageComponent titleImage, logoImage;
-    juce::Label statusLabel;
+    juce::Label statusLabel;  // Status of the "Get new sounds" queries
+    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" };
+    Tab currentTab = Tab::general;
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };
@@ -143,23 +149,16 @@ private:
     juce::TextButton replaceOneButton { "Search and replace sound #" };
     juce::TextButton addSoundsButton { "Search and add sounds" };
 
-    // Reverb
-    CardComponent reverbCard { "Reverb" };
-    struct ReverbControl
-    {
-        juce::Identifier id;
-        juce::Label label;
-        juce::Slider slider;
-    };
-    std::array<ReverbControl, 6> reverbControls;
-
-    // Meters
-    CardComponent metersCard { "Output" };
+    // Output meters (in the header)
     LevelMetersComponent levelMeters;
 
     // Sounds
     SoundListComponent soundList;
     SoundEditorComponent soundEditor;
+
+    // Other tabs
+    SearchPanel searchPanel;
+    FxPanel fxPanel;
 
     // Keyboard
     juce::MidiKeyboardComponent keyboard;

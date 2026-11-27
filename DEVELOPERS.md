@@ -359,6 +359,7 @@ The SOURCE sampler engine exposes a remote control interface that can be accesse
 | `/load_preset` | [`preset number` (Integer)] | Number of preset to load (can be any integer number, bigger than 128).|
 | `/save_preset` | [`preset name` (String), `preset number` (Integer)] | Renames the preset to `preset name` and saves it to the `preset number` position.|
 | `/set_reverb_parameters` | [`room size` (Float), `damping` (Float), `wet level` (Float), `dry level` (Float), `width` (Float), `freeze mode` (Float)] | Sets global reverb parameters to those indicated by the message. All parameters are in range 0-1.|
+| `/set_fx_parameter` | [`parameter id` (String), `value` (Float)] | Sets a parameter of the effects applied after the sampler (drive, chorus, phaser, delay and compressor; reverb uses `/set_reverb_parameters`). The ids, ranges and defaults are in the table in `SourceFxChain.h` (e.g. `fxDelayEnabled` 0/1, `fxDelayTime` in ms). Values are clamped to the parameter range. Effects are stored in the preset and are off by default. |
 | `/reapply_layout` | [`layout type` (Integer)] | Re-creates the mapping of MIDI notes to loaded sounds according to the given `layout type`. Layout type should either be `0` for *contiguous* layout type, or `1` for *interleaved*. *contiguous* layout will map all loaded sounds in regions of contiguous notes (with as many regions as loaded sounds, useful for playing the different sounds melodically). *interleaved* will map contiguous notes to different sounds (useful for drum-pad type of playing).|
 | `/clear_all_sounds` | [] | Removes all loaded sounds.|
 | `/add_sounds_from_query` | [`query` (String), `num sounds` (Integer), `min duration` (Float), `max duration` (Float), `layout type` (Integer)] | Searches for sounds on Freesound using the parameters `query`, `min duration` and `max duration`. From the first page of results, it randomly selects `num sounds` and **adds** them to the existing sounds in the sampler, also reapplying the note layout to `layout type`.|
@@ -408,7 +409,17 @@ MPE mappings map a per-note dimension (`slide`, `glide` or `strike` = note veloc
 | `/remove_mpe_mapping` | [`sound_uuid` (String), `mapping_uuid` (String)] | Removes an MPE mapping. |
 
 
-## Working on the desktop plugin UI
+## Native UI
+
+The native JUCE UI (`Source/UI/`) has three tabs:
+
+- **General** (`NativeEditor`): preset and settings, "get new sounds" queries, the list of sounds and the sound editor.
+- **Search** (`SearchPanel`): searches Freesound (`FreesoundSearch`) with license and duration filters, fetching up to 600 results in pages of 150 with the `tristimulus` and `sim_laion_clap` fields. Results are shown in a list or in a map (`SoundMapComponent`), where sounds are placed with a t-SNE projection of their CLAP embeddings (`Tsne.h`) and coloured with their tristimulus. The map can be moved, zoomed and rotated with mouse, trackpad and touch gestures. Clicking a sound plays its preview; "Add to preset" adds it and re-applies the note layout.
+- **FX** (`FxPanel`): the effects chain (`SourceFxChain`: drive, chorus, phaser, delay, reverb and compressor), built from the effects parameters table.
+
+Debug builds of the standalone app have a few environment variables to help working on the UI without screen access (see `NativeEditor.cpp`), e.g. `SOURCE_DEBUG_SNAPSHOT=<png>` renders the editor to a file, `SOURCE_DEBUG_TAB=fx` opens a tab and `SOURCE_DEBUG_SEARCH=<query>` runs a search.
+
+## Working on the desktop plugin UI (legacy web UI)
 
 The desktop version of the plugin has its own UI which is implemented using HTML/Javascript and is loaded in the plugin using JUCE's *WebBrowserComponent*. Here is the code for the desktop plugin UI https://github.com/ffont/source/blob/master/SourceSampler/Resources/ui_plugin_ws.html. The plugin embeds a WebSockets server to implement bi-directional communication with the plugin HTML/Javascript UI. The plugin also embeds an HTML server which is used for serving sound files to the UI so that waveforms can bw shown.
 
