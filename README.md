@@ -144,25 +144,71 @@ Note that to get **MIDI input** working you'll need to use a USB MIDI controller
 
 ### Running SOURCE as an audio plugin or standalone app in desktop/laptop computers
 
-SOURCE can also be run as a desktop audio plugin. This version of SOURCE lacks some functionality with respect to the hardware version, but it is perfectly usable and has its own graphical UI.
+SOURCE can also run as a standalone app or as an audio plugin in desktop/laptop computers: **AU** and **VST3** on macOS, and **VST3** and **LV2** on Linux. It has its own interface, organised in three tabs:
+
+**General**: presets (128 slots), getting new sounds from Freesound (by query or randomly, with license, duration and acoustic property filters), the list of sounds of the preset (replace any of them with a similar sound with one click) and the sound editor with all the sound parameters.
 
 <p align="center">
-<img src="docs/SOURCE-complementary-UI.png" width="700" />
+<img src="docs/screenshot-general.png" width="800" />
 </p>
+
+**Search**: search Freesound with filters for license, duration and acoustic properties (brightness, hardness, depth, roughness, boominess, sharpness and warmth), and see the results in a table or in a map where similar sounds are placed close to each other (the map is computed from the [LAION-CLAP](https://github.com/LAION-AI/CLAP) embeddings of the sounds and the colours come from their timbre). Click a sound to listen to it, or hover the map with Cmd pressed to listen to many sounds quickly. Sounds can be added to the preset or replace the audio of a sound of the preset (keeping all its settings).
+
+<p align="center">
+<img src="docs/screenshot-search-map.png" width="800" />
+</p>
+
+<p align="center">
+<img src="docs/screenshot-search-list.png" width="800" />
+</p>
+
+**FX**: effects applied to the output of the sampler: drive, chorus, phaser, delay, reverb and compressor. Effects settings are saved with the presets.
+
+<p align="center">
+<img src="docs/screenshot-fx.png" width="800" />
+</p>
+
+To use SOURCE, download the files for your system from the **[latest release](https://github.com/ffont/source/releases/latest)**. Each format (standalone app and plugins) is in its own zip file. Presets and downloaded sounds are stored in the `SourceSampler` folder of your *Documents* folder.
 
 **macOS**
 
-To use SOURCE as an audio plugin in macOS you can simply download the pre-compiled binary files from the [releases](https://github.com/ffont/source/releases) section and copy them to the appropriate audio plugin system locations (that is to download the latest release fiels and copy `SourceSampler.component` to `/Library/Audio/Plug-Ins/Components` and/or copy `SourceSampler.vst3` to /`Library/Audio/Plug-Ins/VST3`).
+The macOS builds (`SOURCE-<version>-macOS-universal-*.zip`) run on both Apple Silicon and Intel Macs. Unzip the files you need and copy them to these locations:
 
-On macOS, SOURCE can also be run as a standalone application by opening the `SourceSampler.app` bundle included in the release files.
+* **Standalone app**: `SourceSampler.app` to `/Applications`.
+* **Audio Unit**: `SourceSampler.component` to `~/Library/Audio/Plug-Ins/Components` (or `/Library/Audio/Plug-Ins/Components` to install it for all users).
+* **VST3**: `SourceSampler.vst3` to `~/Library/Audio/Plug-Ins/VST3` (or `/Library/Audio/Plug-Ins/VST3`).
 
-**linux**
+The builds are not notarized by Apple, so macOS will block them the first time. To allow them, open *System Settings > Privacy & Security* and click *Open Anyway* after trying to open the app (or after the DAW fails to load the plugin), or remove the quarantine attribute from the Terminal:
 
-We don't include pre-compiled binaries for linux as part of the releases, so SOURCE must be compiled from source in order to run on linux. Follow the instructions for [compiling SOURCE for linux platform](DEVELOPERS.md#build-standaloneplugin-for-desktop-linux) from the DEVELOPERS file, it is rather easy :)
+```
+xattr -dr com.apple.quarantine /Applications/SourceSampler.app
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/SourceSampler.component
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/SourceSampler.vst3
+```
 
-**windows**
+Then restart your DAW (or rescan plugins) so that it finds SOURCE.
 
-We don't include pre-compiled binaries for windows as part of the releases, so SOURCE must be compiled from source in order to run on windows. However, because the engine of SOURCE is implemented as a JUCE audio plug-in, it should not be complicated to add exporters for windows to the Projucer file and compile. In the future I might consider including pre-built binaries windows as well.
+**Linux**
+
+There are builds for x86_64 (`SOURCE-<version>-linux-x86_64-*.zip`) and ARM computers like the Raspberry Pi 4/5 (`SOURCE-<version>-linux-arm64-*.zip`). They are built on Ubuntu 22.04 and need glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 or newer distributions) and these libraries (Ubuntu/Debian package names):
+
+```
+sudo apt-get install libasound2 libcurl4 libfreetype6 libfontconfig1 libx11-6 libxext6 libxinerama1 libxrandr2 libxcursor1 libgl1
+```
+
+Unzip the files you need and copy them to these locations:
+
+* **Standalone app**: `SourceSampler` anywhere (e.g. `~/.local/bin`), and run it. It uses ALSA, or JACK if it is running (select the audio device in the *Options* menu).
+* **VST3**: `SourceSampler.vst3` to `~/.vst3` (or `/usr/lib/vst3`).
+* **LV2**: `SourceSampler.lv2` to `~/.lv2` (or `/usr/lib/lv2`).
+
+**iPad**
+
+SOURCE also runs on iPad, as a standalone app and as an AUv3 plugin for hosts like AUM or Cubasis, but it is not distributed in the App Store: it has to be built and installed from Xcode (see [building SOURCE for iPad](DEVELOPERS.md#build-for-ipad-iosipados)).
+
+**Building from source**
+
+See the [instructions for developers](DEVELOPERS.md) to build SOURCE yourself (macOS, Linux and iPad).
 
 
 # Instructions for developers
