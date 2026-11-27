@@ -59,13 +59,13 @@ The CMake project also builds an iPad version: a standalone app with an embedded
 ```
 cd SourceSampler
 ./build_ios.sh                                  # generate build-ios/SourceSampler.xcodeproj, then run from Xcode
-./build_ios.sh --simulator                      # build for the iOS simulator
-TEAM_ID=<your team id> ./build_ios.sh --device  # signed build for devices
+./build_ios.sh --simulator --install            # build and install in the booted iOS simulator
+TEAM_ID=<your team id> ./build_ios.sh --device --install  # signed build, installed on the connected iPad
 ```
 
 Notes:
-- To run on a real iPad you need an Apple development team (`TEAM_ID`, or set the team in Xcode's "Signing & Capabilities").
-- The app and the AUv3 share sounds and presets through the app group `group.ritaiaurora.source` (CMake option `SOURCE_IOS_APP_GROUP`, or `APP_GROUP` in the script). The group must be registered in your team; set it to an empty value to disable it (each target then uses its own Documents folder). Sounds and presets are visible in the Files app.
+- To run on a real iPad you need an Apple development team (`TEAM_ID`, or set the team in Xcode's "Signing & Capabilities"). The team ID is the `OU` field of your "Apple Development" certificate. With `--device`, Xcode's automatic signing registers the bundle IDs (`com.ffont.SourceSampler` and `com.ffont.SourceSampler.SourceSamplerAUv3`) and the app group in your team.
+- The app and the AUv3 share sounds and presets through the app group `group.ffont.source` (CMake option `SOURCE_IOS_APP_GROUP`, or `APP_GROUP` in the script). The group must be registered in your team; set it to an empty value to disable it (each target then uses its own Documents folder). Sounds and presets are visible in the Files app.
 - iOS can kill suspended apps without giving them a chance to save, so the standalone app autosaves its session (`last_session.xml` in the data folder) a couple of seconds after every change and restores it on launch. The AUv3's state is saved by the host.
 - MIDI controllers (USB, network and Bluetooth MIDI) are opened automatically by the standalone app. Dropping audio files is a desktop-only feature.
 

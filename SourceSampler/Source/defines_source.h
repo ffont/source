@@ -90,7 +90,7 @@
 #define USE_APP_GROUP_ID 0
 #endif
 #ifndef APP_GROUP_ID
-#define APP_GROUP_ID "group.ritaiaurora.source"
+#define APP_GROUP_ID "group.ffont.source"
 #endif
 
 #define OSC_LISTEN_PORT 9001

@@ -24,7 +24,7 @@ option(SOURCE_WEB_UI "Use the legacy browser-based (WebBrowserComponent) editor 
 option(SOURCE_INCLUDE_SEQUENCER "Build the SourceShepherd variant that embeds the Shepherd sequencer" OFF)
 option(SOURCE_BUILD_TESTS "Build the unit test runner" ON)
 option(SOURCE_BUILD_AUV3 "Also build the AUv3 format (needs code signing / app extension setup)" OFF)
-set(SOURCE_IOS_APP_GROUP "group.ritaiaurora.source" CACHE STRING
+set(SOURCE_IOS_APP_GROUP "group.ffont.source" CACHE STRING
     "iOS app group shared by the standalone app and the AUv3 (holds sounds and presets). Must belong to your development team")
 set(SOURCE_FREESOUND_API_KEY "" CACHE STRING
     "Freesound API key. If empty, Source/api_key.h is used (copy it from Source/api_key.example.h)")
@@ -130,7 +130,7 @@ juce_add_plugin(SourceSampler
     VERSION ${PROJECT_VERSION}
     COMPANY_NAME "Music Technology Group"
     COMPANY_WEBSITE "http://mtg.upf.edu"
-    BUNDLE_ID com.RitaAurora.SourceSampler
+    BUNDLE_ID com.ffont.SourceSampler
     PLUGIN_MANUFACTURER_CODE RaAu
     PLUGIN_CODE SoSa
     FORMATS ${SOURCE_PLUGIN_FORMATS}
