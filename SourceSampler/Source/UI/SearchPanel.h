@@ -4,9 +4,10 @@
     SearchPanel.h
 
     "Search" tab of the native UI: searches Freesound (with license and
-    duration filters) and shows the results in a list or in a map (see
-    SoundMapComponent). Clicking a result plays its preview and shows it in the
-    bar at the bottom, from where it can be added to the preset.
+    duration filters) and shows the results in a table or in a map (see
+    SoundMapComponent). Selecting a result plays its preview and shows it in the
+    bar at the bottom, from where it can be added to the preset or used to
+    replace the audio of one of the sounds of the preset.
 
   ==============================================================================
 */
@@ -21,7 +22,7 @@
 
 class SearchPanel : public juce::Component,
                     private juce::ChangeListener,
-                    private juce::ListBoxModel
+                    private juce::TableListBoxModel
 {
 public:
     SearchPanel (FreesoundSearch& search, SourceActionSender actionSender, std::function<juce::ValueTree()> presetGetter);
@@ -29,40 +30,54 @@ public:
 
     /** Updates which results are already in the preset (message thread). */
     void updateFromState (const juce::ValueTree& presetState);
-    void setPreviewPlaying (bool isPlaying);
+    /** Shows the state of the preview of the selected sound (loading, playing, failed). */
+    void setPreviewState (int state);  // SourceSampler::PreviewState
 
     void resized() override;
-    void paint (juce::Graphics& g) override;
 
     int getSelectedIndex() const { return selectedIndex; }
     void selectResult (int index, bool play);
     void addResultToPreset (int index);
+    /** Replaces the audio of a sound of the preset with a result (keeping the settings of the sound). */
+    void replaceSoundWithResult (const juce::String& soundUUID, int index);
     void runSearch();
     void showMap (bool shouldShowMap);
     SoundMapComponent& getMap() { return map; }
+    juce::TableListBox& getTable() { return table; }
+
+    enum Column { colourColumn = 1, nameColumn, userColumn, durationColumn, licenseColumn, formatColumn, sizeColumn, addColumn };
 
 private:
-    class ResultRow;
+    class AddButtonCell;
 
     // ChangeListener (search status/results)
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
-    // ListBoxModel
+    // TableListBoxModel
     int getNumRows() override;
-    void paintListBoxItem (int, juce::Graphics&, int, int, bool) override {}
-    juce::Component* refreshComponentForRow (int row, bool isSelected, juce::Component* existing) override;
-    void listBoxItemClicked (int row, const juce::MouseEvent&) override;
+    void paintRowBackground (juce::Graphics&, int row, int width, int height, bool selected) override;
+    void paintCell (juce::Graphics&, int row, int columnId, int width, int height, bool selected) override;
+    juce::Component* refreshComponentForCell (int row, int columnId, bool selected, juce::Component* existing) override;
+    void cellClicked (int row, int columnId, const juce::MouseEvent&) override;
+    void sortOrderChanged (int columnId, bool forwards) override;
 
+    void updateRowOrder();
     void updateSelectedSoundInfo();
+    void showReplaceMenu();
     const FreesoundSearchResult* getResult (int index) const;
-    juce::String describe (const FreesoundSearchResult& result) const;
+    int rowToIndex (int row) const;
+    int indexToRow (int index) const;
 
     FreesoundSearch& search;
     SourceActionSender actions;
     std::function<juce::ValueTree()> getPreset;
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results;
+    std::vector<int> rowOrder;  // Result index shown in each row of the table (depends on the sorting)
+    int sortColumn = 0;
+    bool sortForwards = true;
     std::set<int> soundIdsInPreset;
     int selectedIndex = -1;
     bool mapVisible = true;
+    int previewState = -1;  // Unknown until the first update
 
     // Search controls
     CardComponent searchCard;
@@ -74,15 +89,16 @@ private:
     juce::TextButton listViewButton { "List" }, mapViewButton { "Map" };
 
     // Results
-    juce::ListBox listBox;
+    juce::TableListBox table;
     SoundMapComponent map;
 
     // Selected sound
     CardComponent selectedCard;
-    juce::Label selectedNameLabel, selectedDetailsLabel;
+    juce::Label selectedNameLabel, selectedDetailsLabel, previewStatusLabel;
     IconButton playButton { "Play", IconButton::Icon::play };
     IconButton stopButton { "Stop", IconButton::Icon::stop };
     juce::TextButton addButton { "Add to preset" };
+    juce::TextButton replaceButton { "Replace sound..." };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SearchPanel)
 };

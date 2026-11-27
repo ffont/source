@@ -133,6 +133,8 @@
 // Sound actions
 #define ACTION_ADD_SOUND "/add_sound"
 #define ACTION_REPLACE_SOUND "/replace_sound"
+#define ACTION_REPLACE_SOUND_AUDIO "/replace_sound_audio"  // Like ACTION_REPLACE_SOUND but keeps all the sound settings (only the audio changes)
+#define ACTION_REPLACE_SOUND_WITH_SIMILAR "/replace_sound_with_similar"  // Replaces the audio with a random one of 10 similar Freesound sounds
 #define ACTION_REMOVE_SOUND "/remove_sound"
 #define ACTION_RETRY_SOUND_DOWNLOADS "/retry_sound_downloads"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
@@ -302,6 +304,7 @@ DECLARE_ID (downloadProgress)
 DECLARE_ID (downloadCompleted)
 DECLARE_ID (downloadFailed)
 DECLARE_ID (localFileMissing)
+DECLARE_ID (findingSimilar)
 DECLARE_ID (logMessages)
 DECLARE_ID (isQuerying)
 

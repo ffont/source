@@ -151,6 +151,7 @@ private:
 
     // Output meters (in the header)
     LevelMetersComponent levelMeters;
+    IconButton muteButton { "Mute output", IconButton::Icon::speaker };
 
     // Sounds
     SoundListComponent soundList;

@@ -82,6 +82,11 @@ public:
         setStatus (Status::done, juce::String ((int) results->size()) + " sounds");
     }
 
+    /** Gets sounds similar to a Freesound sound (in a background thread). The callback is called in the message thread
+        (only if this object still exists), with an error message if the request failed. */
+    using SimilarSoundsCallback = std::function<void (std::vector<FreesoundSearchResult> results, juce::String error)>;
+    void findSimilarSounds (int soundId, int numSounds, SimilarSoundsCallback callback);
+
     /** Adds 2D positions to the results using t-SNE on their embeddings (results without embedding are placed
         around the others). Can be called from any thread. */
     static void computeMapPositions (std::vector<FreesoundSearchResult>& results, const std::function<bool()>& shouldStop = nullptr);
@@ -98,7 +103,7 @@ private:
     FreesoundSearchOptions lastOptions;
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results = std::make_shared<std::vector<FreesoundSearchResult>>();
     std::shared_ptr<std::atomic<int>> currentGeneration = std::make_shared<std::atomic<int>> (0);
-    juce::ThreadPool pool { juce::ThreadPoolOptions().withThreadName ("FreesoundSearch").withNumberOfThreads (1) };
+    juce::ThreadPool pool { juce::ThreadPoolOptions().withThreadName ("FreesoundSearch").withNumberOfThreads (2) };
 
     JUCE_DECLARE_WEAK_REFERENCEABLE (FreesoundSearch)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FreesoundSearch)

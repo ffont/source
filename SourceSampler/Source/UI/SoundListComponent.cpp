@@ -31,6 +31,7 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
     item.uuid = soundState.getProperty (SourceIDs::uuid).toString();
     item.loaded = soundState.getProperty (SourceIDs::allSoundsLoaded, false);
     item.willBeDeleted = soundState.getProperty (SourceIDs::willBeDeleted, false);
+    item.findingSimilar = soundState.getProperty (SourceIDs::findingSimilar, false);
 
     // Files are relative to the data location (stored in the root of the state)
     const juce::File dataLocation (soundState.getRoot().getProperty (SourceIDs::sourceDataLocation).toString());
@@ -48,6 +49,7 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
             item.license = child.getProperty (SourceIDs::license).toString();
             item.soundId = child.getProperty (SourceIDs::soundId, -1);
             item.rootNote = child.getProperty (SourceIDs::midiRootNote, -1);
+            item.fromFreesound = (bool) child.getProperty (SourceIDs::soundFromFreesound, false) && item.soundId > 0;
         }
         // Size of what is downloaded: the file in disk if available, otherwise the original file size when the
         // original file will be downloaded (the size of previews is not known until they are downloaded)
@@ -95,8 +97,10 @@ class SoundListComponent::RowComponent : public juce::Component
 public:
     explicit RowComponent (SoundListComponent& o) : owner (o)
     {
-        for (auto* b : { &playButton, &stopButton, &removeButton })
+        for (auto* b : { &similarButton, &playButton, &stopButton, &removeButton })
             addAndMakeVisible (b);
+        similarButton.setTooltip ("Replace with a similar sound from Freesound (keeping the settings)");
+        similarButton.onClick = [this] { owner.actions.send (ACTION_REPLACE_SOUND_WITH_SIMILAR, { item.uuid }); };
         addChildComponent (retryButton);
         retryButton.setTooltip ("Retry downloading");
         retryButton.onClick = [this] { owner.actions.send (ACTION_RETRY_SOUND_DOWNLOADS, { item.uuid }); };
@@ -115,8 +119,9 @@ public:
             item = owner.items[(size_t) (row - 1)];
         else
             item = {};
-        for (auto* b : { &playButton, &stopButton, &removeButton })
+        for (auto* b : { &similarButton, &playButton, &stopButton, &removeButton })
             b->setVisible (! isAllSoundsRow);
+        similarButton.setEnabled (item.fromFreesound && ! item.findingSimilar && ! item.willBeDeleted);
         // Sounds can't be played until they are downloaded and loaded (or if some file could not be downloaded)
         const bool canPlay = item.loaded && item.numFailedDownloads == 0 && item.numMissingLocalFiles == 0;
         playButton.setEnabled (canPlay);
@@ -158,13 +163,13 @@ public:
         }
 
         auto content = getLocalBounds().reduced (8, 4);
-        content.removeFromRight ((retryButton.isVisible() ? 4 : 3) * 26 + 4);
+        content.removeFromRight ((retryButton.isVisible() ? 5 : 4) * 26 + 4);
 
         if (isAllSoundsRow)
         {
             g.setColour (SourceColours::text);
             g.setFont (juce::Font (juce::FontOptions (14.0f, juce::Font::bold)));
-            g.drawText ("All sounds", content, juce::Justification::centredLeft);
+            g.drawText ("All sounds (" + juce::String ((int) owner.items.size()) + ")", content, juce::Justification::centredLeft);
             return;
         }
 
@@ -191,7 +196,12 @@ public:
             detailParts.add (juce::String ((double) item.downloadSizeBytes / (1024.0 * 1024.0), 2) + " MB");
         juce::String status;
         auto statusColour = SourceColours::dimText;
-        if (item.numMissingLocalFiles > 0)
+        if (item.findingSimilar)
+        {
+            status = "(finding a similar sound...)";
+            statusColour = SourceColours::accent;
+        }
+        else if (item.numMissingLocalFiles > 0)
         {
             // Local files can't be downloaded, so there is no retry button
             status = item.numSamples > 1 && item.numMissingLocalFiles < item.numSamples
@@ -225,11 +235,13 @@ public:
     void resized() override
     {
         auto b = getLocalBounds().reduced (6, 0);
-        auto buttons = b.removeFromRight (4 * 26).withSizeKeepingCentre (4 * 26, 22);
+        auto buttons = b.removeFromRight (5 * 26).withSizeKeepingCentre (5 * 26, 22);
         if (retryButton.isVisible())
             retryButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
-        buttons = buttons.removeFromRight (3 * 26 - 2);
+        buttons = buttons.removeFromRight (4 * 26 - 2);
+        similarButton.setBounds (buttons.removeFromLeft (24));
+        buttons.removeFromLeft (2);
         playButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
         stopButton.setBounds (buttons.removeFromLeft (24));
@@ -250,6 +262,7 @@ private:
     int numActiveVoices = 0;
     SoundListItem item;
     IconButton retryButton { "Retry", IconButton::Icon::retry };
+    IconButton similarButton { "Similar", IconButton::Icon::similar };
     IconButton playButton { "Play", IconButton::Icon::play };
     IconButton stopButton { "Stop", IconButton::Icon::stop };
     IconButton removeButton { "Remove", IconButton::Icon::remove };

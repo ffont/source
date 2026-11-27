@@ -31,71 +31,42 @@ namespace
         slider.setIncDecButtonsMode (juce::Slider::incDecButtonsDraggable_Vertical);
         parent.addAndMakeVisible (slider);
     }
+
+    juce::String formatDuration (double seconds)
+    {
+        return juce::String (seconds, seconds < 10.0 ? 2 : 1) + " s";
+    }
+
+    juce::String formatSize (juce::int64 bytes)
+    {
+        return bytes >= 1024 * 1024 ? juce::String ((double) bytes / (1024.0 * 1024.0), 1) + " MB"
+                                    : juce::String (juce::roundToInt ((double) bytes / 1024.0)) + " KB";
+    }
 }
 
 
 //==============================================================================
-/** A row of the results list: colour (tristimulus), name, details and an "Add" button. */
-class SearchPanel::ResultRow : public juce::Component
+/** "Add" button in the last column of the table. */
+class SearchPanel::AddButtonCell : public juce::Component
 {
 public:
-    explicit ResultRow (SearchPanel& o) : owner (o)
+    explicit AddButtonCell (SearchPanel& o) : owner (o)
     {
-        addButton.setTooltip ("Add to preset");
-        addButton.onClick = [this] { owner.addResultToPreset (row); };
-        addAndMakeVisible (addButton);
-        setInterceptsMouseClicks (false, true);  // Clicks on the row go to the list box (selection)
+        button.setTooltip ("Add to preset");
+        button.onClick = [this] { owner.addResultToPreset (index); };
+        addAndMakeVisible (button);
     }
-
-    void update (int newRow, bool selected)
+    void update (int resultIndex, bool inPreset)
     {
-        row = newRow;
-        isSelected = selected;
-        const auto* result = owner.getResult (row);
-        inPreset = result != nullptr && owner.soundIdsInPreset.count (result->id) > 0;
-        addButton.setVisible (result != nullptr);
-        addButton.setButtonText (inPreset ? "Add again" : "Add");
-        repaint();
+        index = resultIndex;
+        button.setButtonText (inPreset ? "Add again" : "Add");
     }
-
-    void paint (juce::Graphics& g) override
-    {
-        const auto* result = owner.getResult (row);
-        if (result == nullptr)
-            return;
-        auto bounds = getLocalBounds().reduced (0, 1).toFloat();
-        g.setColour (isSelected ? SourceColours::control.brighter (0.15f) : SourceColours::card);
-        g.fillRoundedRectangle (bounds, 4.0f);
-        if (isSelected)
-        {
-            g.setColour (SourceColours::accent);
-            g.drawRoundedRectangle (bounds.reduced (0.5f), 4.0f, 1.0f);
-        }
-        auto content = getLocalBounds().reduced (8, 4);
-        content.removeFromRight (addButton.getWidth() + 8);
-        auto dot = content.removeFromLeft (12).withSizeKeepingCentre (10, 10).toFloat();
-        g.setColour (result->getColour());
-        g.fillEllipse (dot);
-        content.removeFromLeft (8);
-        auto top = content.removeFromTop (content.getHeight() / 2);
-        g.setColour (SourceColours::text);
-        g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
-        g.drawText (result->name, top, juce::Justification::centredLeft, true);
-        g.setColour (SourceColours::dimText);
-        g.setFont (juce::Font (juce::FontOptions (11.0f)));
-        g.drawText (owner.describe (*result) + (inPreset ? "  (in preset)" : juce::String()), content, juce::Justification::centredLeft, true);
-    }
-
-    void resized() override
-    {
-        addButton.setBounds (getLocalBounds().reduced (6, 0).removeFromRight (78).withSizeKeepingCentre (78, 24));
-    }
+    void resized() override { button.setBounds (getLocalBounds().reduced (4, 3)); }
 
 private:
     SearchPanel& owner;
-    juce::TextButton addButton { "Add" };
-    int row = -1;
-    bool isSelected = false, inPreset = false;
+    juce::TextButton button;
+    int index = -1;
 };
 
 
@@ -138,7 +109,6 @@ SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, s
 
     for (auto* b : { &listViewButton, &mapViewButton })
     {
-        b->setClickingTogglesState (false);
         b->setColour (juce::TextButton::buttonOnColourId, SourceColours::accent.darker (0.3f));
         searchCard.addAndMakeVisible (b);
     }
@@ -149,11 +119,27 @@ SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, s
     statusLabel.setJustificationType (juce::Justification::centredRight);
     searchCard.addAndMakeVisible (statusLabel);
 
-    // Results
-    listBox.setModel (this);
-    listBox.setRowHeight (40);
-    listBox.setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
-    addChildComponent (listBox);
+    // Results table
+    auto& header = table.getHeader();
+    const int sortable = juce::TableHeaderComponent::defaultFlags;
+    header.addColumn ({}, colourColumn, 26, 26, 26, juce::TableHeaderComponent::notResizableOrSortable);
+    header.addColumn ("Name", nameColumn, 330, 120, 1000, sortable);
+    header.addColumn ("User", userColumn, 150, 60, 400, sortable);
+    header.addColumn ("Duration", durationColumn, 80, 60, 120, sortable);
+    header.addColumn ("License", licenseColumn, 110, 60, 200, sortable);
+    header.addColumn ("Format", formatColumn, 70, 50, 100, sortable);
+    header.addColumn ("Size", sizeColumn, 80, 50, 120, sortable);
+    header.addColumn ({}, addColumn, 96, 96, 96, juce::TableHeaderComponent::notResizableOrSortable);
+    header.setStretchToFitActive (true);
+    header.setColour (juce::TableHeaderComponent::backgroundColourId, SourceColours::control);
+    header.setColour (juce::TableHeaderComponent::textColourId, SourceColours::text);
+    header.setColour (juce::TableHeaderComponent::outlineColourId, SourceColours::background);
+    table.setModel (this);
+    table.setRowHeight (30);
+    table.setColour (juce::ListBox::backgroundColourId, SourceColours::card);
+    table.setColour (juce::ListBox::outlineColourId, SourceColours::control);
+    table.setOutlineThickness (1);
+    addChildComponent (table);
     map.onSoundClicked = [this] (int index) { selectResult (index, true); };
     addAndMakeVisible (map);
 
@@ -163,11 +149,16 @@ SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, s
     selectedCard.addAndMakeVisible (selectedNameLabel);
     selectedDetailsLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     selectedCard.addAndMakeVisible (selectedDetailsLabel);
+    previewStatusLabel.setJustificationType (juce::Justification::centredRight);
+    previewStatusLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
+    selectedCard.addAndMakeVisible (previewStatusLabel);
     playButton.onClick = [this] { selectResult (selectedIndex, true); };
     stopButton.onClick = [this] { actions.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { "" }); };
     addButton.onClick = [this] { addResultToPreset (selectedIndex); };
     addButton.setColour (juce::TextButton::buttonColourId, SourceColours::accent.darker (0.3f));
-    for (auto* c : std::initializer_list<juce::Component*> { &playButton, &stopButton, &addButton })
+    replaceButton.setTooltip ("Replace the audio of a sound of the preset with this one (keeping its settings)");
+    replaceButton.onClick = [this] { showReplaceMenu(); };
+    for (auto* c : std::initializer_list<juce::Component*> { &playButton, &stopButton, &addButton, &replaceButton })
         selectedCard.addAndMakeVisible (c);
 
     search.addChangeListener (this);
@@ -195,11 +186,11 @@ void SearchPanel::showMap (bool shouldShowMap)
 {
     mapVisible = shouldShowMap;
     map.setVisible (mapVisible);
-    listBox.setVisible (! mapVisible);
+    table.setVisible (! mapVisible);
     mapViewButton.setToggleState (mapVisible, juce::dontSendNotification);
     listViewButton.setToggleState (! mapVisible, juce::dontSendNotification);
     if (! mapVisible && selectedIndex >= 0)
-        listBox.scrollToEnsureRowIsOnscreen (selectedIndex);
+        table.scrollToEnsureRowIsOnscreen (indexToRow (selectedIndex));
 }
 
 void SearchPanel::changeListenerCallback (juce::ChangeBroadcaster*)
@@ -216,9 +207,10 @@ void SearchPanel::changeListenerCallback (juce::ChangeBroadcaster*)
         results = newResults;
         selectedIndex = -1;
         map.setResults (results);
-        listBox.updateContent();
-        listBox.deselectAllRows();
-        listBox.scrollToEnsureRowIsOnscreen (0);
+        updateRowOrder();
+        table.updateContent();
+        table.deselectAllRows();
+        table.scrollToEnsureRowIsOnscreen (0);
         updateSelectedSoundInfo();
     }
 }
@@ -230,13 +222,44 @@ const FreesoundSearchResult* SearchPanel::getResult (int index) const
     return &(*results)[(size_t) index];
 }
 
-juce::String SearchPanel::describe (const FreesoundSearchResult& result) const
+int SearchPanel::rowToIndex (int row) const
 {
-    juce::StringArray parts;
-    parts.add ("by " + result.username);
-    parts.add (juce::String (result.duration, result.duration < 10.0 ? 2 : 1) + " s");
-    parts.add (SourceHelpers::getShortLicenseName (result.license));
-    return parts.joinIntoString (" - ");
+    return (row >= 0 && row < (int) rowOrder.size()) ? rowOrder[(size_t) row] : -1;
+}
+
+int SearchPanel::indexToRow (int index) const
+{
+    for (size_t row = 0; row < rowOrder.size(); ++row)
+        if (rowOrder[row] == index)
+            return (int) row;
+    return -1;
+}
+
+void SearchPanel::updateRowOrder()
+{
+    rowOrder.clear();
+    if (results == nullptr)
+        return;
+    for (int i = 0; i < (int) results->size(); ++i)
+        rowOrder.push_back (i);
+    if (sortColumn <= 0)
+        return;
+    const auto& r = *results;
+    std::stable_sort (rowOrder.begin(), rowOrder.end(), [this, &r] (int a, int b)
+    {
+        const auto& x = r[(size_t) (sortForwards ? a : b)];
+        const auto& y = r[(size_t) (sortForwards ? b : a)];
+        switch (sortColumn)
+        {
+            case nameColumn:     return x.name.compareNatural (y.name) < 0;
+            case userColumn:     return x.username.compareIgnoreCase (y.username) < 0;
+            case durationColumn: return x.duration < y.duration;
+            case licenseColumn:  return SourceHelpers::getShortLicenseName (x.license) < SourceHelpers::getShortLicenseName (y.license);
+            case formatColumn:   return x.format < y.format;
+            case sizeColumn:     return x.filesize < y.filesize;
+            default:             return false;
+        }
+    });
 }
 
 void SearchPanel::selectResult (int index, bool play)
@@ -246,7 +269,9 @@ void SearchPanel::selectResult (int index, bool play)
         return;
     selectedIndex = index;
     map.setSelectedIndex (index);
-    listBox.selectRow (index, true, true);
+    const int row = indexToRow (index);
+    if (row >= 0 && table.getSelectedRow() != row)
+        table.selectRow (row, true, true);
     updateSelectedSoundInfo();
     if (play && result->previewURL.isNotEmpty())
         actions.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { result->previewURL });
@@ -269,6 +294,47 @@ void SearchPanel::addResultToPreset (int index)
     updateFromState (getPreset());
 }
 
+void SearchPanel::replaceSoundWithResult (const juce::String& soundUUID, int index)
+{
+    const auto* result = getResult (index);
+    if (result == nullptr)
+        return;
+    // Parameters of ACTION_REPLACE_SOUND_AUDIO: sound UUID, sound ID, name, user, license, preview URL, local file path, format, size, slices
+    actions.send (ACTION_REPLACE_SOUND_AUDIO, { soundUUID, juce::String (result->id), SourceActionSender::sanitize (result->name),
+                                                SourceActionSender::sanitize (result->username), result->license, result->previewURL, "",
+                                                result->format, juce::String ((int) juce::jmin ((juce::int64) INT_MAX, result->filesize)), "" });
+    statusLabel.setText ("Replaced a sound with \"" + result->name + "\"", juce::dontSendNotification);
+    statusLabel.setColour (juce::Label::textColourId, SourceColours::accent);
+    updateFromState (getPreset());
+}
+
+void SearchPanel::showReplaceMenu()
+{
+    // Menu with the sounds of the preset
+    const auto preset = getPreset();
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("Replace the audio of (settings are kept)");
+    juce::StringArray uuids;
+    for (const auto& sound : preset)
+    {
+        if (! sound.hasType (SourceIDs::SOUND) || (bool) sound.getProperty (SourceIDs::willBeDeleted, false))
+            continue;
+        uuids.add (sound.getProperty (SourceIDs::uuid).toString());
+        const auto name = sound.getChildWithName (SourceIDs::SOUND_SAMPLE).getProperty (SourceIDs::name).toString();
+        menu.addItem (uuids.size(), juce::String (uuids.size()) + ". " + (name.isNotEmpty() ? name : juce::String ("(no name)")));
+    }
+    if (uuids.isEmpty())
+        menu.addItem (-1, "There are no sounds in the preset", false);
+    const int index = selectedIndex;
+    juce::Component::SafePointer<SearchPanel> safe (this);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&replaceButton).withMaximumNumColumns (3),
+                        [safe, uuids, index] (int choice)
+                        {
+                            if (safe != nullptr && choice > 0 && choice <= uuids.size())
+                                safe->replaceSoundWithResult (uuids[choice - 1], index);
+                        });
+}
+
 void SearchPanel::updateFromState (const juce::ValueTree& presetState)
 {
     std::set<int> ids;
@@ -281,20 +347,38 @@ void SearchPanel::updateFromState (const juce::ValueTree& presetState)
         return;
     soundIdsInPreset = ids;
     map.setHighlightedIds (ids);
-    listBox.updateContent();
-    listBox.repaint();
+    table.updateContent();
+    table.repaint();
     updateSelectedSoundInfo();
 }
 
-void SearchPanel::setPreviewPlaying (bool isPlaying)
+void SearchPanel::setPreviewState (int state)
 {
-    stopButton.setEnabled (isPlaying);
+    if (state == previewState)
+        return;
+    previewState = state;
+    // Values of SourceSampler::PreviewState: idle, loading, playing, failed
+    stopButton.setEnabled (state == 1 || state == 2);
+    if (state == 1)
+    {
+        previewStatusLabel.setText ("Loading preview...", juce::dontSendNotification);
+        previewStatusLabel.setColour (juce::Label::textColourId, SourceColours::accent);
+    }
+    else if (state == 3)
+    {
+        previewStatusLabel.setText ("The preview could not be downloaded", juce::dontSendNotification);
+        previewStatusLabel.setColour (juce::Label::textColourId, SourceColours::warning);
+    }
+    else
+    {
+        previewStatusLabel.setText ({}, juce::dontSendNotification);
+    }
 }
 
 void SearchPanel::updateSelectedSoundInfo()
 {
     const auto* result = getResult (selectedIndex);
-    for (auto* c : std::initializer_list<juce::Component*> { &playButton, &stopButton, &addButton })
+    for (auto* c : std::initializer_list<juce::Component*> { &playButton, &stopButton, &addButton, &replaceButton })
         c->setVisible (result != nullptr);
     if (result == nullptr)
     {
@@ -304,38 +388,99 @@ void SearchPanel::updateSelectedSoundInfo()
     }
     selectedNameLabel.setText (result->name, juce::dontSendNotification);
     const bool inPreset = soundIdsInPreset.count (result->id) > 0;
-    selectedDetailsLabel.setText (describe (*result) + " - " + result->format + " - " + juce::String ((double) result->filesize / (1024.0 * 1024.0), 2)
-                                  + " MB - Freesound #" + juce::String (result->id) + (inPreset ? "  (in preset)" : juce::String()),
-                                  juce::dontSendNotification);
+    juce::StringArray details { "by " + result->username, formatDuration (result->duration), SourceHelpers::getShortLicenseName (result->license),
+                                result->format, formatSize (result->filesize), "Freesound #" + juce::String (result->id) };
+    selectedDetailsLabel.setText (details.joinIntoString (" - ") + (inPreset ? "  (in preset)" : juce::String()), juce::dontSendNotification);
     addButton.setButtonText (inPreset ? "Add again" : "Add to preset");
 }
 
 //==============================================================================
 int SearchPanel::getNumRows()
 {
-    return results != nullptr ? (int) results->size() : 0;
+    return (int) rowOrder.size();
 }
 
-juce::Component* SearchPanel::refreshComponentForRow (int row, bool isSelected, juce::Component* existing)
+void SearchPanel::paintRowBackground (juce::Graphics& g, int row, int width, int height, bool selected)
 {
-    auto* rowComponent = dynamic_cast<ResultRow*> (existing);
-    if (rowComponent == nullptr)
+    if (selected)
+        g.fillAll (SourceColours::control.brighter (0.15f));
+    else if (row % 2 == 1)
+        g.fillAll (SourceColours::card.brighter (0.04f));
+    const auto* result = getResult (rowToIndex (row));
+    if (result != nullptr && soundIdsInPreset.count (result->id) > 0)
+    {
+        g.setColour (SourceColours::accent);
+        g.fillRect (0, 0, 3, height);  // Marks sounds already in the preset
+    }
+    juce::ignoreUnused (width);
+}
+
+void SearchPanel::paintCell (juce::Graphics& g, int row, int columnId, int width, int height, bool)
+{
+    const auto* result = getResult (rowToIndex (row));
+    if (result == nullptr)
+        return;
+    auto bounds = juce::Rectangle<int> (width, height).reduced (6, 0);
+    if (columnId == colourColumn)
+    {
+        g.setColour (result->getColour());
+        g.fillEllipse (juce::Rectangle<int> (width, height).toFloat().withSizeKeepingCentre (11.0f, 11.0f));
+        return;
+    }
+    juce::String text;
+    switch (columnId)
+    {
+        case nameColumn:     text = result->name; break;
+        case userColumn:     text = result->username; break;
+        case durationColumn: text = formatDuration (result->duration); break;
+        case licenseColumn:  text = SourceHelpers::getShortLicenseName (result->license); break;
+        case formatColumn:   text = result->format; break;
+        case sizeColumn:     text = formatSize (result->filesize); break;
+        default: break;
+    }
+    const bool isName = columnId == nameColumn;
+    g.setColour (isName ? SourceColours::text : SourceColours::dimText);
+    g.setFont (juce::Font (juce::FontOptions (isName ? 13.0f : 12.0f, isName ? juce::Font::bold : juce::Font::plain)));
+    g.drawText (text, bounds, (columnId == durationColumn || columnId == sizeColumn) ? juce::Justification::centredRight
+                                                                                     : juce::Justification::centredLeft, true);
+}
+
+juce::Component* SearchPanel::refreshComponentForCell (int row, int columnId, bool, juce::Component* existing)
+{
+    if (columnId != addColumn)
     {
         delete existing;
-        rowComponent = new ResultRow (*this);
+        return nullptr;
     }
-    rowComponent->update (row, isSelected);
-    return rowComponent;
+    auto* cell = dynamic_cast<AddButtonCell*> (existing);
+    if (cell == nullptr)
+    {
+        delete existing;
+        cell = new AddButtonCell (*this);
+    }
+    const int index = rowToIndex (row);
+    const auto* result = getResult (index);
+    cell->update (index, result != nullptr && soundIdsInPreset.count (result->id) > 0);
+    return cell;
 }
 
-void SearchPanel::listBoxItemClicked (int row, const juce::MouseEvent&)
+void SearchPanel::cellClicked (int row, int, const juce::MouseEvent&)
 {
-    selectResult (row, true);
+    selectResult (rowToIndex (row), true);
+}
+
+void SearchPanel::sortOrderChanged (int columnId, bool forwards)
+{
+    sortColumn = columnId;
+    sortForwards = forwards;
+    updateRowOrder();
+    table.updateContent();
+    if (selectedIndex >= 0)
+        table.selectRow (indexToRow (selectedIndex), true, true);
+    table.repaint();
 }
 
 //==============================================================================
-void SearchPanel::paint (juce::Graphics&) {}
-
 void SearchPanel::resized()
 {
     auto b = getLocalBounds();
@@ -373,17 +518,21 @@ void SearchPanel::resized()
     selectedCard.setBounds (b.removeFromBottom (58));
     {
         auto c = selectedCard.getLocalBounds().reduced (10, 8);
+        replaceButton.setBounds (c.removeFromRight (124).withSizeKeepingCentre (124, 28));
+        c.removeFromRight (6);
         addButton.setBounds (c.removeFromRight (120).withSizeKeepingCentre (120, 28));
         c.removeFromRight (8);
         stopButton.setBounds (c.removeFromRight (28).withSizeKeepingCentre (28, 28));
         c.removeFromRight (4);
         playButton.setBounds (c.removeFromRight (28).withSizeKeepingCentre (28, 28));
         c.removeFromRight (10);
-        selectedNameLabel.setBounds (c.removeFromTop (c.getHeight() / 2));
+        auto top = c.removeFromTop (c.getHeight() / 2);
+        previewStatusLabel.setBounds (top.removeFromRight (200));
+        selectedNameLabel.setBounds (top);
         selectedDetailsLabel.setBounds (c);
     }
     b.removeFromBottom (gap);
 
-    listBox.setBounds (b);
+    table.setBounds (b);
     map.setBounds (b);
 }

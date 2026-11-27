@@ -225,6 +225,8 @@ void SourceSampler::prepareToPlay (double _sampleRate, int _samplesPerBlock)
     
     // Prepare preview player
     transportSource.prepareToPlay (blockSize, sampleRate);
+    outputGain.reset (sampleRate, 0.02);
+    outputGain.setCurrentAndTargetValue (outputMuted.load() ? 0.0f : 1.0f);
     
     // Pre-allocate space for MIDI messages coming from the UI
     {
@@ -288,6 +290,16 @@ void SourceSampler::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
     
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    
+    // Mute (with a short fade)
+    outputGain.setTargetValue(outputMuted.load(std::memory_order_relaxed) ? 0.0f : 1.0f);
+    if (outputGain.isSmoothing()){
+        const float startGain = outputGain.getCurrentValue();
+        const float endGain = outputGain.skip(buffer.getNumSamples());
+        buffer.applyGainRamp(0, buffer.getNumSamples(), startGain, endGain);
+    } else if (outputGain.getTargetValue() == 0.0f){
+        buffer.clear();
+    }
     
     // Measure audio levels (smoothed RMS per channel, published atomically for the UIs)
     const int numMeteredChannels = juce::jmin(buffer.getNumChannels(), maxMeteredChannels);
@@ -1055,6 +1067,17 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         juce::String soundUUID = parameters[0];
         removeSound(soundUUID);
     }
+    else if (actionName == ACTION_REPLACE_SOUND_AUDIO){
+        // Parameters: sound UUID, sound ID, name, user, license, preview URL, local file path, format, size, slices
+        juce::StringArray slices;
+        if (parameters[9] != "")
+            slices.addTokens(parameters[9], ",", "");
+        replaceSoundAudio(parameters[0], parameters[1].getIntValue(), parameters[2], parameters[3], parameters[4], parameters[5],
+                          parameters[6], parameters[7], parameters[8].getIntValue(), slices);
+    }
+    else if (actionName == ACTION_REPLACE_SOUND_WITH_SIMILAR){
+        replaceSoundWithSimilar(parameters[0]);
+    }
     else if (actionName == ACTION_RETRY_SOUND_DOWNLOADS){
         if (auto* sound = getSoundWithUUID(parameters[0]))
             sound->retryFailedDownloads();
@@ -1500,6 +1523,67 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
     addOrReplaceSoundFromBasicSoundProperties(soundUUID, sound.id.getIntValue(), sound.name, sound.user, sound.license, sound.getOGGPreviewURL().toString(false), "", sound.format, sound.filesize, slices, midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
 }
 
+bool SourceSampler::replaceSoundAudio(const juce::String& soundUUID, int soundID, const juce::String& soundName, const juce::String& soundUser,
+                                      const juce::String& soundLicense, const juce::String& previewURL, const juce::String& localFilePath,
+                                      const juce::String& format, int sizeBytes, juce::StringArray slices)
+{
+    juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
+    const int index = presetState.indexOf(presetState.getChildWithProperty(SourceIDs::uuid, soundUUID));
+    auto* sound = sounds->getSoundWithUUID(soundUUID);
+    if (index < 0 || sound == nullptr)
+        return false;
+    const juce::ValueTree oldSound = presetState.getChild(index);
+    
+    juce::BigInteger midiNotes = sound->getMappedMidiNotes();
+    const int midiRootNote = sound->getMidiNoteFromFirstSourceSamplerSound();
+    const int midiChannel = sound->getParameterInt(SourceIDs::midiChannel);
+    juce::ValueTree newSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties(soundID, soundName, soundUser, soundLicense, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote, SourceDefaults::midiVelocityLayer, midiChannel);
+    
+    // Keep all the settings of the old sound (but not its identity or loading state)
+    for (int i = 0; i < oldSound.getNumProperties(); ++i){
+        const auto property = oldSound.getPropertyName(i);
+        if (property == SourceIDs::uuid || property == SourceIDs::allSoundsLoaded || property == SourceIDs::willBeDeleted || property == SourceIDs::findingSimilar)
+            continue;
+        newSound.setProperty(property, oldSound.getProperty(property), nullptr);
+    }
+    for (int i = 0; i < oldSound.getNumChildren(); ++i){
+        auto child = oldSound.getChild(i);
+        if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING))
+            newSound.addChild(child.createCopy(), -1, nullptr);
+    }
+    presetState.removeChild(index, nullptr);
+    presetState.addChild(newSound, index, nullptr);
+    return true;
+}
+
+void SourceSampler::replaceSoundWithSimilar(const juce::String& soundUUID)
+{
+    juce::ValueTree soundState = state.getChildWithName(SourceIDs::PRESET).getChildWithProperty(SourceIDs::uuid, soundUUID);
+    const auto sample = soundState.getChildWithName(SourceIDs::SOUND_SAMPLE);
+    const int soundId = sample.getProperty(SourceIDs::soundId, -1);
+    if (!soundState.isValid() || soundId <= 0 || !(bool) sample.getProperty(SourceIDs::soundFromFreesound, false))
+        return;
+    soundState.setProperty(SourceIDs::findingSimilar, true, nullptr);
+    juce::WeakReference<SourceSampler> weak = weakThis;
+    freesoundSearch.findSimilarSounds(soundId, 10, [weak, soundUUID, soundId](std::vector<FreesoundSearchResult> similar, juce::String error){
+        auto* sampler = weak.get();
+        if (sampler == nullptr)
+            return;
+        auto current = sampler->state.getChildWithName(SourceIDs::PRESET).getChildWithProperty(SourceIDs::uuid, soundUUID);
+        if (!current.isValid())
+            return;  // The sound was removed in the meantime
+        current.setProperty(SourceIDs::findingSimilar, false, nullptr);
+        similar.erase(std::remove_if(similar.begin(), similar.end(), [soundId](const auto& r){ return r.id == soundId || r.previewURL.isEmpty(); }), similar.end());
+        if (similar.empty()){
+            DBG("No similar sounds found for " << soundId << " " << error);
+            return;
+        }
+        const auto& chosen = similar[(size_t) juce::Random::getSystemRandom().nextInt((int) similar.size())];
+        sampler->replaceSoundAudio(soundUUID, chosen.id, chosen.name, chosen.username, chosen.license, chosen.previewURL, "",
+                                   chosen.format, (int) juce::jmin((juce::int64) INT_MAX, chosen.filesize), {});
+    });
+}
+
 void SourceSampler::reapplyNoteLayout(int newNoteLayoutType)
 {
     noteLayoutType = newNoteLayoutType;
@@ -1627,59 +1711,83 @@ int SourceSampler::getServerInterfaceWSPort()
 
 void SourceSampler::previewFile(const juce::String& path)
 {
+    // Message thread. Plays a local file, or a URL which is first downloaded to the tmp folder (with the same
+    // downloader used for sounds: long timeout for the slow Freesound CDN and retries).
     if (transportSource.isPlaying()){
         transportSource.stop();
     }
-    if (currentlyLoadedPreviewFilePath == path){
+    previewFailed = false;
+    previewLoading = false;
+    if (currentlyLoadedPreviewFilePath == path && readerSource != nullptr){
         transportSource.setPosition(0.0);
         transportSource.start();
         return;
     }
     
     if (path.startsWith("http")){
-        // If path is an URL, download the file first (in a background thread, then come back here with the local path)
         juce::StringArray tokens;
         tokens.addTokens (path, "/", "");
-        juce::File location = tmpFilesLocation.getChildFile(tokens[tokens.size() - 1]);
+        juce::File location = tmpFilesLocation.getChildFile("preview-" + tokens[tokens.size() - 1]);
         if (location.existsAsFile()){  // Dont' re-download if file already exists
             previewFile(location.getFullPathName());
             return;
         }
         # if !ELK_BUILD  // On ELK, downloads should be triggered from the Python script before calling this function
+        // Only the last requested preview is downloaded
+        previewDownloadPool->cancel(previewDownloadCancelFlag);
+        previewDownloadCancelFlag = DownloadPool::makeCancelFlag();
+        previewLoading = true;
         juce::WeakReference<SourceSampler> weak = weakThis;
-        juce::Thread::launch([weak, path, location]{
-            if (auto task = juce::URL(path).downloadToFile(location, juce::URL::DownloadTaskOptions())){  // Returns immediately, wait below
-                while (!task->isFinished())
-                    juce::Thread::sleep(20);
-                const bool ok = !task->hadError();
-                juce::MessageManager::callAsync([weak, path, location, ok]{
-                    if (auto* sampler = weak.get()){
-                        // Only play it if it is still the last preview that was requested
-                        if (ok && sampler->lastRequestedPreviewPath == path) sampler->previewFile(location.getFullPathName());
-                        else if (!ok) location.deleteFile();
+        previewDownloadPool->download({ juce::URL(path), {}, location }, previewDownloadCancelFlag, nullptr,
+            [weak, path](const juce::File& target, bool ok){
+                juce::MessageManager::callAsync([weak, path, target, ok]{
+                    auto* sampler = weak.get();
+                    if (sampler == nullptr || sampler->lastRequestedPreviewPath != path)
+                        return;
+                    sampler->previewLoading = false;
+                    if (ok){
+                        sampler->previewFile(target.getFullPathName());
+                    } else {
+                        DBG("Could not download preview " << path);
+                        sampler->previewFailed = true;
                     }
                 });
-            }
-        });
+            });
         # endif
         return;
     }
     
     juce::File file = juce::File(path);
-    if (file.existsAsFile()){
-        if (auto* reader = audioFormatManager.createReaderFor (file))
-        {
-            auto newSource = std::make_unique<juce::AudioFormatReaderSource> (reader, true);
-            transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);
-            readerSource.reset (newSource.release());
-            currentlyLoadedPreviewFilePath = path;
-            transportSource.start();
-        }
+    std::unique_ptr<juce::AudioFormatReader> reader (file.existsAsFile() ? audioFormatManager.createReaderFor (file) : nullptr);
+    if (reader == nullptr){
+        DBG("Could not play preview " << path);
+        previewFailed = true;
+        if (file.isAChildOf(tmpFilesLocation))
+            file.deleteFile();  // Don't keep broken downloads
+        return;
     }
+    const double sampleRateOfFile = reader->sampleRate;
+    auto newSource = std::make_unique<juce::AudioFormatReaderSource> (reader.release(), true);
+    transportSource.setSource (newSource.get(), 0, nullptr, sampleRateOfFile);
+    readerSource.reset (newSource.release());
+    currentlyLoadedPreviewFilePath = path;
+    transportSource.setPosition(0.0);
+    transportSource.start();
+}
+
+SourceSampler::PreviewState SourceSampler::getPreviewState() const
+{
+    if (transportSource.isPlaying()) return PreviewState::playing;
+    if (previewLoading) return PreviewState::loading;
+    if (previewFailed) return PreviewState::failed;
+    return PreviewState::idle;
 }
 
 void SourceSampler::stopPreviewingFile(){
     lastRequestedPreviewPath = {};
+    previewLoading = false;
+    previewDownloadPool->cancel(previewDownloadCancelFlag);
+    previewDownloadCancelFlag = DownloadPool::makeCancelFlag();
     if (transportSource.isPlaying()){
         transportSource.stop();
     }

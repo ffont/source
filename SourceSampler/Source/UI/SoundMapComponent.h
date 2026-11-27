@@ -50,6 +50,8 @@ public:
 
 private:
     juce::AffineTransform getFitTransform() const;
+    float getZoom() const;       // Relative to the initial view
+    float getDotRadius() const;  // Radius of the circles on screen, depends on the zoom
     void applyGesture (juce::Point<float> fromCentre, juce::Point<float> toCentre, float scale, float rotation);
 
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results;

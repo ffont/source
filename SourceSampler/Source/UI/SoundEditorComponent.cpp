@@ -739,7 +739,7 @@ void SoundEditorComponent::resized()
     b.removeFromTop (6);
     if (soundUUID.isNotEmpty())
     {
-        waveform.setBounds (b.removeFromTop (110));
+        waveform.setBounds (b.removeFromTop (juce::jlimit (110, 200, b.getHeight() / 4)));
         b.removeFromTop (6);
         auto rootRow = b.removeFromTop (22);
         rootNoteLabel.setBounds (rootRow.removeFromLeft (96));

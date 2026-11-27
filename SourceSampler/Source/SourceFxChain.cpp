@@ -98,6 +98,7 @@ void SourceFxChain::updateProcessors()
                     case Param::phaserEnabled:     phaser.reset(); break;
                     case Param::delayEnabled:      delayLine.reset(); delayDampingState = {}; break;
                     case Param::compressorEnabled: compressor.reset(); break;
+                    case Param::reverbEnabled:     reverb.reset(); break;
                     default: break;
                 }
             }
@@ -178,7 +179,8 @@ void SourceFxChain::process (const juce::dsp::ProcessContextReplacing<float>& co
         phaser.process (context);
     if (isOn (Param::delayEnabled))
         processDelay (block);
-    reverb.process (context);  // Always on (wet level 0 by default)
+    if (isOn (Param::reverbEnabled))
+        reverb.process (context);
     if (isOn (Param::compressorEnabled))
     {
         compressor.process (context);

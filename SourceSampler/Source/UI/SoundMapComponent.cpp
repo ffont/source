@@ -91,8 +91,10 @@ int SoundMapComponent::getSoundAt (juce::Point<float> position, float radius) co
 void SoundMapComponent::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setColour (SourceColours::card);
+    g.setColour (juce::Colours::black);
     g.fillRoundedRectangle (bounds, 5.0f);
+    g.setColour (SourceColours::control);
+    g.drawRoundedRectangle (bounds.reduced (0.5f), 5.0f, 1.0f);
 
     if (results == nullptr || results->empty())
     {
@@ -108,8 +110,9 @@ void SoundMapComponent::paint (juce::Graphics& g)
         clipPath.addRoundedRectangle (bounds, 5.0f);
         g.reduceClipRegion (clipPath);
 
-        // Sounds (circles keep their size on screen when zooming)
-        const float radius = 6.0f;
+        // Sounds. Circles grow when zooming in, but less than the distances between them (so very close sounds can
+        // be separated by zooming, while still feeling that you get closer)
+        const float radius = getDotRadius();
         for (int i = 0; i < (int) results->size(); ++i)
         {
             const auto& r = (*results)[(size_t) i];
@@ -118,7 +121,7 @@ void SoundMapComponent::paint (juce::Graphics& g)
             const auto p = getScreenPosition (i);
             if (! bounds.expanded (radius).contains (p))
                 continue;
-            g.setColour (r.getColour());
+            g.setColour (r.getColour().withAlpha (0.72f));
             g.fillEllipse (p.x - radius, p.y - radius, radius * 2.0f, radius * 2.0f);
             if (highlightedIds.count (r.id) > 0)
             {
@@ -135,8 +138,9 @@ void SoundMapComponent::paint (juce::Graphics& g)
                 continue;
             const auto p = getScreenPosition (index);
             const bool isSelected = index == selectedIndex;
+            const float ring = getDotRadius() + 4.0f;
             g.setColour (isSelected ? juce::Colours::white : juce::Colours::white.withAlpha (0.6f));
-            g.drawEllipse (p.x - 10.0f, p.y - 10.0f, 20.0f, 20.0f, isSelected ? 2.0f : 1.0f);
+            g.drawEllipse (p.x - ring, p.y - ring, ring * 2.0f, ring * 2.0f, isSelected ? 2.0f : 1.0f);
         }
         if (hoverIndex >= 0 && hoverIndex < (int) results->size())
         {
@@ -165,6 +169,18 @@ void SoundMapComponent::paint (juce::Graphics& g)
     const juce::String hint = "Drag to move, scroll/pinch to zoom, Alt+drag to rotate, double-click to reset";
    #endif
     g.drawText (hint, getLocalBounds().reduced (8, 4).removeFromBottom (14), juce::Justification::bottomLeft);
+}
+
+float SoundMapComponent::getZoom() const
+{
+    const float fitScale = std::sqrt (std::abs (getFitTransform().getDeterminant()));
+    return fitScale > 0.0f ? std::sqrt (std::abs (viewTransform.getDeterminant())) / fitScale : 1.0f;
+}
+
+float SoundMapComponent::getDotRadius() const
+{
+    // Grows with the square root of the zoom (distances grow linearly)
+    return juce::jlimit (4.0f, 22.0f, 8.0f * std::pow (getZoom(), 0.4f));
 }
 
 void SoundMapComponent::applyGesture (juce::Point<float> fromCentre, juce::Point<float> toCentre, float scale, float rotation)
@@ -243,7 +259,7 @@ void SoundMapComponent::mouseUp (const juce::MouseEvent& e)
     pointers.erase (e.source.getIndex());
     if (pointers.empty() && ! gestureHadMultiplePointers && totalMovement < 6.0f && ! e.mods.isPopupMenu())
     {
-        const int index = getSoundAt (e.position, e.source.isTouch() ? 22.0f : 14.0f);
+        const int index = getSoundAt (e.position, getDotRadius() + (e.source.isTouch() ? 12.0f : 5.0f));
         if (index >= 0 && onSoundClicked != nullptr)
             onSoundClicked (index);
     }
@@ -278,7 +294,7 @@ void SoundMapComponent::mouseMagnify (const juce::MouseEvent& e, float scaleFact
 
 void SoundMapComponent::mouseMove (const juce::MouseEvent& e)
 {
-    const int index = getSoundAt (e.position);
+    const int index = getSoundAt (e.position, getDotRadius() + 3.0f);
     if (index != hoverIndex)
     {
         hoverIndex = index;

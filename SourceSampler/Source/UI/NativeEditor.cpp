@@ -24,7 +24,7 @@ void LevelMetersComponent::paint (juce::Graphics& g)
     // Vertical bars, or horizontal bars (one per row) if the component is wider than tall
     const int numChannels = juce::jmax (1, (int) levels.size());
     const bool horizontal = getWidth() > getHeight();
-    const int gap = horizontal ? 2 : 6;
+    const int gap = (horizontal || getWidth() < 30) ? 2 : 6;
     const int along = horizontal ? getHeight() : getWidth();
     const int meterSize = juce::jmax (1, juce::jmin (30, (along - (numChannels - 1) * gap) / numChannels));
     auto b = getLocalBounds();
@@ -179,6 +179,17 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     content.addAndMakeVisible (voicesComponent);
     levelMeters.setTooltip ("Output level");
     content.addAndMakeVisible (levelMeters);
+    muteButton.setClickingTogglesState (true);
+    muteButton.setToggleState (sourceSampler.isOutputMuted(), juce::dontSendNotification);
+    muteButton.setIcon (sourceSampler.isOutputMuted() ? IconButton::Icon::speakerMuted : IconButton::Icon::speaker);
+    muteButton.onClick = [this]
+    {
+        const bool muted = muteButton.getToggleState();
+        sourceSampler.setOutputMuted (muted);
+        muteButton.setIcon (muted ? IconButton::Icon::speakerMuted : IconButton::Icon::speaker);
+        muteButton.setTooltip (muted ? "Unmute output" : "Mute output");
+    };
+    content.addAndMakeVisible (muteButton);
     logoImage.setImage (juce::ImageCache::getFromMemory (SourceUIBinaryData::rita_aurora_hens_png, SourceUIBinaryData::rita_aurora_hens_pngSize));
     logoImage.setImagePlacement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
     logoImage.setTooltip ("Rita & Aurora");
@@ -574,7 +585,7 @@ void SourceNativeEditor::timerCallback()
     soundList.setActiveVoices (activeVoicesPerSound);
     soundEditor.setPlayheads (playheads);
     levelMeters.setLevels (sourceSampler.getOutputLevels());
-    searchPanel.setPreviewPlaying (sourceSampler.isPreviewPlaying());
+    searchPanel.setPreviewState ((int) sourceSampler.getPreviewState());
 
     juce::String status;
     if (sourceSampler.isQueryingSounds())
@@ -667,12 +678,16 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     const auto& title = titleImage.getImage();
     const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
     titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
+    // Right side: tabs, output meters (vertical) and mute button
+    muteButton.setBounds (header.removeFromRight (30).withSizeKeepingCentre (30, 30));
+    header.removeFromRight (8);
+    levelMeters.setBounds (header.removeFromRight (16).withSizeKeepingCentre (16, 36));
+    header.removeFromRight (10);
     auto tabs = header.removeFromRight (3 * 84).withSizeKeepingCentre (3 * 84, 28);
     for (auto* button : { &generalTabButton, &searchTabButton, &fxTabButton })
         button->setBounds (tabs.removeFromLeft (84));
     const int voicesWidth = juce::jmin (header.getWidth() / 2, SourceSamplerSynthesiser::maxNumVoices * 17);
     voicesComponent.setBounds (juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY())));
-    levelMeters.setBounds (juce::Rectangle<int> (voicesComponent.getRight() + 12, header.getCentreY() - 8, 70, 16));
     b.removeFromTop (8);
 
    #if JUCE_IOS
@@ -698,17 +713,36 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     searchPanel.setBounds (b);
     fxPanel.setBounds (b);
 
-    // General tab: preset and "get new sounds" cards on top, then the sounds
+    // General tab. Landscape: preset and "get new sounds" cards and the list of sounds on the left, the sound editor
+    // (full height) on the right. Portrait: the two cards side by side, then the list of sounds and the sound editor.
     const int gap = 8;
-    const int cardHeight = 236;
+    const int presetCardHeight = 26 + 16 + 5 * 27 - 5;
+    const int queryCardHeight = 236;
+    juce::Rectangle<int> listArea, editorArea;
+    if (portrait)
     {
-        auto top = b.removeFromTop (cardHeight);
-        const int presetWidth = portrait ? (top.getWidth() - gap) / 2 : juce::jmin (400, (top.getWidth() - gap) / 2);
-        presetCard.setBounds (top.removeFromLeft (presetWidth));
+        auto top = b.removeFromTop (queryCardHeight);
+        presetCard.setBounds (top.removeFromLeft ((top.getWidth() - gap) / 2).withHeight (presetCardHeight));
         top.removeFromLeft (gap);
         querySoundsCard.setBounds (top);
+        b.removeFromTop (gap);
+        listArea = b.removeFromTop (juce::jmin (240, b.getHeight() / 3));
+        b.removeFromTop (gap);
+        editorArea = b;
     }
-    b.removeFromTop (gap);
+    else
+    {
+        auto left = b.removeFromLeft (juce::jlimit (380, 460, b.getWidth() / 3));
+        b.removeFromLeft (gap);
+        editorArea = b;
+        presetCard.setBounds (left.removeFromTop (presetCardHeight));
+        left.removeFromTop (gap);
+        querySoundsCard.setBounds (left.removeFromTop (queryCardHeight));
+        left.removeFromTop (gap);
+        listArea = left;
+    }
+    soundList.setBounds (listArea);
+    soundEditor.setBounds (editorArea);
 
     const int rowHeight = 22;
     const int rowGap = 5;
@@ -779,16 +813,4 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         statusLabel.setBounds (row);
     }
 
-    // Sounds: list next to the editor in landscape, above it in portrait
-    if (portrait)
-    {
-        soundList.setBounds (b.removeFromTop (juce::jmin (220, b.getHeight() / 3)));
-        b.removeFromTop (gap);
-    }
-    else
-    {
-        soundList.setBounds (b.removeFromLeft (juce::jmax (300, b.getWidth() / 3)));
-        b.removeFromLeft (gap);
-    }
-    soundEditor.setBounds (b);
 }

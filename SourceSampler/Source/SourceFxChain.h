@@ -30,6 +30,7 @@ namespace SourceFx
         chorusEnabled, chorusRate, chorusDepth, chorusCentreDelay, chorusFeedback, chorusMix,
         phaserEnabled, phaserRate, phaserDepth, phaserCentreFrequency, phaserFeedback, phaserMix,
         delayEnabled, delayTime, delayFeedback, delayDamping, delayMix, delayPingPong,
+        reverbEnabled,
         compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup,
         numParams
     };
@@ -77,6 +78,10 @@ namespace SourceFx
             { "fxDelayMix",               "Delay",      "Mix",           0.0f,    1.0f,    0.35f,  0.01f,  "",   false, 0.0f },
             { "fxDelayPingPong",          "Delay",      "Ping-pong",     0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
 
+            // The other reverb parameters are set with /set_reverb_parameters. On by default (presets from before
+            // this switch existed expect the reverb to be on; its wet level is 0 by default anyway).
+            { "fxReverbEnabled",          "Reverb",     "On",            0.0f,    1.0f,    1.0f,   1.0f,   "",   true,  0.0f },
+
             { "fxCompressorEnabled",      "Compressor", "On",            0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
             { "fxCompressorThreshold",    "Compressor", "Threshold",   -60.0f,    0.0f,  -18.0f,   0.1f,   "dB", false, 0.0f },
             { "fxCompressorRatio",        "Compressor", "Ratio",         1.0f,   20.0f,    4.0f,   0.1f,   ":1", false, 4.0f },
@@ -99,8 +104,8 @@ namespace SourceFx
         return -1;
     }
 
-    /** Effects with parameters in the table, in processing order (reverb, processed between delay and compressor,
-        has its own parameters). */
+    /** Effects with a card built from the table, in processing order (reverb, processed between delay and compressor,
+        only has its on/off switch in the table: its other parameters are set with /set_reverb_parameters). */
     inline juce::StringArray getEffectNames() { return { "Drive", "Chorus", "Phaser", "Delay", "Compressor" }; }
 }
 

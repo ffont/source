@@ -154,11 +154,29 @@ public:
     int getServerInterfaceHttpPort();
     int getServerInterfaceWSPort();
     
+    /** Replaces the audio of a sound keeping all its settings (parameters, notes, root note, MIDI channel, MIDI and
+        MPE mappings). Message thread. Returns false if the sound doesn't exist. */
+    bool replaceSoundAudio(const juce::String& soundUUID, int soundID, const juce::String& soundName, const juce::String& soundUser,
+                           const juce::String& soundLicense, const juce::String& previewURL, const juce::String& localFilePath,
+                           const juce::String& format, int sizeBytes, juce::StringArray slices);
+    /** Replaces the audio of a Freesound sound with one of 10 similar sounds chosen randomly (asynchronous). */
+    void replaceSoundWithSimilar(const juce::String& soundUUID);
+    
     void previewFile(const juce::String& path);
     void stopPreviewingFile();
     juce::String currentlyLoadedPreviewFilePath = "";
     juce::String lastRequestedPreviewPath;  // Only the last requested preview is played (downloads can finish in any order)
     bool isPreviewPlaying() const { return transportSource.isPlaying(); }
+    enum class PreviewState { idle, loading, playing, failed };
+    /** Mutes the output (and previews). Can be called from any thread. */
+    void setOutputMuted (bool muted) { outputMuted = muted; }
+    bool isOutputMuted() const { return outputMuted.load(); }
+    /** State of the last requested preview (message thread). */
+    PreviewState getPreviewState() const;
+    
+    juce::SharedResourcePointer<DownloadPool> previewDownloadPool;
+    DownloadPool::CancelFlag previewDownloadCancelFlag = DownloadPool::makeCancelFlag();
+    bool previewFailed = false, previewLoading = false;
     
     /** Freesound searches of the "Search" tab (owned here so the results are kept when the editor is closed). */
     FreesoundSearch freesoundSearch;
@@ -213,6 +231,8 @@ private:
     SourceSamplerSynthesiser sampler;
     ServerInterface serverInterface;
     // Output levels: RMS per channel averaged over ~200ms, computed in the audio thread and read by UIs (lock free)
+    std::atomic<bool> outputMuted { false };
+    juce::SmoothedValue<float> outputGain { 1.0f };  // Audio thread (fades when muting/unmuting)
     static constexpr int maxMeteredChannels = 8;
     std::array<std::atomic<float>, maxMeteredChannels> outputRmsLevels {};
     std::array<float, maxMeteredChannels> outputMeanSquares {};  // Audio thread only

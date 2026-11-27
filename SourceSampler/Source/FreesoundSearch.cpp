@@ -242,6 +242,41 @@ void FreesoundSearch::search (const FreesoundSearchOptions& options)
         }), true);
 }
 
+void FreesoundSearch::findSimilarSounds (int soundId, int numSounds, SimilarSoundsCallback onFound)
+{
+    juce::WeakReference<FreesoundSearch> weak (this);
+    const auto url = juce::URL ("https://freesound.org/apiv2/sounds/" + juce::String (soundId) + "/similar/")
+                         .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews")
+                         .withParameter ("page_size", juce::String (numSounds))
+                         .withParameter ("token", apiKey);
+    pool.addJob ([weak, url, onFound]
+    {
+        std::vector<FreesoundSearchResult> foundSounds;
+        juce::String errorMessage;
+        int statusCode = 0;
+        auto stream = url.createInputStream (juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
+                                                 .withConnectionTimeoutMs (60000).withStatusCode (&statusCode));
+        if (stream == nullptr || statusCode == 0)
+        {
+            errorMessage = "Could not connect to Freesound";
+        }
+        else
+        {
+            const auto json = juce::JSON::parse (stream->readEntireStreamAsString());
+            if (statusCode >= 400)
+                errorMessage = "Freesound error " + juce::String (statusCode);
+            const auto jsonResults = json.getProperty ("results", juce::var());
+            for (int i = 0; i < jsonResults.size(); ++i)
+                foundSounds.push_back (FreesoundSearchResult::fromJson (jsonResults[i]));
+        }
+        juce::MessageManager::callAsync ([weak, onFound, sounds = std::move (foundSounds), errorMessage]
+        {
+            if (weak.get() != nullptr && onFound != nullptr)
+                onFound (sounds, errorMessage);
+        });
+    });
+}
+
 void FreesoundSearch::searchFinished (int generation, std::shared_ptr<std::vector<FreesoundSearchResult>> newResults, int total, const juce::String& error)
 {
     if (currentGeneration->load() != generation)

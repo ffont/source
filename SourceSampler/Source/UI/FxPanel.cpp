@@ -87,8 +87,14 @@ FxPanel::FxPanel (SourceActionSender actionSender) : actions (std::move (actionS
         }
     }
 
-    // Reverb (always on: its wet level is 0 by default)
+    // Reverb (its on/off switch is in the effects parameters table, the other parameters are set as a whole)
     addAndMakeVisible (reverbCard);
+    reverbEnabledToggle.setTooltip ("Switch reverb on/off");
+    reverbEnabledToggle.onClick = [this]
+    {
+        actions.send (ACTION_SET_FX_PARAMETER, { SourceFx::getParamInfo (SourceFx::Param::reverbEnabled).id, reverbEnabledToggle.getToggleState() ? "1" : "0" });
+    };
+    reverbCard.addAndMakeVisible (reverbEnabledToggle);
     const std::array<std::pair<juce::Identifier, const char*>, 6> reverbParams {{
         { SourceIDs::reverbRoomSize, "Room size" }, { SourceIDs::reverbDamping, "Damping" }, { SourceIDs::reverbWidth, "Width" },
         { SourceIDs::reverbFreezeMode, "Freeze" }, { SourceIDs::reverbWetLevel, "Wet level" }, { SourceIDs::reverbDryLevel, "Dry level" } }};
@@ -151,9 +157,15 @@ void FxPanel::updateFromState (const juce::ValueTree& presetState)
             control->toggle.setAlpha (alpha);
         }
     }
+    const bool reverbEnabled = (float) presetState.getProperty (SourceFx::getParamInfo (SourceFx::Param::reverbEnabled).getIdentifier(), 1.0f) >= 0.5f;
+    reverbEnabledToggle.setToggleState (reverbEnabled, juce::dontSendNotification);
     for (auto& control : reverbControls)
+    {
         if (! control.slider.isMouseButtonDown())
             control.slider.setValue ((float) presetState.getProperty (control.id, 0.0f), juce::dontSendNotification);
+        control.slider.setAlpha (reverbEnabled ? 1.0f : 0.45f);
+        control.label.setAlpha (reverbEnabled ? 1.0f : 0.45f);
+    }
 }
 
 void FxPanel::layoutCard (EffectCard& effect)
@@ -203,6 +215,7 @@ void FxPanel::resized()
     for (auto* effect : effects)
         layoutCard (*effect);
 
+    reverbEnabledToggle.setBounds (reverbCard.getLocalBounds().reduced (8, 6).removeFromTop (22).removeFromRight (52));
     auto c = reverbCard.getContentBounds();
     for (auto& control : reverbControls)
     {

@@ -70,7 +70,7 @@ public:
                 expect (info.minValue < info.maxValue, info.id);
                 expect (info.defaultValue >= info.minValue && info.defaultValue <= info.maxValue, info.id);
                 expect (juce::String (info.id).startsWith ("fx"), info.id);
-                expect (SourceFx::getEffectNames().contains (info.effect), info.id);
+                expect (SourceFx::getEffectNames().contains (info.effect) || juce::String (info.effect) == "Reverb", info.id);
                 expect (! ids.contains (info.id), juce::String ("Duplicated ") + info.id);
                 ids.add (info.id);
                 if (info.isToggle)
@@ -183,6 +183,24 @@ public:
                 expectGreaterThan (maxDifference, 0.05f);
                 expectLessThan (output.getMagnitude (0, 0, 48000), 10.0f);
             }
+        }
+
+        beginTest ("Reverb can be switched off");
+        {
+            auto fx = makeChain();
+            juce::Reverb::Parameters reverb;
+            reverb.wetLevel = 1.0f;
+            reverb.dryLevel = 0.0f;
+            fx->setReverbParameters (reverb);
+            auto wet = sine (440.0f, 0.5f, 4800);
+            process (*fx, wet);
+            expectLessThan (std::abs (wet.getSample (0, 4000) - 0.5f * std::sin (juce::MathConstants<float>::twoPi * 440.0f * 4000.0f / (float) sampleRate)), 0.9f);
+            fx->setParameter (Param::reverbEnabled, 0.0f);
+            auto input = sine (440.0f, 0.5f, 4800);
+            auto output = input;
+            process (*fx, output);
+            for (int i = 0; i < input.getNumSamples(); i += 37)
+                expectWithinAbsoluteError (output.getSample (0, i), input.getSample (0, i), 1.0e-6f);
         }
 
         beginTest ("Parameters are clamped");

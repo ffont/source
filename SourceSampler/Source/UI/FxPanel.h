@@ -55,6 +55,7 @@ private:
     SourceActionSender actions;
     juce::OwnedArray<EffectCard> effects;
     CardComponent reverbCard { "Reverb" };
+    juce::ToggleButton reverbEnabledToggle { "On" };
     std::array<ReverbControl, 6> reverbControls;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FxPanel)

@@ -261,6 +261,7 @@ if(SOURCE_BUILD_TESTS)
         Tests/FxTests.cpp
         Tests/SearchTests.cpp
         Tests/UITests.cpp
+        Tests/NetworkTests.cpp
         Source/UI/SearchPanel.cpp
         Source/UI/SoundMapComponent.cpp
         Tests/SamplerRenderTests.cpp
