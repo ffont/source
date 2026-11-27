@@ -360,7 +360,7 @@ SourceSound::SourceSound (const juce::ValueTree& _state,
 
 SourceSound::~SourceSound ()
 {
-    downloadsCancelFlag->store(true);  // Cancels pending downloads (without waiting for them)
+    downloadPool->cancel(downloadsCancelFlag);  // Cancels pending downloads (without waiting for them)
     soundLoaderThread.stopThread(20000);
 }
 

@@ -252,6 +252,7 @@ if(SOURCE_BUILD_TESTS)
         ${SOURCE_CORE_SOURCES}
         Tests/TestMain.cpp
         Tests/HelpersTests.cpp
+        Tests/DownloadPoolTests.cpp
         Tests/SamplerRenderTests.cpp
         Tests/SourceSamplerTests.cpp)
 
