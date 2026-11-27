@@ -113,8 +113,7 @@ set(SOURCE_IOS_PLUGIN_OPTIONS)
 if(SOURCE_IOS)
     set(SOURCE_IOS_PLUGIN_OPTIONS
         TARGETED_DEVICE_FAMILY 2  # iPad
-        IPAD_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
-                                 UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        IPAD_SCREEN_ORIENTATIONS UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight  # Landscape only
         BACKGROUND_AUDIO_ENABLED TRUE
         BACKGROUND_BLE_ENABLED TRUE
         BLUETOOTH_PERMISSION_ENABLED TRUE
@@ -122,7 +121,7 @@ if(SOURCE_IOS)
         FILE_SHARING_ENABLED TRUE      # Sounds and presets are visible in the Files app
         DOCUMENT_BROWSER_ENABLED TRUE
         STATUS_BAR_HIDDEN TRUE
-        REQUIRES_FULL_SCREEN FALSE)
+        REQUIRES_FULL_SCREEN TRUE)  # Needed for the landscape-only orientation to be respected (no Split View)
     if(SOURCE_IOS_APP_GROUP)
         list(APPEND SOURCE_IOS_PLUGIN_OPTIONS APP_GROUPS_ENABLED TRUE APP_GROUP_IDS ${SOURCE_IOS_APP_GROUP})
     endif()

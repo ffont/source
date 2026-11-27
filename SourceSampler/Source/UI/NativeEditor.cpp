@@ -8,6 +8,9 @@
 
 #include "NativeEditor.h"
 #include "SourceUIBinaryData.h"
+#if JucePlugin_Build_Standalone
+ #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
+#endif
 
 
 //==============================================================================
@@ -193,20 +196,40 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     logoImage.setTooltip ("Rita & Aurora");
     content.addAndMakeVisible (logoImage);
 
+    // Settings tab: audio and MIDI settings of the standalone app on iPad, where there is no title bar with the
+    // "Options" button to open them (SOURCE_DEBUG_SETTINGS_TAB=1 shows it in the desktop standalone app too)
+   #if JucePlugin_Build_Standalone
+    bool showSettingsTab = false;
+   #if JUCE_IOS
+    showSettingsTab = true;
+   #elif JUCE_DEBUG
+    showSettingsTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SETTINGS_TAB", {}) == "1";
+   #endif
+    if (auto* holder = juce::StandalonePluginHolder::getInstance(); holder != nullptr && showSettingsTab
+                                                                     && audioProcessor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+    {
+        settingsPanel = std::make_unique<SettingsPanel> (holder->deviceManager, audioProcessor.getTotalNumOutputChannels(),
+                                                         [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->saveAudioDeviceState(); });
+        content.addChildComponent (*settingsPanel);
+    }
+   #endif
+
     // Tabs
     int tabIndex = 0;
-    for (auto* button : { &generalTabButton, &searchTabButton, &fxTabButton })
+    const auto tabButtons = getTabButtons();
+    for (auto* button : tabButtons)
     {
         button->setRadioGroupId (1);
         button->setClickingTogglesState (true);
         button->setColour (juce::TextButton::buttonOnColourId, SourceColours::accent.darker (0.3f));
-        button->setConnectedEdges ((tabIndex > 0 ? juce::Button::ConnectedOnLeft : 0) | (tabIndex < 2 ? juce::Button::ConnectedOnRight : 0));
+        button->setConnectedEdges ((tabIndex > 0 ? juce::Button::ConnectedOnLeft : 0) | (tabIndex < (int) tabButtons.size() - 1 ? juce::Button::ConnectedOnRight : 0));
         content.addAndMakeVisible (button);
         ++tabIndex;
     }
     generalTabButton.onClick = [this] { showTab (Tab::general); };
     searchTabButton.onClick = [this] { showTab (Tab::search); };
     fxTabButton.onClick = [this] { showTab (Tab::fx); };
+    settingsTabButton.onClick = [this] { showTab (Tab::settings); };
     content.addChildComponent (searchPanel);
     content.addChildComponent (fxPanel);
 
@@ -366,6 +389,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     const auto debugTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_TAB", {});
     if (debugTab == "search") showTab (Tab::search);
     if (debugTab == "fx") showTab (Tab::fx);
+    if (debugTab == "settings" && settingsPanel != nullptr) showTab (Tab::settings);
     const auto debugSearch = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SEARCH", {});
     if (debugSearch.isNotEmpty())
     {
@@ -505,6 +529,14 @@ void SourceNativeEditor::sendAction (const juce::String& actionName, const juce:
     actions.send (actionName, parameters);
 }
 
+std::vector<juce::TextButton*> SourceNativeEditor::getTabButtons()
+{
+    std::vector<juce::TextButton*> buttons { &generalTabButton, &searchTabButton, &fxTabButton };
+    if (settingsPanel != nullptr)
+        buttons.push_back (&settingsTabButton);
+    return buttons;
+}
+
 void SourceNativeEditor::showTab (Tab tab)
 {
     currentTab = tab;
@@ -516,6 +548,9 @@ void SourceNativeEditor::showTab (Tab tab)
     generalTabButton.setToggleState (general, juce::dontSendNotification);
     searchTabButton.setToggleState (tab == Tab::search, juce::dontSendNotification);
     fxTabButton.setToggleState (tab == Tab::fx, juce::dontSendNotification);
+    settingsTabButton.setToggleState (tab == Tab::settings, juce::dontSendNotification);
+    if (settingsPanel != nullptr)
+        settingsPanel->setVisible (tab == Tab::settings);
 }
 
 juce::String SourceNativeEditor::getQueryExtraFilter() const
@@ -694,11 +729,19 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     header.removeFromRight (8);
     levelMeters.setBounds (header.removeFromRight (16).withSizeKeepingCentre (16, 36));
     header.removeFromRight (10);
-    auto tabs = header.removeFromRight (3 * 84).withSizeKeepingCentre (3 * 84, 28);
-    for (auto* button : { &generalTabButton, &searchTabButton, &fxTabButton })
-        button->setBounds (tabs.removeFromLeft (84));
-    const int voicesWidth = juce::jmin (header.getWidth() / 2, SourceSamplerSynthesiser::maxNumVoices * 17);
-    voicesComponent.setBounds (juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY())));
+    const auto tabButtons = getTabButtons();
+    const int tabWidth = tabButtons.size() > 3 ? 76 : 84;
+    auto tabs = header.removeFromRight ((int) tabButtons.size() * tabWidth).withSizeKeepingCentre ((int) tabButtons.size() * tabWidth, 28);
+    for (auto* button : tabButtons)
+        button->setBounds (tabs.removeFromLeft (tabWidth));
+    // Voices in the space between the title and the tabs (centred in the window if that space allows it)
+    header.removeFromRight (10);
+    header.removeFromLeft (10);
+    const int voicesWidth = juce::jmin (header.getWidth(), SourceSamplerSynthesiser::maxNumVoices * 17);
+    auto voicesBounds = juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY()));
+    if (! header.contains (voicesBounds))
+        voicesBounds = voicesBounds.withCentre (header.getCentre());
+    voicesComponent.setBounds (voicesBounds);
     b.removeFromTop (8);
 
    #if JUCE_IOS
@@ -723,6 +766,8 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     // The other tabs use all the space between the header and the keyboard
     searchPanel.setBounds (b);
     fxPanel.setBounds (b);
+    if (settingsPanel != nullptr)
+        settingsPanel->setBounds (b);
 
     // General tab. Landscape: preset and "get new sounds" cards and the list of sounds on the left, the sound editor
     // (full height) on the right. Portrait: the two cards side by side, then the list of sounds and the sound editor.
