@@ -1,33 +1,47 @@
-# Builds the Linux version of SourceSampler (standalone app, VST3 and LV2) for x86_64 and arm64 and attaches the zip
-# files to the GitHub release. Pushes that change the code are also built (but not released). Runs when a release is published (make_release.sh creates the release with the macOS
-# builds), and can be run manually for an existing release tag (or just to build, with an empty tag).
+# Builds the Linux (standalone app, VST3 and LV2 for x86_64 and arm64) and Windows (standalone app and VST3 for x64)
+# versions of SourceSampler and attaches the zip files to the GitHub release. Runs when a release is published
+# (make_release.sh creates the release with the macOS builds). Pushes that change the code are also built (but not
+# released). It can also be run manually: to build a branch, or to add builds to an existing release (e.g. a platform
+# that was added after the release was made), choosing the platforms to build.
 #
 # The Freesound API key is read from the FREESOUND_API_KEY repository secret (without it, searching Freesound won't
-# work in the Linux builds).
+# work in these builds).
+#
+# NOTE: the file keeps its original name (linux-release.yml) because make_release.sh and manual runs refer to it.
 
-name: Linux release builds
+name: Linux and Windows release builds
 
 on:
   release:
     types: [published]
   push:
-    # Also build (without releasing) when the code changes, so Linux build problems show up before a release
+    # Also build (without releasing) when the code changes, so build problems show up before a release
     paths:
       - "SourceSampler/**"
       - ".github/workflows/linux-release.yml"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build and attach the builds to (empty: build the selected branch without releasing)"
+        description: "Release tag to attach the builds to (empty: only build)"
         required: false
         default: ""
+      platforms:
+        description: "Platforms to build"
+        type: choice
+        options: [all, linux, windows]
+        default: all
 
 permissions:
   contents: write
 
+env:
+  # Release to attach the builds to (if any). The code built is the release tag, or the branch the workflow runs on.
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
 jobs:
   linux:
     name: Linux ${{ matrix.arch }}
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'windows'
     strategy:
       fail-fast: false
       matrix:
@@ -37,13 +51,11 @@ jobs:
           - runner: ubuntu-22.04-arm
             arch: arm64
     runs-on: ${{ matrix.runner }}
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+          ref: ${{ github.event.release.tag_name || github.ref }}
 
       - name: Check out the submodules needed by the build
         run: git submodule update --init --depth 1 SourceSampler/3rdParty/JUCE SourceSampler/3rdParty/signalsmith-stretch
@@ -75,6 +87,46 @@ jobs:
 
       - name: Attach the builds to the release
         if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" SourceSampler/dist/* --clobber
+
+  windows:
+    name: Windows x64
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'linux'
+    runs-on: windows-2022
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Check out the submodules needed by the build
+        shell: bash
+        run: git submodule update --init --depth 1 SourceSampler/3rdParty/JUCE SourceSampler/3rdParty/signalsmith-stretch
+
+      - name: Build, test and package
+        shell: bash
+        working-directory: SourceSampler
+        env:
+          FREESOUND_API_KEY: ${{ secrets.FREESOUND_API_KEY }}
+        run: |
+          if [ -n "$FREESOUND_API_KEY" ]; then
+            export CMAKE_ARGS="-DSOURCE_FREESOUND_API_KEY=$FREESOUND_API_KEY"
+          else
+            echo "::warning::The FREESOUND_API_KEY secret is not set: searching Freesound won't work in this build"
+          fi
+          ./windows/build_windows.sh
+
+      - name: Keep the builds as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOURCE-windows-x64
+          path: SourceSampler/dist/*
+
+      - name: Attach the builds to the release
+        if: env.TAG != ''
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" SourceSampler/dist/* --clobber
