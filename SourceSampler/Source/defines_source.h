@@ -300,6 +300,7 @@ DECLARE_ID (filePath)
 DECLARE_ID (downloadProgress)
 DECLARE_ID (downloadCompleted)
 DECLARE_ID (downloadFailed)
+DECLARE_ID (localFileMissing)
 DECLARE_ID (logMessages)
 DECLARE_ID (isQuerying)
 

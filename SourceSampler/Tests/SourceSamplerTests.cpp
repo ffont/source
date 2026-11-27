@@ -441,6 +441,27 @@ public:
             expect (TestUtils::runMessageLoopUntil ([sound] { return (bool) sound.getProperty (SourceIDs::allSoundsLoaded); }, 20000));
         }
 
+        beginTest ("Missing local files are marked when loading a preset");
+        {
+            Fixture f;
+            auto sound = f.addLocalSound ("local", 440.0);
+            auto sample = sound.getChildWithName (SourceIDs::SOUND_SAMPLE);
+            expect (! (bool) sample.getProperty (SourceIDs::localFileMissing, false));
+            auto file = f.sampler.sourceDataLocation.getChildFile (sample.getProperty (SourceIDs::filePath).toString());
+            expect (file.existsAsFile());
+            f.send (ACTION_SAVE_PRESET, { "With local file", "9" });
+            expect (file.deleteFile());
+
+            f.send (ACTION_LOAD_PRESET, { "9" });
+            auto loadedSound = f.preset().getChild (0);
+            expect (TestUtils::runMessageLoopUntil ([loadedSound] { return (bool) loadedSound.getProperty (SourceIDs::allSoundsLoaded); }, 5000));
+            auto loadedSample = loadedSound.getChildWithName (SourceIDs::SOUND_SAMPLE);
+            expect ((bool) loadedSample.getProperty (SourceIDs::localFileMissing));
+            expect (! (bool) loadedSample.getProperty (SourceIDs::downloadCompleted), "Saved as completed, but the file is missing");
+            expect (! (bool) loadedSample.getProperty (SourceIDs::downloadFailed, false), "Local files are not downloads");
+            expectEquals (f.sampler.getSoundWithUUID (loadedSound.getProperty (SourceIDs::uuid).toString())->getLinkedSourceSamplerSounds().size(), (size_t) 0);
+        }
+
         beginTest ("Program changes load presets");
         {
             Fixture f;

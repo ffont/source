@@ -25,6 +25,7 @@ struct SoundListItem
     int soundId = -1;
     float downloadProgress = 0.0f;  // 0-100 (failed downloads count as finished)
     int numFailedDownloads = 0;
+    int numMissingLocalFiles = 0;     // Samples using local files which are not in this device
     bool downloaded = false;          // All files are available (downloaded or local)
     juce::int64 downloadSizeBytes = -1;  // Size of the downloaded files (-1 if unknown)
     bool loaded = false;

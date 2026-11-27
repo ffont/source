@@ -60,7 +60,12 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
         else
             sizeKnown = false;
 
-        if ((bool) child.getProperty (SourceIDs::downloadFailed, false))
+        if ((bool) child.getProperty (SourceIDs::localFileMissing, false))
+        {
+            item.numMissingLocalFiles += 1;
+            progressSum += 100.0f;
+        }
+        else if ((bool) child.getProperty (SourceIDs::downloadFailed, false))
         {
             item.numFailedDownloads += 1;
             progressSum += 100.0f;
@@ -113,7 +118,7 @@ public:
         for (auto* b : { &playButton, &stopButton, &removeButton })
             b->setVisible (! isAllSoundsRow);
         // Sounds can't be played until they are downloaded and loaded (or if some file could not be downloaded)
-        const bool canPlay = item.loaded && item.numFailedDownloads == 0;
+        const bool canPlay = item.loaded && item.numFailedDownloads == 0 && item.numMissingLocalFiles == 0;
         playButton.setEnabled (canPlay);
         stopButton.setEnabled (canPlay);
         const bool showRetry = ! isAllSoundsRow && item.numFailedDownloads > 0;
@@ -186,7 +191,15 @@ public:
             detailParts.add (juce::String ((double) item.downloadSizeBytes / (1024.0 * 1024.0), 2) + " MB");
         juce::String status;
         auto statusColour = SourceColours::dimText;
-        if (item.numFailedDownloads > 0)
+        if (item.numMissingLocalFiles > 0)
+        {
+            // Local files can't be downloaded, so there is no retry button
+            status = item.numSamples > 1 && item.numMissingLocalFiles < item.numSamples
+                         ? "(" + juce::String (item.numMissingLocalFiles) + " of " + juce::String (item.numSamples) + " local files missing)"
+                         : juce::String ("(no local file)");
+            statusColour = juce::Colour (0xffe07a7a);
+        }
+        else if (item.numFailedDownloads > 0)
         {
             status = item.numSamples > 1 ? "(" + juce::String (item.numFailedDownloads) + " of " + juce::String (item.numSamples) + " samples failed downloading)"
                                          : juce::String ("(failed downloading)");

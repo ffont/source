@@ -1131,14 +1131,17 @@ void SourceSound::loadSounds(std::function<bool()> shouldStopLoading)
                 }
             } else {
                 // If sound not from Freesound
-                // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
-                if (filePath != ""){
-                    locationInDisk = context.sourceDataLocation.getChildFile(filePath);
-                    if (fileAlreadyInDisk(locationInDisk)){
-                        setSampleProperty(child, SourceIDs::downloadProgress, 100.0);
-                        setSampleProperty(child, SourceIDs::downloadCompleted, true);
-                    }
+                // Check if the file exists in disk. Otherwise there's nothing we can do (it can't be downloaded), so mark
+                // it as missing (e.g. presets made in another device which used local files)
+                const bool fileFound = filePath != "" && fileAlreadyInDisk(context.sourceDataLocation.getChildFile(filePath));
+                if (fileFound){
+                    setSampleProperty(child, SourceIDs::downloadProgress, 100.0);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, true);
+                } else {
+                    DBG("Local file not found: " << filePath);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, false);
                 }
+                setSampleProperty(child, SourceIDs::localFileMissing, !fileFound);
             }
         }
     }
