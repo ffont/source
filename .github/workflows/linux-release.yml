@@ -1,5 +1,5 @@
 # Builds the Linux version of SourceSampler (standalone app, VST3 and LV2) for x86_64 and arm64 and attaches the zip
-# files to the GitHub release. Runs when a release is published (make_release.sh creates the release with the macOS
+# files to the GitHub release. Pushes that change the code are also built (but not released). Runs when a release is published (make_release.sh creates the release with the macOS
 # builds), and can be run manually for an existing release tag (or just to build, with an empty tag).
 #
 # The Freesound API key is read from the FREESOUND_API_KEY repository secret (without it, searching Freesound won't
@@ -10,6 +10,11 @@ name: Linux release builds
 on:
   release:
     types: [published]
+  push:
+    # Also build (without releasing) when the code changes, so Linux build problems show up before a release
+    paths:
+      - "SourceSampler/**"
+      - ".github/workflows/linux-release.yml"
   workflow_dispatch:
     inputs:
       tag:
