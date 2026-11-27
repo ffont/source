@@ -352,6 +352,15 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
             if (safe != nullptr)
                 safe->sendAction (ACTION_LOAD_PRESET, { debugPreset });
         });
+    //  SOURCE_DEBUG_ACTIONS=<a>|<b>|...      runs these action messages (e.g. /set_fx_parameter:fxDelayEnabled;1)
+    const auto debugActions = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_ACTIONS", {}), "|", {});
+    if (! debugActions.isEmpty())
+        juce::Timer::callAfterDelay (1500, [safe = juce::Component::SafePointer<SourceNativeEditor> (this), debugActions]
+        {
+            if (safe != nullptr)
+                for (const auto& action : debugActions)
+                    safe->sourceSampler.actionListenerCallback (action);
+        });
     //  SOURCE_DEBUG_TAB=general|search|fx   opens that tab
     //  SOURCE_DEBUG_SEARCH=<query>         runs a search in the Search tab (SOURCE_DEBUG_SEARCH_VIEW=list shows the list)
     const auto debugTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_TAB", {});
@@ -390,7 +399,9 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
             {
                 if (safe == nullptr)
                     return;
-                auto image = safe->createComponentSnapshot (safe->getLocalBounds(), true, 1.0f);
+                // SOURCE_DEBUG_SNAPSHOT_SCALE=2 renders at twice the resolution (e.g. for screenshots)
+                const float scale = juce::jlimit (0.5f, 4.0f, juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT_SCALE", "1").getFloatValue());
+                auto image = safe->createComponentSnapshot (safe->getLocalBounds(), true, scale);
                 juce::File file (snapshotPath);
                 file.deleteFile();
                 juce::FileOutputStream stream (file);
