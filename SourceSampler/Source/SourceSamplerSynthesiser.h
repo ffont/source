@@ -14,6 +14,7 @@
 #include "helpers_source.h"
 #include "SourceSamplerVoice.h"
 #include "SourceSamplerSound.h"
+#include "SourceFxChain.h"
 #include <array>
 
 
@@ -77,14 +78,13 @@ public:
     
     //==============================================================================
     void setReverbParameters (juce::Reverb::Parameters params);
+    /** Effects parameters (see SourceFxChain). Can be called from any thread. */
+    void setFxParameter (SourceFx::Param param, float value) noexcept { fxChain.setParameter (param, value); }
+    float getFxParameter (SourceFx::Param param) const noexcept { return fxChain.getParameter (param); }
     
 private:
     //==============================================================================
     void renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples) override;
-    enum
-    {
-        reverbIndex
-    };
     void pushControlEvent (ControlEvent event) noexcept;  // Audio thread, lock free (events are dropped if FIFO is full)
     static constexpr int controlEventsFifoSize = 1024;
     juce::AbstractFifo controlEventsFifo { controlEventsFifoSize };
@@ -99,5 +99,5 @@ private:
     int lastModWheelValue = 0;
     int currentNumChannels = 0;
     int currentBlockSize = 0;
-    juce::dsp::ProcessorChain<juce::dsp::Reverb> fxChain;
+    SourceFxChain fxChain;
 };

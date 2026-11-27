@@ -48,6 +48,7 @@ set(SOURCE_CORE_SOURCES
     Source/SourceSampler.cpp
     Source/SourceSamplerSound.cpp
     Source/SourceSamplerSynthesiser.cpp
+    Source/SourceFxChain.cpp
     Source/SourceSamplerVoice.cpp)
 
 set(SOURCE_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/Source)
@@ -253,6 +254,7 @@ if(SOURCE_BUILD_TESTS)
         Tests/TestMain.cpp
         Tests/HelpersTests.cpp
         Tests/DownloadPoolTests.cpp
+        Tests/FxTests.cpp
         Tests/SamplerRenderTests.cpp
         Tests/SourceSamplerTests.cpp)
 

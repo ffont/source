@@ -122,6 +122,7 @@
 #define ACTION_LOAD_PRESET "/load_preset"
 #define ACTION_SAVE_PRESET "/save_preset"
 #define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
+#define ACTION_SET_FX_PARAMETER "/set_fx_parameter"  // Parameters: parameter id (e.g. fxDelayTime, see SourceFxChain.h), value
 #define ACTION_SET_POLYPHONY "/set_polyphony"
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"

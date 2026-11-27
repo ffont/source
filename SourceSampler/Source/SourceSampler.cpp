@@ -130,6 +130,14 @@ void SourceSampler::bindState()
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::reverbFreezeMode, SourceDefaults::reverbFreezeMode);
     reverbFreezeMode.referTo(preset, SourceIDs::reverbFreezeMode, nullptr, SourceDefaults::reverbFreezeMode);
     
+    // Effects (presets without them get the defaults, with all effects off). Changes to these properties are passed
+    // to the effects chain in valueTreePropertyChanged.
+    for (size_t i = 0; i < SourceFx::getParamInfos().size(); ++i){
+        const auto& info = SourceFx::getParamInfos()[i];
+        SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, info.getIdentifier(), info.defaultValue);
+        sampler.setFxParameter((SourceFx::Param) i, (float) preset.getProperty(info.getIdentifier()));
+    }
+    
     // Swap pointer with oldSound so if there were objects in there still pending to be safely deleted, these will be
     // deleted when needed. Then create a new SourceSoundList with the new preset information
     soundsOld.swap(sounds);
@@ -920,6 +928,15 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         currentPresetIndex = index; // ...and update current preset index and name in case it was changed
         saveGlobalPersistentStateToFile();  // Save global state to reflect last loaded preset has the right index
     }
+    else if (actionName == ACTION_SET_FX_PARAMETER){
+        // Parameters: parameter id (see SourceFx::getParamInfos), value
+        const int fxParam = SourceFx::findParam(parameters[0]);
+        if (fxParam >= 0){
+            const auto& info = SourceFx::getParamInfos()[(size_t) fxParam];
+            const float value = juce::jlimit(info.minValue, info.maxValue, parameters[1].getFloatValue());
+            state.getChildWithName(SourceIDs::PRESET).setProperty(info.getIdentifier(), info.isToggle ? (value >= 0.5f ? 1.0f : 0.0f) : value, nullptr);
+        }
+    }
     else if (actionName == ACTION_SET_REVERB_PARAMETERS){
         reverbRoomSize = parameters[0].getFloatValue();
         reverbDamping = parameters[1].getFloatValue();
@@ -1701,6 +1718,11 @@ void SourceSampler::valueTreePropertyChanged (juce::ValueTree& treeWhoseProperty
     if (sessionAutosaveFile != juce::File()){
         sessionNeedsSaving = true;
         lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
+    if (treeWhosePropertyHasChanged.hasType(SourceIDs::PRESET)){
+        const int fxParam = SourceFx::findParam(property.toString());
+        if (fxParam >= 0)
+            sampler.setFxParameter((SourceFx::Param) fxParam, (float) treeWhosePropertyHasChanged.getProperty(property));
     }
     #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
     juce::ignoreUnused(treeWhosePropertyHasChanged, property);
