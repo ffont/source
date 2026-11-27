@@ -53,12 +53,17 @@ void VoicesComponent::setVoices (const std::vector<SourceSampler::VoiceInfo>& vo
 
 void VoicesComponent::paint (juce::Graphics& g)
 {
-    const int size = 14;
-    const int perRow = juce::jmax (1, getWidth() / (size + 3));
+    // Squares centred in the component (wrapped in rows if they don't fit)
+    const int size = 14, step = size + 3;
+    const int numVoices = (int) activeVoices.size();
+    const int perRow = juce::jlimit (1, juce::jmax (1, numVoices), getWidth() / step);
+    const int numRows = (numVoices + perRow - 1) / perRow;
+    const int x0 = (getWidth() - (perRow * step - 3)) / 2;
+    const int y0 = (getHeight() - (numRows * step - 3)) / 2;
     for (size_t i = 0; i < activeVoices.size(); ++i)
     {
-        const int x = (int) (i % (size_t) perRow) * (size + 3);
-        const int y = (int) (i / (size_t) perRow) * (size + 3);
+        const int x = x0 + (int) (i % (size_t) perRow) * step;
+        const int y = y0 + (int) (i / (size_t) perRow) * step;
         auto r = juce::Rectangle<int> (x, y, size, size).toFloat();
         g.setColour (activeVoices[i] ? SourceColours::accent : SourceColours::background);
         g.fillRoundedRectangle (r, 2.0f);
@@ -160,22 +165,43 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     statusLabel.setJustificationType (juce::Justification::centredRight);
     statusLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     content.addAndMakeVisible (statusLabel);
+    content.addAndMakeVisible (voicesComponent);
+    logoImage.setImage (juce::ImageCache::getFromMemory (SourceUIBinaryData::rita_aurora_logo_png, SourceUIBinaryData::rita_aurora_logo_pngSize));
+    logoImage.setImagePlacement (juce::RectanglePlacement::xRight | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
+    logoImage.setTooltip ("Rita & Aurora");
+    content.addAndMakeVisible (logoImage);
 
     // Preset & settings card
     content.addAndMakeVisible (presetCard);
-    setupLabel (presetIndexLabel, "Preset number", presetCard);
-    setupNumberSlider (presetIndexSlider, 0, 127, 1, 0, presetCard);
-    setupLabel (presetNameLabel, "Preset name", presetCard);
+    // Preset slots: the dropdown lists all slots (selecting one loads it), the number of the current slot is shown
+    // next to its (editable) name, "Save" saves to the current slot and "Save to..." to another one
+    setupLabel (presetLabel, "Preset", presetCard);
+    presetSlotsCombo.setTooltip ("Load a preset (empty slots load an empty preset)");
+    presetSlotsCombo.onPopupOpening = [this] { refreshPresetSlots(); };
+    presetSlotsCombo.onChange = [this]
+    {
+        const int index = presetSlotsCombo.getSelectedId() - 1;
+        if (index >= 0 && index != (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, -1))
+            sendAction (ACTION_LOAD_PRESET, { juce::String (index) });
+    };
+    presetCard.addAndMakeVisible (presetSlotsCombo);
+    presetNumberLabel.setJustificationType (juce::Justification::centred);
+    presetNumberLabel.setColour (juce::Label::backgroundColourId, SourceColours::control);
+    presetNumberLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
+    presetNumberLabel.setTooltip ("Preset number (slot where \"Save\" saves the preset)");
+    presetCard.addAndMakeVisible (presetNumberLabel);
+    presetNameEditor.setTextToShowWhenEmpty ("Preset name", SourceColours::dimText);
+    presetNameEditor.onReturnKey = [this] { savePresetButton.triggerClick(); };
     presetCard.addAndMakeVisible (presetNameEditor);
     presetCard.addAndMakeVisible (savePresetButton);
-    presetCard.addAndMakeVisible (loadPresetButton);
+    presetCard.addAndMakeVisible (saveToPresetButton);
     presetCard.addAndMakeVisible (previousPresetButton);
     presetCard.addAndMakeVisible (nextPresetButton);
-    savePresetButton.onClick = [this]
-    {
-        sendAction (ACTION_SAVE_PRESET, { SourceActionSender::sanitize (presetNameEditor.getText()), juce::String ((int) presetIndexSlider.getValue()) });
-    };
-    loadPresetButton.onClick = [this] { sendAction (ACTION_LOAD_PRESET, { juce::String ((int) presetIndexSlider.getValue()) }); };
+    savePresetButton.setTooltip ("Save the preset (with this name) to its slot");
+    savePresetButton.onClick = [this] { savePresetTo (juce::jmax (0, (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, 0))); };
+    saveToPresetButton.setTooltip ("Save the preset to another slot");
+    saveToPresetButton.onClick = [this] { showSaveToMenu(); };
+    refreshPresetSlots();
     previousPresetButton.onClick = [this]
     {
         const int index = juce::jmax (0, (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, 0) - 1);
@@ -183,7 +209,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     };
     nextPresetButton.onClick = [this]
     {
-        const int index = juce::jmin (127, (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, -1) + 1);
+        const int index = juce::jmin (NUM_PRESET_SLOTS - 1, (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, -1) + 1);
         sendAction (ACTION_LOAD_PRESET, { juce::String (index) });
     };
 
@@ -197,7 +223,6 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     setupLabel (numVoicesLabel, "Num voices", presetCard);
     setupNumberSlider (numVoicesSlider, 1, SourceSamplerSynthesiser::maxNumVoices, 1, SourceDefaults::numVoices, presetCard);
     numVoicesSlider.onValueChange = [this] { sendAction (ACTION_SET_POLYPHONY, { juce::String ((int) numVoicesSlider.getValue()) }); };
-    presetCard.addAndMakeVisible (voicesComponent);
 
     // MPE input settings
     mpeToggle.setTooltip ("Enable MPE input (lower zone: master channel 1, notes on channels 2-16). When enabled, all sounds respond "
@@ -348,6 +373,82 @@ SourceNativeEditor::~SourceNativeEditor()
     setLookAndFeel (nullptr);
 }
 
+void SourceNativeEditor::refreshPresetSlots()
+{
+    // Checks which slots have a preset file and reads the names of the files that changed since the last refresh
+    bool changed = false;
+    for (int i = 0; i < NUM_PRESET_SLOTS; ++i)
+    {
+        const auto file = sourceSampler.presetFilesLocation.getChildFile (juce::String (i) + ".xml");
+        const bool used = file.existsAsFile();
+        const auto modificationTime = used ? file.getLastModificationTime() : juce::Time();
+        if (used == presetSlotUsed[(size_t) i] && modificationTime == presetSlotModificationTimes[(size_t) i])
+            continue;
+        presetSlotUsed[(size_t) i] = used;
+        presetSlotModificationTimes[(size_t) i] = modificationTime;
+        presetSlotNames[(size_t) i] = used ? SourceHelpers::readPresetNameFromFile (file) : juce::String();
+        changed = true;
+    }
+    if (! changed && presetSlotsCombo.getNumItems() == NUM_PRESET_SLOTS)
+        return;
+
+    const int selectedId = presetSlotsCombo.getSelectedId();
+    presetSlotsCombo.clear (juce::dontSendNotification);
+    for (int i = 0; i < NUM_PRESET_SLOTS; ++i)
+        presetSlotsCombo.addItem (getPresetSlotText (i), i + 1);
+    presetSlotsCombo.setSelectedId (selectedId, juce::dontSendNotification);
+}
+
+juce::String SourceNativeEditor::getPresetSlotText (int index) const
+{
+    juce::String text = juce::String (index).paddedLeft ('0', 3) + "   ";
+    if (! presetSlotUsed[(size_t) index])
+        return text + "----";
+    const auto& name = presetSlotNames[(size_t) index];
+    return text + (name.isNotEmpty() ? name : juce::String ("(no name)"));
+}
+
+void SourceNativeEditor::savePresetTo (int index)
+{
+    sendAction (ACTION_SAVE_PRESET, { SourceActionSender::sanitize (presetNameEditor.getText().trim()), juce::String (index) });
+    presetNameEditor.unfocusAllComponents();
+    refreshPresetSlots();
+}
+
+void SourceNativeEditor::showSaveToMenu()
+{
+    refreshPresetSlots();
+    const int currentIndex = sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, -1);
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("Save preset to slot");
+    for (int i = 0; i < NUM_PRESET_SLOTS; ++i)
+        menu.addItem (i + 1, getPresetSlotText (i), true, i == currentIndex);
+
+    juce::Component::SafePointer<SourceNativeEditor> safe (this);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&saveToPresetButton).withMaximumNumColumns (4),
+                        [safe, currentIndex] (int result)
+    {
+        if (safe == nullptr || result <= 0)
+            return;
+        const int index = result - 1;
+        if (index == currentIndex || ! safe->presetSlotUsed[(size_t) index])
+        {
+            safe->savePresetTo (index);
+            return;
+        }
+        // Ask before replacing another preset
+        const auto message = "Slot " + juce::String (index) + " has the preset \"" + safe->presetSlotNames[(size_t) index]
+                             + "\". Do you want to replace it?";
+        juce::AlertWindow::showAsync (juce::MessageBoxOptions::makeOptionsOkCancel (juce::MessageBoxIconType::WarningIcon, "Replace preset?",
+                                                                            message, "Replace", "Cancel", safe.getComponent()),
+                                      [safe, index] (int choice)
+                                      {
+                                          if (safe != nullptr && choice == 1)
+                                              safe->savePresetTo (index);
+                                      });
+    });
+}
+
 void SourceNativeEditor::sendAction (const juce::String& actionName, const juce::StringArray& parameters)
 {
     actions.send (actionName, parameters);
@@ -397,10 +498,20 @@ void SourceNativeEditor::updateFromState()
     const auto& state = sourceSampler.state;
     const auto preset = getPresetState();
 
-    if (! presetIndexSlider.isMouseButtonDown())
-        presetIndexSlider.setValue (juce::jmax (0, (int) state.getProperty (SourceIDs::currentPresetIndex, 0)), juce::dontSendNotification);
-    if (! presetNameEditor.hasKeyboardFocus (true))
-        presetNameEditor.setText (preset.getProperty (SourceIDs::name).toString(), false);
+    const int presetIndex = state.getProperty (SourceIDs::currentPresetIndex, -1);
+    const auto presetName = preset.getProperty (SourceIDs::name).toString();
+    if (presetIndex != lastPresetIndexShown || presetName != lastPresetNameShown)
+    {
+        // A preset was loaded or saved: refresh the slots (only the files that changed are read again)
+        lastPresetIndexShown = presetIndex;
+        lastPresetNameShown = presetName;
+        refreshPresetSlots();
+        if (! presetNameEditor.hasKeyboardFocus (true))
+            presetNameEditor.setText (presetName, false);
+    }
+    presetNumberLabel.setText (presetIndex >= 0 ? juce::String (presetIndex) : juce::String ("-"), juce::dontSendNotification);
+    if (! presetSlotsCombo.isPopupActive())
+        presetSlotsCombo.setSelectedId (presetIndex >= 0 ? presetIndex + 1 : 0, juce::dontSendNotification);
     midiChannelCombo.setSelectedId ((int) state.getProperty (SourceIDs::globalMidiInChannel, 0) + 1, juce::dontSendNotification);
     const bool mpeEnabled = state.getProperty (SourceIDs::mpeEnabled, SourceDefaults::mpeEnabled);
     mpeToggle.setToggleState (mpeEnabled, juce::dontSendNotification);
@@ -455,10 +566,11 @@ void SourceNativeEditor::timerCallback()
         const int numResults = sourceSampler.state.getProperty (SourceIDs::numResultsLastQuery, -2);
         if (numResults >= 0)
             status << numResults << " results in last query  |  ";
-        status << soundList.getNumSounds() << " sounds loaded";
-        const int lastNote = sourceSampler.getLastReceivedMidiNote();
-        if (lastNote >= 0)
-            status << "  |  last note: " << juce::MidiMessage::getMidiNoteName (lastNote, true, true, 3);
+        const int numSounds = soundList.getNumSounds(), numLoaded = soundList.getNumLoadedSounds();
+        if (numLoaded < numSounds)
+            status << numLoaded << " of " << numSounds << " sounds loaded";
+        else
+            status << numSounds << (numSounds == 1 ? " sound" : " sounds");
     }
     if (statusLabel.getText() != status)
         statusLabel.setText (status, juce::dontSendNotification);
@@ -537,7 +649,12 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
     titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
     header.removeFromLeft (8);
-    statusLabel.setBounds (header);
+    logoImage.setBounds (header.removeFromRight (header.getHeight()));
+    header.removeFromRight (10);
+    // Voice activity squares, centred in the header (the status text uses the space between them and the logo)
+    const int voicesWidth = juce::jmin (header.getWidth() / 2, SourceSamplerSynthesiser::maxNumVoices * 17);
+    voicesComponent.setBounds (juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY())));
+    statusLabel.setBounds (header.withLeft (voicesComponent.getRight() + 10));
     b.removeFromTop (4);
 
    #if JUCE_IOS
@@ -598,18 +715,19 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     {
         auto c = presetCard.getContentBounds();
         auto row = c.removeFromTop (rowHeight);
-        presetIndexLabel.setBounds (row.removeFromLeft (labelWidth));
-        presetIndexSlider.setBounds (row.removeFromLeft (100));
-        row.removeFromLeft (6);
-        savePresetButton.setBounds (row.removeFromLeft (50));
-        row.removeFromLeft (4);
-        loadPresetButton.setBounds (row.removeFromLeft (50));
-        c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        presetNameLabel.setBounds (row.removeFromLeft (labelWidth));
+        presetLabel.setBounds (row.removeFromLeft (labelWidth));
         nextPresetButton.setBounds (row.removeFromRight (24));
         row.removeFromRight (2);
         previousPresetButton.setBounds (row.removeFromRight (24));
+        row.removeFromRight (6);
+        presetSlotsCombo.setBounds (row);
+        c.removeFromTop (rowGap);
+        row = c.removeFromTop (rowHeight);
+        presetNumberLabel.setBounds (row.removeFromLeft (36));
+        row.removeFromLeft (4);
+        saveToPresetButton.setBounds (row.removeFromRight (70));
+        row.removeFromRight (4);
+        savePresetButton.setBounds (row.removeFromRight (48));
         row.removeFromRight (6);
         presetNameEditor.setBounds (row);
         c.removeFromTop (rowGap);
@@ -625,8 +743,6 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         mpeToggle.setBounds (row.removeFromLeft (labelWidth));
         mpeBendLabel.setBounds (row.removeFromLeft (80));
         mpeBendRangeSlider.setBounds (row.removeFromLeft (100));
-        c.removeFromTop (rowGap + 2);
-        voicesComponent.setBounds (c);
     }
 
     // Query card content

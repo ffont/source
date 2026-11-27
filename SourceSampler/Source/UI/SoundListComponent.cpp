@@ -32,6 +32,10 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
     item.loaded = soundState.getProperty (SourceIDs::allSoundsLoaded, false);
     item.willBeDeleted = soundState.getProperty (SourceIDs::willBeDeleted, false);
 
+    // Files are relative to the data location (stored in the root of the state)
+    const juce::File dataLocation (soundState.getRoot().getProperty (SourceIDs::sourceDataLocation).toString());
+    bool sizeKnown = true;
+    juce::int64 sizeSum = 0;
     float progressSum = 0.0f;
     for (const auto& child : soundState)
     {
@@ -45,6 +49,17 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
             item.soundId = child.getProperty (SourceIDs::soundId, -1);
             item.rootNote = child.getProperty (SourceIDs::midiRootNote, -1);
         }
+        // Size of what is downloaded: the file in disk if available, otherwise the original file size when the
+        // original file will be downloaded (the size of previews is not known until they are downloaded)
+        const auto filePath = child.getProperty (SourceIDs::filePath).toString();
+        const auto file = (filePath.isNotEmpty() && dataLocation != juce::File()) ? dataLocation.getChildFile (filePath) : juce::File();
+        if ((bool) child.getProperty (SourceIDs::downloadCompleted, false) && file.existsAsFile())
+            sizeSum += file.getSize();
+        else if (! (bool) child.getProperty (SourceIDs::usesPreview, true) && (int) child.getProperty (SourceIDs::filesize, -1) > 0)
+            sizeSum += (int) child.getProperty (SourceIDs::filesize);
+        else
+            sizeKnown = false;
+
         if ((bool) child.getProperty (SourceIDs::downloadFailed, false))
         {
             item.numFailedDownloads += 1;
@@ -57,6 +72,8 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
         item.numSamples += 1;
     }
     item.downloadProgress = item.numSamples > 0 ? progressSum / (float) item.numSamples : 0.0f;
+    item.downloaded = item.numSamples > 0 && item.downloadProgress >= 100.0f;
+    item.downloadSizeBytes = (sizeKnown && item.numSamples > 0) ? sizeSum : -1;
     if (item.numSamples > 1)
         item.name << " (+" << (item.numSamples - 1) << " samples)";
 
@@ -92,6 +109,9 @@ public:
             item = {};
         for (auto* b : { &playButton, &stopButton, &removeButton })
             b->setVisible (! isAllSoundsRow);
+        // Sounds can't be played until they are downloaded and loaded
+        playButton.setEnabled (item.loaded);
+        stopButton.setEnabled (item.loaded);
         auto it = owner.activeVoices.find (item.uuid);
         numActiveVoices = it != owner.activeVoices.end() ? it->second : 0;
         repaint();
@@ -140,7 +160,8 @@ public:
         content.removeFromLeft (6);
 
         auto topLine = content.removeFromTop (content.getHeight() / 2);
-        g.setColour (item.willBeDeleted ? SourceColours::dimText : SourceColours::text);
+        // Title in orange while the sound has not been downloaded
+        g.setColour (item.willBeDeleted ? SourceColours::dimText : (item.downloaded ? SourceColours::text : juce::Colour (0xfff0a040)));
         g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
         g.drawText (juce::String (row) + ". " + (item.name.isNotEmpty() ? item.name : "(no name)"), topLine, juce::Justification::centredLeft, true);
 
@@ -150,6 +171,8 @@ public:
         if (item.username.isNotEmpty())
             details << "by " << item.username << "  ";
         details << item.notesDescription;
+        if (item.downloadSizeBytes >= 0)
+            details << "  " << juce::String ((double) item.downloadSizeBytes / (1024.0 * 1024.0), 2) << " MB";
         if (! item.loaded)
         {
             if (item.downloadProgress >= 100.0f)

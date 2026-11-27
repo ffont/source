@@ -149,6 +149,32 @@ public:
         expectEquals (SourceHelpers::serializeAction (ACTION_SET_POLYPHONY, { "4" }), juce::String ("/set_polyphony:4"));
         expectEquals (SourceHelpers::serializeAction (ACTION_NOTE_ON, { "60", "127", "1" }), juce::String ("/note_on:60;127;1"));
 
+        beginTest ("Preset names are read from preset files (current and old format)");
+        {
+            auto folder = juce::File::createTempFile ("presetNames");
+            folder.createDirectory();
+            auto current = folder.getChildFile ("1.xml");
+            auto preset = SourceHelpers::createEmptyPresetState();
+            preset.setProperty (SourceIDs::name, "My \"preset\" & co", nullptr);
+            juce::ValueTree sound ("SOUND");
+            sound.setProperty ("name", "not this one", nullptr);
+            preset.appendChild (sound, nullptr);
+            preset.createXml()->writeTo (current);
+            expectEquals (SourceHelpers::readPresetNameFromFile (current), juce::String ("My \"preset\" & co"));
+
+            auto old = folder.getChildFile ("2.xml");
+            old.replaceWithText ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<SourcePresetState presetName=\"percussion\" presetNumber=\"1\">\n  <Sampler NumVoices=\"16\"/>\n</SourcePresetState>\n");
+            expectEquals (SourceHelpers::readPresetNameFromFile (old), juce::String ("percussion"));
+
+            auto other = folder.getChildFile ("3.xml");
+            other.replaceWithText ("<SomethingElse name=\"x\"/>");
+            expect (SourceHelpers::readPresetNameFromFile (other).isEmpty());
+            other.replaceWithText ("not xml at all");
+            expect (SourceHelpers::readPresetNameFromFile (other).isEmpty());
+            expect (SourceHelpers::readPresetNameFromFile (folder.getChildFile ("missing.xml")).isEmpty());
+            folder.deleteRecursively();
+        }
+
         beginTest ("Parameter metadata is consistent");
         for (const auto& info : getSoundParametersInfo())
         {

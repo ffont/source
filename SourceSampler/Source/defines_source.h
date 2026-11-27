@@ -70,6 +70,7 @@
 
 #define CONTROL_EVENTS_TIMER_HZ 100  // Rate at which MIDI CC mappings and program changes received in the audio thread are applied
 #define SESSION_AUTOSAVE_DELAY_MS 2000.0
+#define NUM_PRESET_SLOTS 128  // Presets are stored in slots 0-127 (the file of slot N is "N.xml"), also the range of MIDI program changes
 #define PRESET_IMPORT_CHECK_INTERVAL_MS 2000.0  // Save the session this long after the last state change (iOS standalone only)
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200

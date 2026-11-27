@@ -43,6 +43,20 @@ private:
 };
 
 
+/** Combo box that asks for its items to be refreshed right before showing its popup. */
+class PresetSlotsComboBox : public juce::ComboBox
+{
+public:
+    std::function<void()> onPopupOpening;
+    void showPopup() override
+    {
+        if (onPopupOpening != nullptr)
+            onPopupOpening();
+        juce::ComboBox::showPopup();
+    }
+};
+
+
 class SourceNativeEditor : public juce::AudioProcessorEditor,
                            public juce::FileDragAndDropTarget,
                            private juce::ValueTree::Listener,
@@ -70,6 +84,17 @@ private:
     juce::ValueTree getPresetState() const { return sourceSampler.state.getChildWithName (SourceIDs::PRESET); }
     void layoutContent (juce::Rectangle<int> bounds, bool portrait);
 
+    // Preset slots (0-127, the file of slot N is "N.xml" in the presets folder)
+    void refreshPresetSlots();
+    juce::String getPresetSlotText (int index) const;
+    void showSaveToMenu();
+    void savePresetTo (int index);
+    std::array<juce::String, NUM_PRESET_SLOTS> presetSlotNames;
+    std::array<juce::Time, NUM_PRESET_SLOTS> presetSlotModificationTimes;
+    std::array<bool, NUM_PRESET_SLOTS> presetSlotUsed {};
+    int lastPresetIndexShown = -2;
+    juce::String lastPresetNameShown;
+
     // ValueTree::Listener: changes are coalesced and the UI is refreshed in the timer callback
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override { stateDirty = true; }
     void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override { stateDirty = true; }
@@ -90,15 +115,15 @@ private:
     bool isDraggingFiles = false;
 
     // Header
-    juce::ImageComponent titleImage;
+    juce::ImageComponent titleImage, logoImage;
     juce::Label statusLabel;
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };
-    juce::Label presetIndexLabel, presetNameLabel, midiChannelLabel, numVoicesLabel;
-    juce::Slider presetIndexSlider;
+    juce::Label presetLabel, presetNumberLabel, midiChannelLabel, numVoicesLabel;
+    PresetSlotsComboBox presetSlotsCombo;
     juce::TextEditor presetNameEditor;
-    juce::TextButton savePresetButton { "Save" }, loadPresetButton { "Load" };
+    juce::TextButton savePresetButton { "Save" }, saveToPresetButton { "Save to..." };
     IconButton previousPresetButton { "Previous preset", IconButton::Icon::previous };
     IconButton nextPresetButton { "Next preset", IconButton::Icon::next };
     juce::ComboBox midiChannelCombo;

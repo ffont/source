@@ -151,7 +151,7 @@ public:
         g.fillRoundedRectangle (bounds, 4.0f);
 
         auto iconBounds = bounds.withSizeKeepingCentre (bounds.getHeight() * 0.45f, bounds.getHeight() * 0.45f);
-        g.setColour (SourceColours::text);
+        g.setColour (isEnabled() ? SourceColours::text : SourceColours::dimText.withAlpha (0.4f));
         juce::Path p;
         switch (icon)
         {

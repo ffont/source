@@ -423,6 +423,48 @@ namespace SourceHelpers
     // Action message (internal API) builders. All UIs (web, Python, native) control the sampler by sending
     // these messages to SourceSampler::actionListenerCallback.
 
+    /** Reads the name of a preset file without parsing the whole file (preset files can be large): only the root
+        element's start tag is parsed. Works with current ("PRESET", name attribute) and old ("SourcePresetState",
+        presetName attribute) preset files. Returns an empty string if the file is not a readable preset. */
+    inline juce::String readPresetNameFromFile (const juce::File& file)
+    {
+        juce::FileInputStream in (file);
+        if (! in.openedOk())
+            return {};
+        juce::MemoryBlock data;
+        in.readIntoMemoryBlock (data, 16384);
+        const auto text = data.toString();
+
+        // Find the root element, skipping the XML declaration, comments and doctype
+        int start = 0;
+        for (;;)
+        {
+            start = text.indexOfChar (start, '<');
+            if (start < 0 || start + 1 >= text.length())
+                return {};
+            const auto next = text[start + 1];
+            if (next != '?' && next != '!')
+                break;
+            start = text.indexOfChar (start, '>');
+            if (start < 0)
+                return {};
+        }
+        const int end = text.indexOfChar (start, '>');
+        if (end < 0)
+            return {};
+        auto startTag = text.substring (start, end).trimEnd();
+        if (startTag.endsWithChar ('/'))
+            startTag = startTag.dropLastCharacters (1);
+        if (auto element = juce::XmlDocument::parse (startTag + "/>"))
+        {
+            if (element->hasTagName ("PRESET"))
+                return element->getStringAttribute ("name");
+            if (element->hasTagName ("SourcePresetState"))
+                return element->getStringAttribute ("presetName");
+        }
+        return {};
+    }
+
     inline juce::String serializeAction (const juce::String& actionName, const juce::StringArray& parameters = {})
     {
         return actionName + ":" + parameters.joinIntoString (SERIALIZATION_SEPARATOR);

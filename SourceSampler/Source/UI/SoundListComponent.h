@@ -25,6 +25,8 @@ struct SoundListItem
     int soundId = -1;
     float downloadProgress = 0.0f;  // 0-100 (failed downloads count as finished)
     int numFailedDownloads = 0;
+    bool downloaded = false;          // All files are available (downloaded or local)
+    juce::int64 downloadSizeBytes = -1;  // Size of the downloaded files (-1 if unknown)
     bool loaded = false;
     bool willBeDeleted = false;
     int numSamples = 0;
@@ -53,6 +55,10 @@ public:
     juce::String getSelectedSoundUUID() const;
     void selectSound (const juce::String& uuid);
     int getNumSounds() const { return (int) items.size(); }
+    int getNumLoadedSounds() const
+    {
+        return (int) std::count_if (items.begin(), items.end(), [] (const SoundListItem& item) { return item.loaded; });
+    }
     const std::vector<SoundListItem>& getItems() const { return items; }
 
     std::function<void (const juce::String& selectedUUID)> onSelectionChanged;
