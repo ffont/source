@@ -21,7 +21,46 @@ void SoundMapComponent::setResults (std::shared_ptr<const std::vector<FreesoundS
         return;
     results = std::move (newResults);
     selectedIndex = hoverIndex = -1;
+    animation.reset();
+    stopTimer();
     resetView();
+}
+
+void SoundMapComponent::setAnimation (std::shared_ptr<const MapAnimationFrames> frames)
+{
+    if (frames == nullptr || frames->empty() || results == nullptr || frames->front().size() != results->size())
+        return;
+    animation = std::move (frames);
+    animationStartTime = juce::Time::getMillisecondCounterHiRes();
+    animationPosition = 0.0;
+    startTimerHz (60);
+    repaint();
+}
+
+void SoundMapComponent::timerCallback()
+{
+    animationPosition = juce::jlimit (0.0, 1.0, (juce::Time::getMillisecondCounterHiRes() - animationStartTime) / animationDurationMs);
+    if (animationPosition >= 1.0)
+    {
+        animation.reset();
+        stopTimer();
+    }
+    repaint();
+}
+
+juce::Point<float> SoundMapComponent::getWorldPosition (int index) const
+{
+    const auto& r = (*results)[(size_t) index];
+    if (animation == nullptr)
+        return { r.x, r.y };
+    // Interpolate between the two frames around the current position of the animation
+    const double framePosition = animationPosition * (double) (animation->size() - 1);
+    const auto frame = (size_t) juce::jlimit (0, (int) animation->size() - 1, (int) std::floor (framePosition));
+    const auto next = juce::jmin (frame + 1, animation->size() - 1);
+    const float t = (float) (framePosition - (double) frame);
+    const auto& a = (*animation)[frame][(size_t) index];
+    const auto& b = (*animation)[next][(size_t) index];
+    return { a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]) };
 }
 
 void SoundMapComponent::setSelectedIndex (int index)
@@ -64,8 +103,7 @@ juce::Point<float> SoundMapComponent::getScreenPosition (int index) const
 {
     if (results == nullptr || index < 0 || index >= (int) results->size())
         return {};
-    const auto& r = (*results)[(size_t) index];
-    return juce::Point<float> (r.x, r.y).transformedBy (viewTransform);
+    return getWorldPosition (index).transformedBy (viewTransform);
 }
 
 int SoundMapComponent::getSoundAt (juce::Point<float> position, float radius) const
@@ -121,7 +159,7 @@ void SoundMapComponent::paint (juce::Graphics& g)
             const auto p = getScreenPosition (i);
             if (! bounds.expanded (radius).contains (p))
                 continue;
-            g.setColour (r.getColour().withAlpha (0.72f));
+            g.setColour (r.getColour().withAlpha (0.5f));
             g.fillEllipse (p.x - radius, p.y - radius, radius * 2.0f, radius * 2.0f);
             if (highlightedIds.count (r.id) > 0)
             {
@@ -166,7 +204,7 @@ void SoundMapComponent::paint (juce::Graphics& g)
    #if JUCE_IOS || JUCE_ANDROID
     const juce::String hint = "Drag to move, pinch to zoom, two fingers to rotate, double tap to reset";
    #else
-    const juce::String hint = "Drag to move, scroll/pinch to zoom, Alt+drag to rotate, double-click to reset";
+    const juce::String hint = "Drag to move, scroll or pinch to zoom, Alt+drag to rotate, double-click to reset";
    #endif
     g.drawText (hint, getLocalBounds().reduced (8, 4).removeFromBottom (14), juce::Justification::bottomLeft);
 }
@@ -273,18 +311,10 @@ void SoundMapComponent::mouseDoubleClick (const juce::MouseEvent& e)
 
 void SoundMapComponent::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
 {
-    if (wheel.isSmooth && ! e.mods.isCtrlDown() && ! e.mods.isCommandDown())
-    {
-        // Trackpad two-finger scroll: move
-        const float direction = wheel.isReversed ? -1.0f : 1.0f;
-        const juce::Point<float> delta (wheel.deltaX * 300.0f * direction, wheel.deltaY * 300.0f * direction);
-        applyGesture (e.position, e.position + delta, 1.0f, 0.0f);
-    }
-    else
-    {
-        // Mouse wheel: zoom around the pointer
-        applyGesture (e.position, e.position, std::exp (wheel.deltaY * 1.5f), 0.0f);
-    }
+    // Scrolling zooms around the pointer (with mouse wheels, Magic Mouse and trackpads; moving is done by dragging).
+    // Smooth scrolling (Magic Mouse, trackpads) sends many small deltas, so it needs a bigger factor.
+    const float delta = (std::abs (wheel.deltaY) >= std::abs (wheel.deltaX) ? wheel.deltaY : wheel.deltaX) * (wheel.isReversed ? -1.0f : 1.0f);
+    applyGesture (e.position, e.position, std::exp (delta * (wheel.isSmooth ? 2.5f : 1.5f)), 0.0f);
 }
 
 void SoundMapComponent::mouseMagnify (const juce::MouseEvent& e, float scaleFactor)

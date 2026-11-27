@@ -282,6 +282,7 @@ void SearchPanel::changeListenerCallback (juce::ChangeBroadcaster*)
         results = newResults;
         selectedIndex = -1;
         map.setResults (results);
+        map.setAnimation (search.getMapAnimation());
         updateRowOrder();
         table.updateContent();
         table.deselectAllRows();

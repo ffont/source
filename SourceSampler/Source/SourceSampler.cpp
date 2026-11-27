@@ -1009,6 +1009,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
                     return;
                 sampler->isQuerying = false;
                 sampler->state.setProperty(SourceIDs::numResultsLastQuery, numMatching, nullptr);
+                juce::ignoreUnused(error);
                 if (found.empty()){
                     DBG("No random sounds found " << error);
                     return;
@@ -1609,6 +1610,7 @@ void SourceSampler::replaceSoundWithSimilar(const juce::String& soundUUID)
             return;  // The sound was removed in the meantime
         current.setProperty(SourceIDs::findingSimilar, false, nullptr);
         similar.erase(std::remove_if(similar.begin(), similar.end(), [soundId](const auto& r){ return r.id == soundId || r.previewURL.isEmpty(); }), similar.end());
+        juce::ignoreUnused(error);
         if (similar.empty()){
             DBG("No similar sounds found for " << soundId << " " << error);
             return;

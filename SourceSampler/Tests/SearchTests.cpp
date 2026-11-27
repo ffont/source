@@ -149,7 +149,21 @@ public:
                 if (i < 16)  // Some results without embedding
                     results[i].embedding = { (float) (i % 4), (float) (i / 4), 1.0f, 0.5f };
             }
-            FreesoundSearch::computeMapPositions (results);
+            MapAnimationFrames animation;
+            FreesoundSearch::computeMapPositions (results, nullptr, &animation);
+            expectGreaterThan ((int) animation.size(), 10);
+            for (const auto& frame : animation)
+                expectEquals ((int) frame.size(), (int) results.size());
+            // The animation starts in the centre and ends in the final positions
+            float firstFrameMaxRadius = 0.0f;
+            for (const auto& p : animation.front())
+                firstFrameMaxRadius = juce::jmax (firstFrameMaxRadius, std::sqrt (p[0] * p[0] + p[1] * p[1]));
+            expectLessThan (firstFrameMaxRadius, 0.2f);
+            for (size_t i = 0; i < results.size(); ++i)
+            {
+                expectEquals (animation.back()[i][0], results[i].x);
+                expectEquals (animation.back()[i][1], results[i].y);
+            }
             for (const auto& r : results)
             {
                 expect (r.hasPosition);

@@ -20,12 +20,17 @@
 #include "FreesoundSearch.h"
 
 
-class SoundMapComponent : public juce::Component
+class SoundMapComponent : public juce::Component,
+                          private juce::Timer
 {
 public:
     SoundMapComponent();
 
     void setResults (std::shared_ptr<const std::vector<FreesoundSearchResult>> newResults);
+    /** Animates the sounds through the given positions (e.g. the t-SNE optimisation) until their final positions. */
+    void setAnimation (std::shared_ptr<const MapAnimationFrames> frames);
+    bool isAnimating() const { return animation != nullptr; }
+    static constexpr double animationDurationMs = 2500.0;
     void setSelectedIndex (int index);
     void setHighlightedIds (std::set<int> ids);  // e.g. sounds already in the preset
     void resetView();
@@ -53,10 +58,14 @@ private:
     float getZoom() const;       // Relative to the initial view
     float getDotRadius() const;  // Radius of the circles on screen, depends on the zoom
     void applyGesture (juce::Point<float> fromCentre, juce::Point<float> toCentre, float scale, float rotation);
+    juce::Point<float> getWorldPosition (int index) const;  // Map position (animated)
+    void timerCallback() override;
 
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results;
     int selectedIndex = -1, hoverIndex = -1;
     std::set<int> highlightedIds;
+    std::shared_ptr<const MapAnimationFrames> animation;
+    double animationStartTime = 0.0, animationPosition = 1.0;  // Position in [0, 1]
     juce::AffineTransform viewTransform;  // World ([-1, 1] map coordinates) to component coordinates
     bool userMovedView = false;
 

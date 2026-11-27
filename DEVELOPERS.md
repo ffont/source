@@ -52,6 +52,17 @@ Threading notes for developers: the sampler state (`SourceSampler::state` ValueT
 
 In debug builds, setting `SOURCE_DEBUG_ADD_FILE=<audio file>` loads a local file as a sound when the editor opens, and `SOURCE_DEBUG_SNAPSHOT=<png>` renders the editor to a PNG (handy for checking UI changes without screen access).
 
+### Make a release (macOS)
+
+`make_release.sh` builds universal (Apple Silicon and Intel) Release versions of the standalone app, the Audio Unit and the VST3 plugin (running the tests), packages each in a zip file and creates a GitHub release (tag `v<version>`, by default the version in `CMakeLists.txt`) with them, using the GitHub CLI (`gh`). The working tree must be clean and the current commit pushed. Builds are ad-hoc signed, not notarized.
+
+```
+cd SourceSampler
+./make_release.sh --dry-run                # build and package only (files in dist/)
+./make_release.sh --prerelease             # release the version in CMakeLists.txt
+./make_release.sh 1.0.0 --notes-file notes.md --draft
+```
+
 ### Build for iPad (iOS/iPadOS)
 
 The CMake project also builds an iPad version: a standalone app with an embedded AUv3 plugin (usable in iPad hosts such as AUM, Cubasis, Logic Pro for iPad...). The native UI adapts to the iPad screen in both orientations (it is scaled down on smaller screens, and cards are stacked in portrait).

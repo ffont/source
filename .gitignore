@@ -23,3 +23,5 @@ BinaryData.cpp
 BinaryData.h
 
 build-*/
+
+SourceSampler/dist/

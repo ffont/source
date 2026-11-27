@@ -39,6 +39,11 @@ struct FreesoundSearchResult
 };
 
 
+/** Positions of the results in the map during the t-SNE optimisation (one vector of positions per frame, from the
+    centre to the final positions), used to animate the map. */
+using MapAnimationFrames = std::vector<std::vector<std::array<float, 2>>>;
+
+
 struct FreesoundSearchOptions
 {
     enum class License { any, cc0, cc0OrAttribution, noNonCommercial };
@@ -85,10 +90,12 @@ public:
     int getTotalNumResults() const { return totalNumResults; }  // Number of sounds matching the query in Freesound
     const FreesoundSearchOptions& getLastOptions() const { return lastOptions; }
     std::shared_ptr<const std::vector<FreesoundSearchResult>> getResults() const { return results; }
+    std::shared_ptr<const MapAnimationFrames> getMapAnimation() const { return mapAnimation; }
     /** Replaces the results (e.g. for tests). Listeners are notified. */
     void setResults (std::shared_ptr<const std::vector<FreesoundSearchResult>> newResults)
     {
         results = std::move (newResults);
+        mapAnimation.reset();
         setStatus (Status::done, juce::String ((int) results->size()) + " sounds");
     }
 
@@ -106,12 +113,14 @@ public:
 
     /** Adds 2D positions to the results using t-SNE on their embeddings (results without embedding are placed
         around the others). Can be called from any thread. */
-    static void computeMapPositions (std::vector<FreesoundSearchResult>& results, const std::function<bool()>& shouldStop = nullptr);
+    static void computeMapPositions (std::vector<FreesoundSearchResult>& results, const std::function<bool()>& shouldStop = nullptr,
+                                     MapAnimationFrames* animation = nullptr);
 
 private:
     void setStatus (Status newStatus, const juce::String& message);
     void cancelJobs();
-    void searchFinished (int generation, std::shared_ptr<std::vector<FreesoundSearchResult>> newResults, int total, const juce::String& error);
+    void searchFinished (int generation, std::shared_ptr<std::vector<FreesoundSearchResult>> newResults,
+                         std::shared_ptr<MapAnimationFrames> animation, int total, const juce::String& error);
 
     juce::String apiKey;
     Status status = Status::idle;
@@ -119,6 +128,7 @@ private:
     int totalNumResults = 0;
     FreesoundSearchOptions lastOptions;
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results = std::make_shared<std::vector<FreesoundSearchResult>>();
+    std::shared_ptr<const MapAnimationFrames> mapAnimation;
     std::shared_ptr<std::atomic<int>> currentGeneration = std::make_shared<std::atomic<int>> (0);
     juce::ThreadPool pool { juce::ThreadPoolOptions().withThreadName ("FreesoundSearch").withNumberOfThreads (2) };
 

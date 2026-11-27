@@ -33,14 +33,19 @@ namespace SourceTsne
         double learningRate = 200.0;
         unsigned int seed = 1;
         bool normaliseInput = true;      // L2-normalise vectors first (euclidean distance then behaves like cosine distance)
+        int snapshotInterval = 0;        // If > 0, onSnapshot is called every this number of iterations (e.g. to animate)
     };
 
     using Point = std::array<float, 2>;
 
     /** Projects the vectors (all with the same size) to 2D. Points are centred and scaled to fit in [-1, 1].
-        shouldStop is checked every iteration (returns an empty result if it returns true). */
+        shouldStop is checked every iteration (returns an empty result if it returns true). onSnapshot receives the
+        (unscaled) positions every options.snapshotInterval iterations; the final scale factor applied to them is given
+        by scaleOut. */
     inline std::vector<Point> project (std::vector<std::vector<float>> data, const Options& options = {},
-                                       const std::function<bool()>& shouldStop = nullptr)
+                                       const std::function<bool()>& shouldStop = nullptr,
+                                       const std::function<void (const std::vector<Point>&)>& onSnapshot = nullptr,
+                                       float* scaleOut = nullptr)
     {
         const size_t n = data.size();
         std::vector<Point> result (n, Point { 0.0f, 0.0f });
@@ -186,12 +191,21 @@ namespace SourceTsne
                 y[i * 2] -= meanX;
                 y[i * 2 + 1] -= meanY;
             }
+            if (onSnapshot != nullptr && options.snapshotInterval > 0 && iteration % options.snapshotInterval == 0)
+            {
+                std::vector<Point> snapshot (n);
+                for (size_t i = 0; i < n; ++i)
+                    snapshot[i] = { (float) y[i * 2], (float) y[i * 2 + 1] };
+                onSnapshot (snapshot);
+            }
         }
 
         // Scale to [-1, 1]
         double maxAbs = 0.0;
         for (auto v : y)
             maxAbs = std::max (maxAbs, std::abs (v));
+        if (scaleOut != nullptr)
+            *scaleOut = maxAbs > 0.0 ? (float) (1.0 / maxAbs) : 1.0f;
         for (size_t i = 0; i < n; ++i)
             result[i] = { (float) (maxAbs > 0.0 ? y[i * 2] / maxAbs : 0.0), (float) (maxAbs > 0.0 ? y[i * 2 + 1] / maxAbs : 0.0) };
         return result;

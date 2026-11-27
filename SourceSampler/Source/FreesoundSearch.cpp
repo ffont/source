@@ -76,7 +76,7 @@ namespace
     class SearchJob : public juce::ThreadPoolJob
     {
     public:
-        using Callback = std::function<void (std::shared_ptr<std::vector<FreesoundSearchResult>>, int total, const juce::String& error)>;
+        using Callback = std::function<void (std::shared_ptr<std::vector<FreesoundSearchResult>>, std::shared_ptr<MapAnimationFrames>, int total, const juce::String& error)>;
         using ProgressCallback = std::function<void (const juce::String& message)>;
 
         SearchJob (juce::String key, FreesoundSearchOptions o, std::function<bool()> isCurrent, ProgressCallback p, Callback c)
@@ -116,7 +116,7 @@ namespace
                     // Keep the results of the previous pages, if any
                     if (results->empty())
                     {
-                        onFinished (nullptr, 0, error);
+                        onFinished (nullptr, nullptr, 0, error);
                         return jobHasFinished;
                     }
                     break;
@@ -133,10 +133,14 @@ namespace
             }
 
             onProgress ("Computing map...");
-            FreesoundSearch::computeMapPositions (*results, shouldStop);
+            auto animation = std::make_shared<MapAnimationFrames>();
+            FreesoundSearch::computeMapPositions (*results, shouldStop, animation.get());
             if (shouldStop())
                 return jobHasFinished;
-            onFinished (results, total, {});
+            // Embeddings are not needed anymore (they are big: 512 values per sound)
+            for (auto& r : *results)
+                std::vector<float>().swap (r.embedding);
+            onFinished (results, animation, total, {});
             return jobHasFinished;
         }
 
@@ -236,12 +240,12 @@ void FreesoundSearch::search (const FreesoundSearchOptions& options)
                         search->setStatus (message.startsWith ("Computing") ? Status::projecting : Status::searching, message);
             });
         },
-        [weak, generation] (std::shared_ptr<std::vector<FreesoundSearchResult>> newResults, int total, const juce::String& error)
+        [weak, generation] (std::shared_ptr<std::vector<FreesoundSearchResult>> newResults, std::shared_ptr<MapAnimationFrames> animation, int total, const juce::String& error)
         {
-            juce::MessageManager::callAsync ([weak, generation, newResults, total, error]
+            juce::MessageManager::callAsync ([weak, generation, newResults, animation, total, error]
             {
                 if (auto* search = weak.get())
-                    search->searchFinished (generation, newResults, total, error);
+                    search->searchFinished (generation, newResults, animation, total, error);
             });
         }), true);
 }
@@ -345,7 +349,8 @@ void FreesoundSearch::findRandomSounds (int numSounds, const juce::String& filte
     });
 }
 
-void FreesoundSearch::searchFinished (int generation, std::shared_ptr<std::vector<FreesoundSearchResult>> newResults, int total, const juce::String& error)
+void FreesoundSearch::searchFinished (int generation, std::shared_ptr<std::vector<FreesoundSearchResult>> newResults,
+                                      std::shared_ptr<MapAnimationFrames> animation, int total, const juce::String& error)
 {
     if (currentGeneration->load() != generation)
         return;
@@ -355,6 +360,7 @@ void FreesoundSearch::searchFinished (int generation, std::shared_ptr<std::vecto
         return;
     }
     results = newResults;
+    mapAnimation = animation;
     totalNumResults = total;
     if (newResults->empty())
         setStatus (Status::done, "No sounds found");
@@ -369,7 +375,8 @@ void FreesoundSearch::setStatus (Status newStatus, const juce::String& message)
     sendChangeMessage();
 }
 
-void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& results, const std::function<bool()>& shouldStop)
+void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& results, const std::function<bool()>& shouldStop,
+                                           MapAnimationFrames* animation)
 {
     // Only results with embeddings of the most common size are projected
     std::map<size_t, int> sizes;
@@ -400,7 +407,14 @@ void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& r
         }
     }
 
-    const auto points = SourceTsne::project (std::move (data), {}, shouldStop);
+    // Intermediate positions of the optimisation are kept to animate the map
+    std::vector<std::vector<SourceTsne::Point>> snapshots;
+    SourceTsne::Options options;
+    options.snapshotInterval = animation != nullptr ? 10 : 0;
+    float tsneScale = 1.0f;
+    const auto points = SourceTsne::project (std::move (data), options, shouldStop,
+                                             [&snapshots] (const std::vector<SourceTsne::Point>& p) { snapshots.push_back (p); }, &tsneScale);
+    float referenceRadius = 1.0f;
     if (points.size() == withEmbedding.size() && ! points.empty())
     {
         // Scale so that most points (95%) are within radius 1: a few outliers would otherwise squeeze all the other
@@ -410,7 +424,7 @@ void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& r
             radii.push_back (std::sqrt (p[0] * p[0] + p[1] * p[1]));
         auto sorted = radii;
         std::sort (sorted.begin(), sorted.end());
-        const float referenceRadius = juce::jmax (1.0e-6f, sorted[(size_t) juce::jmin ((int) sorted.size() - 1, (int) std::ceil (0.95 * (double) sorted.size()) - 1)]);
+        referenceRadius = juce::jmax (1.0e-6f, sorted[(size_t) juce::jmin ((int) sorted.size() - 1, (int) std::ceil (0.95 * (double) sorted.size()) - 1)]);
         for (size_t k = 0; k < withEmbedding.size(); ++k)
         {
             float x = points[k][0] / referenceRadius, y = points[k][1] / referenceRadius;
@@ -434,5 +448,36 @@ void FreesoundSearch::computeMapPositions (std::vector<FreesoundSearchResult>& r
         r.x = 1.35f * std::cos (angle);
         r.y = 1.35f * std::sin (angle);
         r.hasPosition = true;
+    }
+
+    if (animation != nullptr && ! snapshots.empty() && snapshots.front().size() == withEmbedding.size())
+    {
+        // Frames with the same scale as the final positions (so points start in the centre and spread out), ending
+        // with the final positions. Sounds without embedding move from the centre to their place in the ring.
+        animation->clear();
+        const float scale = tsneScale / referenceRadius;
+        for (size_t f = 0; f < snapshots.size(); ++f)
+        {
+            const float progress = (float) (f + 1) / (float) (snapshots.size() + 1);
+            std::vector<std::array<float, 2>> frame (results.size(), std::array<float, 2> { 0.0f, 0.0f });
+            for (size_t k = 0; k < withEmbedding.size(); ++k)
+            {
+                float x = snapshots[f][k][0] * scale, y = snapshots[f][k][1] * scale;
+                const float radius = std::sqrt (x * x + y * y);
+                if (radius > 1.2f)
+                {
+                    x *= 1.2f / radius;
+                    y *= 1.2f / radius;
+                }
+                frame[withEmbedding[k]] = { x, y };
+            }
+            for (auto index : withoutEmbedding)
+                frame[index] = { results[index].x * progress, results[index].y * progress };
+            animation->push_back (std::move (frame));
+        }
+        std::vector<std::array<float, 2>> finalFrame;
+        for (const auto& r : results)
+            finalFrame.push_back ({ r.x, r.y });
+        animation->push_back (std::move (finalFrame));
     }
 }
