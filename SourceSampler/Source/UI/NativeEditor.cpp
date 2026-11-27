@@ -53,11 +53,16 @@ void VoicesComponent::setVoices (const std::vector<SourceSampler::VoiceInfo>& vo
 
 void VoicesComponent::paint (juce::Graphics& g)
 {
-    // Squares centred in the component (wrapped in rows if they don't fit)
-    const int size = 14, step = size + 3;
+    // Squares centred in the component: one row for up to 16 voices, otherwise two rows of (almost) the same length.
+    // Squares are made smaller if they don't fit.
     const int numVoices = (int) activeVoices.size();
-    const int perRow = juce::jlimit (1, juce::jmax (1, numVoices), getWidth() / step);
-    const int numRows = (numVoices + perRow - 1) / perRow;
+    if (numVoices == 0)
+        return;
+    const int numRows = numVoices > 16 ? 2 : 1;
+    const int perRow = (numVoices + numRows - 1) / numRows;
+    const int gap = 3;
+    const int size = juce::jlimit (4, 14, juce::jmin ((getWidth() + gap) / perRow - gap, (getHeight() + gap) / numRows - gap));
+    const int step = size + gap;
     const int x0 = (getWidth() - (perRow * step - 3)) / 2;
     const int y0 = (getHeight() - (numRows * step - 3)) / 2;
     for (size_t i = 0; i < activeVoices.size(); ++i)
@@ -166,7 +171,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     statusLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     content.addAndMakeVisible (statusLabel);
     content.addAndMakeVisible (voicesComponent);
-    logoImage.setImage (juce::ImageCache::getFromMemory (SourceUIBinaryData::rita_aurora_logo_png, SourceUIBinaryData::rita_aurora_logo_pngSize));
+    logoImage.setImage (juce::ImageCache::getFromMemory (SourceUIBinaryData::rita_aurora_hens_png, SourceUIBinaryData::rita_aurora_hens_pngSize));
     logoImage.setImagePlacement (juce::RectanglePlacement::xRight | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
     logoImage.setTooltip ("Rita & Aurora");
     content.addAndMakeVisible (logoImage);
@@ -175,7 +180,6 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     content.addAndMakeVisible (presetCard);
     // Preset slots: the dropdown lists all slots (selecting one loads it), the number of the current slot is shown
     // next to its (editable) name, "Save" saves to the current slot and "Save to..." to another one
-    setupLabel (presetLabel, "Preset", presetCard);
     presetSlotsCombo.setTooltip ("Load a preset (empty slots load an empty preset)");
     presetSlotsCombo.onPopupOpening = [this] { refreshPresetSlots(); };
     presetSlotsCombo.onChange = [this]
@@ -185,11 +189,6 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
             sendAction (ACTION_LOAD_PRESET, { juce::String (index) });
     };
     presetCard.addAndMakeVisible (presetSlotsCombo);
-    presetNumberLabel.setJustificationType (juce::Justification::centred);
-    presetNumberLabel.setColour (juce::Label::backgroundColourId, SourceColours::control);
-    presetNumberLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
-    presetNumberLabel.setTooltip ("Preset number (slot where \"Save\" saves the preset)");
-    presetCard.addAndMakeVisible (presetNumberLabel);
     presetNameEditor.setTextToShowWhenEmpty ("Preset name", SourceColours::dimText);
     presetNameEditor.onReturnKey = [this] { savePresetButton.triggerClick(); };
     presetCard.addAndMakeVisible (presetNameEditor);
@@ -509,7 +508,6 @@ void SourceNativeEditor::updateFromState()
         if (! presetNameEditor.hasKeyboardFocus (true))
             presetNameEditor.setText (presetName, false);
     }
-    presetNumberLabel.setText (presetIndex >= 0 ? juce::String (presetIndex) : juce::String ("-"), juce::dontSendNotification);
     if (! presetSlotsCombo.isPopupActive())
         presetSlotsCombo.setSelectedId (presetIndex >= 0 ? presetIndex + 1 : 0, juce::dontSendNotification);
     midiChannelCombo.setSelectedId ((int) state.getProperty (SourceIDs::globalMidiInChannel, 0) + 1, juce::dontSendNotification);
@@ -565,12 +563,7 @@ void SourceNativeEditor::timerCallback()
     {
         const int numResults = sourceSampler.state.getProperty (SourceIDs::numResultsLastQuery, -2);
         if (numResults >= 0)
-            status << numResults << " results in last query  |  ";
-        const int numSounds = soundList.getNumSounds(), numLoaded = soundList.getNumLoadedSounds();
-        if (numLoaded < numSounds)
-            status << numLoaded << " of " << numSounds << " sounds loaded";
-        else
-            status << numSounds << (numSounds == 1 ? " sound" : " sounds");
+            status << numResults << " results in last query";
     }
     if (statusLabel.getText() != status)
         statusLabel.setText (status, juce::dontSendNotification);
@@ -649,7 +642,9 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
     titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
     header.removeFromLeft (8);
-    logoImage.setBounds (header.removeFromRight (header.getHeight()));
+    const auto& logo = logoImage.getImage();
+    const float logoAspect = logo.isValid() ? (float) logo.getWidth() / (float) logo.getHeight() : 1.0f;
+    logoImage.setBounds (header.removeFromRight (juce::roundToInt ((float) header.getHeight() * logoAspect)));
     header.removeFromRight (10);
     // Voice activity squares, centred in the header (the status text uses the space between them and the logo)
     const int voicesWidth = juce::jmin (header.getWidth() / 2, SourceSamplerSynthesiser::maxNumVoices * 17);
@@ -715,7 +710,6 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     {
         auto c = presetCard.getContentBounds();
         auto row = c.removeFromTop (rowHeight);
-        presetLabel.setBounds (row.removeFromLeft (labelWidth));
         nextPresetButton.setBounds (row.removeFromRight (24));
         row.removeFromRight (2);
         previousPresetButton.setBounds (row.removeFromRight (24));
@@ -723,8 +717,6 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         presetSlotsCombo.setBounds (row);
         c.removeFromTop (rowGap);
         row = c.removeFromTop (rowHeight);
-        presetNumberLabel.setBounds (row.removeFromLeft (36));
-        row.removeFromLeft (4);
         saveToPresetButton.setBounds (row.removeFromRight (70));
         row.removeFromRight (4);
         savePresetButton.setBounds (row.removeFromRight (48));

@@ -55,10 +55,6 @@ public:
     juce::String getSelectedSoundUUID() const;
     void selectSound (const juce::String& uuid);
     int getNumSounds() const { return (int) items.size(); }
-    int getNumLoadedSounds() const
-    {
-        return (int) std::count_if (items.begin(), items.end(), [] (const SoundListItem& item) { return item.loaded; });
-    }
     const std::vector<SoundListItem>& getItems() const { return items; }
 
     std::function<void (const juce::String& selectedUUID)> onSelectionChanged;

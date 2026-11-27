@@ -133,6 +133,7 @@
 #define ACTION_ADD_SOUND "/add_sound"
 #define ACTION_REPLACE_SOUND "/replace_sound"
 #define ACTION_REMOVE_SOUND "/remove_sound"
+#define ACTION_RETRY_SOUND_DOWNLOADS "/retry_sound_downloads"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
 #define ACTION_SET_SOUND_PARAMETER_INT "/set_sound_parameter_int"
 #define ACTION_SET_SOUND_SLICES "/set_slices"

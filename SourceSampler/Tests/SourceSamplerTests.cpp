@@ -431,6 +431,14 @@ public:
             expect ((bool) sample.getProperty (SourceIDs::downloadFailed));
             expect (! (bool) sample.getProperty (SourceIDs::downloadCompleted));
             expect (! f.sampler.sourceDataLocation.getChildFile (sample.getProperty (SourceIDs::filePath).toString()).existsAsFile());
+
+            // Retrying downloads the file again (and fails again here)
+            f.send (ACTION_RETRY_SOUND_DOWNLOADS, { sound.getProperty (SourceIDs::uuid).toString() });
+            expect (! (bool) sample.getProperty (SourceIDs::downloadFailed), "Retrying clears the failed state");
+            expect (! (bool) sound.getProperty (SourceIDs::allSoundsLoaded), "Retrying loads the sound again");
+            expect (TestUtils::runMessageLoopUntil ([sample] { return (bool) sample.getProperty (SourceIDs::downloadFailed); }, 20000),
+                    "Retried download did not run");
+            expect (TestUtils::runMessageLoopUntil ([sound] { return (bool) sound.getProperty (SourceIDs::allSoundsLoaded); }, 20000));
         }
 
         beginTest ("Program changes load presets");

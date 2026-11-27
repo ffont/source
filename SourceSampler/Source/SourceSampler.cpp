@@ -1021,6 +1021,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         juce::String soundUUID = parameters[0];
         removeSound(soundUUID);
     }
+    else if (actionName == ACTION_RETRY_SOUND_DOWNLOADS){
+        if (auto* sound = getSoundWithUUID(parameters[0]))
+            sound->retryFailedDownloads();
+    }
     else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
         juce::String soundUUID = parameters[0];  // "" means all sounds
         juce::String parameterName = parameters[1];

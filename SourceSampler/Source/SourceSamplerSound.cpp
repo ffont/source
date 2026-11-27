@@ -1013,6 +1013,17 @@ void SourceSound::postToMessageThread(std::function<void(SourceSound&)> callback
     });
 }
 
+void SourceSound::retryFailedDownloads()
+{
+    failedDownloads.clear();
+    for (int i=0; i<state.getNumChildren(); i++){
+        auto child = state.getChild(i);
+        if (child.hasType(SourceIDs::SOUND_SAMPLE))
+            child.setProperty(SourceIDs::downloadFailed, false, nullptr);
+    }
+    startLoading();
+}
+
 void SourceSound::startLoading()
 {
     // Loading happens in a background thread which works on a copy of the state (ValueTree objects are not thread safe).

@@ -92,6 +92,9 @@ public:
     {
         for (auto* b : { &playButton, &stopButton, &removeButton })
             addAndMakeVisible (b);
+        addChildComponent (retryButton);
+        retryButton.setTooltip ("Retry downloading");
+        retryButton.onClick = [this] { owner.actions.send (ACTION_RETRY_SOUND_DOWNLOADS, { item.uuid }); };
         playButton.onClick = [this] { owner.actions.send (ACTION_PLAY_SOUND, { item.uuid }); };
         stopButton.onClick = [this] { owner.actions.send (ACTION_STOP_SOUND, { item.uuid }); };
         removeButton.onClick = [this] { owner.actions.send (ACTION_REMOVE_SOUND, { item.uuid }); };
@@ -109,9 +112,16 @@ public:
             item = {};
         for (auto* b : { &playButton, &stopButton, &removeButton })
             b->setVisible (! isAllSoundsRow);
-        // Sounds can't be played until they are downloaded and loaded
-        playButton.setEnabled (item.loaded);
-        stopButton.setEnabled (item.loaded);
+        // Sounds can't be played until they are downloaded and loaded (or if some file could not be downloaded)
+        const bool canPlay = item.loaded && item.numFailedDownloads == 0;
+        playButton.setEnabled (canPlay);
+        stopButton.setEnabled (canPlay);
+        const bool showRetry = ! isAllSoundsRow && item.numFailedDownloads > 0;
+        if (retryButton.isVisible() != showRetry)
+        {
+            retryButton.setVisible (showRetry);
+            resized();
+        }
         auto it = owner.activeVoices.find (item.uuid);
         numActiveVoices = it != owner.activeVoices.end() ? it->second : 0;
         repaint();
@@ -143,7 +153,7 @@ public:
         }
 
         auto content = getLocalBounds().reduced (8, 4);
-        content.removeFromRight (3 * 26 + 4);
+        content.removeFromRight ((retryButton.isVisible() ? 4 : 3) * 26 + 4);
 
         if (isAllSoundsRow)
         {
@@ -192,7 +202,11 @@ public:
     void resized() override
     {
         auto b = getLocalBounds().reduced (6, 0);
-        auto buttons = b.removeFromRight (3 * 26).withSizeKeepingCentre (3 * 26, 22);
+        auto buttons = b.removeFromRight (4 * 26).withSizeKeepingCentre (4 * 26, 22);
+        if (retryButton.isVisible())
+            retryButton.setBounds (buttons.removeFromLeft (24));
+        buttons.removeFromLeft (2);
+        buttons = buttons.removeFromRight (3 * 26 - 2);
         playButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
         stopButton.setBounds (buttons.removeFromLeft (24));
@@ -212,6 +226,7 @@ private:
     bool isAllSoundsRow = false;
     int numActiveVoices = 0;
     SoundListItem item;
+    IconButton retryButton { "Retry", IconButton::Icon::retry };
     IconButton playButton { "Play", IconButton::Icon::play };
     IconButton stopButton { "Stop", IconButton::Icon::stop };
     IconButton removeButton { "Remove", IconButton::Icon::remove };

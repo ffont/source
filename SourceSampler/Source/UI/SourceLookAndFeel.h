@@ -137,7 +137,7 @@ private:
 class IconButton : public juce::Button
 {
 public:
-    enum class Icon { play, stop, remove, previous, next };
+    enum class Icon { play, stop, remove, previous, next, retry };
 
     IconButton (const juce::String& name, Icon iconToUse) : juce::Button (name), icon (iconToUse)
     {
@@ -178,6 +178,21 @@ public:
                                { iconBounds.getRight(), iconBounds.getCentreY() });
                 g.fillPath (p);
                 break;
+            case Icon::retry:
+            {
+                // Circular arrow: an open arc with an arrow head at its end
+                const auto c = iconBounds.getCentre();
+                const float r = iconBounds.getWidth() * 0.5f;
+                const float start = 0.6f, end = juce::MathConstants<float>::twoPi - 0.2f;
+                p.addCentredArc (c.x, c.y, r, r, 0.0f, start, end, true);
+                g.strokePath (p, juce::PathStrokeType (1.6f));
+                const auto tip = c.getPointOnCircumference (r, end);
+                juce::Path head;
+                const float s = r * 0.75f;
+                head.addTriangle (tip.translated (-s * 0.6f, -s * 0.55f), tip.translated (s * 0.6f, -s * 0.2f), tip.translated (-s * 0.1f, s * 0.6f));
+                g.fillPath (head);
+                break;
+            }
         }
     }
 

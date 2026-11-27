@@ -188,7 +188,7 @@ else()
         NAMESPACE SourceUIBinaryData
         SOURCES
             Resources/source_title.png
-            Resources/rita_aurora_logo.png)
+            Resources/rita_aurora_hens.png)
     target_link_libraries(SourceSampler PRIVATE SourceSamplerBinaryData)
     target_compile_definitions(SourceSampler PRIVATE
         SOURCE_WEB_UI=0

@@ -120,7 +120,7 @@ private:
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };
-    juce::Label presetLabel, presetNumberLabel, midiChannelLabel, numVoicesLabel;
+    juce::Label midiChannelLabel, numVoicesLabel;
     PresetSlotsComboBox presetSlotsCombo;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save" }, saveToPresetButton { "Save to..." };

@@ -268,6 +268,8 @@ public:
         on disk, decodes them in a background thread and adds the resulting SourceSamplerSound(s) to the sampler.
         Must be called from the message thread. */
     void startLoading();
+    /** Downloads again the files whose download failed, and loads the sound again (message thread). */
+    void retryFailedDownloads();
     
     static bool isSupportedAudioFileFormat(const juce::String& extension);
     static bool fileLocationIsSupportedAudioFileFormat(juce::File location);
