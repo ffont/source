@@ -122,16 +122,21 @@
 #define ACTION_LOAD_PRESET "/load_preset"
 #define ACTION_SAVE_PRESET "/save_preset"
 #define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
+#define ACTION_SET_FX_PARAMETER "/set_fx_parameter"  // Parameters: parameter id (e.g. fxDelayTime, see SourceFxChain.h), value
 #define ACTION_SET_POLYPHONY "/set_polyphony"
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
 #define ACTION_ADD_NEW_SOUNDS_FROM_QUERY "/add_sounds_from_query"
 #define ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY "/replace_sounds_from_query"
 #define ACTION_REPLACE_SOUND_FROM_QUERY "/replace_sound_from_query"
+#define ACTION_PLAY_HOVER_PREVIEW "/play_hover_preview"  // path or URL: plays a preview polyphonically (e.g. hovering sounds in the map)
+#define ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY "/replace_sounds_random"  // numSounds;minLength;maxLength;noteLayoutType[;extraFilter]
 
 // Sound actions
 #define ACTION_ADD_SOUND "/add_sound"
 #define ACTION_REPLACE_SOUND "/replace_sound"
+#define ACTION_REPLACE_SOUND_AUDIO "/replace_sound_audio"  // Like ACTION_REPLACE_SOUND but keeps all the sound settings (only the audio changes)
+#define ACTION_REPLACE_SOUND_WITH_SIMILAR "/replace_sound_with_similar"  // Replaces the audio with a random one of 10 similar Freesound sounds
 #define ACTION_REMOVE_SOUND "/remove_sound"
 #define ACTION_RETRY_SOUND_DOWNLOADS "/retry_sound_downloads"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
@@ -301,6 +306,7 @@ DECLARE_ID (downloadProgress)
 DECLARE_ID (downloadCompleted)
 DECLARE_ID (downloadFailed)
 DECLARE_ID (localFileMissing)
+DECLARE_ID (findingSimilar)
 DECLARE_ID (logMessages)
 DECLARE_ID (isQuerying)
 

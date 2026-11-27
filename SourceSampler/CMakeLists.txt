@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(SourceSampler VERSION 0.9.0 LANGUAGES C CXX)
+project(SourceSampler VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,9 +45,11 @@ set(SOURCE_3RDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
 # the plugin and into the test runner.
 set(SOURCE_CORE_SOURCES
     Source/FreesoundAPI.cpp
+    Source/FreesoundSearch.cpp
     Source/SourceSampler.cpp
     Source/SourceSamplerSound.cpp
     Source/SourceSamplerSynthesiser.cpp
+    Source/SourceFxChain.cpp
     Source/SourceSamplerVoice.cpp)
 
 set(SOURCE_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/Source)
@@ -93,11 +95,15 @@ if(SOURCE_IOS)
     if(SOURCE_WEB_UI)
         message(FATAL_ERROR "The web UI is not supported on iOS, use the native UI")
     endif()
-else()
+elseif(APPLE)
     set(SOURCE_PLUGIN_FORMATS AU VST3 Standalone)
     if(SOURCE_BUILD_AUV3)
         list(APPEND SOURCE_PLUGIN_FORMATS AUv3)
     endif()
+else()
+    # Linux: standalone app (ALSA and JACK), VST3 and LV2
+    set(SOURCE_PLUGIN_FORMATS Standalone VST3 LV2)
+    list(APPEND SOURCE_COMMON_DEFINITIONS JUCE_JACK=1)
 endif()
 
 set(SOURCE_IOS_PLUGIN_OPTIONS)
@@ -144,6 +150,7 @@ juce_add_plugin(SourceSampler
     ICON_SMALL ${CMAKE_CURRENT_SOURCE_DIR}/../docs/icon.png
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
     VST3_CATEGORIES Instrument Sampler
+    LV2URI "https://github.com/ffont/source"
     ${SOURCE_IOS_PLUGIN_OPTIONS}
     PLIST_TO_MERGE [[
 <plist>
@@ -180,7 +187,10 @@ else()
     target_sources(SourceSampler PRIVATE
         Source/UI/NativeEditor.cpp
         Source/UI/SoundListComponent.cpp
-        Source/UI/SoundEditorComponent.cpp)
+        Source/UI/SoundEditorComponent.cpp
+        Source/UI/FxPanel.cpp
+        Source/UI/SearchPanel.cpp
+        Source/UI/SoundMapComponent.cpp)
     # Title and logo images shown in the header of the native UI
     # (named differently from the legacy Source/BinaryData.h, which would otherwise be found first)
     juce_add_binary_data(SourceSamplerBinaryData
@@ -235,6 +245,12 @@ target_link_libraries(SourceSampler
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
+# JUCE uses libcurl for web requests on Linux (Freesound searches and downloads)
+if(UNIX AND NOT APPLE)
+    find_package(CURL REQUIRED)
+    target_link_libraries(SourceSampler PRIVATE CURL::libcurl)
+endif()
+
 # ------------------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------------------
@@ -253,6 +269,12 @@ if(SOURCE_BUILD_TESTS)
         Tests/TestMain.cpp
         Tests/HelpersTests.cpp
         Tests/DownloadPoolTests.cpp
+        Tests/FxTests.cpp
+        Tests/SearchTests.cpp
+        Tests/UITests.cpp
+        Tests/NetworkTests.cpp
+        Source/UI/SearchPanel.cpp
+        Source/UI/SoundMapComponent.cpp
         Tests/SamplerRenderTests.cpp
         Tests/SourceSamplerTests.cpp)
 
@@ -273,6 +295,10 @@ if(SOURCE_BUILD_TESTS)
         PUBLIC
             juce::juce_recommended_config_flags
             juce::juce_recommended_warning_flags)
+
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(SourceSamplerTests PRIVATE CURL::libcurl)
+    endif()
 
     add_test(NAME SourceSamplerTests COMMAND SourceSamplerTests)
 endif()

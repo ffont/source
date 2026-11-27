@@ -14,6 +14,7 @@
 #include <array>
 #include "helpers_source.h"
 #include "FreesoundAPI.h"
+#include "FreesoundSearch.h"
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
@@ -118,6 +119,7 @@ public:
     QueryMakerThread queryMakerThread;
     //==============================================================================
     void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);  // Runs in QueryMakerThread
+    juce::String queryExtraFilter;  // Extra Freesound filter for the next query (e.g. acoustic properties), set before starting the QueryMakerThread
     void loadQueryResults(const juce::String& addReplaceOrReplaceSound, int numSounds, int numResults, juce::Array<FSSound> soundsFound);  // Runs in the message thread
     void removeSound(const juce::String& soundUUID);
     void removeSamplerSound(const juce::String& soundUUID, const juce::String& samplerSoundUUID);
@@ -153,9 +155,43 @@ public:
     int getServerInterfaceHttpPort();
     int getServerInterfaceWSPort();
     
+    /** Replaces the audio of a sound keeping all its settings (parameters, notes, root note, MIDI channel, MIDI and
+        MPE mappings). Message thread. Returns false if the sound doesn't exist. */
+    bool replaceSoundAudio(const juce::String& soundUUID, int soundID, const juce::String& soundName, const juce::String& soundUser,
+                           const juce::String& soundLicense, const juce::String& previewURL, const juce::String& localFilePath,
+                           const juce::String& format, int sizeBytes, juce::StringArray slices);
+    /** Replaces the audio of a Freesound sound with one of 10 similar sounds chosen randomly (asynchronous). */
+    void replaceSoundWithSimilar(const juce::String& soundUUID);
+    
     void previewFile(const juce::String& path);
+    /** Plays a preview (local file or URL) without stopping the other previews (up to 10 at the same time, the oldest
+        is stopped when more are needed). URLs are downloaded first, and only played if the download is quick. */
+    void playHoverPreview(const juce::String& path);
+    static constexpr double maxHoverPreviewDelayMs = 3000.0;
     void stopPreviewingFile();
     juce::String currentlyLoadedPreviewFilePath = "";
+    juce::String lastRequestedPreviewPath;  // Only the last requested preview is played (downloads can finish in any order)
+    bool isPreviewPlaying() const { return transportSource.isPlaying(); }
+    int getNumHoverPreviewsPlaying() const
+    {
+        int n = 0;
+        for (const auto& preview : hoverPreviews)
+            n += preview.transport.isPlaying() ? 1 : 0;
+        return n;
+    }
+    enum class PreviewState { idle, loading, playing, failed };
+    /** Mutes the output (and previews). Can be called from any thread. */
+    void setOutputMuted (bool muted) { outputMuted = muted; }
+    bool isOutputMuted() const { return outputMuted.load(); }
+    /** State of the last requested preview (message thread). */
+    PreviewState getPreviewState() const;
+    
+    juce::SharedResourcePointer<DownloadPool> previewDownloadPool;
+    DownloadPool::CancelFlag previewDownloadCancelFlag = DownloadPool::makeCancelFlag();
+    bool previewFailed = false, previewLoading = false;
+    
+    /** Freesound searches of the "Search" tab (owned here so the results are kept when the editor is closed). */
+    FreesoundSearch freesoundSearch;
     
     //==============================================================================
     // Information for UIs which is not part of the state ("volatile" state). Call from the message thread.
@@ -207,6 +243,8 @@ private:
     SourceSamplerSynthesiser sampler;
     ServerInterface serverInterface;
     // Output levels: RMS per channel averaged over ~200ms, computed in the audio thread and read by UIs (lock free)
+    std::atomic<bool> outputMuted { false };
+    juce::SmoothedValue<float> outputGain { 1.0f };  // Audio thread (fades when muting/unmuting)
     static constexpr int maxMeteredChannels = 8;
     std::array<std::atomic<float>, maxMeteredChannels> outputRmsLevels {};
     std::array<float, maxMeteredChannels> outputMeanSquares {};  // Audio thread only
@@ -253,6 +291,18 @@ private:
     
     // The next two objects are to preview sounds independently of the sampler
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+    
+    // Polyphonic previews (to audition sounds quickly, e.g. hovering them in the map)
+    struct HoverPreview
+    {
+        std::unique_ptr<juce::AudioFormatReaderSource> reader;  // Declared first: the transport (which uses it) is destroyed first
+        juce::AudioTransportSource transport;
+        double startTime = 0.0;
+    };
+    std::array<HoverPreview, 10> hoverPreviews;
+    juce::AudioBuffer<float> hoverPreviewBuffer;  // Audio thread
+    DownloadPool::CancelFlag hoverPreviewDownloadsCancelFlag = DownloadPool::makeCancelFlag();
+    void startHoverPreview(const juce::File& file);
     juce::AudioTransportSource transportSource;
     
     // Session autosave

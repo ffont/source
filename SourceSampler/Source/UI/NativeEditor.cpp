@@ -21,13 +21,17 @@ void LevelMetersComponent::setLevels (const std::vector<float>& newLevels)
 
 void LevelMetersComponent::paint (juce::Graphics& g)
 {
+    // Vertical bars, or horizontal bars (one per row) if the component is wider than tall
     const int numChannels = juce::jmax (1, (int) levels.size());
-    const int meterWidth = juce::jmin (30, (getWidth() - (numChannels - 1) * 6) / numChannels);
+    const bool horizontal = getWidth() > getHeight();
+    const int gap = (horizontal || getWidth() < 30) ? 2 : 6;
+    const int along = horizontal ? getHeight() : getWidth();
+    const int meterSize = juce::jmax (1, juce::jmin (30, (along - (numChannels - 1) * gap) / numChannels));
     auto b = getLocalBounds();
     for (int ch = 0; ch < numChannels; ++ch)
     {
-        auto meter = b.removeFromLeft (meterWidth).toFloat();
-        b.removeFromLeft (6);
+        auto meter = (horizontal ? b.removeFromTop (meterSize) : b.removeFromLeft (meterSize)).toFloat();
+        horizontal ? b.removeFromTop (gap) : b.removeFromLeft (gap);
         g.setColour (SourceColours::control);
         g.drawRect (meter, 1.0f);
         const float level = ch < (int) levels.size() ? levels[(size_t) ch] : 0.0f;
@@ -35,7 +39,8 @@ void LevelMetersComponent::paint (juce::Graphics& g)
         const float db = juce::Decibels::gainToDecibels (level, -60.0f);
         const float proportion = juce::jlimit (0.0f, 1.0f, (db + 60.0f) / 60.0f);
         g.setColour (db > -1.0f ? SourceColours::warning : SourceColours::accent);
-        g.fillRect (meter.reduced (1.0f).removeFromBottom ((meter.getHeight() - 2.0f) * proportion));
+        auto inner = meter.reduced (1.0f);
+        g.fillRect (horizontal ? inner.removeFromLeft (inner.getWidth() * proportion) : inner.removeFromBottom (inner.getHeight() * proportion));
     }
 }
 
@@ -158,6 +163,8 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
       actions { [this] (const juce::String& message) { sourceSampler.actionListenerCallback (message); } },
       soundList (actions),
       soundEditor (p.source, actions),
+      searchPanel (p.source.freesoundSearch, actions, [this] { return getPresetState(); }),
+      fxPanel (actions),
       keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel (&lookAndFeel);
@@ -167,14 +174,41 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     titleImage.setImage (makeTitleImage());
     titleImage.setImagePlacement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
     content.addAndMakeVisible (titleImage);
-    statusLabel.setJustificationType (juce::Justification::centredRight);
-    statusLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
-    content.addAndMakeVisible (statusLabel);
     content.addAndMakeVisible (voicesComponent);
+    levelMeters.setTooltip ("Output level");
+    content.addAndMakeVisible (levelMeters);
+    muteButton.setClickingTogglesState (true);
+    muteButton.setToggleState (sourceSampler.isOutputMuted(), juce::dontSendNotification);
+    muteButton.setIcon (sourceSampler.isOutputMuted() ? IconButton::Icon::speakerMuted : IconButton::Icon::speaker);
+    muteButton.onClick = [this]
+    {
+        const bool muted = muteButton.getToggleState();
+        sourceSampler.setOutputMuted (muted);
+        muteButton.setIcon (muted ? IconButton::Icon::speakerMuted : IconButton::Icon::speaker);
+        muteButton.setTooltip (muted ? "Unmute output" : "Mute output");
+    };
+    content.addAndMakeVisible (muteButton);
     logoImage.setImage (juce::ImageCache::getFromMemory (SourceUIBinaryData::rita_aurora_hens_png, SourceUIBinaryData::rita_aurora_hens_pngSize));
-    logoImage.setImagePlacement (juce::RectanglePlacement::xRight | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
+    logoImage.setImagePlacement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
     logoImage.setTooltip ("Rita & Aurora");
     content.addAndMakeVisible (logoImage);
+
+    // Tabs
+    int tabIndex = 0;
+    for (auto* button : { &generalTabButton, &searchTabButton, &fxTabButton })
+    {
+        button->setRadioGroupId (1);
+        button->setClickingTogglesState (true);
+        button->setColour (juce::TextButton::buttonOnColourId, SourceColours::accent.darker (0.3f));
+        button->setConnectedEdges ((tabIndex > 0 ? juce::Button::ConnectedOnLeft : 0) | (tabIndex < 2 ? juce::Button::ConnectedOnRight : 0));
+        content.addAndMakeVisible (button);
+        ++tabIndex;
+    }
+    generalTabButton.onClick = [this] { showTab (Tab::general); };
+    searchTabButton.onClick = [this] { showTab (Tab::search); };
+    fxTabButton.onClick = [this] { showTab (Tab::fx); };
+    content.addChildComponent (searchPanel);
+    content.addChildComponent (fxPanel);
 
     // Preset & settings card
     content.addAndMakeVisible (presetCard);
@@ -258,33 +292,21 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     noteLayoutCombo.onChange = [this] { sendAction (ACTION_REAPPLY_LAYOUT, { juce::String (noteLayoutCombo.getSelectedId() - 1) }); };
     querySoundsCard.addAndMakeVisible (noteLayoutCombo);
     replaceAllButton.onClick = [this] { runQuery (ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY); };
-    replaceOneButton.onClick = [this] { runQuery (ACTION_REPLACE_SOUND_FROM_QUERY); };
-    addSoundsButton.onClick = [this] { runQuery (ACTION_ADD_NEW_SOUNDS_FROM_QUERY); };
+    replaceAllButton.setTooltip ("Replace all sounds with sounds found with the query");
+    replaceRandomlyButton.onClick = [this] { runQuery (ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY); };
+    replaceRandomlyButton.setTooltip ("Replace all sounds with random Freesound sounds (the query is ignored)");
     querySoundsCard.addAndMakeVisible (replaceAllButton);
-    querySoundsCard.addAndMakeVisible (replaceOneButton);
-    querySoundsCard.addAndMakeVisible (addSoundsButton);
-    setupNumberSlider (soundToReplaceSlider, 1, 128, 1, 1, querySoundsCard);
-
-    // Reverb card
-    content.addAndMakeVisible (reverbCard);
-    const std::array<std::pair<juce::Identifier, const char*>, 6> reverbParams {{
-        { SourceIDs::reverbRoomSize, "Room size" }, { SourceIDs::reverbDamping, "Damping" }, { SourceIDs::reverbWidth, "Width" },
-        { SourceIDs::reverbFreezeMode, "Freeze" }, { SourceIDs::reverbWetLevel, "Wet level" }, { SourceIDs::reverbDryLevel, "Dry level" } }};
-    for (size_t i = 0; i < reverbControls.size(); ++i)
-    {
-        auto& control = reverbControls[i];
-        control.id = reverbParams[i].first;
-        setupLabel (control.label, reverbParams[i].second, reverbCard);
-        control.slider.setSliderStyle (juce::Slider::LinearHorizontal);
-        control.slider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 40, 18);
-        control.slider.setRange (0.0, 1.0, 0.01);
-        control.slider.onValueChange = [this] { sendReverbParameters(); };
-        reverbCard.addAndMakeVisible (control.slider);
-    }
-
-    // Meters card
-    content.addAndMakeVisible (metersCard);
-    metersCard.addAndMakeVisible (levelMeters);
+    querySoundsCard.addAndMakeVisible (replaceRandomlyButton);
+    querySoundsCard.addChildComponent (queryLoadingIndicator);
+    setupLabel (queryLicenseLabel, "License", querySoundsCard);
+    queryLicenseCombo.addItem ("Any license", 1);
+    queryLicenseCombo.addItem ("CC0 only", 2);
+    queryLicenseCombo.addItem ("CC0 or Attribution", 3);
+    queryLicenseCombo.addItem ("No NonCommercial", 4);
+    queryLicenseCombo.setSelectedId (1, juce::dontSendNotification);
+    querySoundsCard.addAndMakeVisible (queryLicenseCombo);
+    for (const auto& name : FreesoundSearchOptions::getAcousticPropertyNames())
+        querySoundsCard.addAndMakeVisible (queryAcousticFilters.add (new AcousticFilterComponent (name)));
 
     // Sounds
     soundList.onSelectionChanged = [this] (const juce::String& uuid) { soundEditor.setSound (uuid); };
@@ -300,6 +322,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
 
     sourceSampler.state.addListener (this);
     updateFromState();
+    showTab (Tab::general);
 
     setResizable (true, true);
    #if JUCE_IOS
@@ -329,14 +352,32 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
             if (safe != nullptr)
                 safe->sendAction (ACTION_LOAD_PRESET, { debugPreset });
         });
+    //  SOURCE_DEBUG_TAB=general|search|fx   opens that tab
+    //  SOURCE_DEBUG_SEARCH=<query>         runs a search in the Search tab (SOURCE_DEBUG_SEARCH_VIEW=list shows the list)
+    const auto debugTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_TAB", {});
+    if (debugTab == "search") showTab (Tab::search);
+    if (debugTab == "fx") showTab (Tab::fx);
+    const auto debugSearch = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SEARCH", {});
+    if (debugSearch.isNotEmpty())
+    {
+        showTab (Tab::search);
+        FreesoundSearchOptions options;
+        options.query = debugSearch;
+        options.maxDuration = 10.0f;
+        sourceSampler.freesoundSearch.search (options);
+        if (juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SEARCH_VIEW", {}) == "list")
+            searchPanel.showMap (false);
+    }
     const auto snapshotPath = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT", {});
     if (snapshotPath.isNotEmpty())
-        juce::Timer::callAfterDelay (3500, [safe = juce::Component::SafePointer<SourceNativeEditor> (this), snapshotPath]
+        juce::Timer::callAfterDelay (juce::jmax (500, juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT_DELAY", "3500").getIntValue()), [safe = juce::Component::SafePointer<SourceNativeEditor> (this), snapshotPath]
         {
             if (safe == nullptr)
                 return;
             if (safe->soundList.getNumSounds() > 0)
                 safe->soundList.selectSound (safe->soundList.getItems().front().uuid);
+            if (safe->currentTab == Tab::search)
+                safe->searchPanel.selectResult (0, false);
             // SOURCE_DEBUG_SNAPSHOT_SIZE=<width>x<height> renders the editor at that size (e.g. to preview iPad layouts)
             const auto size = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT_SIZE", {}), "x", {});
             if (size.size() == 2)
@@ -453,19 +494,33 @@ void SourceNativeEditor::sendAction (const juce::String& actionName, const juce:
     actions.send (actionName, parameters);
 }
 
-void SourceNativeEditor::sendReverbParameters()
+void SourceNativeEditor::showTab (Tab tab)
 {
-    // Order defined by ACTION_SET_REVERB_PARAMETERS: roomSize, damping, wetLevel, dryLevel, width, freezeMode
-    auto valueOf = [this] (const juce::Identifier& id)
-    {
-        for (auto& control : reverbControls)
-            if (control.id == id)
-                return juce::String (control.slider.getValue());
-        return juce::String();
-    };
-    sendAction (ACTION_SET_REVERB_PARAMETERS, { valueOf (SourceIDs::reverbRoomSize), valueOf (SourceIDs::reverbDamping),
-                                                valueOf (SourceIDs::reverbWetLevel), valueOf (SourceIDs::reverbDryLevel),
-                                                valueOf (SourceIDs::reverbWidth), valueOf (SourceIDs::reverbFreezeMode) });
+    currentTab = tab;
+    const bool general = tab == Tab::general;
+    for (auto* c : std::initializer_list<juce::Component*> { &presetCard, &querySoundsCard, &soundList, &soundEditor })
+        c->setVisible (general);
+    searchPanel.setVisible (tab == Tab::search);
+    fxPanel.setVisible (tab == Tab::fx);
+    generalTabButton.setToggleState (general, juce::dontSendNotification);
+    searchTabButton.setToggleState (tab == Tab::search, juce::dontSendNotification);
+    fxTabButton.setToggleState (tab == Tab::fx, juce::dontSendNotification);
+}
+
+juce::String SourceNativeEditor::getQueryExtraFilter() const
+{
+    FreesoundSearchOptions options;
+    options.license = (FreesoundSearchOptions::License) juce::jmax (0, queryLicenseCombo.getSelectedId() - 1);
+    for (int i = 0; i < queryAcousticFilters.size(); ++i)
+        options.acousticLevels[(size_t) i] = queryAcousticFilters[i]->getLevel();
+    return juce::StringArray { options.getLicenseFilter(), options.getAcousticFilter() }.joinIntoString (" ").trim();
+}
+
+int SourceNativeEditor::getQueryCardHeight() const
+{
+    // Title, 3 rows of controls, the acoustic filters (3 rows) and 2 buttons
+    const int filtersHeight = 3 * (AcousticFilterComponent::squareSize + 6) + 2 * 3;
+    return 26 + 16 + 4 * (22 + 5) + 2 + filtersHeight + 7 + 22;
 }
 
 void SourceNativeEditor::runQuery (const juce::String& queryActionName)
@@ -474,21 +529,11 @@ void SourceNativeEditor::runQuery (const juce::String& queryActionName)
     const juce::String minLength (minLengthSlider.getValue());
     const juce::String maxLength (maxLengthSlider.getValue());
     const juce::String layout (noteLayoutCombo.getSelectedId() > 0 ? noteLayoutCombo.getSelectedId() - 1 : SourceDefaults::noteLayoutType);
-    if (queryActionName == ACTION_REPLACE_SOUND_FROM_QUERY)
-    {
-        const int index = (int) soundToReplaceSlider.getValue() - 1;
-        const auto& items = soundList.getItems();
-        if (index < 0 || index >= (int) items.size())
-        {
-            statusLabel.setText ("There is no sound #" + juce::String (index + 1) + " to replace", juce::dontSendNotification);
-            return;
-        }
-        sendAction (queryActionName, { items[(size_t) index].uuid, query, minLength, maxLength, layout });
-    }
+    const auto acousticFilter = getQueryExtraFilter();
+    if (queryActionName == ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY)
+        sendAction (queryActionName, { juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout, acousticFilter });
     else
-    {
-        sendAction (queryActionName, { query, juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout });
-    }
+        sendAction (queryActionName, { query, juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout, acousticFilter });
 }
 
 void SourceNativeEditor::updateFromState()
@@ -521,9 +566,8 @@ void SourceNativeEditor::updateFromState()
         numVoicesSlider.setValue ((int) preset.getProperty (SourceIDs::numVoices, SourceDefaults::numVoices), juce::dontSendNotification);
     if (! noteLayoutCombo.isPopupActive())
         noteLayoutCombo.setSelectedId ((int) preset.getProperty (SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType) + 1, juce::dontSendNotification);
-    for (auto& control : reverbControls)
-        if (! control.slider.isMouseButtonDown())
-            control.slider.setValue ((float) preset.getProperty (control.id, 0.0f), juce::dontSendNotification);
+    fxPanel.updateFromState (preset);
+    searchPanel.updateFromState (preset);
 
     soundList.updateFromState (preset);
     if (soundEditor.getSoundUUID() != soundList.getSelectedSoundUUID())
@@ -553,20 +597,9 @@ void SourceNativeEditor::timerCallback()
     soundList.setActiveVoices (activeVoicesPerSound);
     soundEditor.setPlayheads (playheads);
     levelMeters.setLevels (sourceSampler.getOutputLevels());
+    searchPanel.setPreviewState ((int) sourceSampler.getPreviewState());
 
-    juce::String status;
-    if (sourceSampler.isQueryingSounds())
-    {
-        status = "Searching Freesound...";
-    }
-    else
-    {
-        const int numResults = sourceSampler.state.getProperty (SourceIDs::numResultsLastQuery, -2);
-        if (numResults >= 0)
-            status << numResults << " results in last query";
-    }
-    if (statusLabel.getText() != status)
-        statusLabel.setText (status, juce::dontSendNotification);
+    queryLoadingIndicator.setActive (sourceSampler.isQueryingSounds());
 }
 
 bool SourceNativeEditor::isInterestedInFileDrag (const juce::StringArray& files)
@@ -636,21 +669,26 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
 {
     auto b = bounds.reduced (8);
 
-    // Title (the image keeps its aspect ratio)
+    // Header: logo and title on the left, tabs on the right, voices and output meters in the centre
     auto header = b.removeFromTop (44);
+    const auto& logo = logoImage.getImage();
+    const float logoAspect = logo.isValid() ? (float) logo.getWidth() / (float) logo.getHeight() : 1.0f;
+    logoImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * logoAspect)));
+    header.removeFromLeft (8);
     const auto& title = titleImage.getImage();
     const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
     titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
-    header.removeFromLeft (8);
-    const auto& logo = logoImage.getImage();
-    const float logoAspect = logo.isValid() ? (float) logo.getWidth() / (float) logo.getHeight() : 1.0f;
-    logoImage.setBounds (header.removeFromRight (juce::roundToInt ((float) header.getHeight() * logoAspect)));
+    // Right side: tabs, output meters (vertical) and mute button
+    muteButton.setBounds (header.removeFromRight (30).withSizeKeepingCentre (30, 30));
+    header.removeFromRight (8);
+    levelMeters.setBounds (header.removeFromRight (16).withSizeKeepingCentre (16, 36));
     header.removeFromRight (10);
-    // Voice activity squares, centred in the header (the status text uses the space between them and the logo)
+    auto tabs = header.removeFromRight (3 * 84).withSizeKeepingCentre (3 * 84, 28);
+    for (auto* button : { &generalTabButton, &searchTabButton, &fxTabButton })
+        button->setBounds (tabs.removeFromLeft (84));
     const int voicesWidth = juce::jmin (header.getWidth() / 2, SourceSamplerSynthesiser::maxNumVoices * 17);
     voicesComponent.setBounds (juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY())));
-    statusLabel.setBounds (header.withLeft (voicesComponent.getRight() + 10));
-    b.removeFromTop (4);
+    b.removeFromTop (8);
 
    #if JUCE_IOS
     const int keyboardHeight = 96;  // Bigger keys for touch
@@ -671,36 +709,40 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     }
     b.removeFromBottom (8);
 
-    // Cards: one row in landscape, a 2x2 grid in portrait
+    // The other tabs use all the space between the header and the keyboard
+    searchPanel.setBounds (b);
+    fxPanel.setBounds (b);
+
+    // General tab. Landscape: preset and "get new sounds" cards and the list of sounds on the left, the sound editor
+    // (full height) on the right. Portrait: the two cards side by side, then the list of sounds and the sound editor.
     const int gap = 8;
-    const int cardHeight = 236;
-    const int metersWidth = 100;
+    const int presetCardHeight = 26 + 16 + 5 * 27 - 5;
+    const int queryCardHeight = getQueryCardHeight();
+    juce::Rectangle<int> listArea, editorArea;
     if (portrait)
     {
-        auto row1 = b.removeFromTop (cardHeight);
-        const int halfWidth = (row1.getWidth() - gap) / 2;
-        presetCard.setBounds (row1.removeFromLeft (halfWidth));
-        row1.removeFromLeft (gap);
-        querySoundsCard.setBounds (row1);
+        auto top = b.removeFromTop (queryCardHeight);
+        presetCard.setBounds (top.removeFromLeft (juce::jmin (340, (top.getWidth() - gap) / 2)).withHeight (presetCardHeight));
+        top.removeFromLeft (gap);
+        querySoundsCard.setBounds (top);
         b.removeFromTop (gap);
-        auto row2 = b.removeFromTop (cardHeight);
-        metersCard.setBounds (row2.removeFromRight (metersWidth));
-        row2.removeFromRight (gap);
-        reverbCard.setBounds (row2);
+        listArea = b.removeFromTop (juce::jmin (240, b.getHeight() / 3));
+        b.removeFromTop (gap);
+        editorArea = b;
     }
     else
     {
-        auto top = b.removeFromTop (cardHeight);
-        const int cardWidth = (top.getWidth() - metersWidth - 3 * gap) / 3;
-        presetCard.setBounds (top.removeFromLeft (cardWidth));
-        top.removeFromLeft (gap);
-        querySoundsCard.setBounds (top.removeFromLeft (cardWidth));
-        top.removeFromLeft (gap);
-        reverbCard.setBounds (top.removeFromLeft (cardWidth));
-        top.removeFromLeft (gap);
-        metersCard.setBounds (top);
+        auto left = b.removeFromLeft (juce::jlimit (410, 470, b.getWidth() / 3));
+        b.removeFromLeft (gap);
+        editorArea = b;
+        presetCard.setBounds (left.removeFromTop (presetCardHeight));
+        left.removeFromTop (gap);
+        querySoundsCard.setBounds (left.removeFromTop (queryCardHeight));
+        left.removeFromTop (gap);
+        listArea = left;
     }
-    b.removeFromTop (gap);
+    soundList.setBounds (listArea);
+    soundEditor.setBounds (editorArea);
 
     const int rowHeight = 22;
     const int rowGap = 5;
@@ -739,59 +781,40 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
 
     // Query card content
     {
+        // Query (with the loading indicator), number of sounds and note layout, length, acoustic filters, buttons
+        const int queryLabelWidth = 86;
         auto c = querySoundsCard.getContentBounds();
         auto row = c.removeFromTop (rowHeight);
-        queryLabel.setBounds (row.removeFromLeft (labelWidth));
+        queryLabel.setBounds (row.removeFromLeft (queryLabelWidth));
+        queryLoadingIndicator.setBounds (row.removeFromRight (rowHeight));
+        row.removeFromRight (4);
         queryEditor.setBounds (row);
         c.removeFromTop (rowGap);
         row = c.removeFromTop (rowHeight);
-        numSoundsLabel.setBounds (row.removeFromLeft (labelWidth));
-        numSoundsSlider.setBounds (row.removeFromLeft (100));
+        numSoundsLabel.setBounds (row.removeFromLeft (queryLabelWidth));
+        numSoundsSlider.setBounds (row.removeFromLeft (96));
+        row.removeFromLeft (10);
+        layoutLabel.setBounds (row.removeFromLeft (66));
+        noteLayoutCombo.setBounds (row.removeFromLeft (juce::jmin (120, row.getWidth())));
         c.removeFromTop (rowGap);
         row = c.removeFromTop (rowHeight);
-        lengthLabel.setBounds (row.removeFromLeft (labelWidth));
-        minLengthSlider.setBounds (row.removeFromLeft (100));
+        lengthLabel.setBounds (row.removeFromLeft (queryLabelWidth));
+        minLengthSlider.setBounds (row.removeFromLeft (96));
         lengthToLabel.setBounds (row.removeFromLeft (24));
-        maxLengthSlider.setBounds (row.removeFromLeft (100));
+        maxLengthSlider.setBounds (row.removeFromLeft (96));
         c.removeFromTop (rowGap);
         row = c.removeFromTop (rowHeight);
-        layoutLabel.setBounds (row.removeFromLeft (labelWidth));
-        noteLayoutCombo.setBounds (row.removeFromLeft (120));
+        queryLicenseLabel.setBounds (row.removeFromLeft (queryLabelWidth));
+        queryLicenseCombo.setBounds (row.removeFromLeft (juce::jmin (180, row.getWidth())));
         c.removeFromTop (rowGap + 2);
-        replaceAllButton.setBounds (c.removeFromTop (rowHeight).removeFromLeft (210));
-        c.removeFromTop (rowGap);
+        const int filtersHeight = layoutAcousticFilterRows (queryAcousticFilters, c, 3, false);
+        layoutAcousticFilterRows (queryAcousticFilters, c.removeFromTop (filtersHeight), 3, true);
+        c.removeFromTop (rowGap + 2);
         row = c.removeFromTop (rowHeight);
-        replaceOneButton.setBounds (row.removeFromLeft (210));
+        const int buttonWidth = (row.getWidth() - 6) / 2;
+        replaceAllButton.setBounds (row.removeFromLeft (buttonWidth));
         row.removeFromLeft (6);
-        soundToReplaceSlider.setBounds (row.removeFromLeft (100));
-        c.removeFromTop (rowGap);
-        addSoundsButton.setBounds (c.removeFromTop (rowHeight).removeFromLeft (210));
+        replaceRandomlyButton.setBounds (row);
     }
 
-    // Reverb card content
-    {
-        auto c = reverbCard.getContentBounds();
-        for (auto& control : reverbControls)
-        {
-            auto row = c.removeFromTop (rowHeight);
-            control.label.setBounds (row.removeFromLeft (80));
-            control.slider.setBounds (row);
-            c.removeFromTop (rowGap + 2);
-        }
-    }
-
-    levelMeters.setBounds (metersCard.getContentBounds());
-
-    // Sounds: list next to the editor in landscape, above it in portrait
-    if (portrait)
-    {
-        soundList.setBounds (b.removeFromTop (juce::jmin (220, b.getHeight() / 3)));
-        b.removeFromTop (gap);
-    }
-    else
-    {
-        soundList.setBounds (b.removeFromLeft (juce::jmax (300, b.getWidth() / 3)));
-        b.removeFromLeft (gap);
-    }
-    soundEditor.setBounds (b);
 }

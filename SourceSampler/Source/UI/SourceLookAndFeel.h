@@ -133,11 +133,50 @@ private:
 };
 
 
+/** Spinning arc shown while something is loading (visible only while active). */
+class LoadingIndicator : public juce::Component,
+                         private juce::Timer
+{
+public:
+    LoadingIndicator() { setInterceptsMouseClicks (false, false); }
+
+    void setActive (bool shouldBeActive)
+    {
+        if (shouldBeActive == isTimerRunning())
+            return;
+        setVisible (shouldBeActive);
+        if (shouldBeActive)
+            startTimerHz (30);
+        else
+            stopTimer();
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        const auto bounds = getLocalBounds().toFloat().reduced (2.0f);
+        const float size = juce::jmin (bounds.getWidth(), bounds.getHeight());
+        const auto centre = bounds.getCentre();
+        juce::Path arc;
+        arc.addCentredArc (centre.x, centre.y, size * 0.5f, size * 0.5f, angle, 0.0f, juce::MathConstants<float>::pi * 1.4f, true);
+        g.setColour (SourceColours::accent);
+        g.strokePath (arc, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+private:
+    void timerCallback() override
+    {
+        angle += 0.25f;
+        repaint();
+    }
+    float angle = 0.0f;
+};
+
+
 /** Small button that draws an icon (play, stop, remove) instead of text. */
 class IconButton : public juce::Button
 {
 public:
-    enum class Icon { play, stop, remove, previous, next, retry };
+    enum class Icon { play, stop, remove, previous, next, retry, speaker, speakerMuted, similar };
 
     IconButton (const juce::String& name, Icon iconToUse) : juce::Button (name), icon (iconToUse)
     {
@@ -147,7 +186,9 @@ public:
     void paintButton (juce::Graphics& g, bool isMouseOver, bool isButtonDown) override
     {
         auto bounds = getLocalBounds().toFloat().reduced (0.5f);
-        g.setColour (isButtonDown ? SourceColours::accent : (isMouseOver ? SourceColours::controlHover : SourceColours::control));
+        // Toggle buttons that are on (e.g. mute) are highlighted
+        const auto background = getToggleState() ? SourceColours::warning.darker (0.2f) : SourceColours::control;
+        g.setColour (isButtonDown ? SourceColours::accent : (isMouseOver ? background.brighter (0.15f) : background));
         g.fillRoundedRectangle (bounds, 4.0f);
 
         auto iconBounds = bounds.withSizeKeepingCentre (bounds.getHeight() * 0.45f, bounds.getHeight() * 0.45f);
@@ -193,6 +234,55 @@ public:
                 g.fillPath (head);
                 break;
             }
+            case Icon::speaker:
+            case Icon::speakerMuted:
+            {
+                // Speaker with sound waves, or with a cross if muted
+                const auto b = iconBounds.expanded (iconBounds.getWidth() * 0.15f);
+                const float w = b.getWidth(), h = b.getHeight();
+                p.startNewSubPath (b.getX(), b.getY() + h * 0.35f);
+                p.lineTo (b.getX() + w * 0.22f, b.getY() + h * 0.35f);
+                p.lineTo (b.getX() + w * 0.48f, b.getY() + h * 0.1f);
+                p.lineTo (b.getX() + w * 0.48f, b.getY() + h * 0.9f);
+                p.lineTo (b.getX() + w * 0.22f, b.getY() + h * 0.65f);
+                p.lineTo (b.getX(), b.getY() + h * 0.65f);
+                p.closeSubPath();
+                g.fillPath (p);
+                juce::Path extra;
+                if (icon == Icon::speakerMuted)
+                {
+                    extra.addLineSegment ({ b.getX() + w * 0.62f, b.getY() + h * 0.32f, b.getRight(), b.getY() + h * 0.68f }, 1.5f);
+                    extra.addLineSegment ({ b.getX() + w * 0.62f, b.getY() + h * 0.68f, b.getRight(), b.getY() + h * 0.32f }, 1.5f);
+                    g.fillPath (extra);
+                }
+                else
+                {
+                    const float cx = b.getX() + w * 0.45f, cy = b.getCentreY();
+                    extra.addCentredArc (cx, cy, w * 0.3f, h * 0.3f, 0.0f, 0.6f, juce::MathConstants<float>::pi - 0.6f, true);
+                    extra.addCentredArc (cx, cy, w * 0.52f, h * 0.48f, 0.0f, 0.6f, juce::MathConstants<float>::pi - 0.6f, true);
+                    g.strokePath (extra, juce::PathStrokeType (1.4f));
+                }
+                break;
+            }
+            case Icon::similar:
+            {
+                // Two overlapping circles ("something like this")
+                const float r = iconBounds.getHeight() * 0.42f;
+                const auto c = iconBounds.getCentre();
+                p.addEllipse (c.x - r * 1.45f, c.y - r, r * 2.0f, r * 2.0f);
+                p.addEllipse (c.x - r * 0.55f, c.y - r, r * 2.0f, r * 2.0f);
+                g.strokePath (p, juce::PathStrokeType (1.4f));
+                break;
+            }
+        }
+    }
+
+    void setIcon (Icon newIcon)
+    {
+        if (newIcon != icon)
+        {
+            icon = newIcon;
+            repaint();
         }
     }
 

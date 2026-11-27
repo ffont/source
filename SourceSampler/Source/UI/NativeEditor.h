@@ -17,10 +17,14 @@
 #include "SourceLookAndFeel.h"
 #include "SoundListComponent.h"
 #include "SoundEditorComponent.h"
+#include "FxPanel.h"
+#include "SearchPanel.h"
+#include "AcousticFilterComponent.h"
 
 
 /** Shows the RMS level of each output channel. */
-class LevelMetersComponent : public juce::Component
+class LevelMetersComponent : public juce::Component,
+                             public juce::SettableTooltipClient
 {
 public:
     void setLevels (const std::vector<float>& newLevels);
@@ -79,7 +83,8 @@ private:
     void sendAction (const juce::String& actionName, const juce::StringArray& parameters = {});
     void updateFromState();
     void timerCallback() override;
-    void sendReverbParameters();
+    enum class Tab { general, search, fx };
+    void showTab (Tab tab);
     void runQuery (const juce::String& queryActionName);
     juce::ValueTree getPresetState() const { return sourceSampler.state.getChildWithName (SourceIDs::PRESET); }
     void layoutContent (juce::Rectangle<int> bounds, bool portrait);
@@ -116,7 +121,9 @@ private:
 
     // Header
     juce::ImageComponent titleImage, logoImage;
-    juce::Label statusLabel;
+    LoadingIndicator queryLoadingIndicator;  // Shown while a "Get new sounds" query runs
+    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" };
+    Tab currentTab = Tab::general;
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };
@@ -135,31 +142,28 @@ private:
 
     // Get new sounds
     CardComponent querySoundsCard { "Get new sounds" };
-    juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel;
+    juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel, queryLicenseLabel;
+    juce::ComboBox queryLicenseCombo;
+    juce::OwnedArray<AcousticFilterComponent> queryAcousticFilters;
+    juce::String getQueryExtraFilter() const;  // License and acoustic properties
+    int getQueryCardHeight() const;
     juce::TextEditor queryEditor;
-    juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider, soundToReplaceSlider;
+    juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider;
     juce::ComboBox noteLayoutCombo;
-    juce::TextButton replaceAllButton { "Search and replace all sounds" };
-    juce::TextButton replaceOneButton { "Search and replace sound #" };
-    juce::TextButton addSoundsButton { "Search and add sounds" };
+    juce::TextButton replaceAllButton { "Replace all with query" };
+    juce::TextButton replaceRandomlyButton { "Replace all randomly" };
 
-    // Reverb
-    CardComponent reverbCard { "Reverb" };
-    struct ReverbControl
-    {
-        juce::Identifier id;
-        juce::Label label;
-        juce::Slider slider;
-    };
-    std::array<ReverbControl, 6> reverbControls;
-
-    // Meters
-    CardComponent metersCard { "Output" };
+    // Output meters (in the header)
     LevelMetersComponent levelMeters;
+    IconButton muteButton { "Mute output", IconButton::Icon::speaker };
 
     // Sounds
     SoundListComponent soundList;
     SoundEditorComponent soundEditor;
+
+    // Other tabs
+    SearchPanel searchPanel;
+    FxPanel fxPanel;
 
     // Keyboard
     juce::MidiKeyboardComponent keyboard;

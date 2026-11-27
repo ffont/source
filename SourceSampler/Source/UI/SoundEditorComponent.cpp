@@ -524,22 +524,7 @@ void MpeMappingsComponent::resized()
 //==============================================================================
 // SoundEditorComponent
 
-/** Short name for a Creative Commons license URL, e.g. "http://creativecommons.org/licenses/by-nc/3.0/" -> "CC BY-NC 3.0". */
-static juce::String getShortLicenseName (const juce::String& licenseURL)
-{
-    if (licenseURL.contains ("publicdomain/zero"))
-        return "CC0";
-    if (licenseURL.contains ("sampling+"))
-        return "CC Sampling+";
-    if (licenseURL.contains ("/licenses/"))
-    {
-        auto parts = juce::StringArray::fromTokens (licenseURL.fromFirstOccurrenceOf ("/licenses/", false, false), "/", {});
-        parts.removeEmptyStrings();
-        if (parts.size() >= 1)
-            return "CC " + parts[0].toUpperCase() + (parts.size() >= 2 ? " " + parts[1] : juce::String());
-    }
-    return licenseURL;
-}
+using SourceHelpers::getShortLicenseName;
 
 namespace
 {
@@ -754,7 +739,7 @@ void SoundEditorComponent::resized()
     b.removeFromTop (6);
     if (soundUUID.isNotEmpty())
     {
-        waveform.setBounds (b.removeFromTop (110));
+        waveform.setBounds (b.removeFromTop (juce::jlimit (110, 200, b.getHeight() / 4)));
         b.removeFromTop (6);
         auto rootRow = b.removeFromTop (22);
         rootNoteLabel.setBounds (rootRow.removeFromLeft (96));

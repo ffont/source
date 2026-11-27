@@ -462,6 +462,71 @@ public:
             expectEquals (f.sampler.getSoundWithUUID (loadedSound.getProperty (SourceIDs::uuid).toString())->getLinkedSourceSamplerSounds().size(), (size_t) 0);
         }
 
+        beginTest ("Replacing the audio of a sound keeps its settings and mappings");
+        {
+            Fixture f;
+            auto sound = f.addLocalSound ("original", 440.0);
+            const auto uuid = sound.getProperty (SourceIDs::uuid).toString();
+            f.send (ACTION_SET_SOUND_PARAMETER_FLOAT, { uuid, "gain", "-7" });
+            f.send (ACTION_SET_SOUND_PARAMETER_FLOAT, { uuid, "pitch", "3" });
+            f.send (ACTION_ADD_OR_UPDATE_CC_MAPPING, { uuid, juce::Uuid().toString(), "20", "pan", "0.0", "1.0" });
+            const auto notes = sound.getProperty (SourceIDs::midiNotes).toString();
+            const int rootNote = sound.getChildWithName (SourceIDs::SOUND_SAMPLE).getProperty (SourceIDs::midiRootNote);
+
+            auto newFile = TestUtils::writeSineWav (f.tmp.folder.getChildFile ("replacement.wav"), 220.0, 0.5, sampleRate);
+            f.send (ACTION_REPLACE_SOUND_AUDIO, { uuid, "-1", "replacement", "", "", "", newFile.getFullPathName(), "wav", juce::String (newFile.getSize()), "" });
+            expectEquals (f.numSounds(), 1);
+            auto replaced = f.preset().getChild (0);
+            expect (replaced.getProperty (SourceIDs::uuid).toString() != uuid, "The replaced sound is a new sound");
+            expectEquals (replaced.getChildWithName (SourceIDs::SOUND_SAMPLE).getProperty (SourceIDs::name).toString(), juce::String ("replacement"));
+            expectEquals ((float) replaced.getProperty (SourceIDs::gain), -7.0f);
+            expectEquals ((float) replaced.getProperty (SourceIDs::pitch), 3.0f);
+            expectEquals (replaced.getProperty (SourceIDs::midiNotes).toString(), notes);
+            expectEquals ((int) replaced.getChildWithName (SourceIDs::SOUND_SAMPLE).getProperty (SourceIDs::midiRootNote), rootNote);
+            expect (replaced.getChildWithName (SourceIDs::MIDI_CC_MAPPING).isValid());
+            expect (TestUtils::runMessageLoopUntil ([replaced] { return (bool) replaced.getProperty (SourceIDs::allSoundsLoaded); }));
+
+            f.send (ACTION_REPLACE_SOUND_AUDIO, { "not-a-sound", "-1", "x", "", "", "", newFile.getFullPathName(), "wav", "1", "" });
+            expectEquals (f.numSounds(), 1);
+        }
+
+        beginTest ("Muting silences the output (with a short fade)");
+        {
+            Fixture f;
+            auto sound = f.addLocalSound ("loud", 440.0);
+            f.send (ACTION_PLAY_SOUND, { sound.getProperty (SourceIDs::uuid).toString() });
+            juce::AudioBuffer<float> buffer (2, blockSize);
+            juce::MidiBuffer midi;
+            f.sampler.processBlock (buffer, midi);
+            f.sampler.processBlock (buffer, midi);
+            expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.01f);
+            f.sampler.setOutputMuted (true);
+            for (int i = 0; i < 10; ++i)
+                f.sampler.processBlock (buffer, midi);
+            expectEquals (buffer.getMagnitude (0, blockSize), 0.0f);
+            f.sampler.setOutputMuted (false);
+            for (int i = 0; i < 10; ++i)
+                f.sampler.processBlock (buffer, midi);
+            expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.01f);
+        }
+
+        beginTest ("Hover previews play polyphonically (up to 10)");
+        {
+            Fixture f;
+            juce::AudioBuffer<float> buffer (2, blockSize);
+            juce::MidiBuffer midi;
+            for (int i = 0; i < 12; ++i)
+            {
+                auto file = TestUtils::writeSineWav (f.tmp.folder.getChildFile ("hover" + juce::String (i) + ".wav"), 220.0 + 20.0 * i, 1.0, sampleRate);
+                f.send (ACTION_PLAY_HOVER_PREVIEW, { file.getFullPathName() });
+                expectEquals (f.sampler.getNumHoverPreviewsPlaying(), juce::jmin (i + 1, 10));
+            }
+            f.sampler.processBlock (buffer, midi);
+            expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.1f);
+            f.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { "" });  // Stopping previews stops these too
+            expectEquals (f.sampler.getNumHoverPreviewsPlaying(), 0);
+        }
+
         beginTest ("Program changes load presets");
         {
             Fixture f;

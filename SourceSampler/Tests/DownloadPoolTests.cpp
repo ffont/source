@@ -130,7 +130,7 @@ public:
 
         beginTest ("Cancelling aborts downloads waiting for the server");
         {
-            ScriptedHttpServer server ({ { 0, {} } });  // Never answers
+            ScriptedHttpServer server (std::vector<ScriptedHttpServer::Response> { { 0, {} } });  // Never answers
             DownloadPool pool;
             std::atomic<int> numFinished { 0 };
             auto flag = DownloadPool::makeCancelFlag();
@@ -146,7 +146,7 @@ public:
 
         beginTest ("Destroying the pool aborts downloads waiting for the server");
         {
-            ScriptedHttpServer server ({ { 0, {} } });
+            ScriptedHttpServer server (std::vector<ScriptedHttpServer::Response> { { 0, {} } });
             const auto start = juce::Time::getMillisecondCounterHiRes();
             {
                 DownloadPool pool;

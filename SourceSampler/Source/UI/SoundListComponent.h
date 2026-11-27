@@ -30,6 +30,8 @@ struct SoundListItem
     juce::int64 downloadSizeBytes = -1;  // Size of the downloaded files (-1 if unknown)
     bool loaded = false;
     bool willBeDeleted = false;
+    bool fromFreesound = false;       // (first sample) can be replaced by similar sounds
+    bool findingSimilar = false;
     int numSamples = 0;
     int rootNote = -1;
     int numMappedNotes = 0;

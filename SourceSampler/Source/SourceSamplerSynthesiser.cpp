@@ -14,16 +14,6 @@
 SourceSamplerSynthesiser::SourceSamplerSynthesiser()
 {
     setSamplerVoices(SourceDefaults::numVoices);
-    
-    // Configure effects chain
-    juce::Reverb::Parameters reverbParameters;
-    reverbParameters.roomSize = 0.5f;
-    reverbParameters.damping = 0.5f;
-    reverbParameters.wetLevel = 0.0f;
-    reverbParameters.dryLevel = 1.0f;
-    reverbParameters.width = 1.0f;
-    reverbParameters.freezeMode = 0.0f;
-    setReverbParameters(reverbParameters);
 }
 
 void SourceSamplerSynthesiser::setSamplerVoices(int nVoices)
@@ -205,9 +195,5 @@ void SourceSamplerSynthesiser::renderVoices (juce::AudioBuffer< float > &outputA
 //==============================================================================
 
 void SourceSamplerSynthesiser::setReverbParameters (juce::Reverb::Parameters params) {
-    // juce::Reverb internally scales the dry level by 2 (and the wet level by 3), so a dry level of 1.0 would
-    // boost the signal by +6 dB. Compensate here so that dryLevel = 1.0 means unity gain.
-    params.dryLevel *= 0.5f;
-    auto& reverb = fxChain.get<reverbIndex>();
-    reverb.setParameters(params);
+    fxChain.setReverbParameters(params);  // Applied in the audio thread (with dry level compensation, see SourceFxChain)
 }
