@@ -1108,7 +1108,9 @@ void SourceSound::loadSounds(std::function<bool()> shouldStopLoading)
                         setSampleProperty(child, SourceIDs::usesPreview, false);
                     } else {
                         // Download preview quality file
-                        downloadURL = child.getProperty(SourceIDs::previewURL, "").toString();
+                        downloadURL = SourceHelpers::fixFreesoundPreviewURL(child.getProperty(SourceIDs::previewURL, "").toString());
+                        if (downloadURL != child.getProperty(SourceIDs::previewURL, "").toString())
+                            setSampleProperty(child, SourceIDs::previewURL, downloadURL);  // So it is saved with the new URL
                         setSampleProperty(child, SourceIDs::usesPreview, true);
                     }
                     # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS

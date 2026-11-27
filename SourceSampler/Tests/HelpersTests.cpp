@@ -175,6 +175,29 @@ public:
             folder.deleteRecursively();
         }
 
+        beginTest ("Old Freesound preview URLs are rewritten to the CDN");
+        {
+            const juce::String cdn ("https://cdn.freesound.org/previews/372/372688_2475994-hq.ogg");
+            expectEquals (SourceHelpers::fixFreesoundPreviewURL ("https://freesound.org/data/previews/372/372688_2475994-hq.ogg"), cdn);
+            expectEquals (SourceHelpers::fixFreesoundPreviewURL ("http://www.freesound.org/data/previews/372/372688_2475994-hq.ogg"), cdn);
+            expectEquals (SourceHelpers::fixFreesoundPreviewURL (cdn), cdn);
+            expectEquals (SourceHelpers::fixFreesoundPreviewURL ("https://example.org/data/previews/1.ogg"), juce::String ("https://example.org/data/previews/1.ogg"));
+            expectEquals (SourceHelpers::fixFreesoundPreviewURL (""), juce::String());
+
+            auto file = juce::File::createTempFile ("xml");
+            file.replaceWithText ("<PRESET name=\"p\"><SOUND><SOUND_SAMPLE previewURL=\"https://freesound.org/data/previews/1/1_2-hq.ogg\"/></SOUND>"
+                                  "<soundInfo soundOGGURL=\"https://freesound.org/data/previews/3/3_4-hq.ogg\"/></PRESET>");
+            expect (SourceHelpers::fixFreesoundPreviewURLsInFile (file));
+            const auto fixed = file.loadFileAsString();
+            expect (fixed.contains ("previewURL=\"https://cdn.freesound.org/previews/1/1_2-hq.ogg\""));
+            expect (fixed.contains ("soundOGGURL=\"https://cdn.freesound.org/previews/3/3_4-hq.ogg\""));
+            expect (! fixed.contains ("/data/previews/"));
+            const auto modificationTime = file.getLastModificationTime();
+            expect (! SourceHelpers::fixFreesoundPreviewURLsInFile (file), "Files without old URLs are not rewritten");
+            expect (file.getLastModificationTime() == modificationTime);
+            file.deleteFile();
+        }
+
         beginTest ("Parameter metadata is consistent");
         for (const auto& info : getSoundParametersInfo())
         {

@@ -25,6 +25,7 @@ SourceSampler::SourceSampler(juce::File baseDataLocation):
     
     DBG("Creating needed directories");
     createDirectories(SOURCE_APP_DIRECTORY_NAME, baseDataLocation);
+    fixFreesoundPreviewURLsInPresetFiles();
     
     std::cout << "Configuring app" << std::endl;
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
@@ -530,6 +531,19 @@ void SourceSampler::enableSessionAutosave (const juce::File& file)
     });
 }
 
+int SourceSampler::fixFreesoundPreviewURLsInPresetFiles()
+{
+    // Old presets store Freesound preview URLs which now redirect to the CDN (see SourceHelpers::fixFreesoundPreviewURL).
+    // Only files with old URLs are rewritten, so this is quick once they have been fixed.
+    int numFixed = 0;
+    for (const auto& file : presetFilesLocation.findChildFiles(juce::File::findFiles, false, "*.xml"))
+        if (SourceHelpers::fixFreesoundPreviewURLsInFile(file))
+            numFixed += 1;
+    if (numFixed > 0)
+        DBG("Fixed old Freesound preview URLs in " << numFixed << " preset files");
+    return numFixed;
+}
+
 void SourceSampler::enablePresetImportFolder (const juce::File& folder)
 {
     if (folder == juce::File() || folder == presetFilesLocation)
@@ -567,6 +581,7 @@ int SourceSampler::importPresetsFromImportFolder()
         auto destination = getPresetFilePath(getPresetFilenameByIndex(indexString.getIntValue()));
         if (file.copyFileTo(destination)){
             file.deleteFile();
+            SourceHelpers::fixFreesoundPreviewURLsInFile(destination);
             DBG("Imported preset " << file.getFileName() << " to " << destination.getFullPathName());
             ++numImported;
         }

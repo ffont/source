@@ -423,6 +423,32 @@ namespace SourceHelpers
     // Action message (internal API) builders. All UIs (web, Python, native) control the sampler by sending
     // these messages to SourceSampler::actionListenerCallback.
 
+    /** Freesound previews moved from freesound.org/data/previews/ to cdn.freesound.org/previews/. The old URLs (stored
+        in old presets) still work but redirect, and the redirect adds a request to every download. Returns the URL
+        pointing to the CDN (other URLs are returned unchanged). */
+    inline juce::String fixFreesoundPreviewURL (const juce::String& url)
+    {
+        for (auto oldPrefix : { "https://freesound.org/data/previews/", "http://freesound.org/data/previews/",
+                                "https://www.freesound.org/data/previews/", "http://www.freesound.org/data/previews/" })
+            if (url.startsWith (oldPrefix))
+                return "https://cdn.freesound.org/previews/" + url.substring ((int) strlen (oldPrefix));
+        return url;
+    }
+
+    /** Rewrites the old Freesound preview URLs in a preset (or session) file to the CDN ones (see
+        fixFreesoundPreviewURL). Returns true if the file was changed. */
+    inline bool fixFreesoundPreviewURLsInFile (const juce::File& file)
+    {
+        const auto text = file.loadFileAsString();
+        auto fixed = text;
+        for (auto oldPrefix : { "https://freesound.org/data/previews/", "http://freesound.org/data/previews/",
+                                "https://www.freesound.org/data/previews/", "http://www.freesound.org/data/previews/" })
+            fixed = fixed.replace (oldPrefix, "https://cdn.freesound.org/previews/");
+        if (fixed == text)
+            return false;
+        return file.replaceWithText (fixed, false, false, nullptr);  // Keep the line endings of the file
+    }
+
     /** Reads the name of a preset file without parsing the whole file (preset files can be large): only the root
         element's start tag is parsed. Works with current ("PRESET", name attribute) and old ("SourcePresetState",
         presetName attribute) preset files. Returns an empty string if the file is not a readable preset. */

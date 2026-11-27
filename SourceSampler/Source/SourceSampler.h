@@ -184,6 +184,9 @@ public:
         folder (which is visible in the Files app) are moved to the presets folder, replacing presets with the same
         index. The folder is checked now and then periodically. Does nothing if the folder is the presets folder. */
     void enablePresetImportFolder (const juce::File& folder);
+    /** Rewrites old Freesound preview URLs in the preset files (done when the sampler is created). Returns the
+        number of files changed. */
+    int fixFreesoundPreviewURLsInPresetFiles();
     juce::File getPresetImportFolder() const { return presetImportFolder; }
     /** Moves valid preset files from the import folder to the presets folder. Returns the number of imported presets. */
     int importPresetsFromImportFolder();
