@@ -56,6 +56,40 @@ public:
             expect (! (bool) preset().getChild (0).getProperty (SourceIDs::findingSimilar, false));
         }
 
+        beginTest ("Sounds can be replaced with random sounds");
+        {
+            auto preset = [&sampler] { return sampler.state.getChildWithName (SourceIDs::PRESET); };
+            auto numSounds = [&preset]
+            {
+                int n = 0;
+                for (const auto& c : preset())
+                    if (c.hasType (SourceIDs::SOUND) && ! (bool) c.getProperty (SourceIDs::willBeDeleted, false)) ++n;
+                return n;
+            };
+            const auto start = juce::Time::getMillisecondCounterHiRes();
+            sampler.actionListenerCallback (SourceHelpers::serializeAction (ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY, { "4", "0", "3", "0" }));
+            expect (sampler.isQueryingSounds());
+            expect (TestUtils::runMessageLoopUntil ([&] { return ! sampler.isQueryingSounds(); }, 180000));
+            logMessage ("Random sounds in " + juce::String ((juce::Time::getMillisecondCounterHiRes() - start) / 1000.0, 1) + " s, "
+                        + sampler.state.getProperty (SourceIDs::numResultsLastQuery).toString() + " matching");
+            expectEquals (numSounds(), 4);
+        }
+
+        beginTest ("Acoustic property filters");
+        {
+            FreesoundSearchOptions filtered;
+            filtered.query = "piano";
+            filtered.maxResults = 20;
+            filtered.acousticLevels[0] = FreesoundSearchOptions::Level::low;  // brightness
+            sampler.freesoundSearch.search (filtered);
+            expect (TestUtils::runMessageLoopUntil ([&] { return sampler.freesoundSearch.getStatus() == FreesoundSearch::Status::done
+                                                                  || sampler.freesoundSearch.getStatus() == FreesoundSearch::Status::error; }, 120000));
+            logMessage (sampler.freesoundSearch.getStatusMessage());
+            expect (sampler.freesoundSearch.getStatus() == FreesoundSearch::Status::done);
+            expectGreaterThan ((int) sampler.freesoundSearch.getResults()->size(), 0);
+            expectLessThan (sampler.freesoundSearch.getTotalNumResults(), 4681, "The filter reduces the results");
+        }
+
         beginTest ("Previews are downloaded and played");
         const auto url = results->front().previewURL;
         sampler.actionListenerCallback (SourceHelpers::serializeAction (ACTION_PLAY_SOUND_FILE_FROM_PATH, { url }));

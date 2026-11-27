@@ -990,6 +990,41 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
             DBG("Skip query as already querying...");
         }
     }
+    else if (actionName == ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY){
+        // Parameters: number of sounds, min length, max length, note layout type
+        if (isQuerying){
+            DBG("Skip query as already querying...");
+        } else {
+            const int numSounds = juce::jlimit(1, 128, parameters[0].getIntValue());
+            const float minLength = parameters[1].getFloatValue();
+            const float maxLength = parameters[2].getFloatValue();
+            noteLayoutType = parameters[3].getIntValue();
+            isQuerying = true;
+            state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
+            const juce::String filter = "duration:[" + juce::String(minLength) + " TO " + (maxLength > 0.0f ? juce::String(maxLength) : juce::String("*")) + "]";
+            juce::WeakReference<SourceSampler> weak = weakThis;
+            freesoundSearch.findRandomSounds(numSounds, filter, [weak](std::vector<FreesoundSearchResult> found, int numMatching, juce::String error){
+                auto* sampler = weak.get();
+                if (sampler == nullptr)
+                    return;
+                sampler->isQuerying = false;
+                sampler->state.setProperty(SourceIDs::numResultsLastQuery, numMatching, nullptr);
+                if (found.empty()){
+                    DBG("No random sounds found " << error);
+                    return;
+                }
+                sampler->removeAllSounds();
+                const int n = (int) found.size();
+                for (int i = 0; i < n; i++){
+                    const auto& r = found[(size_t) i];
+                    const auto layout = SourceHelpers::computeNoteLayout(sampler->noteLayoutType, i, n);
+                    sampler->addOrReplaceSoundFromBasicSoundProperties("", r.id, r.name, r.username, r.license, r.previewURL, "", r.format,
+                                                                        (int) juce::jmin((juce::int64) INT_MAX, r.filesize), {}, layout.midiNotes,
+                                                                        layout.midiRootNote, SourceDefaults::midiVelocityLayer, layout.midiChannel, false);
+                }
+            });
+        }
+    }
     else if (actionName == ACTION_REPLACE_SOUND_FROM_QUERY){
         juce::String addReplaceOrReplaceSound = parameters[0]; // Will be UUID of the sound to replace
         juce::String query = parameters[1];

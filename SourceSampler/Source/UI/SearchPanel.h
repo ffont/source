@@ -49,6 +49,7 @@ public:
 
 private:
     class AddButtonCell;
+    class AcousticFilter;
 
     // ChangeListener (search status/results)
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
@@ -87,6 +88,8 @@ private:
     juce::ComboBox licenseCombo, maxResultsCombo;
     juce::Slider minDurationSlider, maxDurationSlider;
     juce::TextButton listViewButton { "List" }, mapViewButton { "Map" };
+    juce::OwnedArray<AcousticFilter> acousticFilters;
+    int layoutAcousticFilters (juce::Rectangle<int> area, bool apply);  // Returns the height used
 
     // Results
     juce::TableListBox table;

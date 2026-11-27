@@ -71,6 +71,73 @@ private:
 
 
 //==============================================================================
+/** Filter for an acoustic property: its name and three squares (low, mid, high). Only one square can be selected;
+    clicking the selected one clears the filter. */
+class SearchPanel::AcousticFilter : public juce::Component,
+                                    public juce::SettableTooltipClient
+{
+public:
+   #if JUCE_IOS
+    static constexpr int labelWidth = 66, squareSize = 20, squareGap = 4;  // Bigger for fingers
+   #else
+    static constexpr int labelWidth = 66, squareSize = 15, squareGap = 3;
+   #endif
+    static constexpr int preferredWidth = labelWidth + 3 * squareSize + 2 * squareGap;
+
+    explicit AcousticFilter (const juce::String& propertyName) : name (propertyName)
+    {
+        setTooltip (name.substring (0, 1).toUpperCase() + name.substring (1) + ": low, mid or high (click again to clear)");
+    }
+
+    FreesoundSearchOptions::Level getLevel() const { return level; }
+    void setLevel (FreesoundSearchOptions::Level newLevel) { level = newLevel; repaint(); }
+
+    void paint (juce::Graphics& g) override
+    {
+        g.setColour (level == FreesoundSearchOptions::Level::any ? SourceColours::dimText : SourceColours::text);
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawText (name.substring (0, 1).toUpperCase() + name.substring (1), getLocalBounds().withWidth (labelWidth), juce::Justification::centredLeft, true);
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto square = getSquare (i).toFloat();
+            const bool selected = (int) level == i;
+            g.setColour (selected ? SourceColours::accent : SourceColours::control);
+            g.fillRoundedRectangle (square, 2.0f);
+            // Bars of increasing height show low/mid/high
+            g.setColour (selected ? SourceColours::background : SourceColours::dimText);
+            const float barHeight = square.getHeight() * (0.3f + 0.25f * (float) i);
+            g.fillRect (square.reduced (4.0f, 0.0f).withTrimmedTop (square.getHeight() - barHeight).withTrimmedBottom (2.0f));
+        }
+    }
+
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (getSquare (i).expanded (1).contains (e.getPosition()))
+            {
+                setLevel ((int) level == i ? FreesoundSearchOptions::Level::any : (FreesoundSearchOptions::Level) i);
+                if (onChange != nullptr)
+                    onChange();
+                return;
+            }
+        }
+    }
+
+    std::function<void()> onChange;
+
+private:
+    juce::Rectangle<int> getSquare (int i) const
+    {
+        return { labelWidth + i * (squareSize + squareGap), (getHeight() - squareSize) / 2, squareSize, squareSize };
+    }
+
+    juce::String name;
+    FreesoundSearchOptions::Level level = FreesoundSearchOptions::Level::any;
+};
+
+
+//==============================================================================
 SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, std::function<juce::ValueTree()> presetGetter)
     : search (s), actions (std::move (actionSender)), getPreset (std::move (presetGetter)), searchCard ("Search Freesound"),
       selectedCard ({})
@@ -111,6 +178,12 @@ SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, s
     {
         b->setColour (juce::TextButton::buttonOnColourId, SourceColours::accent.darker (0.3f));
         searchCard.addAndMakeVisible (b);
+    }
+    for (int i = 0; i < FreesoundSearchOptions::getAcousticPropertyNames().size(); ++i)
+    {
+        auto* filter = acousticFilters.add (new AcousticFilter (FreesoundSearchOptions::getAcousticPropertyNames()[i]));
+        filter->setLevel (lastOptions.acousticLevels[(size_t) i]);
+        searchCard.addAndMakeVisible (filter);
     }
     listViewButton.onClick = [this] { showMap (false); };
     mapViewButton.onClick = [this] { showMap (true); };
@@ -179,6 +252,8 @@ void SearchPanel::runSearch()
     options.minDuration = (float) minDurationSlider.getValue();
     options.maxDuration = (float) maxDurationSlider.getValue();
     options.maxResults = maxResultsOptions[juce::jmax (0, maxResultsCombo.getSelectedId() - 1)].getIntValue();
+    for (int i = 0; i < acousticFilters.size(); ++i)
+        options.acousticLevels[(size_t) i] = acousticFilters[i]->getLevel();
     search.search (options);
 }
 
@@ -480,14 +555,28 @@ void SearchPanel::sortOrderChanged (int columnId, bool forwards)
     table.repaint();
 }
 
+int SearchPanel::layoutAcousticFilters (juce::Rectangle<int> area, bool apply)
+{
+    // As many filters per row as fit
+    const int gap = 18, height = AcousticFilter::squareSize + 6;
+    const int perRow = juce::jmax (1, (area.getWidth() + gap) / (AcousticFilter::preferredWidth + gap));
+    const int numRows = (acousticFilters.size() + perRow - 1) / perRow;
+    if (apply)
+        for (int i = 0; i < acousticFilters.size(); ++i)
+            acousticFilters[i]->setBounds (area.getX() + (i % perRow) * (AcousticFilter::preferredWidth + gap),
+                                           area.getY() + (i / perRow) * (height + 4), AcousticFilter::preferredWidth, height);
+    return numRows * (height + 4) - 4;
+}
+
 //==============================================================================
 void SearchPanel::resized()
 {
     auto b = getLocalBounds();
     const int gap = 8;
 
-    // Search controls: query on the first row, filters and view buttons on the second
-    searchCard.setBounds (b.removeFromTop (8 + rowHeight + 6 + rowHeight + 8 + 26));
+    // Search controls: query on the first row, filters and view buttons on the second, acoustic properties below
+    const int acousticHeight = layoutAcousticFilters ({ 0, 0, b.getWidth() - 20, 1000 }, false);
+    searchCard.setBounds (b.removeFromTop (8 + rowHeight + 6 + rowHeight + 6 + acousticHeight + 8 + 26));
     {
         auto c = searchCard.getContentBounds();
         auto row = c.removeFromTop (rowHeight);
@@ -509,6 +598,8 @@ void SearchPanel::resized()
         mapViewButton.setBounds (row.removeFromRight (56));
         row.removeFromRight (2);
         listViewButton.setBounds (row.removeFromRight (56));
+        c.removeFromTop (6);
+        layoutAcousticFilters (c, true);
         // Status in the title row of the card
         statusLabel.setBounds (searchCard.getLocalBounds().reduced (10, 6).removeFromTop (20).withTrimmedLeft (160));
     }

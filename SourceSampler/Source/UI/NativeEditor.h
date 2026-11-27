@@ -143,11 +143,10 @@ private:
     CardComponent querySoundsCard { "Get new sounds" };
     juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel;
     juce::TextEditor queryEditor;
-    juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider, soundToReplaceSlider;
+    juce::Slider numSoundsSlider, minLengthSlider, maxLengthSlider;
     juce::ComboBox noteLayoutCombo;
     juce::TextButton replaceAllButton { "Search and replace all sounds" };
-    juce::TextButton replaceOneButton { "Search and replace sound #" };
-    juce::TextButton addSoundsButton { "Search and add sounds" };
+    juce::TextButton replaceRandomlyButton { "Search and replace all sounds randomly" };
 
     // Output meters (in the header)
     LevelMetersComponent levelMeters;

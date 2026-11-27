@@ -294,13 +294,12 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     noteLayoutCombo.onChange = [this] { sendAction (ACTION_REAPPLY_LAYOUT, { juce::String (noteLayoutCombo.getSelectedId() - 1) }); };
     querySoundsCard.addAndMakeVisible (noteLayoutCombo);
     replaceAllButton.onClick = [this] { runQuery (ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY); };
-    replaceOneButton.onClick = [this] { runQuery (ACTION_REPLACE_SOUND_FROM_QUERY); };
-    addSoundsButton.onClick = [this] { runQuery (ACTION_ADD_NEW_SOUNDS_FROM_QUERY); };
+    replaceAllButton.setTooltip ("Replace all sounds with sounds found with the query");
+    replaceRandomlyButton.onClick = [this] { runQuery (ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY); };
+    replaceRandomlyButton.setTooltip ("Replace all sounds with random Freesound sounds (the query is ignored)");
     querySoundsCard.addAndMakeVisible (replaceAllButton);
-    querySoundsCard.addAndMakeVisible (replaceOneButton);
-    querySoundsCard.addAndMakeVisible (addSoundsButton);
+    querySoundsCard.addAndMakeVisible (replaceRandomlyButton);
     querySoundsCard.addAndMakeVisible (statusLabel);
-    setupNumberSlider (soundToReplaceSlider, 1, 128, 1, 1, querySoundsCard);
 
     // Sounds
     soundList.onSelectionChanged = [this] (const juce::String& uuid) { soundEditor.setSound (uuid); };
@@ -507,17 +506,8 @@ void SourceNativeEditor::runQuery (const juce::String& queryActionName)
     const juce::String minLength (minLengthSlider.getValue());
     const juce::String maxLength (maxLengthSlider.getValue());
     const juce::String layout (noteLayoutCombo.getSelectedId() > 0 ? noteLayoutCombo.getSelectedId() - 1 : SourceDefaults::noteLayoutType);
-    if (queryActionName == ACTION_REPLACE_SOUND_FROM_QUERY)
-    {
-        const int index = (int) soundToReplaceSlider.getValue() - 1;
-        const auto& items = soundList.getItems();
-        if (index < 0 || index >= (int) items.size())
-        {
-            statusLabel.setText ("There is no sound #" + juce::String (index + 1) + " to replace", juce::dontSendNotification);
-            return;
-        }
-        sendAction (queryActionName, { items[(size_t) index].uuid, query, minLength, maxLength, layout });
-    }
+    if (queryActionName == ACTION_REPLACE_EXISTING_SOUNDS_RANDOMLY)
+        sendAction (queryActionName, { juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout });
     else
     {
         sendAction (queryActionName, { query, juce::String ((int) numSoundsSlider.getValue()), minLength, maxLength, layout });
@@ -800,17 +790,11 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         layoutLabel.setBounds (row.removeFromLeft (labelWidth));
         noteLayoutCombo.setBounds (row.removeFromLeft (120));
         c.removeFromTop (rowGap + 2);
-        replaceAllButton.setBounds (c.removeFromTop (rowHeight).removeFromLeft (210));
+        replaceAllButton.setBounds (c.removeFromTop (rowHeight).removeFromLeft (270));
         c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        replaceOneButton.setBounds (row.removeFromLeft (210));
-        row.removeFromLeft (6);
-        soundToReplaceSlider.setBounds (row.removeFromLeft (100));
+        replaceRandomlyButton.setBounds (c.removeFromTop (rowHeight).removeFromLeft (270));
         c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        addSoundsButton.setBounds (row.removeFromLeft (210));
-        row.removeFromLeft (10);
-        statusLabel.setBounds (row);
+        statusLabel.setBounds (c.removeFromTop (rowHeight));
     }
 
 }

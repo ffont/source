@@ -49,6 +49,16 @@ struct FreesoundSearchOptions
     float maxDuration = 0.0f;   // 0 means no maximum
     int maxResults = 150;
 
+    /** Audio Commons acoustic properties (values 0-100 in Freesound) that can be used as filters: each one can be
+        restricted to low (0-33.3), mid (33.3-66.7) or high (66.7-100) values. */
+    static const juce::StringArray& getAcousticPropertyNames()
+    {
+        static const juce::StringArray names { "brightness", "hardness", "depth", "roughness", "boominess", "sharpness", "warmth" };
+        return names;
+    }
+    enum class Level { any = -1, low = 0, mid = 1, high = 2 };
+    std::array<Level, 7> acousticLevels { Level::any, Level::any, Level::any, Level::any, Level::any, Level::any, Level::any };
+
     /** The "filter" parameter of the search request. */
     juce::String getFilter() const;
 };
@@ -86,6 +96,13 @@ public:
         (only if this object still exists), with an error message if the request failed. */
     using SimilarSoundsCallback = std::function<void (std::vector<FreesoundSearchResult> results, juce::String error)>;
     void findSimilarSounds (int soundId, int numSounds, SimilarSoundsCallback callback);
+
+    /** Gets random Freesound sounds matching a filter (in a background thread): the number of matching sounds is
+        found first, and then the sounds at random positions of the results are requested. The callback is called in
+        the message thread with the sounds found, the number of sounds matching the filter and an error message (if
+        the request failed). */
+    using RandomSoundsCallback = std::function<void (std::vector<FreesoundSearchResult> results, int numMatching, juce::String error)>;
+    void findRandomSounds (int numSounds, const juce::String& filter, RandomSoundsCallback callback);
 
     /** Adds 2D positions to the results using t-SNE on their embeddings (results without embedding are placed
         around the others). Can be called from any thread. */

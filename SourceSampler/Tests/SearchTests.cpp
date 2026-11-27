@@ -109,6 +109,10 @@ public:
             options.license = FreesoundSearchOptions::License::any;
             options.maxDuration = 0.0f;
             expectEquals (options.getFilter(), juce::String ("duration:[0.5 TO *]"));
+            options.acousticLevels[0] = FreesoundSearchOptions::Level::low;    // brightness
+            options.acousticLevels[6] = FreesoundSearchOptions::Level::high;   // warmth
+            options.acousticLevels[2] = FreesoundSearchOptions::Level::mid;    // depth
+            expectEquals (options.getFilter(), juce::String ("duration:[0.5 TO *] brightness:[0 TO 33.33] depth:[33.33 TO 66.67] warmth:[66.67 TO 100]"));
         }
 
         beginTest ("Results are parsed from the API response");

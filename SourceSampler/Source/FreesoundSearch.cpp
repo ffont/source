@@ -61,6 +61,10 @@ juce::String FreesoundSearchOptions::getFilter() const
     }
     if (minDuration > 0.0f || maxDuration > 0.0f)
         filters.add ("duration:[" + juce::String (minDuration) + " TO " + (maxDuration > 0.0f ? juce::String (maxDuration) : juce::String ("*")) + "]");
+    static const std::array<const char*, 3> ranges { "[0 TO 33.33]", "[33.33 TO 66.67]", "[66.67 TO 100]" };
+    for (size_t i = 0; i < acousticLevels.size(); ++i)
+        if (acousticLevels[i] != Level::any)
+            filters.add (getAcousticPropertyNames()[(int) i] + ":" + ranges[(size_t) acousticLevels[i]]);
     return filters.joinIntoString (" ");
 }
 
@@ -273,6 +277,70 @@ void FreesoundSearch::findSimilarSounds (int soundId, int numSounds, SimilarSoun
         {
             if (weak.get() != nullptr && onFound != nullptr)
                 onFound (sounds, errorMessage);
+        });
+    });
+}
+
+namespace
+{
+    /** Simple blocking request (background threads only). */
+    juce::var getJson (const juce::URL& url, juce::String& error)
+    {
+        int statusCode = 0;
+        auto stream = url.createInputStream (juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
+                                                 .withConnectionTimeoutMs (60000).withStatusCode (&statusCode));
+        if (stream == nullptr || statusCode == 0)
+        {
+            error = "Could not connect to Freesound";
+            return {};
+        }
+        const auto json = juce::JSON::parse (stream->readEntireStreamAsString());
+        if (statusCode >= 400)
+            error = "Freesound error " + juce::String (statusCode);
+        return json;
+    }
+}
+
+void FreesoundSearch::findRandomSounds (int numSounds, const juce::String& filter, RandomSoundsCallback onFound)
+{
+    juce::WeakReference<FreesoundSearch> weak (this);
+    const auto baseUrl = juce::URL ("https://freesound.org/apiv2/search/text/").withParameter ("token", apiKey).withParameter ("filter", filter);
+    pool.addJob ([weak, baseUrl, numSounds, onFound]
+    {
+        std::vector<FreesoundSearchResult> foundSounds;
+        juce::String errorMessage;
+        // Number of sounds matching the filter
+        const auto countJson = getJson (baseUrl.withParameter ("page_size", "1").withParameter ("fields", "id"), errorMessage);
+        const int numMatching = countJson.getProperty ("count", 0);
+        if (errorMessage.isEmpty() && numMatching > 0)
+        {
+            // Random (different) positions of the results, each requested as a page of 1 sound
+            std::vector<int> positions;
+            auto& random = juce::Random::getSystemRandom();
+            const int count = juce::jmin (numSounds, numMatching);
+            while ((int) positions.size() < count)
+            {
+                const int position = random.nextInt (numMatching);
+                if (std::find (positions.begin(), positions.end(), position) == positions.end())
+                    positions.push_back (position);
+            }
+            for (int position : positions)
+            {
+                if (weak.wasObjectDeleted())
+                    return;
+                juce::String pageError;
+                const auto json = getJson (baseUrl.withParameter ("page_size", "1")
+                                                  .withParameter ("page", juce::String (position + 1))
+                                                  .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews"), pageError);
+                const auto pageResults = json.getProperty ("results", juce::var());
+                if (pageResults.size() > 0)
+                    foundSounds.push_back (FreesoundSearchResult::fromJson (pageResults[0]));
+            }
+        }
+        juce::MessageManager::callAsync ([weak, onFound, sounds = std::move (foundSounds), numMatching, errorMessage]
+        {
+            if (weak.get() != nullptr && onFound != nullptr)
+                onFound (sounds, numMatching, errorMessage);
         });
     });
 }
