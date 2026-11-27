@@ -123,9 +123,10 @@ private:
     // Header
     juce::ImageComponent titleImage, logoImage;
     LoadingIndicator queryLoadingIndicator;  // Shown while a "Get new sounds" query runs
-    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" }, settingsTabButton { "Settings" };
+    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" };
+    IconButton settingsButton { "Audio & MIDI settings", IconButton::Icon::gear };
     std::vector<juce::TextButton*> getTabButtons();
-    Tab currentTab = Tab::general;
+    Tab currentTab = Tab::general, previousTab = Tab::general;
 
     // Preset & settings
     CardComponent presetCard { "Preset & settings" };

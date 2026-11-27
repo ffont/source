@@ -229,7 +229,12 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     generalTabButton.onClick = [this] { showTab (Tab::general); };
     searchTabButton.onClick = [this] { showTab (Tab::search); };
     fxTabButton.onClick = [this] { showTab (Tab::fx); };
-    settingsTabButton.onClick = [this] { showTab (Tab::settings); };
+    // The settings button opens the settings, and clicking it again goes back to the previous tab
+    settingsButton.setClickingTogglesState (false);
+    settingsButton.setToggledColour (SourceColours::accent.darker (0.3f));
+    settingsButton.onClick = [this] { showTab (currentTab == Tab::settings ? previousTab : Tab::settings); };
+    if (settingsPanel != nullptr)
+        content.addAndMakeVisible (settingsButton);
     content.addChildComponent (searchPanel);
     content.addChildComponent (fxPanel);
 
@@ -531,14 +536,15 @@ void SourceNativeEditor::sendAction (const juce::String& actionName, const juce:
 
 std::vector<juce::TextButton*> SourceNativeEditor::getTabButtons()
 {
-    std::vector<juce::TextButton*> buttons { &generalTabButton, &searchTabButton, &fxTabButton };
-    if (settingsPanel != nullptr)
-        buttons.push_back (&settingsTabButton);
-    return buttons;
+    return { &generalTabButton, &searchTabButton, &fxTabButton };
 }
 
 void SourceNativeEditor::showTab (Tab tab)
 {
+    if (tab != Tab::settings && currentTab != Tab::settings)
+        previousTab = currentTab;
+    else if (tab == Tab::settings && currentTab != Tab::settings)
+        previousTab = currentTab;
     currentTab = tab;
     const bool general = tab == Tab::general;
     for (auto* c : std::initializer_list<juce::Component*> { &presetCard, &querySoundsCard, &soundList, &soundEditor })
@@ -548,7 +554,7 @@ void SourceNativeEditor::showTab (Tab tab)
     generalTabButton.setToggleState (general, juce::dontSendNotification);
     searchTabButton.setToggleState (tab == Tab::search, juce::dontSendNotification);
     fxTabButton.setToggleState (tab == Tab::fx, juce::dontSendNotification);
-    settingsTabButton.setToggleState (tab == Tab::settings, juce::dontSendNotification);
+    settingsButton.setToggleState (tab == Tab::settings, juce::dontSendNotification);
     if (settingsPanel != nullptr)
         settingsPanel->setVisible (tab == Tab::settings);
 }
@@ -729,8 +735,14 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     header.removeFromRight (8);
     levelMeters.setBounds (header.removeFromRight (16).withSizeKeepingCentre (16, 36));
     header.removeFromRight (10);
+    if (settingsPanel != nullptr)
+    {
+        // Settings button, a bit apart from the tabs (it opens the settings, it is not a tab)
+        settingsButton.setBounds (header.removeFromRight (30).withSizeKeepingCentre (30, 30));
+        header.removeFromRight (14);
+    }
     const auto tabButtons = getTabButtons();
-    const int tabWidth = tabButtons.size() > 3 ? 76 : 84;
+    const int tabWidth = 84;
     auto tabs = header.removeFromRight ((int) tabButtons.size() * tabWidth).withSizeKeepingCentre ((int) tabButtons.size() * tabWidth, 28);
     for (auto* button : tabButtons)
         button->setBounds (tabs.removeFromLeft (tabWidth));

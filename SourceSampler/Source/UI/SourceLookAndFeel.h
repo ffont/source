@@ -176,7 +176,7 @@ private:
 class IconButton : public juce::Button
 {
 public:
-    enum class Icon { play, stop, remove, previous, next, retry, speaker, speakerMuted, similar };
+    enum class Icon { play, stop, remove, previous, next, retry, speaker, speakerMuted, similar, gear };
 
     IconButton (const juce::String& name, Icon iconToUse) : juce::Button (name), icon (iconToUse)
     {
@@ -187,7 +187,7 @@ public:
     {
         auto bounds = getLocalBounds().toFloat().reduced (0.5f);
         // Toggle buttons that are on (e.g. mute) are highlighted
-        const auto background = getToggleState() ? SourceColours::warning.darker (0.2f) : SourceColours::control;
+        const auto background = getToggleState() ? toggledColour : SourceColours::control;
         g.setColour (isButtonDown ? SourceColours::accent : (isMouseOver ? background.brighter (0.15f) : background));
         g.fillRoundedRectangle (bounds, 4.0f);
 
@@ -264,6 +264,26 @@ public:
                 }
                 break;
             }
+            case Icon::gear:
+            {
+                // Cog wheel: 8 teeth around a ring
+                const auto c = bounds.getCentre();
+                const float outer = bounds.getHeight() * 0.36f, inner = outer * 0.74f, hole = outer * 0.36f;
+                const int numTeeth = 8;
+                for (int i = 0; i < numTeeth * 4; ++i)
+                {
+                    // Each tooth: two points on the outer radius and two on the inner radius
+                    const float angle = juce::MathConstants<float>::twoPi * (float) i / (float) (numTeeth * 4);
+                    const float radius = (i % 4 == 1 || i % 4 == 2) ? outer : inner;
+                    const auto point = c.getPointOnCircumference (radius, angle);
+                    if (i == 0) p.startNewSubPath (point); else p.lineTo (point);
+                }
+                p.closeSubPath();
+                p.addEllipse (c.x - hole, c.y - hole, hole * 2.0f, hole * 2.0f);
+                p.setUsingNonZeroWinding (false);  // The hole is cut out
+                g.fillPath (p);
+                break;
+            }
             case Icon::similar:
             {
                 // Two overlapping circles ("something like this")
@@ -277,6 +297,9 @@ public:
         }
     }
 
+    /** Background colour when the button is toggled on. */
+    void setToggledColour (juce::Colour colour) { toggledColour = colour; repaint(); }
+
     void setIcon (Icon newIcon)
     {
         if (newIcon != icon)
@@ -288,6 +311,7 @@ public:
 
 private:
     Icon icon;
+    juce::Colour toggledColour = SourceColours::warning.darker (0.2f);
 };
 
 
