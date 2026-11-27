@@ -97,17 +97,18 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
       keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel (&lookAndFeel);
+    addAndMakeVisible (content);
 
     // Header
     titleLabel.setText ("SOURCE", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (juce::FontOptions (28.0f, juce::Font::bold)));
-    addAndMakeVisible (titleLabel);
+    content.addAndMakeVisible (titleLabel);
     statusLabel.setJustificationType (juce::Justification::centredRight);
     statusLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
-    addAndMakeVisible (statusLabel);
+    content.addAndMakeVisible (statusLabel);
 
     // Preset & settings card
-    addAndMakeVisible (presetCard);
+    content.addAndMakeVisible (presetCard);
     setupLabel (presetIndexLabel, "Preset number", presetCard);
     setupNumberSlider (presetIndexSlider, 0, 127, 1, 0, presetCard);
     setupLabel (presetNameLabel, "Preset name", presetCard);
@@ -160,7 +161,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     mpeBendRangeSlider.onValueChange = sendMpeSettings;
 
     // Get new sounds card
-    addAndMakeVisible (querySoundsCard);
+    content.addAndMakeVisible (querySoundsCard);
     setupLabel (queryLabel, "Query", querySoundsCard);
     queryEditor.setTextToShowWhenEmpty ("percussion", SourceColours::dimText);
     queryEditor.onReturnKey = [this] { runQuery (ACTION_REPLACE_EXISTING_SOUNDS_FROM_QUERY); };
@@ -187,7 +188,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     setupNumberSlider (soundToReplaceSlider, 1, 128, 1, 1, querySoundsCard);
 
     // Reverb card
-    addAndMakeVisible (reverbCard);
+    content.addAndMakeVisible (reverbCard);
     const std::array<std::pair<juce::Identifier, const char*>, 6> reverbParams {{
         { SourceIDs::reverbRoomSize, "Room size" }, { SourceIDs::reverbDamping, "Damping" }, { SourceIDs::reverbWidth, "Width" },
         { SourceIDs::reverbFreezeMode, "Freeze" }, { SourceIDs::reverbWetLevel, "Wet level" }, { SourceIDs::reverbDryLevel, "Dry level" } }};
@@ -204,26 +205,30 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     }
 
     // Meters card
-    addAndMakeVisible (metersCard);
+    content.addAndMakeVisible (metersCard);
     metersCard.addAndMakeVisible (levelMeters);
 
     // Sounds
     soundList.onSelectionChanged = [this] (const juce::String& uuid) { soundEditor.setSound (uuid); };
-    addAndMakeVisible (soundList);
-    addAndMakeVisible (soundEditor);
+    content.addAndMakeVisible (soundList);
+    content.addAndMakeVisible (soundEditor);
 
     // Keyboard
     keyboard.setAvailableRange (21, 108);
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe8e8e8));
     keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff202020));
     keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff606060));
-    addAndMakeVisible (keyboard);
+    content.addAndMakeVisible (keyboard);
 
     sourceSampler.state.addListener (this);
     updateFromState();
 
     setResizable (true, true);
-    setResizeLimits (960, 680, 2400, 1600);
+   #if JUCE_IOS
+    setResizeLimits (300, 300, 4000, 4000);  // The UI is scaled to fit whatever size the app/host gives us
+   #else
+    setResizeLimits (800, 560, 2400, 1600);
+   #endif
     setSize (1180, 820);
     startTimerHz (30);
 
@@ -246,6 +251,13 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
                 return;
             if (safe->soundList.getNumSounds() > 0)
                 safe->soundList.selectSound (safe->soundList.getItems().front().uuid);
+            // SOURCE_DEBUG_SNAPSHOT_SIZE=<width>x<height> renders the editor at that size (e.g. to preview iPad layouts)
+            const auto size = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SNAPSHOT_SIZE", {}), "x", {});
+            if (size.size() == 2)
+            {
+                safe->setResizeLimits (100, 100, 5000, 5000);
+                safe->setSize (size[0].getIntValue(), size[1].getIntValue());
+            }
             safe->updateFromState();
             juce::Timer::callAfterDelay (500, [safe, snapshotPath]
             {
@@ -442,34 +454,74 @@ void SourceNativeEditor::paintOverChildren (juce::Graphics& g)
 
 void SourceNativeEditor::resized()
 {
-    auto b = getLocalBounds().reduced (8);
+    // Lay out the UI at (at least) a minimum logical size, and scale it down if the available area is smaller
+    const auto area = getLocalBounds();
+    const bool portrait = area.getHeight() > area.getWidth();
+    const float minWidth = portrait ? 740.0f : 1160.0f;
+    const float minHeight = portrait ? 980.0f : 740.0f;
+    const float scale = juce::jmin (1.0f, (float) area.getWidth() / minWidth, (float) area.getHeight() / minHeight);
+    content.setTransform (juce::AffineTransform::scale (scale));
+    content.setBounds (0, 0, juce::roundToInt ((float) area.getWidth() / scale), juce::roundToInt ((float) area.getHeight() / scale));
+    layoutContent (content.getLocalBounds(), portrait);
+}
+
+void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portrait)
+{
+    auto b = bounds.reduced (8);
 
     auto header = b.removeFromTop (36);
     titleLabel.setBounds (header.removeFromLeft (200));
     statusLabel.setBounds (header);
     b.removeFromTop (4);
 
-    keyboard.setBounds (b.removeFromBottom (64));
+   #if JUCE_IOS
+    const int keyboardHeight = 96;  // Bigger keys for touch
+   #else
+    const int keyboardHeight = 64;
+   #endif
+    keyboard.setBounds (b.removeFromBottom (keyboardHeight));
     {
-        // Make the visible keys fill the whole width (from C1 up to as many keys as fit)
-        const int numWhiteKeys = 7 * 7 + 1;  // 7 octaves
-        keyboard.setKeyWidth (juce::jmax (8.0f, (float) keyboard.getWidth() / (float) numWhiteKeys));
-        keyboard.setLowestVisibleKey (24);
+        // Show as many keys as fit with a comfortable key width (bigger on touch screens), starting from C1
+       #if JUCE_IOS
+        const float targetKeyWidth = 30.0f;
+       #else
+        const float targetKeyWidth = 18.0f;
+       #endif
+        const int numWhiteKeys = juce::jlimit (15, 52, juce::roundToInt ((float) keyboard.getWidth() / targetKeyWidth));
+        keyboard.setKeyWidth ((float) keyboard.getWidth() / (float) numWhiteKeys);
+        keyboard.setLowestVisibleKey (numWhiteKeys > 36 ? 24 : 36);
     }
     b.removeFromBottom (8);
 
-    // Top row of cards
-    auto top = b.removeFromTop (236);
+    // Cards: one row in landscape, a 2x2 grid in portrait
     const int gap = 8;
+    const int cardHeight = 236;
     const int metersWidth = 100;
-    const int cardWidth = (top.getWidth() - metersWidth - 3 * gap) / 3;
-    presetCard.setBounds (top.removeFromLeft (cardWidth));
-    top.removeFromLeft (gap);
-    querySoundsCard.setBounds (top.removeFromLeft (cardWidth));
-    top.removeFromLeft (gap);
-    reverbCard.setBounds (top.removeFromLeft (cardWidth));
-    top.removeFromLeft (gap);
-    metersCard.setBounds (top);
+    if (portrait)
+    {
+        auto row1 = b.removeFromTop (cardHeight);
+        const int halfWidth = (row1.getWidth() - gap) / 2;
+        presetCard.setBounds (row1.removeFromLeft (halfWidth));
+        row1.removeFromLeft (gap);
+        querySoundsCard.setBounds (row1);
+        b.removeFromTop (gap);
+        auto row2 = b.removeFromTop (cardHeight);
+        metersCard.setBounds (row2.removeFromRight (metersWidth));
+        row2.removeFromRight (gap);
+        reverbCard.setBounds (row2);
+    }
+    else
+    {
+        auto top = b.removeFromTop (cardHeight);
+        const int cardWidth = (top.getWidth() - metersWidth - 3 * gap) / 3;
+        presetCard.setBounds (top.removeFromLeft (cardWidth));
+        top.removeFromLeft (gap);
+        querySoundsCard.setBounds (top.removeFromLeft (cardWidth));
+        top.removeFromLeft (gap);
+        reverbCard.setBounds (top.removeFromLeft (cardWidth));
+        top.removeFromLeft (gap);
+        metersCard.setBounds (top);
+    }
     b.removeFromTop (gap);
 
     const int rowHeight = 22;
@@ -556,9 +608,16 @@ void SourceNativeEditor::resized()
 
     levelMeters.setBounds (metersCard.getContentBounds());
 
-    // Sounds
-    auto listArea = b.removeFromLeft (juce::jmax (300, b.getWidth() / 3));
-    soundList.setBounds (listArea);
-    b.removeFromLeft (gap);
+    // Sounds: list next to the editor in landscape, above it in portrait
+    if (portrait)
+    {
+        soundList.setBounds (b.removeFromTop (juce::jmin (220, b.getHeight() / 3)));
+        b.removeFromTop (gap);
+    }
+    else
+    {
+        soundList.setBounds (b.removeFromLeft (juce::jmax (300, b.getWidth() / 3)));
+        b.removeFromLeft (gap);
+    }
     soundEditor.setBounds (b);
 }

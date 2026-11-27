@@ -52,6 +52,23 @@ Threading notes for developers: the sampler state (`SourceSampler::state` ValueT
 
 In debug builds, setting `SOURCE_DEBUG_ADD_FILE=<audio file>` loads a local file as a sound when the editor opens, and `SOURCE_DEBUG_SNAPSHOT=<png>` renders the editor to a PNG (handy for checking UI changes without screen access).
 
+### Build for iPad (iOS/iPadOS)
+
+The CMake project also builds an iPad version: a standalone app with an embedded AUv3 plugin (usable in iPad hosts such as AUM, Cubasis, Logic Pro for iPad...). The native UI adapts to the iPad screen in both orientations (it is scaled down on smaller screens, and cards are stacked in portrait).
+
+```
+cd SourceSampler
+./build_ios.sh                                  # generate build-ios/SourceSampler.xcodeproj, then run from Xcode
+./build_ios.sh --simulator                      # build for the iOS simulator
+TEAM_ID=<your team id> ./build_ios.sh --device  # signed build for devices
+```
+
+Notes:
+- To run on a real iPad you need an Apple development team (`TEAM_ID`, or set the team in Xcode's "Signing & Capabilities").
+- The app and the AUv3 share sounds and presets through the app group `group.ritaiaurora.source` (CMake option `SOURCE_IOS_APP_GROUP`, or `APP_GROUP` in the script). The group must be registered in your team; set it to an empty value to disable it (each target then uses its own Documents folder). Sounds and presets are visible in the Files app.
+- iOS can kill suspended apps without giving them a chance to save, so the standalone app autosaves its session (`last_session.xml` in the data folder) a couple of seconds after every change and restores it on launch. The AUv3's state is saved by the host.
+- MIDI controllers (USB, network and Bluetooth MIDI) are opened automatically by the standalone app. Dropping audio files is a desktop-only feature.
+
 ### Build standalone/plugin for desktop (macOS, legacy Projucer workflow)
 
 1. Clone the source code repository in your local computer

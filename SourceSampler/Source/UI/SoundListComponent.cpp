@@ -185,7 +185,11 @@ SoundListComponent::SoundListComponent (SourceActionSender actionSender) : actio
     clearAllButton.onClick = [this] { actions.send (ACTION_CLEAR_ALL_SOUNDS); };
     addAndMakeVisible (clearAllButton);
 
+   #if JUCE_IOS
+    emptyLabel.setText ("No sounds loaded. Search for sounds on Freesound above.", juce::dontSendNotification);
+   #else
     emptyLabel.setText ("No sounds loaded. Search for sounds on Freesound above, or drop audio files here.", juce::dontSendNotification);
+   #endif
     emptyLabel.setJustificationType (juce::Justification::centred);
     emptyLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     emptyLabel.setInterceptsMouseClicks (false, false);

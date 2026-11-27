@@ -34,6 +34,29 @@ struct GlobalContextStruct {
 
 namespace SourceHelpers
 {
+    /** Base folder where the SOURCE data folder is created when no folder is given explicitly: the shared app group
+        container on iOS (if available), otherwise the user's documents folder. */
+    inline juce::File getDefaultBaseDataLocation()
+    {
+        #if USE_APP_GROUP_ID
+        auto container = juce::File::getContainerForSecurityApplicationGroupIdentifier (APP_GROUP_ID);
+        if (container != juce::File() && container.isDirectory())
+            return container;
+        #endif
+        return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+    }
+
+    /** True if downloads can be written to the shared app group container (iOS). */
+    inline bool canUseSharedContainerForDownloads()
+    {
+        #if USE_APP_GROUP_ID
+        auto container = juce::File::getContainerForSecurityApplicationGroupIdentifier (APP_GROUP_ID);
+        return container != juce::File() && container.isDirectory();
+        #else
+        return false;
+        #endif
+    }
+
 
     inline juce::ValueTree createUuidProperty (juce::ValueTree& v)
     {

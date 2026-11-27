@@ -68,6 +68,7 @@ private:
     void sendReverbParameters();
     void runQuery (const juce::String& queryActionName);
     juce::ValueTree getPresetState() const { return sourceSampler.state.getChildWithName (SourceIDs::PRESET); }
+    void layoutContent (juce::Rectangle<int> bounds, bool portrait);
 
     // ValueTree::Listener: changes are coalesced and the UI is refreshed in the timer callback
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override { stateDirty = true; }
@@ -82,6 +83,10 @@ private:
     juce::TooltipWindow tooltipWindow { this, 600 };
     SourceActionSender actions;
     bool stateDirty = true;
+    
+    // All the UI lives in this component, which is laid out at a minimum logical size and scaled down to fit
+    // small screens (iPad, AUv3 hosts with small windows)
+    juce::Component content;
     bool isDraggingFiles = false;
 
     // Header

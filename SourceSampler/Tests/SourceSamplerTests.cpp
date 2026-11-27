@@ -353,6 +353,30 @@ public:
                 expect (! voice.active);
         }
 
+        beginTest ("Session autosave (iOS standalone) saves after changes and restores on the next launch");
+        {
+            TestUtils::TemporaryFolder tmp;
+            auto sessionFile = tmp.folder.getChildFile ("last_session.xml");
+            auto wav = TestUtils::writeSineWav (tmp.folder.getChildFile ("s.wav"), 440.0, 0.3, sampleRate);
+            {
+                SourceSampler sampler (tmp.folder);
+                sampler.enableSessionAutosave (sessionFile);
+                TestUtils::runMessageLoopFor (50);
+                expect (! sessionFile.existsAsFile(), "Nothing to save yet");
+                sampler.actionListenerCallback (SourceHelpers::serializeAction (ACTION_ADD_SOUND, { "-1", "autosaved", "", "", "", wav.getFullPathName(), "wav", juce::String (wav.getSize()), "", "", "60" }));
+                sampler.actionListenerCallback (SourceHelpers::serializeAction (ACTION_SET_SOUND_PARAMETER_FLOAT, { "", "gain", "-5" }));
+                expect (TestUtils::runMessageLoopUntil ([&] { return sessionFile.existsAsFile(); }, 5000), "Session was not autosaved");
+            }
+            SourceSampler sampler (tmp.folder);
+            sampler.enableSessionAutosave (sessionFile);
+            auto preset = [&] { return sampler.state.getChildWithName (SourceIDs::PRESET); };
+            expect (TestUtils::runMessageLoopUntil ([&] { return preset().getNumChildren() == 1; }, 2000), "Session was not restored");
+            auto sound = preset().getChild (0);
+            expectEquals (sound.getChildWithName (SourceIDs::SOUND_SAMPLE).getProperty (SourceIDs::name).toString(), juce::String ("autosaved"));
+            expectEquals ((float) sound.getProperty (SourceIDs::gain), -5.0f);
+            expect (TestUtils::runMessageLoopUntil ([sound] { return (bool) sound.getProperty (SourceIDs::allSoundsLoaded); }), "Restored sound not loaded");
+        }
+
         beginTest ("Program changes load presets");
         {
             Fixture f;

@@ -69,6 +69,7 @@
 #define USE_LAZY_UI 0
 
 #define CONTROL_EVENTS_TIMER_HZ 100  // Rate at which MIDI CC mappings and program changes received in the audio thread are applied
+#define SESSION_AUTOSAVE_DELAY_MS 2000.0  // Save the session this long after the last state change (iOS standalone only)
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200
 #define SAMPLER_SOUND_TIMER_MS 20
@@ -81,8 +82,16 @@
 #define ELK_SOURCE_SOUNDS_LOCATION "/udata/source/sounds/"
 #define ELK_SOURCE_PRESETS_LOCATION "/udata/source/presets/"
 #define ELK_SOURCE_TMP_LOCATION "/tmp/source/"
+// On iOS the standalone app and the AUv3 share the data folder through an app group (set with the CMake option
+// SOURCE_IOS_APP_GROUP). If the app group is not available (e.g. unsigned simulator builds) the app's Documents folder is used.
+#if JUCE_IOS
 #define USE_APP_GROUP_ID 1
+#else
+#define USE_APP_GROUP_ID 0
+#endif
+#ifndef APP_GROUP_ID
 #define APP_GROUP_ID "group.ritaiaurora.source"
+#endif
 
 #define OSC_LISTEN_PORT 9001
 #define OSC_TO_SEND_PORT 9002  // OSC port where the glue app is listening

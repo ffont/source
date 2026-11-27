@@ -525,6 +525,23 @@ void MpeMappingsComponent::resized()
 //==============================================================================
 // SoundEditorComponent
 
+/** Short name for a Creative Commons license URL, e.g. "http://creativecommons.org/licenses/by-nc/3.0/" -> "CC BY-NC 3.0". */
+static juce::String getShortLicenseName (const juce::String& licenseURL)
+{
+    if (licenseURL.contains ("publicdomain/zero"))
+        return "CC0";
+    if (licenseURL.contains ("sampling+"))
+        return "CC Sampling+";
+    if (licenseURL.contains ("/licenses/"))
+    {
+        auto parts = juce::StringArray::fromTokens (licenseURL.fromFirstOccurrenceOf ("/licenses/", false, false), "/", {});
+        parts.removeEmptyStrings();
+        if (parts.size() >= 1)
+            return "CC " + parts[0].toUpperCase() + (parts.size() >= 2 ? " " + parts[1] : juce::String());
+    }
+    return licenseURL;
+}
+
 namespace
 {
     const std::vector<std::pair<juce::String, juce::StringArray>>& getParameterGroups()
@@ -683,7 +700,7 @@ void SoundEditorComponent::updateFromState()
     if (duration > 0.0f)
         details.add (juce::String (duration, 2) + "s");
     if (firstSample.getProperty (SourceIDs::license).toString().isNotEmpty())
-        details.add (firstSample.getProperty (SourceIDs::license).toString().fromLastOccurrenceOf ("licenses/", false, false).trimCharactersAtEnd ("/"));
+        details.add (getShortLicenseName (firstSample.getProperty (SourceIDs::license).toString()));
     if ((bool) firstSample.getProperty (SourceIDs::usesPreview, false))
         details.add ("preview quality");
     detailsLabel.setText (details.joinIntoString ("  |  "), juce::dontSendNotification);

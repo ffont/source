@@ -12,6 +12,7 @@
 
 #include <JuceHeader.h>
 #include "defines_source.h"
+#include "helpers_source.h"
 #if USE_SSL_FOR_HTTP_AND_WS
     #include "BinaryData.h"
     #if USE_WS_SERVER
@@ -319,11 +320,7 @@ void SourceHTTPServer::run() {
     #if ELK_BUILD
     juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
     #else
-    #if USE_APP_GROUP_ID
-    juce::String tmpFilesPathName = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
-    #else
-    juce::String tmpFilesPathName = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
-    #endif
+    juce::String tmpFilesPathName = SourceHelpers::getDefaultBaseDataLocation().getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp").getFullPathName();
     #endif
     server.resource["^/sounds_data/.*$"]["GET"] = [tmpFilesPathName](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
         try {

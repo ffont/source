@@ -34,6 +34,13 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #endif
 {
     source.setTotalNumOutputChannels(getTotalNumOutputChannels());
+    
+    #if JUCE_IOS
+    // iOS can kill the standalone app at any time without letting it save its state, so keep the session autosaved
+    // (plugin instances like the AUv3 have their state saved by the host)
+    if (wrapperType == wrapperType_Standalone)
+        source.enableSessionAutosave(source.sourceDataLocation.getChildFile("last_session.xml"));
+    #endif
     #if INCLUDE_SEQUENCER
     sequencerCombinedBuffer.ensureSize(512 * 10);
     #endif

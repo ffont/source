@@ -6,8 +6,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(SOURCE_IOS TRUE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.0" CACHE STRING "Minimum iOS version")
+elseif(APPLE)
+    set(SOURCE_IOS FALSE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version")
+else()
+    set(SOURCE_IOS FALSE)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -18,6 +24,8 @@ option(SOURCE_WEB_UI "Use the legacy browser-based (WebBrowserComponent) editor 
 option(SOURCE_INCLUDE_SEQUENCER "Build the SourceShepherd variant that embeds the Shepherd sequencer" OFF)
 option(SOURCE_BUILD_TESTS "Build the unit test runner" ON)
 option(SOURCE_BUILD_AUV3 "Also build the AUv3 format (needs code signing / app extension setup)" OFF)
+set(SOURCE_IOS_APP_GROUP "group.ritaiaurora.source" CACHE STRING
+    "iOS app group shared by the standalone app and the AUv3 (holds sounds and presets). Must belong to your development team")
 set(SOURCE_FREESOUND_API_KEY "" CACHE STRING
     "Freesound API key. If empty, Source/api_key.h is used (copy it from Source/api_key.example.h)")
 
@@ -78,9 +86,37 @@ endif()
 # Plugin
 # ------------------------------------------------------------------------------
 
-set(SOURCE_PLUGIN_FORMATS AU VST3 Standalone)
-if(SOURCE_BUILD_AUV3)
-    list(APPEND SOURCE_PLUGIN_FORMATS AUv3)
+if(SOURCE_IOS)
+    # On iOS/iPadOS: standalone app + AUv3 (the AUv3 extension is embedded in the app)
+    set(SOURCE_PLUGIN_FORMATS Standalone AUv3)
+    set(SOURCE_BUILD_TESTS OFF CACHE BOOL "" FORCE)  # Tests are run on macOS
+    if(SOURCE_WEB_UI)
+        message(FATAL_ERROR "The web UI is not supported on iOS, use the native UI")
+    endif()
+else()
+    set(SOURCE_PLUGIN_FORMATS AU VST3 Standalone)
+    if(SOURCE_BUILD_AUV3)
+        list(APPEND SOURCE_PLUGIN_FORMATS AUv3)
+    endif()
+endif()
+
+set(SOURCE_IOS_PLUGIN_OPTIONS)
+if(SOURCE_IOS)
+    set(SOURCE_IOS_PLUGIN_OPTIONS
+        TARGETED_DEVICE_FAMILY 2  # iPad
+        IPAD_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+                                 UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        BACKGROUND_AUDIO_ENABLED TRUE
+        BACKGROUND_BLE_ENABLED TRUE
+        BLUETOOTH_PERMISSION_ENABLED TRUE
+        BLUETOOTH_PERMISSION_TEXT "SOURCE uses Bluetooth to connect to Bluetooth MIDI controllers"
+        FILE_SHARING_ENABLED TRUE      # Sounds and presets are visible in the Files app
+        DOCUMENT_BROWSER_ENABLED TRUE
+        STATUS_BAR_HIDDEN TRUE
+        REQUIRES_FULL_SCREEN FALSE)
+    if(SOURCE_IOS_APP_GROUP)
+        list(APPEND SOURCE_IOS_PLUGIN_OPTIONS APP_GROUPS_ENABLED TRUE APP_GROUP_IDS ${SOURCE_IOS_APP_GROUP})
+    endif()
 endif()
 
 if(SOURCE_INCLUDE_SEQUENCER)
@@ -108,6 +144,7 @@ juce_add_plugin(SourceSampler
     ICON_SMALL ${CMAKE_CURRENT_SOURCE_DIR}/../docs/icon.png
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
     VST3_CATEGORIES Instrument Sampler
+    ${SOURCE_IOS_PLUGIN_OPTIONS}
     PLIST_TO_MERGE [[
 <plist>
 <dict>
@@ -153,6 +190,9 @@ endif()
 target_include_directories(SourceSampler PRIVATE ${SOURCE_INCLUDE_DIRS})
 target_include_directories(SourceSampler SYSTEM PRIVATE ${SOURCE_3RDPARTY_INCLUDE_DIRS})
 target_compile_definitions(SourceSampler PUBLIC ${SOURCE_COMMON_DEFINITIONS})
+if(SOURCE_IOS AND SOURCE_IOS_APP_GROUP)
+    target_compile_definitions(SourceSampler PUBLIC APP_GROUP_ID="${SOURCE_IOS_APP_GROUP}")
+endif()
 
 if(SOURCE_INCLUDE_SEQUENCER)
     set(SHEPHERD_SRC ${SOURCE_3RDPARTY}/shepherd/Shepherd/Source)

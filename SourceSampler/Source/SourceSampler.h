@@ -172,6 +172,13 @@ public:
     int getLastReceivedMidiNote() const noexcept { return lastReceivedMIDINoteNumber.load(); }
     int getLastReceivedMidiCC() const noexcept { return lastReceivedMIDIControllerNumber.load(); }
     
+    /** Session autosave (used by the iOS standalone app, where the OS can kill the app at any time without giving
+        it a chance to save). When enabled, the last saved session is restored (asynchronously) and the state is
+        saved to the given file a couple of seconds after it changes. */
+    void enableSessionAutosave (const juce::File& file);
+    juce::File getSessionAutosaveFile() const { return sessionAutosaveFile; }
+    void saveSessionNow();
+    
     /** Runs the function in the message thread: synchronously if already in the message thread, asynchronously otherwise. */
     void runOnMessageThread (std::function<void(SourceSampler&)> fn);
     
@@ -235,6 +242,11 @@ private:
     // The next two objects are to preview sounds independently of the sampler
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
     juce::AudioTransportSource transportSource;
+    
+    // Session autosave
+    juce::File sessionAutosaveFile;
+    bool sessionNeedsSaving = false;
+    double lastStateChangeTime = 0.0;
     
     // MIDI CC mappings and program changes received in the audio thread are applied here (message thread)
     void processPendingControlEvents();

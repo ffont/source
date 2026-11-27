@@ -1180,9 +1180,8 @@ void SourceSound::startDownloads(const std::vector<PendingDownload>& downloads)
         auto options = juce::URL::DownloadTaskOptions().withListener(this);
         if (download.extraHeaders.isNotEmpty())
             options = options.withExtraHeaders(download.extraHeaders);
-        # if USE_APP_GROUP_ID && JUCE_IOS
-        options = options.withSharedContainer(APP_GROUP_ID);
-        #endif
+        if (SourceHelpers::canUseSharedContainerForDownloads())
+            options = options.withSharedContainer(APP_GROUP_ID);
         download.location.getParentDirectory().createDirectory();
         if (auto downloadTask = juce::URL(download.url).downloadToFile(download.location, options)){
             downloadTasks.push_back(std::move(downloadTask));

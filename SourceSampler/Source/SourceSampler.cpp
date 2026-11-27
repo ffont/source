@@ -69,6 +69,8 @@ SourceSampler::~SourceSampler()
     
     // Save current global persistent state (global settings)
     saveGlobalPersistentStateToFile();
+    if (sessionNeedsSaving)
+        saveSessionNow();
     
     // Remove listeners
     serverInterface.removeActionListener(this);
@@ -144,11 +146,7 @@ void SourceSampler::createDirectories(const juce::String& appDirectoryName, juce
     juce::ignoreUnused(appDirectoryName, baseLocation);
     #else
     if (baseLocation == juce::File()){
-        #if JUCE_IOS
-        baseLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID);
-        #else
-        baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
-        #endif
+        baseLocation = SourceHelpers::getDefaultBaseDataLocation();
     }
     sourceDataLocation = baseLocation.getChildFile(appDirectoryName);
     soundsDownloadLocation = baseLocation.getChildFile(appDirectoryName + "/sounds");
@@ -510,6 +508,35 @@ void SourceSampler::loadPresetFromStateInformation (juce::ValueTree _state)
     updateReverbParameters();
     sampler.setSamplerVoices(numVoices);
     setGlobalMidiInChannel(globalMidiInChannel);
+}
+
+void SourceSampler::enableSessionAutosave (const juce::File& file)
+{
+    sessionAutosaveFile = file;
+    // Restore the last session asynchronously, so it takes precedence over any (possibly older) state the wrapper restores
+    juce::WeakReference<SourceSampler> weak = weakThis;
+    juce::MessageManager::callAsync([weak]{
+        auto* sampler = weak.get();
+        if (sampler == nullptr || !sampler->sessionAutosaveFile.existsAsFile())
+            return;
+        if (auto xml = juce::XmlDocument::parse(sampler->sessionAutosaveFile)){
+            auto savedState = juce::ValueTree::fromXml(*xml);
+            if (savedState.hasType(SourceIDs::SOURCE_STATE)){
+                DBG("Restoring autosaved session from " << sampler->sessionAutosaveFile.getFullPathName());
+                sampler->loadPresetFromStateInformation(savedState);
+                sampler->sessionNeedsSaving = false;
+            }
+        }
+    });
+}
+
+void SourceSampler::saveSessionNow()
+{
+    sessionNeedsSaving = false;
+    if (sessionAutosaveFile == juce::File())
+        return;
+    if (auto xml = state.createXml())
+        xml->writeTo(sessionAutosaveFile);  // Writes to a temporary file first, then replaces the target
 }
 
 void SourceSampler::runOnMessageThread (std::function<void(SourceSampler&)> fn)
@@ -1445,6 +1472,11 @@ double SourceSampler::getStartTime(){
 
 void SourceSampler::timerCallback()
 {
+    // Session autosave (debounced so we don't write on every slider movement or download progress update)
+    if (sessionNeedsSaving && (juce::Time::getMillisecondCounterHiRes() - lastStateChangeTime) > SESSION_AUTOSAVE_DELAY_MS){
+        saveSessionNow();
+    }
+    
     const juce::ScopedLock sl (soundDeleteLock);
     
     // Delete sounds that should be deleted (delete them both from current sounds list and from
@@ -1598,6 +1630,10 @@ void SourceSampler::sendWSMessage(const juce::OSCMessage& message)
 
 void SourceSampler::valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
     #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
     juce::ignoreUnused(treeWhosePropertyHasChanged, property);
     return;
@@ -1622,6 +1658,10 @@ void SourceSampler::valueTreePropertyChanged (juce::ValueTree& treeWhoseProperty
 
 void SourceSampler::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
     #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
     juce::ignoreUnused(parentTree, childWhichHasBeenAdded);
     return;
@@ -1647,6 +1687,10 @@ void SourceSampler::valueTreeChildAdded (juce::ValueTree& parentTree, juce::Valu
 
 void SourceSampler::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
     #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
     juce::ignoreUnused(parentTree, childWhichHasBeenRemoved, indexFromWhichChildWasRemoved);
     return;
