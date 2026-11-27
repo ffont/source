@@ -20,6 +20,7 @@
 #include "FxPanel.h"
 #include "SearchPanel.h"
 #include "AcousticFilterComponent.h"
+#include "SettingsPanel.h"
 
 
 /** Shows the RMS level of each output channel. */
@@ -83,7 +84,7 @@ private:
     void sendAction (const juce::String& actionName, const juce::StringArray& parameters = {});
     void updateFromState();
     void timerCallback() override;
-    enum class Tab { general, search, fx };
+    enum class Tab { general, search, fx, settings };
     void showTab (Tab tab);
     void runQuery (const juce::String& queryActionName);
     juce::ValueTree getPresetState() const { return sourceSampler.state.getChildWithName (SourceIDs::PRESET); }
@@ -122,7 +123,8 @@ private:
     // Header
     juce::ImageComponent titleImage, logoImage;
     LoadingIndicator queryLoadingIndicator;  // Shown while a "Get new sounds" query runs
-    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" };
+    juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" }, settingsTabButton { "Settings" };
+    std::vector<juce::TextButton*> getTabButtons();
     Tab currentTab = Tab::general;
 
     // Preset & settings
@@ -164,6 +166,7 @@ private:
     // Other tabs
     SearchPanel searchPanel;
     FxPanel fxPanel;
+    std::unique_ptr<SettingsPanel> settingsPanel;  // Only in the standalone app on iPad (where the settings window can't be opened)
 
     // Keyboard
     juce::MidiKeyboardComponent keyboard;
