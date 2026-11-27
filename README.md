@@ -168,6 +168,9 @@ SOURCE can also run as a standalone app or as an audio plugin in desktop/laptop 
 <img src="docs/screenshot-fx.png" width="800" />
 </p>
 
+> [!NOTE]
+> The Linux and Windows versions are **untested**: they are built and pass the automated tests, but they have not been tried in real use (standalone app or DAWs) yet. Feedback and bug reports are very welcome!
+
 To use SOURCE, download the files for your system from the **[latest release](https://github.com/ffont/source/releases/latest)**. Each format (standalone app and plugins) is in its own zip file. Presets and downloaded sounds are stored in the `SourceSampler` folder of your *Documents* folder.
 
 **macOS**
@@ -188,7 +191,7 @@ xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/SourceSampler.vst3
 
 Then restart your DAW (or rescan plugins) so that it finds SOURCE.
 
-**Linux**
+**Linux** (untested)
 
 There are builds for x86_64 (`SOURCE-<version>-linux-x86_64-*.zip`) and ARM computers like the Raspberry Pi 4/5 (`SOURCE-<version>-linux-arm64-*.zip`). They are built on Ubuntu 22.04 and need glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 or newer distributions) and these libraries (Ubuntu/Debian package names):
 
@@ -202,7 +205,7 @@ Unzip the files you need and copy them to these locations:
 * **VST3**: `SourceSampler.vst3` to `~/.vst3` (or `/usr/lib/vst3`).
 * **LV2**: `SourceSampler.lv2` to `~/.lv2` (or `/usr/lib/lv2`).
 
-**Windows**
+**Windows** (untested)
 
 The Windows builds (`SOURCE-<version>-windows-x64-*.zip`) run on 64-bit Windows 10 and 11. Unzip the files you need and copy them to these locations:
 
