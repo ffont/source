@@ -10,54 +10,52 @@
 
 #include "SourceSamplerSound.h"
 #include "SourceSamplerVoice.h"
+#include "SourceSamplerSynthesiser.h"
+#include "SourceParameters.h"
 
 
 SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
                                         SourceSound* _sourceSoundPointer,
-                                        juce::AudioFormatReader& source,
-                                        double maxSampleLengthSeconds,
+                                        std::unique_ptr<juce::AudioBuffer<float>> audioData,
+                                        double _soundSampleRate,
                                         double _pluginSampleRate,
                                         int _pluginBlockSize)
-    : state(_state),
-      soundSampleRate (source.sampleRate),
+    : stretchProcessorThread (*this),
+      state(_state),
+      soundSampleRate (_soundSampleRate),
       pluginSampleRate (_pluginSampleRate),
-      pluginBlockSize (_pluginBlockSize),
-      stretchProcessorThread (*this)
+      pluginBlockSize (_pluginBlockSize)
 {
+    jassert (juce::MessageManager::getInstanceWithoutCreating() == nullptr || juce::MessageManager::getInstance()->isThisTheMessageThread());
+    
     sourceSoundPointer = _sourceSoundPointer;
     bindState();
     
-    // Load audio
-    if (soundSampleRate > 0 && source.lengthInSamples > 0) {
-        lengthInSamples = juce::jmin ((int) source.lengthInSamples, (int) (maxSampleLengthSeconds * soundSampleRate));  // note this will be re-setted when doing preProcessAudioWithStretch
-        data.reset (new juce::AudioBuffer<float> (juce::jmin (2, (int) source.numChannels), lengthInSamples + 4));
-        source.read (data.get(), 0, lengthInSamples + 4, 0, true, true);
-        
-        // Add duration to state
-        state.setProperty(SourceIDs::duration, getLengthInSeconds(), nullptr);
+    if (audioData == nullptr){
+        audioData = std::make_unique<juce::AudioBuffer<float>>(1, 1);
+        audioData->clear();
     }
     
-    // Pre-allocate space for stretched audio buffer
-    stretchProcessedData.reset (new juce::AudioBuffer<float> (data->getNumChannels(), data->getNumSamples() * maxTimeStretchRatio));
+    // Playback data is initially the original data (no stretching)
+    data = std::shared_ptr<const juce::AudioBuffer<float>> (std::move (audioData));
+    playbackData = data;
+    lengthInSamples = data->getNumSamples();
+    
+    // Add duration to state
+    state.setProperty(SourceIDs::duration, getLengthInSeconds(), nullptr);
     
     // Load calculated onsets (if any)
     loadOnsetTimesSamplesFromAnalysis();
     
-    // Write PCM version of the audio to disk so it can be used in the UI for displaying waveforms
-    // (either by serving through the http server or directly loading from disk)
-    writeBufferToDisk();
-    
-    // Schecule pre-processing of audio data with stretch (so time stretching/pitch shifting is not computed in real time)
+    // Schedule pre-processing of audio data with stretch (so time stretching/pitch shifting is not computed in real time)
+    // This does nothing if no stretching is needed
     setStretchParameters(getParameterFloat(SourceIDs::pitchShift), getParameterFloat(SourceIDs::timeStretch));
-    
-    // Start timer that will periodically check if "async" tasks need to be done like re-processing with stretch
-    startTimer(SAMPLER_SOUND_TIMER_MS);
 }
 
 SourceSamplerSound::~SourceSamplerSound()
 {
-    stretchProcessorThread.stopThread(0);
     stopTimer();
+    stretchProcessorThread.stopThread(2000);
 }
 
 void SourceSamplerSound::bindState ()
@@ -83,75 +81,89 @@ void SourceSamplerSound::bindState ()
 
 void SourceSamplerSound::timerCallback()
 {
-    if (shouldProcessWithStretchAtTime > -1){
-        if ((juce::Time::getMillisecondCounterHiRes() > shouldProcessWithStretchAtTime) || ((juce::Time::getMillisecondCounterHiRes() - lastTimeProcessedWithStretchAtTime > STRETCH_PROCESSING_TIME_DEBOUNCE_MS) && !computingTimeStretch)){
-            shouldProcessWithStretchAtTime = -1;
-            DBG("Pre-processing with stretch...");
-            stretchProcessorThread.startThread(); // Runs preProcessAudioWithStretch() in thread
-        }
+    // This timer only runs while there is a pending stretch processing job
+    if (shouldProcessWithStretchAtTime < 0){
+        stopTimer();
+        return;
+    }
+    if ((juce::Time::getMillisecondCounterHiRes() > shouldProcessWithStretchAtTime) && !stretchProcessorThread.isThreadRunning()){
+        shouldProcessWithStretchAtTime = -1.0;
+        stopTimer();
+        DBG("Pre-processing with stretch...");
+        stretchProcessorThread.startThread(); // Runs preProcessAudioWithStretch() in thread
     }
 }
 
-void SourceSamplerSound::writeBufferToDisk()
+void SourceSamplerSound::writeWaveformFileToDisk (const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::File& outputLocation)
 {
-    juce::AudioBuffer<float>* buffer = getAudioData();
+    if (buffer.getNumSamples() == 0 || sampleRate <= 0)
+        return;
+    
+    // Write files with lower resolution as it will be enough for waveform visualization: mono, 8 bits, 16kHz
+    const double outputSampleRate = 16000.0;
+    const double ratio = sampleRate / outputSampleRate;
+    const int numOutputSamples = juce::jmax (1, (int) (buffer.getNumSamples() / ratio));
+    juce::AudioBuffer<float> downsampled (1, numOutputSamples);
+    const float* in = buffer.getReadPointer (0);
+    float* out = downsampled.getWritePointer (0);
+    for (int i = 0; i < numOutputSamples; ++i)
+        out[i] = in[juce::jmin (buffer.getNumSamples() - 1, (int) (i * ratio))];
+    
+    outputLocation.deleteFile();
     juce::WavAudioFormat format;
-    std::unique_ptr<juce::AudioFormatWriter> writer;
-    #if ELK_BUILD
-    juce::String tmpFilesPathName = juce::File(ELK_SOURCE_TMP_LOCATION).getFullPathName();
-    juce::File outputLocation = juce::File(ELK_SOURCE_TMP_LOCATION).getChildFile(state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
-    #else
-    #if USE_APP_GROUP_ID
-    juce::File outputLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier(APP_GROUP_ID).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
-    #else
-    juce::File outputLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile((juce::String)SOURCE_APP_DIRECTORY_NAME + "/tmp/" + state.getProperty(SourceIDs::uuid).toString()).withFileExtension("wav");
-    #endif
-    
-    
-    #endif
-    writer.reset (format.createWriterFor (new juce::FileOutputStream (outputLocation),
-                                          16000,  // Write files with lower resolution as it will be enough for waveform visualization
-                                          1,  // Write mono files for visualization (will probably only take the first channel)
-                                          8,  // Write 8 bits only as it will be enough for waveform visualization purposes
-                                          {},
-                                          0));
-    if (writer != nullptr)
-        writer->writeFromAudioSampleBuffer (*buffer, 0, buffer->getNumSamples());
+    std::unique_ptr<juce::OutputStream> stream = std::make_unique<juce::FileOutputStream> (outputLocation);
+    auto options = juce::AudioFormatWriterOptions{}.withSampleRate (outputSampleRate)
+                                                   .withNumChannels (1)
+                                                   .withBitsPerSample (8);
+    if (auto writer = format.createWriterFor (stream, options))
+        writer->writeFromAudioSampleBuffer (downsampled, 0, downsampled.getNumSamples());
 }
 
 void SourceSamplerSound::preProcessAudioWithStretch()
 {
+    // Runs in the stretch processor thread. Computes the new buffer without touching the one being used for playback,
+    // and then swaps buffers under the playback lock (which voices hold while rendering).
     computingTimeStretch = true;
-    timeStretchRatio = nextTimeStretchRatio;
-    pitchShiftSemitones = nextPitchShiftSemitones;
+    const float timeStretchRatio = nextTimeStretchRatio.load();
+    const float pitchShiftSemitones = nextPitchShiftSemitones.load();
     
-    if ((timeStretchRatio != 1.0) || (pitchShiftSemitones != 0.0)){
-        // Compute stretched version of audio into new tmp buffer
-        int newStretchedBufferNumSamples = int(timeStretchRatio * data->getNumSamples());
-        auto tmpBuffer = juce::AudioBuffer<float>(data->getNumChannels(), newStretchedBufferNumSamples);
-        stretch.configure(data->getNumChannels(), pluginSampleRate*0.1, pluginSampleRate*0.04);
+    std::shared_ptr<const juce::AudioBuffer<float>> newPlaybackData;
+    if ((timeStretchRatio != 1.0f) || (pitchShiftSemitones != 0.0f)){
+        // Compute stretched version of audio into a new buffer
+        const int newStretchedBufferNumSamples = juce::jmax (1, int(timeStretchRatio * data->getNumSamples()));
+        auto stretched = std::make_shared<juce::AudioBuffer<float>>(data->getNumChannels(), newStretchedBufferNumSamples);
+        stretch.configure(data->getNumChannels(), (int)(soundSampleRate * 0.1), (int)(soundSampleRate * 0.04));
         stretch.reset();
         stretch.setTransposeSemitones(pitchShiftSemitones);
-        stretch.process(data->getArrayOfReadPointers(), data->getNumSamples(), tmpBuffer.getArrayOfWritePointers(), tmpBuffer.getNumSamples());
-        
-        // Replace stretchProcessedData buffer with new data (and resize buffer if needed)
-        stretchProcessedData->makeCopyOf(tmpBuffer, true);
+        stretch.process(data->getArrayOfReadPointers(), data->getNumSamples(), stretched->getArrayOfWritePointers(), stretched->getNumSamples());
+        newPlaybackData = stretched;
     } else {
-        // If the stretching parameters are to leave the sound as it is, then we just copy the original audio data and avoid unnecessary computations
-        stretchProcessedData->makeCopyOf(*getAudioData(), true);
+        // If the stretching parameters are to leave the sound as it is, then we just use the original audio data
+        newPlaybackData = data;
     }
     
-    // Update stored property of length in samples which is used at playback time by sound voice
-    lengthInSamples = stretchProcessedData->getNumSamples();
-    
-    lastTimeProcessedWithStretchAtTime = juce::Time::getMillisecondCounterHiRes();
+    {
+        const juce::SpinLock::ScopedLockType sl (playbackDataLock);
+        std::swap (playbackData, newPlaybackData);
+        lengthInSamples = playbackData->getNumSamples();
+    }
+    // The old buffer (now in newPlaybackData) gets released here, outside the lock and outside the audio thread
+    newPlaybackData.reset();
     computingTimeStretch = false;
 }
 
 void SourceSamplerSound::setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio) {
-    nextTimeStretchRatio = (float)juce::jmax(0.1, juce::jmin((double)newTimeStretchRatio, (double)maxTimeStretchRatio));
+    newTimeStretchRatio = juce::jlimit (0.1f, maxTimeStretchRatio, newTimeStretchRatio);
+    if (newTimeStretchRatio == appliedTimeStretchRatio && newPitchShiftSemitones == appliedPitchShiftSemitones)
+        return;  // Nothing to do
+    appliedTimeStretchRatio = newTimeStretchRatio;
+    appliedPitchShiftSemitones = newPitchShiftSemitones;
+    nextTimeStretchRatio = newTimeStretchRatio;
     nextPitchShiftSemitones = newPitchShiftSemitones;
+    // Debounce processing so we don't re-compute stretch on every slider movement
     shouldProcessWithStretchAtTime = juce::Time::getMillisecondCounterHiRes() + STRETCH_PROCESSING_TIME_DEBOUNCE_MS;
+    if (!isTimerRunning())
+        startTimer(SAMPLER_SOUND_TIMER_MS);
 }
 
 bool SourceSamplerSound::appliesToNote (int midiNoteNumber)
@@ -179,10 +191,17 @@ float SourceSamplerSound::getCorrectedVelocity(float midiVelocity)
 
 bool SourceSamplerSound::appliesToChannel (int midiChannel)
 {
+    auto* mpeSynth = static_cast<SourceSamplerSynthesiser*>(sourceSoundPointer->getSampler());
+    if (mpeSynth != nullptr && mpeSynth->isMpeEnabled()){
+        // In MPE mode channels identify notes (not sounds), so all sounds respond to all channels
+        juce::ignoreUnused(midiChannel);
+        return true;
+    }
     int soundMidiChannel = getParameterInt(SourceIDs::midiChannel);
     if (soundMidiChannel == 0){
-        // use global channel
-        int globalMidiChannel = sourceSoundPointer->getGlobalContext().midiInChannel;
+        // use global channel (read from an atomic in the sampler: this is called from the audio thread)
+        auto* synth = static_cast<SourceSamplerSynthesiser*>(sourceSoundPointer->getSampler());
+        int globalMidiChannel = synth != nullptr ? synth->getGlobalMidiInChannel() : 0;
         return globalMidiChannel == 0 || globalMidiChannel == midiChannel;
     } else {
         // use the sound channel
@@ -287,9 +306,7 @@ void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
     }
 }
 
-std::vector<int> SourceSamplerSound::getOnsetTimesSamples(){
-    return onsetTimesSamples;
-}
+
 
 void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
     juce::ValueTree soundAnalysis = state.getChildWithName(SourceIDs::ANALYSIS);
@@ -332,18 +349,18 @@ bool SourceSamplerSound::shouldBeDeleted(){
 SourceSound::SourceSound (const juce::ValueTree& _state,
              std::function<GlobalContextStruct()> globalContextGetter): state(_state), soundLoaderThread (*this)
 {
+    weakThis = this;
     getGlobalContext = globalContextGetter;
+    sampler = getGlobalContext().sampler;
     bindState();
     
-    // Trigger the loading of sounds in a separate thread
-    soundLoaderThread.startThread();
+    // Trigger the loading of sounds (downloads + decoding happen asynchronously)
+    startLoading();
 }
 
 SourceSound::~SourceSound ()
 {
-    for (int i = 0; i < downloadTasks.size(); i++) {
-        downloadTasks.at(i).reset();
-    }
+    downloadPool->cancel(downloadsCancelFlag);  // Cancels pending downloads (without waiting for them)
     soundLoaderThread.stopThread(20000);
 }
 
@@ -436,12 +453,15 @@ void SourceSound::bindState ()
     // --> End auto-generated code C
     
     midiCCmappings = std::make_unique<MidiCCMappingList>(state);
+    
+    // Build the MPE mappings used by the audio thread from the state
+    updateMpeMappingsSnapshot();
 }
 
 std::vector<SourceSamplerSound*> SourceSound::getLinkedSourceSamplerSounds() {
     std::vector<SourceSamplerSound*> objects;
-    for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+    for (int i=0; i<sampler->getNumSounds(); i++){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(sampler->getSound(i).get());
         if (sourceSamplerSound->getSourceSound() == this){
             objects.push_back(sourceSamplerSound);
         }
@@ -451,8 +471,8 @@ std::vector<SourceSamplerSound*> SourceSound::getLinkedSourceSamplerSounds() {
 
 SourceSamplerSound* SourceSound::getFirstLinkedSourceSamplerSound() {
     std::vector<SourceSamplerSound*> objects;
-    for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+    for (int i=0; i<sampler->getNumSounds(); i++){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(sampler->getSound(i).get());
         if (sourceSamplerSound->getSourceSound() == this){
             return sourceSamplerSound;
         }
@@ -461,8 +481,8 @@ SourceSamplerSound* SourceSound::getFirstLinkedSourceSamplerSound() {
 }
 
 SourceSamplerSound* SourceSound::getLinkedSourceSamplerSoundWithUUID(const juce::String& sourceSamplerSoundUUID) {
-    for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+    for (int i=0; i<sampler->getNumSounds(); i++){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(sampler->getSound(i).get());
         if (sourceSamplerSound->getUUID() == sourceSamplerSoundUUID){
             return sourceSamplerSound;
         }
@@ -482,12 +502,14 @@ bool SourceSound::isScheduledForDeletion() {
 
 void SourceSound::scheduleSoundDeletion(){
     // Trigger stop all currently active notes for that sound and set timestamp so sound gets deleted async
-    for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
-        auto* voice = getGlobalContext().sampler->getVoice(i);
+    // Take the sampler lock so the audio thread is not rendering these voices while we stop them
+    const juce::ScopedLock sl (static_cast<SourceSamplerSynthesiser*>(sampler)->getVoicesLock());
+    for (int i=0; i<sampler->getNumVoices(); i++){
+        auto* voice = sampler->getVoice(i);
         if (voice != nullptr){
             if (voice->isVoiceActive()){
                 auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
-                if (currentlyPlayingSound->getSourceSound()->getUUID() == getUUID()){
+                if (currentlyPlayingSound != nullptr && currentlyPlayingSound->getSourceSound() == this){
                     voice->stopNote(0.0f, false);
                 }
             }
@@ -512,7 +534,8 @@ int SourceSound::getParameterInt(juce::Identifier identifier){
         else if (identifier == SourceIDs::numSlices) { return numSlices.get(); }
         else if (identifier == SourceIDs::midiChannel) { return midiChannel.get(); }
         // --> End auto-generated code E
-    throw std::runtime_error("No int parameter with this name");
+    jassertfalse; // No int parameter with this name
+    return 0;
 }
 
 float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
@@ -550,7 +573,8 @@ float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
         else if (identifier == SourceIDs::pitchShift) { return !normed ? pitchShift.get() : juce::jmap(pitchShift.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::timeStretch) { return !normed ? timeStretch.get() : juce::jmap(timeStretch.get(), 0.1f, 4.0f, 0.0f, 1.0f); }
         // --> End auto-generated code F
-    throw std::runtime_error("No float parameter with this name");
+    jassertfalse; // No float parameter with this name
+    return 0.0f;
 }
 
 void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float value, bool normed){
@@ -588,7 +612,7 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
         else if (identifier == SourceIDs::pitchShift) { pitchShift = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
         else if (identifier == SourceIDs::timeStretch) { timeStretch = !normed ? juce::jlimit(0.1f, 4.0f, value) : juce::jmap(value, 0.1f, 4.0f); }
         // --> End auto-generated code B
-    else { throw std::runtime_error("No float parameter with this name"); }
+    else { DBG("No float parameter with name " << identifier.toString()); return; }
     
     // Do some checking of start/end loop start/end positions to make sure we don't do anything wrong
     if (endPosition < startPosition) {
@@ -621,7 +645,7 @@ void SourceSound::setParameterByNameInt(juce::Identifier identifier, int value){
         else if (identifier == SourceIDs::numSlices) { numSlices = juce::jlimit(0, 100, value); }
         else if (identifier == SourceIDs::midiChannel) { midiChannel = juce::jlimit(0, 16, value); }
         // --> End auto-generated code D
-    else { throw std::runtime_error("No int parameter with this name"); }
+    else { DBG("No int parameter with name " << identifier.toString()); return; }
 }
 
 juce::BigInteger SourceSound::getMappedMidiNotes(){
@@ -754,7 +778,7 @@ int SourceSound::getMidiNoteFromFirstSourceSamplerSound(){
             return firstSourceSamplerSoundState.getProperty(SourceIDs::midiRootNote, SourceDefaults::midiRootNote);
         }
     } else {
-        getFirstLinkedSourceSamplerSound()->getMidiRootNote();
+        return getFirstLinkedSourceSamplerSound()->getMidiRootNote();
     }
     return SourceDefaults::midiRootNote;
 }
@@ -790,6 +814,83 @@ void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::St
     }
 }
 
+void SourceSound::addOrEditMpeMapping(const juce::String& uuid, const juce::String& source, const juce::String& parameterName, float minRange, float maxRange, float curve){
+    if (SourceHelpers::mpeSourceFromName(source) == SourceHelpers::MpeSource::numSources){
+        DBG("Invalid MPE source " << source);
+        return;
+    }
+    const auto* parameterInfo = findSoundParameterInfo(parameterName);
+    if (parameterInfo == nullptr || parameterInfo->isInt){
+        DBG("Invalid parameter for MPE mapping " << parameterName);
+        return;
+    }
+    minRange = juce::jlimit(0.0f, 1.0f, minRange);
+    maxRange = juce::jlimit(0.0f, 1.0f, maxRange);
+    curve = juce::jlimit(-1.0f, 1.0f, curve);
+    juce::ValueTree existingMapping = state.getChildWithProperty(SourceIDs::uuid, uuid);
+    if (existingMapping.isValid() && existingMapping.hasType(SourceIDs::MPE_MAPPING)){
+        existingMapping.setProperty(SourceIDs::mpeSource, source, nullptr);
+        existingMapping.setProperty(SourceIDs::parameterName, parameterName, nullptr);
+        existingMapping.setProperty(SourceIDs::minRange, minRange, nullptr);
+        existingMapping.setProperty(SourceIDs::maxRange, maxRange, nullptr);
+        existingMapping.setProperty(SourceIDs::curve, curve, nullptr);
+    } else {
+        int numExisting = 0;
+        for (const auto& child: state)
+            if (child.hasType(SourceIDs::MPE_MAPPING)) numExisting += 1;
+        if (numExisting >= maxMpeMappings){
+            DBG("Maximum number of MPE mappings reached");
+            return;
+        }
+        auto newMapping = SourceHelpers::createMpeMappingState(source, parameterName, minRange, maxRange, curve);
+        if (uuid.isNotEmpty())
+            newMapping.setProperty(SourceIDs::uuid, uuid, nullptr);
+        state.addChild(newMapping, -1, nullptr);
+    }
+    updateMpeMappingsSnapshot();
+}
+
+void SourceSound::removeMpeMapping(const juce::String& uuid){
+    auto mapping = state.getChildWithProperty(SourceIDs::uuid, uuid);
+    if (mapping.isValid() && mapping.hasType(SourceIDs::MPE_MAPPING))
+        state.removeChild(mapping, nullptr);
+    updateMpeMappingsSnapshot();
+}
+
+void SourceSound::updateMpeMappingsSnapshot(){
+    // Build the new list outside the lock, then copy it while holding the lock (the audio thread only try-locks)
+    MpeMappings newMappings;
+    int numNewMappings = 0;
+    for (const auto& child: state){
+        if (!child.hasType(SourceIDs::MPE_MAPPING) || numNewMappings >= maxMpeMappings)
+            continue;
+        const auto source = SourceHelpers::mpeSourceFromName(child.getProperty(SourceIDs::mpeSource).toString());
+        const auto* parameterInfo = findSoundParameterInfo(child.getProperty(SourceIDs::parameterName).toString());
+        if (source == SourceHelpers::MpeSource::numSources || parameterInfo == nullptr || parameterInfo->isInt)
+            continue;
+        auto& mapping = newMappings[(size_t)numNewMappings++];
+        mapping.source = source;
+        mapping.parameter = parameterInfo->getIdentifier();
+        mapping.minRange = child.getProperty(SourceIDs::minRange, 0.0f);
+        mapping.maxRange = child.getProperty(SourceIDs::maxRange, 1.0f);
+        mapping.curve = child.getProperty(SourceIDs::curve, SourceDefaults::mpeCurve);
+        mapping.parameterMin = parameterInfo->minValue;
+        mapping.parameterMax = parameterInfo->maxValue;
+    }
+    const juce::SpinLock::ScopedLockType sl (mpeMappingsLock);
+    mpeMappings = newMappings;
+    numMpeMappings = numNewMappings;
+}
+
+int SourceSound::copyMpeMappings(MpeMappings& dest) noexcept{
+    const juce::SpinLock::ScopedTryLockType tl (mpeMappingsLock);
+    if (!tl.isLocked())
+        return -1;
+    for (int i = 0; i < numMpeMappings; ++i)
+        dest[(size_t)i] = mpeMappings[(size_t)i];
+    return numMpeMappings;
+}
+
 std::vector<MidiCCMapping*> SourceSound::getMidiMappingsForCcNumber(int ccNumber){
     std::vector<MidiCCMapping*> toReturn = {};
     for (auto* midiCCmapping: midiCCmappings->objects){
@@ -806,6 +907,7 @@ void SourceSound::removeMidiMapping(juce::String uuid){
 }
 
 void SourceSound::applyMidiCCModulations(int channel, int number, int value) {
+    // NOTE: this modifies the state so it must be called from the message thread
     const juce::ScopedLock sl (midiMappingCreateDeleteLock);
     
     int globalMidiChannel = getGlobalContext().midiInChannel;
@@ -830,51 +932,6 @@ void SourceSound::applyMidiCCModulations(int channel, int number, int value) {
 
 // ------------------------------------------------------------------------------------------------
 
-std::vector<SourceSamplerSound*> SourceSound::createSourceSamplerSounds ()
-{
-    // Generate all the SourceSamplerSound objects corresponding to this sound .In most of the cases this will be a single sound, but
-    // it could be that some sounds have more than one SourceSamplerSound (multi-layered sounds for example). If a SourceSamplerSound
-    // already exists, skip creation. This could happen if new sample sounds are added to the sound and this method is called again
-    // to create SourceSamplerSound(s) for the newly added sample sounds.
-    
-    juce::AudioFormatManager audioFormatManager;
-    audioFormatManager.registerBasicFormats();
-    std::vector<SourceSamplerSound*> sounds = {};
-    for (int i=0; i<state.getNumChildren(); i++){
-        if (shouldStopLoading()){
-            DBG("Cancelled loading sounds process at sound " << i);
-            // If loading process was cancelled, do an early return
-            return sounds;
-        }
-        auto child = state.getChild(i);
-        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
-            bool alreadyCreated = sourceSamplerSoundWithUUIDAlreadyCreated(child.getProperty(SourceIDs::uuid, "").toString());
-            if (!alreadyCreated){
-                juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
-                if (fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)){
-                    std::unique_ptr<juce::AudioFormatReader> reader(audioFormatManager.createReaderFor(locationInDisk));
-                    if (reader == NULL){
-                        // If for some reason the reader is NULL (corrupted file for example), don't proceed creating the SourceSamplerSound
-                        // In that case delete the file so it can be re-downloaded
-                        DBG("Skipping loading of possibly corrupted file. Will delete that file so it can be re-downloaded: " << locationInDisk.getFullPathName());
-                        locationInDisk.deleteFile();
-                    } else {
-                        SourceSamplerSound* createdSound = new SourceSamplerSound(child,
-                                                                                  this,
-                                                                                  *reader,
-                                                                                  MAX_SAMPLE_LENGTH,
-                                                                                  getGlobalContext().sampleRate,
-                                                                                  getGlobalContext().samplesPerBlock);
-                        sounds.push_back(createdSound);
-                    }
-                }
-            }
-        }
-    }
-    return sounds;
-}
-
-
 bool SourceSound::sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& sourceSamplerSoundUUID)
 {
     for (auto sourceSamplerSound: getLinkedSourceSamplerSounds()){
@@ -885,29 +942,12 @@ bool SourceSound::sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& s
     return false;
 }
 
-void SourceSound::addSourceSamplerSoundsToSampler()
-{
-    const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
-    std::vector<SourceSamplerSound*> sourceSamplerSounds = createSourceSamplerSounds();
-    for (auto sourceSamplerSound: sourceSamplerSounds) {
-        if (shouldStopLoading()){
-            // If loading process was cancelled, do an early return
-            DBG("Cancelled loading sounds process when adding sounds to sampler");
-            return;
-        }
-        getGlobalContext().sampler->addSound(sourceSamplerSound);
-    }
-    assignMidiNotesAndVelocityToSourceSamplerSounds();
-    std::cout << "Added " << sourceSamplerSounds.size() << " SourceSamplerSound(s) to sampler... " << std::endl;
-    allSoundsLoaded = true;
-}
-
 void SourceSound::removeSourceSampleSoundsFromSampler()
 {
     const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
     std::vector<int> soundIndexesToDelete;
-    for (int i=0; i<getGlobalContext().sampler->getNumSounds(); i++){
-        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(getGlobalContext().sampler->getSound(i).get());
+    for (int i=0; i<sampler->getNumSounds(); i++){
+        auto* sourceSamplerSound = static_cast<SourceSamplerSound*>(sampler->getSound(i).get());
         if (sourceSamplerSound->getSourceSound() == this){
             // If the pointer to sourceSound of the sourceSamplerSound is the current sourceSound, then the sound should be deleted
             soundIndexesToDelete.push_back(i);
@@ -917,31 +957,26 @@ void SourceSound::removeSourceSampleSoundsFromSampler()
     int numDeleted = 0;
     for (auto idx: soundIndexesToDelete)
     {
-        getGlobalContext().sampler->removeSound(idx - numDeleted);  // Compensate index updates as sounds get removed
+        sampler->removeSound(idx - numDeleted);  // Compensate index updates as sounds get removed
         numDeleted += 1;
     }
-    std::cout << "Removed " << numDeleted << " SourceSamplerSound(s) from sampler... " << std::endl;
+    DBG("Removed " << numDeleted << " SourceSamplerSound(s) from sampler... ");
 }
 
 void SourceSound::removeSourceSamplerSound(const juce::String& samplerSoundUUID, int indexInSampler)
 {
     const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
-    getGlobalContext().sampler->removeSound(indexInSampler); // Remove source sampler sound from the sampler
+    sampler->removeSound(indexInSampler); // Remove source sampler sound from the sampler
     state.removeChild(state.getChildWithProperty(SourceIDs::uuid, samplerSoundUUID), nullptr);  // Also remove the bit of state corresponding to the sampler sound
-    std::cout << "Removed 1 SourceSamplerSound(s) from sampler... " << std::endl;
+    DBG("Removed 1 SourceSamplerSound(s) from sampler... ");
 }
 
 void SourceSound::addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound)
 {
-    // Add the new sample sound data to the state and then start the loader thread that will load the new sound and later create SourceSamplerSound for it
+    // Add the new sample sound data to the state and then re-start the loading process that will load the new sound
+    // and later create SourceSamplerSound for it (already loaded samples are skipped)
     state.addChild(newSourceSamplerSound, -1, nullptr);
-    if (soundLoaderThread.isThreadRunning()){
-        // If the loader thread is running, stop it first (give it some time so it can finish loading sounds if it was doing so)
-        // This will interrupt downloads and loading of soudns, but these will be retriggered later when thread is re-started
-        // Note that this situation would only happen if the method addNewSourceSamplerSoundFromValueTree is called vey often, which is unlikely
-        soundLoaderThread.stopThread(10000);
-    }
-    soundLoaderThread.startThread();
+    startLoading();
 }
 
 void SourceSound::scheduleDeletionOfSourceSamplerSound(const juce::String& sourceSamplerSoundUUID)
@@ -949,8 +984,9 @@ void SourceSound::scheduleDeletionOfSourceSamplerSound(const juce::String& sourc
     // Stop all notes currently being played from that sound
     auto* sourceSamplerSound = getLinkedSourceSamplerSoundWithUUID(sourceSamplerSoundUUID);
     if (sourceSamplerSound != nullptr){
-        for (int i=0; i<getGlobalContext().sampler->getNumVoices(); i++){
-            auto* voice = getGlobalContext().sampler->getVoice(i);
+        const juce::ScopedLock sl (static_cast<SourceSamplerSynthesiser*>(sampler)->getVoicesLock());
+        for (int i=0; i<sampler->getNumVoices(); i++){
+            auto* voice = sampler->getVoice(i);
             if (voice != nullptr){
                 if (voice->isVoiceActive()){
                     auto* currentlyPlayingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
@@ -967,27 +1003,65 @@ void SourceSound::scheduleDeletionOfSourceSamplerSound(const juce::String& sourc
 
 // ------------------------------------------------------------------------------------------------
 
-void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
+void SourceSound::postToMessageThread(std::function<void(SourceSound&)> callback)
 {
-    // Assign funtion that will tell if loading should stop (because loading thread was cancelled) to instance so it can be used in other methods
-    shouldStopLoading = _shouldStopLoading;
-    
-    // Load all the  SourceSamplerSound(s) of SourceSound, triggering downloading if needed. This will normally be one single sound except for the
-    // case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
-    
-    allSoundsLoaded = false;
-    
+    // Can be called from any thread. The callback is only run if the SourceSound object still exists.
+    juce::WeakReference<SourceSound> weak = weakThis;
+    juce::MessageManager::callAsync([weak, callback = std::move(callback)]{
+        if (auto* sound = weak.get())
+            callback(*sound);
+    });
+}
 
-    // Set all download progress/completed properties to 0/false to start from scratch
+void SourceSound::retryFailedDownloads()
+{
+    failedDownloads.clear();
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        child.setProperty (SourceIDs::downloadProgress, 0, nullptr);
-        child.setProperty (SourceIDs::downloadCompleted, false, nullptr);
+        if (child.hasType(SourceIDs::SOUND_SAMPLE))
+            child.setProperty(SourceIDs::downloadFailed, false, nullptr);
     }
+    startLoading();
+}
+
+void SourceSound::startLoading()
+{
+    // Loading happens in a background thread which works on a copy of the state (ValueTree objects are not thread safe).
+    // All modifications to the actual state are posted back to the message thread.
+    if (soundLoaderThread.isThreadRunning()){
+        // If the loader thread is running, stop it first (give it some time so it can finish what it was doing)
+        soundLoaderThread.stopThread(10000);
+    }
+    allSoundsLoaded = false;
+    loaderStateSnapshot = state.createCopy();
+    loaderContext = getGlobalContext();
+    loaderFailedDownloads = failedDownloads;
+    soundLoaderThread.startThread();
+}
+
+void SourceSound::loadSounds(std::function<bool()> shouldStopLoading)
+{
+    // Runs in the loader thread. Load all the SourceSamplerSound(s) of SourceSound, triggering downloading if needed. This will normally be one
+    // single sound except for the case of multi-sample sounds in which there might be different sounds per pitch and velocity layers.
+    // IMPORTANT: this method must not read or write the live state (only loaderStateSnapshot/loaderContext)
+    
+    const GlobalContextStruct& context = loaderContext;
+    std::vector<PendingDownload> pendingDownloads;
+    
+    // Helper to set a property both in the snapshot (so later steps see it) and in the real state (on the message thread)
+    auto setSampleProperty = [this](juce::ValueTree& child, const juce::Identifier& property, const juce::var& value){
+        child.setProperty(property, value, nullptr);
+        juce::String sampleUUID = child.getProperty(SourceIDs::uuid).toString();
+        postToMessageThread([sampleUUID, property, value](SourceSound& sound){
+            auto liveChild = sound.state.getChildWithProperty(SourceIDs::uuid, sampleUUID);
+            if (liveChild.isValid())
+                liveChild.setProperty(property, value, nullptr);
+        });
+    };
     
     // Iterate thorugh all sampler sounds and trigger downloads if necessary
     bool allAlreadyDownloaded = true;
-    for (int i=0; i<state.getNumChildren(); i++){
+    for (int i=0; i<loaderStateSnapshot.getNumChildren(); i++){
         
         if (shouldStopLoading()){
             DBG("Cancelled loading sounds process");
@@ -995,7 +1069,7 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
             return;
         }
         
-        auto child = state.getChild(i);
+        auto child = loaderStateSnapshot.getChild(i);
         if (child.hasType(SourceIDs::SOUND_SAMPLE)){
             bool isFromFreesound = child.getProperty(SourceIDs::soundFromFreesound, false);
             juce::String filePath = child.getProperty(SourceIDs::filePath, ""); // Relative file path
@@ -1006,99 +1080,174 @@ void SourceSound::loadSounds(std::function<bool()> _shouldStopLoading)
                 // If sound is from Freesound, compute the expected file location and update the state with that location (it will most likely be the same)
                 // This can be useful if sharing presets that had downloaded original quality files with plugin instances that don't have the ability to
                 // download original quality files (e.g. have no access token set)
-                locationInDisk = getFreesoundFileLocation(child);
-                child.setProperty(SourceIDs::filePath, locationInDisk.getRelativePathFrom(getGlobalContext().sourceDataLocation), nullptr);
+                locationInDisk = getFreesoundFileLocation(child, context);
+                juce::String relativePath = locationInDisk.getRelativePathFrom(context.sourceDataLocation);
+                if (relativePath != filePath)
+                    setSampleProperty(child, SourceIDs::filePath, relativePath);
                 if (fileAlreadyInDisk(locationInDisk)){
                     // If file already exists at the expected location, mark it as downloaded and don't trigger downloading
-                    if (!locationInDisk.getFullPathName().contains("-original")){
-                        child.setProperty(SourceIDs::usesPreview, true, nullptr);
-                    } else {
-                        child.setProperty(SourceIDs::usesPreview, false, nullptr);
-                    }
-                    child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
-                    child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
+                    setSampleProperty(child, SourceIDs::usesPreview, !locationInDisk.getFullPathName().contains("-original"));
+                    setSampleProperty(child, SourceIDs::downloadProgress, 100.0);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, true);
+                    setSampleProperty(child, SourceIDs::downloadFailed, false);
+                } else if (loaderFailedDownloads.contains(locationInDisk.getFullPathName())){
+                    // The download already failed: load the sound without this sample (it is retried when the sound is loaded again)
+                    setSampleProperty(child, SourceIDs::downloadFailed, true);
                 } else {
                     // If the sound does not exist, then trigger the download
                     allAlreadyDownloaded = false;
-                    child.setProperty(SourceIDs::downloadProgress, 0.0, nullptr);
-                    child.setProperty(SourceIDs::downloadCompleted, false, nullptr);
-                    if (shouldUseOriginalQualityFile(child)){
+                    setSampleProperty(child, SourceIDs::downloadProgress, 0.0);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, false);
+                    setSampleProperty(child, SourceIDs::downloadFailed, false);
+                    juce::String downloadURL;
+                    juce::String downloadHeaders;
+                    if (shouldUseOriginalQualityFile(child, context)){
                         // Download original quality file
-                        juce::String downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(SourceIDs::soundId).toString(), false);
-                        child.setProperty(SourceIDs::usesPreview, false, nullptr);
-                        # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
-                        juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withExtraHeaders("Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken).withListener(this);
-                        # if USE_APP_GROUP_ID
-                        options = options.withSharedContainer(APP_GROUP_ID);
-                        #endif
-                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(downloadURL).downloadToFile(locationInDisk, options);
-                        downloadTasks.push_back(std::move(downloadTask));
-                        DBG("Downloading sound to " << locationInDisk.getFullPathName());
-                        # else
-                        juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + juce::String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "Authorization: Bearer " + getGlobalContext().freesoundOauthAccessToken);
-                        int statusCode = -1;
-                        juce::StringPairArray responseHeaders;
-                        if (auto stream = std::unique_ptr<juce::InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
-                            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-                            &responseHeaders, &statusCode))){
-                            juce::String resp = stream->readEntireStreamAsString();
-                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (juce::String)statusCode + ": " + resp);
-                        } else {
-                            DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
-                        }
-                        # endif
+                        downloadURL = juce::String("https://freesound.org/apiv2/sounds/<sound_id>/download/").replace("<sound_id>", child.getProperty(SourceIDs::soundId).toString(), false);
+                        downloadHeaders = "Authorization: Bearer " + context.freesoundOauthAccessToken;
+                        setSampleProperty(child, SourceIDs::usesPreview, false);
                     } else {
                         // Download preview quality file
-                        child.setProperty(SourceIDs::usesPreview, true, nullptr);
-                        juce::String previewURL = child.getProperty(SourceIDs::previewURL, "").toString();
-                        # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
-                        juce::URL::DownloadTaskOptions options = juce::URL::DownloadTaskOptions().withListener(this);
-                        # if USE_APP_GROUP_ID
-                        options = options.withSharedContainer(APP_GROUP_ID);
-                        #endif
-                        std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(previewURL).downloadToFile(locationInDisk, options);
-                        downloadTasks.push_back(std::move(downloadTask));
-                        DBG("Downloading sound to " << locationInDisk.getFullPathName());
-                        # else
-                        juce::URL downloadServerUrlEndpoint;
-                        downloadServerUrlEndpoint = juce::URL("http://localhost:" + juce::String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", getUUID()).withParameter("urlToDownloadFrom", previewURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName() ).withParameter("downloadHeaders", "");
-                        int statusCode = -1;
-                        juce::StringPairArray responseHeaders;
-                        if (auto stream = std::unique_ptr<juce::InputStream>(downloadServerUrlEndpoint.createInputStream(false, nullptr, nullptr, "",
-                            MAX_DOWNLOAD_WAITING_TIME_MS, // timeout in millisecs
-                            &responseHeaders, &statusCode))){
-                            juce::String resp = stream->readEntireStreamAsString();
-                            DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (juce::String)statusCode + ": " + resp);
-                        } else {
-                            DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
-                        }
-                        # endif
+                        downloadURL = SourceHelpers::fixFreesoundPreviewURL(child.getProperty(SourceIDs::previewURL, "").toString());
+                        if (downloadURL != child.getProperty(SourceIDs::previewURL, "").toString())
+                            setSampleProperty(child, SourceIDs::previewURL, downloadURL);  // So it is saved with the new URL
+                        setSampleProperty(child, SourceIDs::usesPreview, true);
                     }
+                    # if !USE_EXTERNAL_HTTP_SERVER_FOR_DOWNLOADS
+                    pendingDownloads.push_back({downloadURL, locationInDisk, downloadHeaders});
+                    # else
+                    // In ELK builds, downloads are done by an external HTTP server which notifies the plugin when finished
+                    juce::URL downloadServerUrlEndpoint = juce::URL("http://localhost:" + juce::String(HTTP_DOWNLOAD_SERVER_PORT) + "/download_sound").withParameter("soundUUID", child.getProperty(SourceIDs::uuid).toString()).withParameter("urlToDownloadFrom", downloadURL).withParameter("pathToSaveDownloadedFile", locationInDisk.getFullPathName()).withParameter("downloadHeaders", downloadHeaders);
+                    int statusCode = -1;
+                    juce::StringPairArray responseHeaders;
+                    auto options = juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress).withConnectionTimeoutMs (MAX_DOWNLOAD_WAITING_TIME_MS).withResponseHeaders (&responseHeaders).withStatusCode (&statusCode);
+                    if (auto stream = downloadServerUrlEndpoint.createInputStream(options)){
+                        juce::String resp = stream->readEntireStreamAsString();
+                        DBG("Downloading sound to " << locationInDisk.getFullPathName() << " with external server: " + (juce::String)statusCode + ": " + resp);
+                    } else {
+                        DBG("Download server ERROR downloading sound to " << locationInDisk.getFullPathName());
+                    }
+                    # endif
                 }
             } else {
                 // If sound not from Freesound
-                // Chek if sound already exists in disk, otherwise there's nothing we can do as the sound is not from Freesound we can't re-download it
-                if (filePath != ""){
-                    locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(filePath);
-                    if (fileAlreadyInDisk(locationInDisk)){
-                        child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
-                        child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
-                    }
+                // Check if the file exists in disk. Otherwise there's nothing we can do (it can't be downloaded), so mark
+                // it as missing (e.g. presets made in another device which used local files)
+                const bool fileFound = filePath != "" && fileAlreadyInDisk(context.sourceDataLocation.getChildFile(filePath));
+                if (fileFound){
+                    setSampleProperty(child, SourceIDs::downloadProgress, 100.0);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, true);
+                } else {
+                    DBG("Local file not found: " << filePath);
+                    setSampleProperty(child, SourceIDs::downloadCompleted, false);
                 }
+                setSampleProperty(child, SourceIDs::localFileMissing, !fileFound);
             }
         }
     }
     
-    if (allAlreadyDownloaded){
-        // If no sound needs downloading
-        addSourceSamplerSoundsToSampler();
+    if (!pendingDownloads.empty()){
+        // Downloads are started (and owned) from the message thread
+        postToMessageThread([pendingDownloads](SourceSound& sound){ sound.startDownloads(pendingDownloads); });
     }
+    
+    if (!allAlreadyDownloaded){
+        // Wait until downloads finish, downloadFinished will re-start the loading process
+        return;
+    }
+    
+    // All files are available: decode them (here in the loader thread) and pass the decoded audio to the message thread
+    // where SourceSamplerSound objects will be created and added to the sampler
+    juce::AudioFormatManager audioFormatManager;
+    audioFormatManager.registerBasicFormats();
+    auto loadedSamples = std::make_shared<std::vector<LoadedSample>>();
+    for (int i=0; i<loaderStateSnapshot.getNumChildren(); i++){
+        if (shouldStopLoading()){
+            DBG("Cancelled loading sounds process at sound " << i);
+            return;
+        }
+        auto child = loaderStateSnapshot.getChild(i);
+        if (!child.hasType(SourceIDs::SOUND_SAMPLE))
+            continue;
+        juce::File locationInDisk = context.sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
+        if (!(fileAlreadyInDisk(locationInDisk) && fileLocationIsSupportedAudioFileFormat(locationInDisk)))
+            continue;
+        std::unique_ptr<juce::AudioFormatReader> reader (audioFormatManager.createReaderFor(locationInDisk));
+        if (reader == nullptr || reader->sampleRate <= 0 || reader->lengthInSamples <= 0){
+            // If for some reason the reader is NULL (corrupted file for example), don't proceed creating the SourceSamplerSound
+            // If the file was downloaded from Freesound, delete it so it can be re-downloaded (never delete user's own files)
+            DBG("Skipping loading of possibly corrupted file: " << locationInDisk.getFullPathName());
+            if ((bool) child.getProperty(SourceIDs::soundFromFreesound, false))
+                locationInDisk.deleteFile();
+            continue;
+        }
+        const int numSamples = (int) juce::jmin (reader->lengthInSamples, (juce::int64) (MAX_SAMPLE_LENGTH * reader->sampleRate));
+        auto buffer = std::make_unique<juce::AudioBuffer<float>> ((int) juce::jmin (2u, reader->numChannels), numSamples);
+        reader->read (buffer.get(), 0, numSamples, 0, true, true);
+        
+        juce::String sampleUUID = child.getProperty(SourceIDs::uuid).toString();
+        
+        // Write low resolution version of the audio to disk so it can be used in the web UI for displaying waveforms
+        SourceSamplerSound::writeWaveformFileToDisk (*buffer, reader->sampleRate, context.tmpFilesLocation.getChildFile(sampleUUID).withFileExtension("wav"));
+        
+        loadedSamples->push_back({sampleUUID, std::move(buffer), reader->sampleRate});
+    }
+    
+    postToMessageThread([loadedSamples](SourceSound& sound){ sound.onSamplesLoaded(*loadedSamples); });
+}
+
+void SourceSound::startDownloads(const std::vector<PendingDownload>& downloads)
+{
+    // Message thread. Downloads run in the shared download pool (this never blocks), progress and results are posted
+    // back to the message thread
+    juce::WeakReference<SourceSound> weak = weakThis;
+    for (const auto& download: downloads){
+        DownloadPool::Request request { juce::URL(download.url), download.extraHeaders, download.location };
+        downloadPool->download(request, downloadsCancelFlag,
+            [weak](const juce::File& target, juce::int64 downloaded, juce::int64 total){
+                if (total <= 0)
+                    return;
+                const float percentageCompleted = 100.0f * (float) downloaded / (float) total;
+                juce::MessageManager::callAsync([weak, target, percentageCompleted]{
+                    if (auto* sound = weak.get())
+                        sound->downloadProgressUpdate(target, percentageCompleted);
+                });
+            },
+            [weak](const juce::File& target, bool succeeded){
+                juce::MessageManager::callAsync([weak, target, succeeded]{
+                    if (auto* sound = weak.get())
+                        sound->downloadFinished(target, succeeded);
+                });
+            });
+        DBG("Queued download of " << download.location.getFullPathName());
+    }
+}
+
+void SourceSound::onSamplesLoaded(std::vector<LoadedSample>& loadedSamples)
+{
+    // Runs in the message thread: create SourceSamplerSound objects from decoded audio and add them to the sampler
+    if (isScheduledForDeletion())
+        return;
+    
+    const juce::ScopedLock sl (samplerSoundCreateDeleteLock);
+    const GlobalContextStruct context = getGlobalContext();
+    int numAdded = 0;
+    for (auto& loadedSample: loadedSamples){
+        auto child = state.getChildWithProperty(SourceIDs::uuid, loadedSample.uuid);
+        if (!child.isValid() || sourceSamplerSoundWithUUIDAlreadyCreated(loadedSample.uuid))
+            continue;  // Sample was removed in the meantime or already loaded
+        auto* sourceSamplerSound = new SourceSamplerSound(child, this, std::move(loadedSample.buffer), loadedSample.sampleRate, context.sampleRate, context.samplesPerBlock);
+        sampler->addSound(sourceSamplerSound);
+        numAdded += 1;
+    }
+    assignMidiNotesAndVelocityToSourceSamplerSounds();
+    DBG("Added " << numAdded << " SourceSamplerSound(s) to sampler... ");
+    allSoundsLoaded = true;
 }
 
 bool SourceSound::isSupportedAudioFileFormat(const juce::String& extension)
 {
-    return juce::StringArray({"ogg", "wav", "aiff", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
+    return juce::StringArray({"ogg", "wav", "aiff", "aif", "mp3", "flac"}).contains(extension.toLowerCase().replace(".", ""));
 }
 
 
@@ -1107,28 +1256,28 @@ bool SourceSound::fileLocationIsSupportedAudioFileFormat(juce::File location)
     return isSupportedAudioFileFormat(location.getFileExtension());
 }
 
-juce::File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState)
+juce::File SourceSound::getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState, const GlobalContextStruct& context)
 {
     juce::File locationInDisk;
     juce::String soundId = sourceSamplerSoundState.getProperty(SourceIDs::soundId);
-    if (shouldUseOriginalQualityFile(sourceSamplerSoundState)){
-        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(SourceIDs::format).toString());
+    if (shouldUseOriginalQualityFile(sourceSamplerSoundState, context)){
+        locationInDisk = context.soundsDownloadLocation.getChildFile(soundId + "-original").withFileExtension(sourceSamplerSoundState.getProperty(SourceIDs::format).toString());
     } else {
-        locationInDisk = getGlobalContext().soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
+        locationInDisk = context.soundsDownloadLocation.getChildFile((juce::String)soundId).withFileExtension("ogg");
     }
     return locationInDisk;
 }
 
-bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState)
+bool SourceSound::shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState, const GlobalContextStruct& context)
 {
     // In order for a sound to be downloaded in original quality we need:
     // - an access token present
     // - the preference which indiates that original files are wanted (and the file smaller than the max size for original files)
     // - the sound sample to have the "format" metadata, othewise we don't know the file format and can't download (this can be checked with isSupportedAudioFileFormat)
-    if (getGlobalContext().freesoundOauthAccessToken != ""){
-        if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
+    if (context.freesoundOauthAccessToken != ""){
+        if (context.useOriginalFilesPreference == USE_ORIGINAL_FILES_ALWAYS){
             return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(SourceIDs::format, ""));
-        } else if (getGlobalContext().useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
+        } else if (context.useOriginalFilesPreference == USE_ORIGINAL_FILES_ONLY_SHORT){
             // Only return true if sound has a filesize below the threshold
             if ((int)sourceSamplerSoundState.getProperty(SourceIDs::filesize, MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD + 1) <= MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD){
                 return isSupportedAudioFileFormat(sourceSamplerSoundState.getProperty(SourceIDs::format, ""));
@@ -1147,6 +1296,7 @@ bool SourceSound::fileAlreadyInDisk(juce::File locationInDisk)
 
 void SourceSound::downloadProgressUpdate(juce::File targetFileLocation, float percentageCompleted)
 {
+    // Message thread
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
         if (child.hasType(SourceIDs::SOUND_SAMPLE)){
@@ -1161,36 +1311,33 @@ void SourceSound::downloadProgressUpdate(juce::File targetFileLocation, float pe
 
 void SourceSound::downloadFinished(juce::File targetFileLocation, bool taskSucceeded)
 {
-    bool allAlreadyDownloaded = true;
+    // Message thread
+    if (!taskSucceeded){
+        DBG("Download failed for " << targetFileLocation.getFullPathName());
+        failedDownloads.addIfNotAlreadyThere(targetFileLocation.getFullPathName());
+    }
+    bool allDownloadsFinished = true;
     for (int i=0; i<state.getNumChildren(); i++){
         auto child = state.getChild(i);
-        if (child.hasType(SourceIDs::SOUND_SAMPLE)){
-            // Find the sample that corresponds to this download task and update state
-            // To consider a download as succeeded, check that the the task returned succes
-            juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
-            if (taskSucceeded && (targetFileLocation == locationInDisk) && fileAlreadyInDisk(locationInDisk)){
+        if (!child.hasType(SourceIDs::SOUND_SAMPLE))
+            continue;
+        juce::File locationInDisk = getGlobalContext().sourceDataLocation.getChildFile(child.getProperty(SourceIDs::filePath, "").toString());
+        if (targetFileLocation == locationInDisk){
+            if (taskSucceeded && fileAlreadyInDisk(locationInDisk)){
                 child.setProperty(SourceIDs::downloadCompleted, true, nullptr);
                 child.setProperty(SourceIDs::downloadProgress, 100.0, nullptr);
             } else {
-                if (!child.getProperty(SourceIDs::downloadCompleted, false)){
-                    allAlreadyDownloaded = false;
-                }
+                child.setProperty(SourceIDs::downloadFailed, true, nullptr);
             }
         }
+        // Samples not from Freesound which are not in disk can't be downloaded, so don't wait for them
+        const bool canBeDownloaded = child.getProperty(SourceIDs::soundFromFreesound, false);
+        if (canBeDownloaded && !child.getProperty(SourceIDs::downloadCompleted, false) && !child.getProperty(SourceIDs::downloadFailed, false))
+            allDownloadsFinished = false;
     }
-    if (allAlreadyDownloaded){
-        // If all sounds finished downloading
-        addSourceSamplerSoundsToSampler();
+    if (allDownloadsFinished){
+        // Re-start the loading process, which will now decode the downloaded files (skipping the failed ones)
+        startLoading();
     }
 }
 
-void SourceSound::progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength)
-{
-    float percentageCompleted = 100.0*(float)bytesDownloaded/(float)totalLength;
-    downloadProgressUpdate(task->getTargetLocation(), percentageCompleted);
-}
-
-void SourceSound::finished(juce::URL::DownloadTask *task, bool success)
-{
-    downloadFinished(task->getTargetLocation(), success);
-}

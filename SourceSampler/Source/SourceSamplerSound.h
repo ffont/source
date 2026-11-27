@@ -12,6 +12,8 @@
 #include <JuceHeader.h>
 #include "helpers_source.h"
 #include "signalsmith-stretch.h"
+#include "DownloadPool.h"
+#include <array>
 
 
 using Stretch = signalsmith::stretch::SignalsmithStretch<float>;
@@ -24,23 +26,21 @@ class SourceSamplerSound: public juce::SynthesiserSound, juce::Timer
 {
 public:
     //==============================================================================
-    /** Creates a sampled sound from an audio reader.
+    /** Creates a sampled sound from audio data that has already been loaded in memory.
 
-        This will attempt to load the audio from the source into memory and store
-        it in this object.
+        Must be called from the message thread (the sound binds to the given ValueTree state).
 
-        @param name         a name for the sample
-        @param source       the audio to load. This object can be safely deleted by the
-                            caller after this constructor returns
-        @param maxSampleLengthSeconds   a maximum length of audio to read from the audio
-                                        source, in seconds
-        @param _pluginSampleRate  sample rate of the host plugin
-        @param _pluginBlockSize  block size of the host plugin
+        @param _state               the SOUND_SAMPLE ValueTree for this sample
+        @param _sourceSoundPointer  the SourceSound this sample belongs to
+        @param audioData            the decoded audio (ownership is taken)
+        @param _soundSampleRate     sample rate of the decoded audio
+        @param _pluginSampleRate    sample rate of the host plugin
+        @param _pluginBlockSize     block size of the host plugin
     */
     SourceSamplerSound (const juce::ValueTree& _state,
                         SourceSound* _sourceSoundPointer,
-                        juce::AudioFormatReader& source,
-                        double maxSampleLengthSeconds,
+                        std::unique_ptr<juce::AudioBuffer<float>> audioData,
+                        double _soundSampleRate,
                         double _pluginSampleRate,
                         int _pluginBlockSize);
     
@@ -53,8 +53,17 @@ public:
     
     SourceSound* getSourceSound() { return sourceSoundPointer; };
     
-    juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
-    void writeBufferToDisk();
+    /** Original (non-stretched) audio data. */
+    const juce::AudioBuffer<float>* getAudioData() const noexcept { return data.get(); }
+
+    /** Audio data used for playback (pitch shifted/time stretched version of the original data, or the original
+        data itself if no stretching is applied). Callers must hold getPlaybackDataLock() while using it, because the
+        stretch processing thread can swap the buffer. */
+    const juce::AudioBuffer<float>& getPlaybackData() const noexcept { return *playbackData; }
+    juce::SpinLock& getPlaybackDataLock() noexcept { return playbackDataLock; }
+
+    /** Writes a low-resolution mono version of the audio to disk (used by the web UI to display waveforms). */
+    static void writeWaveformFileToDisk (const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::File& outputLocation);
     
     juce::String getUUID() { return state.getProperty(SourceIDs::uuid, "-"); };
     int getSoundId() { return soundId.get(); };
@@ -71,7 +80,7 @@ public:
     float getParameterFloat(juce::Identifier identifier);
     float gpf(juce::Identifier identifier) { return getParameterFloat(identifier);};
     int getParameterInt(juce::Identifier identifier);
-    float gpi(juce::Identifier identifier) { return getParameterInt(identifier);};
+    int gpi(juce::Identifier identifier) { return getParameterInt(identifier);};
     
     //==============================================================================
     void setSampleStartEndAndLoopPositions(float start, float end, float loopStart, float loopEnd);
@@ -80,7 +89,7 @@ public:
     //==============================================================================
     int getLengthInSamples();
     float getLengthInSeconds();
-    float getPlayingPositionPercentage();
+    double getSoundSampleRate() const noexcept { return soundSampleRate; }
     
     //==============================================================================
     int getNumberOfMappedMidiNotes();
@@ -94,7 +103,7 @@ public:
     //==============================================================================
     void loadOnsetTimesSamplesFromAnalysis();
     void setOnsetTimesSamples(std::vector<float> _onsetTimes);
-    std::vector<int> getOnsetTimesSamples();
+    const std::vector<int>& getOnsetTimesSamples() const noexcept { return onsetTimesSamples; }
     
     //==============================================================================
     bool isScheduledForDeletion();
@@ -104,6 +113,7 @@ public:
     //==============================================================================
     void preProcessAudioWithStretch();
     void setStretchParameters(float newPitchShiftSemitones, float newTimeStretchRatio);
+    bool isComputingStretch() const noexcept { return computingTimeStretch.load(); }
     
     class StretchProcessorThread : public juce::Thread
     {
@@ -135,9 +145,10 @@ private:
     juce::CachedValue<float> sampleLoopEndPosition;
 
     // "Volatile" properties that are not binded in state
-    std::unique_ptr<juce::AudioBuffer<float>> data;
-    std::unique_ptr<juce::AudioBuffer<float>> stretchProcessedData;  // used for storing pre-processed pitch shifted/time stretched versions of the audio
-    int lengthInSamples = 0;
+    std::shared_ptr<const juce::AudioBuffer<float>> data;          // Original audio
+    std::shared_ptr<const juce::AudioBuffer<float>> playbackData;  // Stretched audio (or same object as data if no stretching)
+    juce::SpinLock playbackDataLock;
+    std::atomic<int> lengthInSamples { 0 };  // Length of playbackData
     double soundSampleRate;
     double pluginSampleRate;
     int pluginBlockSize;
@@ -146,15 +157,14 @@ private:
     juce::BigInteger midiVelocities = 0;
     
     // 3rd party time stretcher/pitch shifter
-    int maxTimeStretchRatio = 4; // Set a maximum time stretch ratio so we allocate enough samples for the processed buffer and don't do re-allocations in real time thread
-    float timeStretchRatio = 1.0;
-    float pitchShiftSemitones = 0.0;
-    Stretch stretch;
-    double shouldProcessWithStretchAtTime = 0.0;
-    double lastTimeProcessedWithStretchAtTime = 0.0;
-    bool computingTimeStretch = false;
-    float nextTimeStretchRatio = 1.0;
-    float nextPitchShiftSemitones = 0.0;
+    static constexpr float maxTimeStretchRatio = 4.0f;
+    Stretch stretch;  // Only used from the stretch processing thread
+    std::atomic<float> nextTimeStretchRatio { 1.0f };
+    std::atomic<float> nextPitchShiftSemitones { 0.0f };
+    float appliedTimeStretchRatio = 1.0f;  // Only used from the message thread
+    float appliedPitchShiftSemitones = 0.0f;  // Only used from the message thread
+    double shouldProcessWithStretchAtTime = -1.0;
+    std::atomic<bool> computingTimeStretch { false };
     
     // we use these properties to specify when a sample sound will be deleted. Unlike SourceSound, we don't bind this to state
     bool willBeDeleted = false;
@@ -174,7 +184,7 @@ private:
 // or sounds sampled at different pitches.
 
 
-class SourceSound: public juce::URL::DownloadTask::Listener
+class SourceSound
 {
 public:
     SourceSound (const juce::ValueTree& _state,
@@ -222,26 +232,54 @@ public:
     void applyMidiCCModulations(int channel, int number, int value);
     
     // ------------------------------------------------------------------------------------------------
+    // MPE mappings: map per-note MPE dimensions (slide, glide, strike) to sound parameters
+    // (per-note pressure is handled by the aftertouch modulation parameters, mod2*). Unlike MIDI CC
+    // mappings (which change the sound parameter for all notes), these are applied per voice in the audio thread.
     
-    std::vector<SourceSamplerSound*> createSourceSamplerSounds();
+    struct MpeMapping
+    {
+        SourceHelpers::MpeSource source = SourceHelpers::MpeSource::slide;
+        juce::Identifier parameter;
+        float minRange = 0.0f;
+        float maxRange = 1.0f;
+        float curve = 0.0f;
+        float parameterMin = 0.0f;
+        float parameterMax = 1.0f;
+    };
+    static constexpr int maxMpeMappings = 16;
+    using MpeMappings = std::array<MpeMapping, maxMpeMappings>;
+    
+    void addOrEditMpeMapping(const juce::String& uuid, const juce::String& source, const juce::String& parameterName, float minRange, float maxRange, float curve);
+    void removeMpeMapping(const juce::String& uuid);
+    void updateMpeMappingsSnapshot();  // Message thread: rebuilds the copy of the mappings used by the audio thread
+    /** Audio thread: copies the current mappings to dest. Returns the number of mappings, or -1 if the mappings are
+        being updated (in that case dest is not modified and the caller should keep using its previous copy). */
+    int copyMpeMappings(MpeMappings& dest) noexcept;
+    
+    // ------------------------------------------------------------------------------------------------
+    
     bool sourceSamplerSoundWithUUIDAlreadyCreated(const juce::String& sourceSamplerSoundUUID);
-    void addSourceSamplerSoundsToSampler();
     void removeSourceSampleSoundsFromSampler();
     void removeSourceSamplerSound(const juce::String& samplerSoundUUID, int indexInSampler);
     void addNewSourceSamplerSoundFromValueTree(juce::ValueTree newSourceSamplerSound);
     void scheduleDeletionOfSourceSamplerSound(const juce::String& sourceSamplerSoundUUID);
     
-    void loadSounds(std::function<bool()> shouldStopLoading);
-    bool isSupportedAudioFileFormat(const juce::String& extension);
-    bool fileLocationIsSupportedAudioFileFormat(juce::File location);
-    juce::File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState);
-    bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState);
-    bool fileAlreadyInDisk(juce::File locationInDisk);
+    /** (Re)starts the loading process of the sound samples: downloads them if needed and, once all are available
+        on disk, decodes them in a background thread and adds the resulting SourceSamplerSound(s) to the sampler.
+        Must be called from the message thread. */
+    void startLoading();
+    /** Downloads again the files whose download failed, and loads the sound again (message thread). */
+    void retryFailedDownloads();
+    
+    static bool isSupportedAudioFileFormat(const juce::String& extension);
+    static bool fileLocationIsSupportedAudioFileFormat(juce::File location);
+    static juce::File getFreesoundFileLocation(juce::ValueTree sourceSamplerSoundState, const GlobalContextStruct& context);
+    static bool shouldUseOriginalQualityFile(juce::ValueTree sourceSamplerSoundState, const GlobalContextStruct& context);
+    static bool fileAlreadyInDisk(juce::File locationInDisk);
     void downloadProgressUpdate(juce::File targetFileLocation, float percentageCompleted);
     void downloadFinished(juce::File targetFileLocation, bool taskSucceeded);
     
-    void progress (juce::URL::DownloadTask *task, juce::int64 bytesDownloaded, juce::int64 totalLength);
-    void finished(juce::URL::DownloadTask *task, bool success);
+    juce::Synthesiser* getSampler() const noexcept { return sampler; }
     
     //==============================================================================
     class SoundLoaderThread : public juce::Thread
@@ -307,13 +345,41 @@ private:
     juce::CachedValue<float> timeStretch;
     // --> End auto-generated code A
     
+    // Loading (see startLoading)
+    struct LoadedSample
+    {
+        juce::String uuid;
+        std::unique_ptr<juce::AudioBuffer<float>> buffer;
+        double sampleRate = 0.0;
+    };
+    struct PendingDownload
+    {
+        juce::String url;
+        juce::File location;
+        juce::String extraHeaders;
+    };
+    void loadSounds(std::function<bool()> shouldStopLoading);  // Runs in the loader thread
+    void onSamplesLoaded(std::vector<LoadedSample>& loadedSamples);  // Runs in the message thread
+    void startDownloads(const std::vector<PendingDownload>& downloads);  // Runs in the message thread (never blocks)
+    void postToMessageThread(std::function<void(SourceSound&)> callback);
+    juce::ValueTree loaderStateSnapshot;  // Copy of the state used by the loader thread (so it never reads the live state)
+    GlobalContextStruct loaderContext;  // Copy of the global context used by the loader thread
+    juce::StringArray failedDownloads;  // Files whose download failed (not retried until the sound is loaded again)
+    juce::StringArray loaderFailedDownloads;  // Copy of failedDownloads used by the loader thread
+    
     // Other
-    std::vector<std::unique_ptr<juce::URL::DownloadTask>> downloadTasks;
-    bool allDownloaded = false;
+    juce::Synthesiser* sampler = nullptr;
+    juce::SharedResourcePointer<DownloadPool> downloadPool;
+    DownloadPool::CancelFlag downloadsCancelFlag = DownloadPool::makeCancelFlag();
     double scheduledForDeletionTime = 0.0;
-    std::function<bool()> shouldStopLoading;
     juce::CriticalSection samplerSoundCreateDeleteLock;
     juce::CriticalSection midiMappingCreateDeleteLock;
+    MpeMappings mpeMappings;
+    int numMpeMappings = 0;
+    juce::SpinLock mpeMappingsLock;
+    
+    JUCE_DECLARE_WEAK_REFERENCEABLE (SourceSound)
+    juce::WeakReference<SourceSound> weakThis;  // Created in the message thread so it can be safely copied from other threads
     JUCE_LEAK_DETECTOR (SourceSound)
 };
 

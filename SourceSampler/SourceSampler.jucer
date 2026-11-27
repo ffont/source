@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.7"
+<JUCERPROJECT id="y2t4cQ" name="SourceSampler" projectType="audioplug" version="0.8"
               projectLineFeed="&#10;" companyName="Music Technology Group"
               companyWebsite="http://mtg.upf.edu" companyEmail="frederic.font@upf.edu"
               reportAppUsage="0" pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
               pluginManufacturerCode="RaAu" pluginCode="SoSa" headerPath="../../3rdParty/ff_meters/LevelMeter/&#10;../../3rdParty/twine/include/&#10;../../3rdParty/Simple-WebSocket-Server/&#10;../../3rdParty/Simple-Web-Server/&#10;../../3rdParty/asio/asio/include/&#10;../../3rdParty/shepherd/Shepherd/Source/&#10;../../3rdParty/shepherd/Shepherd/Source/common&#10;../../3rdParty/signalsmith-stretch/"
               jucerFormatVersion="1" bundleIdentifier="com.RitaAurora.SourceSampler"
               defines="ASIO_STANDALONE=1" addUsingNamespaceToJuceHeader="0"
-              compilerFlagSchemes="NewScheme" pluginFormats="buildAUv3,buildStandalone">
+              compilerFlagSchemes="NewScheme" pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3">
   <MAINGROUP id="YxKWXt" name="SourceSampler">
     <GROUP id="{AB39B354-70D2-F17F-E0A3-C66C419060A1}" name="Sampler">
       <FILE id="NCfDAx" name="defines_source.h" compile="0" resource="0"
@@ -114,11 +114,9 @@
     <XCODE_MAC targetFolder="Builds/MacOSX" vstLegacyFolder="../../VST_SDK/VST2_SDK"
                customPList="&lt;plist&gt;&#10;&lt;dict&gt;&#10;&lt;key&gt;NSAppTransportSecurity&lt;/key&gt;&#10;&lt;dict&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoads&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsForMedia&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsArbitraryLoadsInWebContent&lt;/key&gt;&#10;    &lt;true/&gt;&#10;    &lt;key&gt;NSAllowsLocalNetworking&lt;/key&gt;&#10;    &lt;true/&gt;&#10;&lt;/dict&gt;&#10;&lt;/dict&gt;&#10;&lt;/plist&gt;"
                prebuildCommand="if [[ $TARGET_NAME == *&quot;Shared Code&quot;* ]]; then&#10;    cd  ../../3rdParty/JUCE/extras/BinaryBuilder/Builds/MacOSX/&#10;    xcodebuild -configuration Release GCC_PREPROCESSOR_DEFINITIONS='$GCC_PREPROCESSOR_DEFINITIONS' LLVM_LTO=NO&#10;    build/Release/BinaryBuilder ../../../../../../Resources ../../../../../../Source/ BinaryData&#10;fi"
-               extraCompilerFlags="-DCPPHTTPLIB_OPENSSL_SUPPORT -I/usr/local/opt/openssl/include"
-               extraLinkerFlags="-L/usr/local/opt/openssl/lib&#10;-lssl &#10;-lcrypto"
-               smallIcon="tDxeWY" bigIcon="tDxeWY">
+               smallIcon="tDxeWY" bigIcon="tDxeWY" extraDefs="USING_DIRECT_COMMUNICATION_METHOD=1&#10;USE_WS_SERVER=0">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" osxArchitecture="Native" targetName="Source"/>
+        <CONFIGURATION isDebug="1" name="Debug" osxArchitecture="64BitIntel" targetName="Source"/>
         <CONFIGURATION isDebug="0" name="Release" osxArchitecture="Native" targetName="Source"/>
         <CONFIGURATION isDebug="1" name="DebugIncludeSequencer" osxArchitecture="Native"
                        defines="INCLUDE_SEQUENCER=1 &#10;SOURCE_APP_DIRECTORY_NAME=&quot;SourceShepherd&quot;&#10;SHEPHERD_DATA_DIRECTORY_NAME=&quot;SourceShepherd/sequencer&quot;&#10;CREATE_INTERNAL_HW_OUTPUT_DEVICES=1"

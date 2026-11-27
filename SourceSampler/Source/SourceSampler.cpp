@@ -17,12 +17,15 @@
 
 
 //==============================================================================
-SourceSampler::SourceSampler():
+SourceSampler::SourceSampler(juce::File baseDataLocation):
     queryMakerThread (*this),
     serverInterface ([this]{return getGlobalContext();})
 {
-    std::cout << "Creating needed directories" << std::endl;
-    createDirectories(SOURCE_APP_DIRECTORY_NAME);
+    weakThis = this;
+    
+    DBG("Creating needed directories");
+    createDirectories(SOURCE_APP_DIRECTORY_NAME, baseDataLocation);
+    fixFreesoundPreviewURLsInPresetFiles();
     
     std::cout << "Configuring app" << std::endl;
     if(audioFormatManager.getNumKnownFormats() == 0){ audioFormatManager.registerBasicFormats(); }
@@ -31,14 +34,15 @@ SourceSampler::SourceSampler():
     
     // Action listeners
     serverInterface.addActionListener(this);
-    sampler.addActionListener(this);
     
-    // Start timer to pass state to the UI and run other periodic tasks like deleting sounds that are waiting to be deleted
-    std::cout << "Starting timer" << std::endl;
+    // Start timer to run periodic tasks like deleting sounds that are waiting to be deleted
     startTimerHz(MAIN_TIMER_HZ);
     
+    // Start timer that applies MIDI CC mappings and program changes received in the audio thread
+    controlEventsTimer.startTimerHz(CONTROL_EVENTS_TIMER_HZ);
+    
     // Load empty session to state
-    std::cout << "Creating default empty state" << std::endl;
+    DBG("Creating default empty state");
     state = SourceHelpers::createDefaultEmptyState();
     
     // Add state change listener and bind cached properties to state properties (including loaded sounds)
@@ -55,17 +59,22 @@ SourceSampler::SourceSampler():
     #endif
     sendWSMessage(juce::OSCMessage("/plugin_started"));
     
-    std::cout << "SOURCE sampler is up and running!" << std::endl;
+    DBG("SOURCE sampler is up and running!");
 }
 
 SourceSampler::~SourceSampler()
 {
+    stopTimer();
+    controlEventsTimer.stopTimer();
+    queryMakerThread.stopThread(5000);
+    
     // Save current global persistent state (global settings)
     saveGlobalPersistentStateToFile();
+    if (sessionNeedsSaving)
+        saveSessionNow();
     
     // Remove listeners
     serverInterface.removeActionListener(this);
-    sampler.removeActionListener(this);
     
     // Clean data in tmp directory
     tmpFilesLocation.deleteRecursively();
@@ -87,13 +96,19 @@ void SourceSampler::bindState()
     globalMidiInChannel.referTo(state, SourceIDs::globalMidiInChannel, nullptr, SourceDefaults::globalMidiInChannel);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn);
     midiOutForwardsMidiIn.referTo(state, SourceIDs::midiOutForwardsMidiIn, nullptr, SourceDefaults::midiOutForwardsMidiIn);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::useOriginalFilesPreference, SourceDefaults::currentPresetIndex);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::useOriginalFilesPreference, SourceDefaults::useOriginalFilesPreference);
     useOriginalFilesPreference.referTo(state, SourceIDs::useOriginalFilesPreference, nullptr, SourceDefaults::useOriginalFilesPreference);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::freesoundOauthAccessToken, SourceDefaults::freesoundOauthAccessToken);
     freesoundOauthAccessToken.referTo(state, SourceIDs::freesoundOauthAccessToken, nullptr, SourceDefaults::freesoundOauthAccessToken);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mpeEnabled, SourceDefaults::mpeEnabled);
+    mpeEnabled.referTo(state, SourceIDs::mpeEnabled, nullptr, SourceDefaults::mpeEnabled);
+    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mpePitchBendRange, SourceDefaults::mpePitchBendRange);
+    mpePitchBendRange.referTo(state, SourceIDs::mpePitchBendRange, nullptr, SourceDefaults::mpePitchBendRange);
     
     // Load global settings stored in file, now before sounds are created as these might need the oauth token
     loadGlobalPersistentStateFromFile();
+    sampler.setGlobalMidiInChannel(globalMidiInChannel.get());
+    sampler.setMpeSettings(mpeEnabled.get(), mpePitchBendRange.get());
     
     juce::ValueTree preset = state.getChildWithName(SourceIDs::PRESET);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(preset, SourceIDs::numVoices, SourceDefaults::numVoices);
@@ -122,19 +137,18 @@ void SourceSampler::bindState()
     sounds = std::make_unique<SourceSoundList>(state.getChildWithName(SourceIDs::PRESET), [this]{return getGlobalContext();});
 }
 
-void SourceSampler::createDirectories(const juce::String& appDirectoryName)
+void SourceSampler::createDirectories(const juce::String& appDirectoryName, juce::File baseLocation)
 {
     #if ELK_BUILD
     sourceDataLocation = juce::File(ELK_SOURCE_DATA_BASE_LOCATION);
     soundsDownloadLocation = juce::File(ELK_SOURCE_SOUNDS_LOCATION);
     presetFilesLocation = juce::File(ELK_SOURCE_PRESETS_LOCATION);
     tmpFilesLocation = juce::File(ELK_SOURCE_TMP_LOCATION);
+    juce::ignoreUnused(appDirectoryName, baseLocation);
     #else
-    #if JUCE_IOS
-    juce::File baseLocation = juce::File::getContainerForSecurityApplicationGroupIdentifier("group.ritaiaurora.source");
-    #else
-    juce::File baseLocation = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
-    #endif
+    if (baseLocation == juce::File()){
+        baseLocation = SourceHelpers::getDefaultBaseDataLocation();
+    }
     sourceDataLocation = baseLocation.getChildFile(appDirectoryName);
     soundsDownloadLocation = baseLocation.getChildFile(appDirectoryName + "/sounds");
     presetFilesLocation = baseLocation.getChildFile(appDirectoryName + "/presets");
@@ -203,8 +217,18 @@ void SourceSampler::prepareToPlay (double _sampleRate, int _samplesPerBlock)
     // Prepare preview player
     transportSource.prepareToPlay (blockSize, sampleRate);
     
+    // Pre-allocate space for MIDI messages coming from the UI
+    {
+        const juce::SpinLock::ScopedLockType sl (midiFromEditorLock);
+        midiFromEditor.ensureSize(4096);
+    }
+    
     // Configure level measurer
-    lms.resize(getTotalNumOutputChannels(), 200 * 0.001f * sampleRate / blockSize); // 200ms average window
+    // Exponential moving average of the block mean square with a ~200ms time constant
+    levelSmoothingCoefficient = 1.0f - std::exp(-(float)blockSize / (0.2f * (float)sampleRate));
+    outputMeanSquares.fill(0.0f);
+    for (auto& level: outputRmsLevels)
+        level.store(0.0f);
     
     // Loaded the last loaded preset (only in ELK platform)
     # if LOADED_LATEST_LOADED_PRESET_AT_STARTUP
@@ -241,9 +265,14 @@ void SourceSampler::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
     
     // Add MIDI messages from editor to the midiMessages buffer so when we click in the sound from the editor
-    // it gets played here
-    midiMessages.addEvents(midiFromEditor, 0, buffer.getNumSamples(), 0);
-    midiFromEditor.clear();
+    // it gets played here. Don't block if the message thread is adding messages: they'll be picked up next block.
+    {
+        const juce::SpinLock::ScopedTryLockType tl (midiFromEditorLock);
+        if (tl.isLocked() && !midiFromEditor.isEmpty()){
+            midiMessages.addEvents(midiFromEditor, 0, buffer.getNumSamples(), 0);
+            midiFromEditor.clear();
+        }
+    }
     
     // Render preview player into buffer
     transportSource.getNextAudioBlock(juce::AudioSourceChannelInfo(buffer));
@@ -251,8 +280,18 @@ void SourceSampler::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
     // Render sampler voices into buffer
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
-    // Measure audio levels (will be store in lms object itself)
-    lms.measureBlock (buffer);
+    // Measure audio levels (smoothed RMS per channel, published atomically for the UIs)
+    const int numMeteredChannels = juce::jmin(buffer.getNumChannels(), maxMeteredChannels);
+    if (buffer.getNumSamples() > 0){
+        // Scale the smoothing for blocks of a different size than the one given in prepareToPlay
+        const float coefficient = juce::jlimit(0.0f, 1.0f, levelSmoothingCoefficient * (float)buffer.getNumSamples() / (float)juce::jmax(1, blockSize));
+        for (int ch = 0; ch < numMeteredChannels; ++ch){
+            const float rms = buffer.getRMSLevel(ch, 0, buffer.getNumSamples());
+            auto& meanSquare = outputMeanSquares[(size_t)ch];
+            meanSquare += coefficient * (rms * rms - meanSquare);
+            outputRmsLevels[(size_t)ch].store(std::sqrt(meanSquare), std::memory_order_relaxed);
+        }
+    }
     
     // Remove midi messages from buffer if these should not be forwarded
     if (!midiOutForwardsMidiIn.get()){
@@ -472,6 +511,162 @@ void SourceSampler::loadPresetFromStateInformation (juce::ValueTree _state)
     setGlobalMidiInChannel(globalMidiInChannel);
 }
 
+void SourceSampler::enableSessionAutosave (const juce::File& file)
+{
+    sessionAutosaveFile = file;
+    // Restore the last session asynchronously, so it takes precedence over any (possibly older) state the wrapper restores
+    juce::WeakReference<SourceSampler> weak = weakThis;
+    juce::MessageManager::callAsync([weak]{
+        auto* sampler = weak.get();
+        if (sampler == nullptr || !sampler->sessionAutosaveFile.existsAsFile())
+            return;
+        if (auto xml = juce::XmlDocument::parse(sampler->sessionAutosaveFile)){
+            auto savedState = juce::ValueTree::fromXml(*xml);
+            if (savedState.hasType(SourceIDs::SOURCE_STATE)){
+                DBG("Restoring autosaved session from " << sampler->sessionAutosaveFile.getFullPathName());
+                sampler->loadPresetFromStateInformation(savedState);
+                sampler->sessionNeedsSaving = false;
+            }
+        }
+    });
+}
+
+int SourceSampler::fixFreesoundPreviewURLsInPresetFiles()
+{
+    // Old presets store Freesound preview URLs which now redirect to the CDN (see SourceHelpers::fixFreesoundPreviewURL).
+    // Only files with old URLs are rewritten, so this is quick once they have been fixed.
+    int numFixed = 0;
+    for (const auto& file : presetFilesLocation.findChildFiles(juce::File::findFiles, false, "*.xml"))
+        if (SourceHelpers::fixFreesoundPreviewURLsInFile(file))
+            numFixed += 1;
+    if (numFixed > 0)
+        DBG("Fixed old Freesound preview URLs in " << numFixed << " preset files");
+    return numFixed;
+}
+
+void SourceSampler::enablePresetImportFolder (const juce::File& folder)
+{
+    if (folder == juce::File() || folder == presetFilesLocation)
+        return;
+    presetImportFolder = folder;
+    if (!presetImportFolder.isDirectory())
+        presetImportFolder.createDirectory();
+    auto readme = presetImportFolder.getChildFile("README.txt");
+    if (!readme.existsAsFile())
+        readme.replaceWithText("Copy SOURCE preset files here (named <preset number>.xml, e.g. 4.xml) to import them. "
+                               "They are moved to the presets folder used by the SOURCE app and plugin, replacing the "
+                               "preset with the same number.\n");
+    importPresetsFromImportFolder();
+}
+
+int SourceSampler::importPresetsFromImportFolder()
+{
+    lastPresetImportCheckTime = juce::Time::getMillisecondCounterHiRes();
+    if (presetImportFolder == juce::File() || !presetImportFolder.isDirectory())
+        return 0;
+    
+    int numImported = 0;
+    for (const auto& file : presetImportFolder.findChildFiles(juce::File::findFiles, false, "*.xml")){
+        // Preset files are named by their index
+        const auto indexString = file.getFileNameWithoutExtension();
+        if (!indexString.containsOnly("0123456789") || indexString.isEmpty()){
+            DBG("Not importing " << file.getFileName() << ": preset files must be named <preset number>.xml");
+            continue;
+        }
+        auto xml = juce::XmlDocument::parse(file);
+        if (xml == nullptr || !(xml->hasTagName(SourceIDs::PRESET.toString()) || xml->hasTagName("SourcePresetState"))){
+            DBG("Not importing " << file.getFileName() << ": not a SOURCE preset file");
+            continue;
+        }
+        auto destination = getPresetFilePath(getPresetFilenameByIndex(indexString.getIntValue()));
+        if (file.copyFileTo(destination)){
+            file.deleteFile();
+            SourceHelpers::fixFreesoundPreviewURLsInFile(destination);
+            DBG("Imported preset " << file.getFileName() << " to " << destination.getFullPathName());
+            ++numImported;
+        }
+    }
+    return numImported;
+}
+
+void SourceSampler::saveSessionNow()
+{
+    sessionNeedsSaving = false;
+    if (sessionAutosaveFile == juce::File())
+        return;
+    if (auto xml = state.createXml())
+        xml->writeTo(sessionAutosaveFile);  // Writes to a temporary file first, then replaces the target
+}
+
+void SourceSampler::runOnMessageThread (std::function<void(SourceSampler&)> fn)
+{
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread()){
+        fn(*this);
+    } else {
+        juce::WeakReference<SourceSampler> weak = weakThis;
+        juce::MessageManager::callAsync([weak, fn = std::move(fn)]{
+            if (auto* sampler = weak.get())
+                fn(*sampler);
+        });
+    }
+}
+
+void SourceSampler::addMidiFromEditor (const juce::MidiMessage& message)
+{
+    const juce::SpinLock::ScopedLockType sl (midiFromEditorLock);
+    midiFromEditor.addEvent(message, 0);
+}
+
+void SourceSampler::processPendingControlEvents()
+{
+    sampler.processPendingControlEvents([this](const SourceSamplerSynthesiser::ControlEvent& event){
+        if (event.type == SourceSamplerSynthesiser::ControlEvent::Type::controller){
+            if (sounds != nullptr){
+                for (auto* sound: sounds->objects){
+                    sound->applyMidiCCModulations(event.channel, event.number, event.value);
+                }
+            }
+        } else if (event.type == SourceSamplerSynthesiser::ControlEvent::Type::programChange){
+            loadPresetFromIndex(event.number);
+        }
+    });
+}
+
+std::vector<SourceSampler::VoiceInfo> SourceSampler::getVoicesInfo()
+{
+    // Message thread only. Reads only the state published (atomically) by the voices in the audio thread. The published SourceSound
+    // pointer is only used as an identifier to look up the sound in our own list (it is never dereferenced).
+    std::vector<VoiceInfo> info;
+    for (int i=0; i<sampler.getNumVoices(); i++){
+        VoiceInfo voiceInfo;
+        if (auto* voice = static_cast<SourceSamplerVoice*> (sampler.getVoiceFromMessageThread(i))){
+            const auto published = voice->getPublishedState();
+            if (published.active && sounds != nullptr){
+                for (auto* sound: sounds->objects){
+                    if (sound == published.sourceSound){
+                        voiceInfo.active = true;
+                        voiceInfo.soundUUID = sound->getUUID();
+                        voiceInfo.firstSampleUUID = sound->state.getChildWithName(SourceIDs::SOUND_SAMPLE).getProperty(SourceIDs::uuid).toString();
+                        voiceInfo.playPosition = published.playPosition;
+                        break;
+                    }
+                }
+            }
+        }
+        info.push_back(voiceInfo);
+    }
+    return info;
+}
+
+std::vector<float> SourceSampler::getOutputLevels()
+{
+    std::vector<float> levels;
+    for (int i=0; i<getTotalNumOutputChannels(); i++){
+        levels.push_back(outputRmsLevels[(size_t)juce::jmin(i, maxMeteredChannels - 1)].load(std::memory_order_relaxed));
+    }
+    return levels;
+}
+
 void SourceSampler::saveGlobalPersistentStateToFile()
 {
     // This is to save settings that need to persist between sampler runs and that do not
@@ -483,6 +678,8 @@ void SourceSampler::saveGlobalPersistentStateToFile()
     settings.setProperty(SourceIDs::latestLoadedPresetIndex, currentPresetIndex.get(), nullptr);
     settings.setProperty(SourceIDs::useOriginalFilesPreference, useOriginalFilesPreference.get(), nullptr);
     settings.setProperty(SourceIDs::freesoundOauthAccessToken, freesoundOauthAccessToken.get(), nullptr);
+    settings.setProperty(SourceIDs::mpeEnabled, mpeEnabled.get(), nullptr);
+    settings.setProperty(SourceIDs::mpePitchBendRange, mpePitchBendRange.get(), nullptr);
     settings.setProperty(SourceIDs::pluginVersion, juce::String(ProjectInfo::versionString), nullptr);
     
     std::unique_ptr<juce::XmlElement> xml (settings.createXml());
@@ -514,6 +711,12 @@ void SourceSampler::loadGlobalPersistentStateFromFile()
             if (settings.hasProperty(SourceIDs::useOriginalFilesPreference)){
                 useOriginalFilesPreference = settings.getProperty(SourceIDs::useOriginalFilesPreference).toString();
             }
+            if (settings.hasProperty(SourceIDs::mpeEnabled)){
+                mpeEnabled = (bool)settings.getProperty(SourceIDs::mpeEnabled);
+            }
+            if (settings.hasProperty(SourceIDs::mpePitchBendRange)){
+                mpePitchBendRange = (int)settings.getProperty(SourceIDs::mpePitchBendRange);
+            }
             if (settings.hasProperty(SourceIDs::freesoundOauthAccessToken)){
                 freesoundOauthAccessToken = settings.getProperty(SourceIDs::freesoundOauthAccessToken).toString();
             }
@@ -541,27 +744,20 @@ juce::File SourceSampler::getGlobalSettingsFilePathFromName()
 
 juce::ValueTree SourceSampler::collectVolatileStateInformation (){
     juce::ValueTree state = juce::ValueTree(SourceIDs::VOLATILE_STATE);
-    state.setProperty(SourceIDs::isQuerying, isQuerying, nullptr);
-    state.setProperty(SourceIDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport, nullptr);
-    midiMessagesPresentInLastStateReport = false;
-    state.setProperty(SourceIDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber, nullptr);
-    state.setProperty(SourceIDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber, nullptr);
+    state.setProperty(SourceIDs::isQuerying, isQuerying.load(), nullptr);
+    state.setProperty(SourceIDs::midiInLastStateReportBlock, midiMessagesPresentInLastStateReport.exchange(false), nullptr);
+    state.setProperty(SourceIDs::lastMIDICCNumber, lastReceivedMIDIControllerNumber.load(), nullptr);
+    state.setProperty(SourceIDs::lastMIDINoteNumber, lastReceivedMIDINoteNumber.load(), nullptr);
     
     juce::String voiceActivations = "";
     juce::String voiceSoundIdxs = "";
     juce::String voiceSoundPlayPositions = "";
     
-    for (int i=0; i<sampler.getNumVoices(); i++){
-        SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
-        if (voice->isVoiceActive()){
+    for (const auto& voice: getVoicesInfo()){
+        if (voice.active){
             voiceActivations += "1,";
-            if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
-            {
-                voiceSoundIdxs += playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
-            } else {
-                voiceSoundIdxs += "-1,";
-            }
-            voiceSoundPlayPositions += (juce::String)voice->getPlayingPositionPercentage() + ",";
+            voiceSoundIdxs += voice.firstSampleUUID + ",";
+            voiceSoundPlayPositions += (juce::String)voice.playPosition + ",";
         } else {
             voiceActivations += "0,";
             voiceSoundIdxs += "-1,";
@@ -575,7 +771,7 @@ juce::ValueTree SourceSampler::collectVolatileStateInformation (){
     
     juce::String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
-        audioLevels += (juce::String)lms.getRMSLevel(i) + ",";
+        audioLevels += (juce::String)outputRmsLevels[(size_t)juce::jmin(i, maxMeteredChannels - 1)].load(std::memory_order_relaxed) + ",";
     }
     state.setProperty(SourceIDs::audioLevels, audioLevels, nullptr);
     return state;
@@ -586,26 +782,19 @@ juce::String SourceSampler::collectVolatileStateInformationAsString(){
     juce::StringArray stateAsStringParts = {};
     
     stateAsStringParts.add(isQuerying ? "1": "0");
-    stateAsStringParts.add(midiMessagesPresentInLastStateReport ? "1" : "0");
-    midiMessagesPresentInLastStateReport = false;
-    stateAsStringParts.add((juce::String)lastReceivedMIDIControllerNumber);
-    stateAsStringParts.add((juce::String)lastReceivedMIDINoteNumber);
+    stateAsStringParts.add(midiMessagesPresentInLastStateReport.exchange(false) ? "1" : "0");
+    stateAsStringParts.add((juce::String)lastReceivedMIDIControllerNumber.load());
+    stateAsStringParts.add((juce::String)lastReceivedMIDINoteNumber.load());
     
     juce::String voiceActivations = "";
     juce::String voiceSoundIdxs = "";
     juce::String voiceSoundPlayPositions = "";
     
-    for (int i=0; i<sampler.getNumVoices(); i++){
-        SourceSamplerVoice* voice = static_cast<SourceSamplerVoice*> (sampler.getVoice(i));
-        if (voice->isVoiceActive()){
+    for (const auto& voice: getVoicesInfo()){
+        if (voice.active){
             voiceActivations += "1,";
-            if (auto* playingSound = voice->getCurrentlyPlayingSourceSamplerSound())
-            {
-                voiceSoundIdxs += (juce::String)playingSound->getSourceSound()->getFirstLinkedSourceSamplerSound()->getUUID() + ",";
-            } else {
-                voiceSoundIdxs += "-1,";
-            }
-            voiceSoundPlayPositions += (juce::String)voice->getPlayingPositionPercentage() + ",";
+            voiceSoundIdxs += voice.firstSampleUUID + ",";
+            voiceSoundPlayPositions += (juce::String)voice.playPosition + ",";
         } else {
             voiceActivations += "0,";
             voiceSoundIdxs += "-1,";
@@ -619,7 +808,7 @@ juce::String SourceSampler::collectVolatileStateInformationAsString(){
     
     juce::String audioLevels = "";
     for (int i=0; i<getTotalNumOutputChannels(); i++){
-        audioLevels += (juce::String)lms.getRMSLevel(i) + ",";
+        audioLevels += (juce::String)outputRmsLevels[(size_t)juce::jmin(i, maxMeteredChannels - 1)].load(std::memory_order_relaxed) + ",";
     }
     
     stateAsStringParts.add(audioLevels);
@@ -709,14 +898,14 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         int velocity = parameters[1].getIntValue();
         int channel = parameters[2].getIntValue();
         juce::MidiMessage message = juce::MidiMessage::noteOn(channel > 0 ? channel : (globalMidiInChannel > 0 ? globalMidiInChannel : 1), note, (juce::uint8)velocity);
-        midiFromEditor.addEvent(message, 0);
+        addMidiFromEditor(message);
     }
     else if (actionName == ACTION_NOTE_OFF){
         int note = parameters[0].getIntValue();
         int velocity = parameters[1].getIntValue();
         int channel = parameters[2].getIntValue();
         juce::MidiMessage message = juce::MidiMessage::noteOff(channel > 0 ? channel : (globalMidiInChannel > 0 ? globalMidiInChannel : 1), note, (juce::uint8)velocity);
-        midiFromEditor.addEvent(message, 0);
+        addMidiFromEditor(message);
     }
     
     // Preset actions -----------------------------------------------------------------------------------
@@ -741,7 +930,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         updateReverbParameters();
     }
     else if (actionName == ACTION_SET_POLYPHONY){
-        numVoices = parameters[0].getIntValue();
+        numVoices = juce::jlimit(1, (int)SourceSamplerSynthesiser::maxNumVoices, parameters[0].getIntValue());
         sampler.setSamplerVoices(numVoices);
     }
     else if (actionName == ACTION_REAPPLY_LAYOUT){
@@ -761,8 +950,14 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         
         // Trigger query in a separate thread so that we don't block UI
-        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
-        queryMakerThread.startThread();  // Lowest thread priority
+        if (!queryMakerThread.isThreadRunning()){
+            queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, numSounds, minSoundLength, maxSoundLength);
+            isQuerying = true;
+            state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
+            queryMakerThread.startThread();
+        } else {
+            DBG("Skip query as already querying...");
+        }
     }
     else if (actionName == ACTION_REPLACE_SOUND_FROM_QUERY){
         juce::String addReplaceOrReplaceSound = parameters[0]; // Will be UUID of the sound to replace
@@ -773,8 +968,14 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         noteLayoutType = noteMappingType; // Set noteLayoutType so when sounds are actually downloaded and loaded, the requested mode is used
         
         // Trigger query in a separate thread so that we don't block UI
-        queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, 1, minSoundLength, maxSoundLength);
-        queryMakerThread.startThread();  // Lowest thread priority
+        if (!queryMakerThread.isThreadRunning()){
+            queryMakerThread.setQueryParameters(addReplaceOrReplaceSound, query, 1, minSoundLength, maxSoundLength);
+            isQuerying = true;
+            state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
+            queryMakerThread.startThread();
+        } else {
+            DBG("Skip query as already querying...");
+        }
     }
 
     // Sound actions -----------------------------------------------------------------------------------
@@ -834,6 +1035,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
     else if (actionName == ACTION_REMOVE_SOUND){
         juce::String soundUUID = parameters[0];
         removeSound(soundUUID);
+    }
+    else if (actionName == ACTION_RETRY_SOUND_DOWNLOADS){
+        if (auto* sound = getSoundWithUUID(parameters[0]))
+            sound->retryFailedDownloads();
     }
     else if (actionName == ACTION_SET_SOUND_PARAMETER_FLOAT){
         juce::String soundUUID = parameters[0];  // "" means all sounds
@@ -969,6 +1174,30 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
     }
     
+    // MPE actions -----------------------------------------------------------------------------------
+    else if (actionName == ACTION_SET_MPE_SETTINGS){
+        bool enabled = parameters[0].getIntValue() != 0;
+        int bendRange = parameters.size() > 1 && parameters[1].isNotEmpty() ? parameters[1].getIntValue() : mpePitchBendRange.get();
+        setMpeSettings(enabled, bendRange);
+    }
+    else if (actionName == ACTION_ADD_OR_UPDATE_MPE_MAPPING){
+        juce::String soundUUID = parameters[0];
+        juce::String uuid = parameters[1];
+        juce::String source = parameters[2];
+        juce::String parameterName = parameters[3];
+        float minRange = parameters[4].getFloatValue();
+        float maxRange = parameters[5].getFloatValue();
+        float curve = parameters[6].getFloatValue();
+        if (auto* sound = sounds->getSoundWithUUID(soundUUID)){
+            sound->addOrEditMpeMapping(uuid, source, parameterName, minRange, maxRange, curve);
+        }
+    }
+    else if (actionName == ACTION_REMOVE_MPE_MAPPING){
+        if (auto* sound = sounds->getSoundWithUUID(parameters[0])){
+            sound->removeMpeMapping(parameters[1]);
+        }
+    }
+    
     // MIDI mapping actions -----------------------------------------------------------------------------------
     else if (actionName == ACTION_ADD_OR_UPDATE_CC_MAPPING){
         juce::String soundUUID = parameters[0];
@@ -1024,6 +1253,15 @@ void SourceSampler::setGlobalMidiInChannel(int channel)
         channel = 16;
     }
     globalMidiInChannel = channel;
+    sampler.setGlobalMidiInChannel(channel);
+    saveGlobalPersistentStateToFile();
+}
+
+void SourceSampler::setMpeSettings(bool enabled, int perNotePitchBendRange)
+{
+    mpeEnabled = enabled;
+    mpePitchBendRange = juce::jlimit(1, 96, perNotePitchBendRange);
+    sampler.setMpeSettings(mpeEnabled.get(), mpePitchBendRange.get());
     saveGlobalPersistentStateToFile();
 }
 
@@ -1039,28 +1277,12 @@ void SourceSampler::setMidiThru(bool doMidiTrhu)
 void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& textQuery, int numSounds, float minSoundLength, float maxSoundLength)
 {
     /* This function makes a query to Freesound and loads the results in the sammpler. This is only used when running SOURCE as a plugin in Desktop environment (not deployed in ELK
-     hardware stack). In ELK stack, the communication with Freesound happens in the UI application (Python) and the UI tells the plugin which sounds to load (and when). In the future
-     it might be a good idea to move all communication with Freesound to the plugin itself so that it will be easier that the Desktop plugin and the ELK version offer similar
-     functionality and there is less need to duplicate code.
+     hardware stack). In ELK stack, the communication with Freesound happens in the UI application (Python) and the UI tells the plugin which sounds to load (and when).
+     
+     This runs in QueryMakerThread. The (slow) HTTP request is done here, and the results are then passed to the message thread where the state is modified.
      */
     
-    if (isQuerying){
-        // If already querying, don't run another query
-        DBG("Skip query as already querying...");
-        return;
-    }
-    
-    juce::String soundUUIDToReplace = "";
-    if ((addReplaceOrReplaceSound != "add") && (addReplaceOrReplaceSound != "replace")){
-        // if action is not "add" or "replace", then it is "replace one" and the contents of this variable are the sound UUID to replace
-        // in that case, make sure numSounds is limited to 1 as this is the number of sounds we need to replace
-        numSounds = 1;
-        soundUUIDToReplace = addReplaceOrReplaceSound;
-    }
-    
     FreesoundClient client(FREESOUND_API_KEY);
-    isQuerying = true;
-    state.setProperty(SourceIDs::numResultsLastQuery, -1, nullptr);
     juce::String query = "";
     juce::String filter = "";
     int pageSize = 0;
@@ -1078,66 +1300,57 @@ void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrRepla
     }
     SoundList list = client.textSearch(query, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
     int numResults = list.getCount();
-    state.setProperty(SourceIDs::numResultsLastQuery, numResults, nullptr);
+    juce::Array<FSSound> soundsFound = numResults > 0 ? list.toArrayOfSounds() : juce::Array<FSSound>();
+    
+    juce::WeakReference<SourceSampler> weak = weakThis;
+    juce::MessageManager::callAsync([weak, addReplaceOrReplaceSound, numSounds, numResults, soundsFound]{
+        if (auto* sampler = weak.get())
+            sampler->loadQueryResults(addReplaceOrReplaceSound, numSounds, numResults, soundsFound);
+    });
+}
+
+void SourceSampler::loadQueryResults(const juce::String& addReplaceOrReplaceSound, int numSounds, int numResults, juce::Array<FSSound> soundsFound)
+{
     isQuerying = false;
-    if (numResults > 0){
-        
+    state.setProperty(SourceIDs::numResultsLastQuery, numResults, nullptr);
+    
+    juce::String soundUUIDToReplace = "";
+    if ((addReplaceOrReplaceSound != "add") && (addReplaceOrReplaceSound != "replace")){
+        // if action is not "add" or "replace", then it is "replace one" and the contents of this variable are the sound UUID to replace
+        // in that case, make sure numSounds is limited to 1 as this is the number of sounds we need to replace
+        numSounds = 1;
+        soundUUIDToReplace = addReplaceOrReplaceSound;
+    }
+    
+    if (numResults > 0 && soundsFound.size() > 0){
         // Randmomize results and prepare for iteration
-        juce::Array<FSSound> soundsFound = list.toArrayOfSounds();
-        DBG("Query got " + (juce::String)list.getCount() + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        DBG("Query got " + (juce::String)numResults + " results, " + (juce::String)soundsFound.size() + " in the first page. Will load " + (juce::String)numSounds + " sounds.");
+        unsigned seed = (unsigned) std::chrono::system_clock::now().time_since_epoch().count();
         std::shuffle(soundsFound.begin(), soundsFound.end(), std::default_random_engine(seed));
-        soundsFound.resize(juce::jmin(numSounds, list.getCount()));
+        soundsFound.resize(juce::jmin(numSounds, soundsFound.size()));
         int nSounds = soundsFound.size();
-        
-        // Move this elsewhere in a helper function (?)
-        juce::ValueTree presetState = state.getChildWithName(SourceIDs::PRESET);
         
         if (addReplaceOrReplaceSound == "replace"){
             // If action is to replace all sounds, then we need to first clear all loaded sounds
             removeAllSounds();
         }
 
-        // Load the first nSounds from the found ones
-        int nNotesPerSound = 128 / nSounds;
         for (int i=0; i<nSounds; i++){
-            
-            // Calculate assigned notes
-            int midiRootNote = -1;
-            int midiChannel = SourceDefaults::midiChannel;
-            juce::BigInteger midiNotes = 0;
-            
+            SourceHelpers::NoteLayout layout;
             if (soundUUIDToReplace == ""){
                 // If no sound is being replaced, calculate the mapping depending to the requested mapping type
-                if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-                    // In this case, all the notes mapped to this sound are contiguous in a range which depends on the total number of sounds to load
-                    midiRootNote = i * nNotesPerSound + nNotesPerSound / 2;
-                    midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED) {
-                    // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
-                    midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
-                    for (int j=midiRootNote; j<128; j=j+nSounds){
-                        midiNotes.setBit(j);  // Map notes in upwards direction
-                    }
-                    for (int j=midiRootNote; j>=0; j=j-nSounds){
-                        midiNotes.setBit(j);  // Map notes in downwards direction
-                    }
-                } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
-                    // Map all notes to the sound
-                    midiNotes.setRange(0, 127, true);
-                    midiChannel = (i % 16) + 1;
-                }
+                layout = SourceHelpers::computeNoteLayout(noteLayoutType, i, nSounds);
             } else {
                 // If a specific sound is being replaced, no need to calcualte any mapping here because it will be copied from the
                 // sound being replaced in addOrReplaceSoundFromBasicSoundProperties. Also set midiChannel to -1 so it is copied from the sound being replaced
-                midiChannel = -1;
+                layout.midiRootNote = -1;
+                layout.midiChannel = -1;
             }
             
-            // Create sound
             // soundUUIDToReplace will be "" when we're adding or replacing all sounds, otherwise it will be the UUID of the sound to replace
             int midiVelocityLayer = SourceDefaults::midiVelocityLayer; // Always use default velocity layer as we're not layering sounds
             bool addToExistingSourceSampleSounds = false;
-            addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], midiNotes, midiRootNote, midiVelocityLayer, midiChannel, addToExistingSourceSampleSounds);
+            addOrReplaceSoundFromBasicSoundProperties(soundUUIDToReplace, soundsFound[i], layout.midiNotes, layout.midiRootNote, midiVelocityLayer, layout.midiChannel, addToExistingSourceSampleSounds);
         }
         
         if (addReplaceOrReplaceSound == "add"){
@@ -1222,7 +1435,7 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
             juce::ValueTree soundToReplaceState = presetState.getChildWithProperty(SourceIDs::uuid, soundUUID);
             for (int i=0; i<soundToReplaceState.getNumChildren(); i++){
                 auto child = soundToReplaceState.getChild(i);
-                if (child.hasType(SourceIDs::MIDI_CC_MAPPING)){
+                if (child.hasType(SourceIDs::MIDI_CC_MAPPING) || child.hasType(SourceIDs::MPE_MAPPING)){
                     juce::ValueTree copyChild = child.createCopy();
                     sourceSound.addChild(copyChild, -1, nullptr);
                 }
@@ -1271,41 +1484,18 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
 void SourceSampler::reapplyNoteLayout(int newNoteLayoutType)
 {
     noteLayoutType = newNoteLayoutType;
-    int nSounds =  sounds->objects.size();
-    if (nSounds > 0){
-        int nNotesPerSound = 128 / nSounds;  // Only used if we need to generate midiRootNote and midiNotes
-        for (int i=0; i<sounds->objects.size(); i++){
-            auto* sound = sounds->getSoundAt(i);
-            if (sound != nullptr){
-                if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
-                    // Set midi root note to the center of the assigned range
-                    int rootNote = i * nNotesPerSound + nNotesPerSound / 2;
-                    juce::BigInteger midiNotes;
-                    midiNotes.setRange(i * nNotesPerSound, nNotesPerSound, true);
-                    sound->setMappedMidiNotes(midiNotes);
-                    sound->setMidiRootNote(rootNote);
-                    sound->setParameterByNameInt(SourceIDs::midiChannel, SourceDefaults::midiChannel);
-                } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
-                    int rootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + i;
-                    juce::BigInteger midiNotes;
-                    for (int j=rootNote; j<128; j=j+nSounds){
-                        midiNotes.setBit(j);  // Map notes in upwards direction
-                    }
-                    for (int j=rootNote; j>=0; j=j-nSounds){
-                        midiNotes.setBit(j);  // Map notes in downwards direction
-                    }
-                    sound->setMappedMidiNotes(midiNotes);
-                    sound->setMidiRootNote(rootNote);
-                    sound->setParameterByNameInt(SourceIDs::midiChannel, SourceDefaults::midiChannel);
-                } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL) {
-                    juce::BigInteger midiNotes;
-                    midiNotes.setRange(0, 127, true);
-                    sound->setMappedMidiNotes(midiNotes);
-                    sound->setMidiRootNote(64);
-                    sound->setParameterByNameInt(SourceIDs::midiChannel, (i % 16) + 1); // In All mode, sounds have "consecutive" midi channels because all notes of the channel are assigned to them
-                }
-            }
-        }
+    // Only consider sounds which are not going to be deleted
+    std::vector<SourceSound*> activeSounds;
+    for (auto* sound: sounds->objects){
+        if (!sound->isScheduledForDeletion())
+            activeSounds.push_back(sound);
+    }
+    const int nSounds = (int)activeSounds.size();
+    for (int i=0; i<nSounds; i++){
+        auto layout = SourceHelpers::computeNoteLayout(noteLayoutType, i, nSounds);
+        activeSounds[(size_t)i]->setMappedMidiNotes(layout.midiNotes);
+        activeSounds[(size_t)i]->setMidiRootNote(layout.midiRootNote);
+        activeSounds[(size_t)i]->setParameterByNameInt(SourceIDs::midiChannel, layout.midiChannel);
     }
 }
 
@@ -1313,8 +1503,7 @@ void SourceSampler::addToMidiBuffer(const juce::String& soundUUID, bool doNoteOf
 {
     auto* sound = sounds->getSoundWithUUID(soundUUID);
     if (sound != nullptr){
-        int midiNoteForNormalPitch = 36;
-        midiNoteForNormalPitch = sound->getFirstLinkedSourceSamplerSound()->getMidiRootNote();
+        int midiNoteForNormalPitch = sound->getMidiNoteFromFirstSourceSamplerSound();
         juce::BigInteger assignedMidiNotes = sound->getMappedMidiNotes();
         if (assignedMidiNotes[midiNoteForNormalPitch] == false){
             // If the root note is not mapped to the sound, find the closest mapped one
@@ -1335,7 +1524,7 @@ void SourceSampler::addToMidiBuffer(const juce::String& soundUUID, bool doNoteOf
             if (doNoteOff){
                 message = juce::MidiMessage::noteOff(midiChannel, midiNoteForNormalPitch, (juce::uint8)127);
             }
-            midiFromEditor.addEvent(message, 0);
+            addMidiFromEditor(message);
         }
     }
 }
@@ -1346,6 +1535,16 @@ double SourceSampler::getStartTime(){
 
 void SourceSampler::timerCallback()
 {
+    // Session autosave (debounced so we don't write on every slider movement or download progress update)
+    if (sessionNeedsSaving && (juce::Time::getMillisecondCounterHiRes() - lastStateChangeTime) > SESSION_AUTOSAVE_DELAY_MS){
+        saveSessionNow();
+    }
+    
+    // Preset import folder (files can be added from the Files app while the app is running)
+    if (presetImportFolder != juce::File() && (juce::Time::getMillisecondCounterHiRes() - lastPresetImportCheckTime) > PRESET_IMPORT_CHECK_INTERVAL_MS){
+        importPresetsFromImportFolder();
+    }
+    
     const juce::ScopedLock sl (soundDeleteLock);
     
     // Delete sounds that should be deleted (delete them both from current sounds list and from
@@ -1412,45 +1611,51 @@ void SourceSampler::previewFile(const juce::String& path)
     if (transportSource.isPlaying()){
         transportSource.stop();
     }
-    if (currentlyLoadedPreviewFilePath != path){
-        // Load new file
-        juce::String pathToLoad;
-        if (path.startsWith("http")){
-            // If path is an URL, download the file first
-            juce::StringArray tokens;
-            tokens.addTokens (path, "/", "");
-            juce::String filename = tokens[tokens.size() - 1];
-            
-            juce::File location = tmpFilesLocation.getChildFile(filename);
-            if (!location.exists()){  // Dont' re-download if file already exists
-                # if ELK_BUILD
-                // If on ELK build don't download here because it seems to hang forever
-                // On ELK, we should trigger the downloads from the Python script before calling this function
-                # else
-                std::unique_ptr<juce::URL::DownloadTask> downloadTask = juce::URL(path).downloadToFile(location, "");
-                while (!downloadTask->isFinished()){
-                    // Wait until it finished downloading
-                }
-                # endif
-            }
-            pathToLoad = location.getFullPathName();  // Update path variable to the download location
-        } else {
-            pathToLoad = path;
-        }
-        juce::File file = juce::File(pathToLoad);
-        if (file.existsAsFile()){
-            
-            auto* reader = audioFormatManager.createReaderFor (file);
-            if (reader != nullptr)
-            {
-                std::unique_ptr<juce::AudioFormatReaderSource> newSource (new juce::AudioFormatReaderSource (reader, true));
-                transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);
-                readerSource.reset (newSource.release());
-            }
-        }
-        
+    if (currentlyLoadedPreviewFilePath == path){
+        transportSource.setPosition(0.0);
+        transportSource.start();
+        return;
     }
-    transportSource.start();
+    
+    if (path.startsWith("http")){
+        // If path is an URL, download the file first (in a background thread, then come back here with the local path)
+        juce::StringArray tokens;
+        tokens.addTokens (path, "/", "");
+        juce::File location = tmpFilesLocation.getChildFile(tokens[tokens.size() - 1]);
+        if (location.existsAsFile()){  // Dont' re-download if file already exists
+            previewFile(location.getFullPathName());
+            return;
+        }
+        # if !ELK_BUILD  // On ELK, downloads should be triggered from the Python script before calling this function
+        juce::WeakReference<SourceSampler> weak = weakThis;
+        juce::Thread::launch([weak, path, location]{
+            if (auto task = juce::URL(path).downloadToFile(location, juce::URL::DownloadTaskOptions())){  // Returns immediately, wait below
+                while (!task->isFinished())
+                    juce::Thread::sleep(20);
+                const bool ok = !task->hadError();
+                juce::MessageManager::callAsync([weak, location, ok]{
+                    if (auto* sampler = weak.get()){
+                        if (ok) sampler->previewFile(location.getFullPathName());
+                        else location.deleteFile();
+                    }
+                });
+            }
+        });
+        # endif
+        return;
+    }
+    
+    juce::File file = juce::File(path);
+    if (file.existsAsFile()){
+        if (auto* reader = audioFormatManager.createReaderFor (file))
+        {
+            auto newSource = std::make_unique<juce::AudioFormatReaderSource> (reader, true);
+            transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);
+            readerSource.reset (newSource.release());
+            currentlyLoadedPreviewFilePath = path;
+            transportSource.start();
+        }
+    }
 }
 
 void SourceSampler::stopPreviewingFile(){
@@ -1493,6 +1698,14 @@ void SourceSampler::sendWSMessage(const juce::OSCMessage& message)
 
 void SourceSampler::valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
+    #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
+    juce::ignoreUnused(treeWhosePropertyHasChanged, property);
+    return;
+    #endif
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
@@ -1513,6 +1726,14 @@ void SourceSampler::valueTreePropertyChanged (juce::ValueTree& treeWhoseProperty
 
 void SourceSampler::valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
+    #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
+    juce::ignoreUnused(parentTree, childWhichHasBeenAdded);
+    return;
+    #endif
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
@@ -1534,6 +1755,14 @@ void SourceSampler::valueTreeChildAdded (juce::ValueTree& parentTree, juce::Valu
 
 void SourceSampler::valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int indexFromWhichChildWasRemoved)
 {
+    if (sessionAutosaveFile != juce::File()){
+        sessionNeedsSaving = true;
+        lastStateChangeTime = juce::Time::getMillisecondCounterHiRes();
+    }
+    #if !SOURCE_SYNC_STATE_WITH_REMOTE_UI
+    juce::ignoreUnused(parentTree, childWhichHasBeenRemoved, indexFromWhichChildWasRemoved);
+    return;
+    #endif
     // We should never call this function from the realtime thread because editing VT might not be RT safe...
     // TODO: proper check that this is not audio thread
     //jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());

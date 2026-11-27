@@ -1223,9 +1223,9 @@ public:
 	 * \param	clientToUse 	The FSClient to use.
 	 */
 
-	FSRequest(juce::URL uriToRequest, FreesoundClient clientToUse)
-		:client(clientToUse),
-		uri(uriToRequest)
+	FSRequest(juce::URL uriToRequest, FreesoundClient& clientToUse)
+		:uri(uriToRequest),
+		client(clientToUse)
 	{}
 
 	/**

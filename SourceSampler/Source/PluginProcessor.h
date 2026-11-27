@@ -25,7 +25,7 @@ class SourceSamplerAudioProcessor  : public juce::AudioProcessor
 public:
     //==============================================================================
     SourceSamplerAudioProcessor();
-    ~SourceSamplerAudioProcessor();
+    ~SourceSamplerAudioProcessor() override;
     
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -60,6 +60,9 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     SourceSampler source;
+    
+    /** On-screen keyboard state (notes played from the editor's keyboard are merged into the MIDI input). */
+    juce::MidiKeyboardState keyboardState;
     
     #if INCLUDE_SEQUENCER
     Sequencer sequencer;

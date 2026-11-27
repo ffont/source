@@ -9,7 +9,11 @@
 */
 
 #include "PluginProcessor.h"
+#if SOURCE_WEB_UI
 #include "PluginEditor.h"
+#else
+#include "UI/NativeEditor.h"
+#endif
 
 #if INCLUDE_SEQUENCER
 #include "defines_shepherd.h"
@@ -30,6 +34,19 @@ SourceSamplerAudioProcessor::SourceSamplerAudioProcessor()
 #endif
 {
     source.setTotalNumOutputChannels(getTotalNumOutputChannels());
+    
+    #if JUCE_IOS
+    // iOS can kill the standalone app at any time without letting it save its state, so keep the session autosaved
+    // (plugin instances like the AUv3 have their state saved by the host)
+    if (wrapperType == wrapperType_Standalone)
+    {
+        source.enableSessionAutosave(source.sourceDataLocation.getChildFile("last_session.xml"));
+        // The presets folder is in the app group container (shared with the AUv3), which is not visible in the Files
+        // app, so presets copied to the app's Documents folder (visible in the Files app) are imported from there
+        source.enablePresetImportFolder(juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                                            .getChildFile(SOURCE_APP_DIRECTORY_NAME).getChildFile("presets"));
+    }
+    #endif
     #if INCLUDE_SEQUENCER
     sequencerCombinedBuffer.ensureSize(512 * 10);
     #endif
@@ -90,7 +107,8 @@ int SourceSamplerAudioProcessor::getCurrentProgram()
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
-    source.loadPresetFromIndex(index);
+    // Hosts may call this from any thread, but loading presets modifies the state (message thread only)
+    source.runOnMessageThread([index](SourceSampler& s){ s.loadPresetFromIndex(index); });
 }
 
 const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
@@ -155,6 +173,7 @@ void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     }
     midiMessages.addEvents(sequencerCombinedBuffer, 0, sliceNumSamples, 0);  // Combine sequencer MIDI messages with plugin's input message stream
     #endif
+    keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
     source.processBlock(buffer, midiMessages);
 }
 
@@ -166,16 +185,19 @@ bool SourceSamplerAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 {
+    #if SOURCE_WEB_UI
     return new SourceSamplerAudioProcessorEditor (*this);
+    #else
+    return new SourceNativeEditor (*this);
+    #endif
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // Save current state information to memory block
     std::unique_ptr<juce::XmlElement> xml ( source.state.createXml());
-    DBG("> Running getStateInformation");
-    DBG(xml->toString()); // Print state for debugging purposes (print it nicely indented)
-    copyXmlToBinary (*xml, destData);
+    if (xml != nullptr)
+        copyXmlToBinary (*xml, destData);
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -184,7 +206,9 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     DBG("> Running setStateInformation");
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
-        source.loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
+        // Hosts may call this from any thread, but the state can only be modified in the message thread
+        juce::ValueTree newState = juce::ValueTree::fromXml(*xmlState.get());
+        source.runOnMessageThread([newState](SourceSampler& s){ s.loadPresetFromStateInformation(newState); });
     }
 }
 
