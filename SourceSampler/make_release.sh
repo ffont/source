@@ -172,11 +172,25 @@ elif [[ $WAIT -eq 1 ]]; then
     done
     if [[ -z "$RUN_ID" ]]; then
         echo "    Could not find the workflow run, check the Actions tab of the repository" >&2
-    elif gh run watch "$RUN_ID" --exit-status --interval 30 >/dev/null; then
-        echo "    Linux builds attached"
     else
-        echo "    The Linux builds failed: gh run view $RUN_ID --log-failed" >&2
-        exit 1
+        # Poll the run (network errors while waiting are ignored, the run goes on in GitHub anyway)
+        CONCLUSION=""
+        for _ in $(seq 1 120); do
+            STATE=$(gh run view "$RUN_ID" --json status,conclusion --jq '.status + " " + .conclusion' 2>/dev/null || true)
+            if [[ "$STATE" == completed* ]]; then
+                CONCLUSION="${STATE#completed }"
+                break
+            fi
+            sleep 30
+        done
+        if [[ "$CONCLUSION" == "success" ]]; then
+            echo "    Linux builds attached"
+        elif [[ -z "$CONCLUSION" ]]; then
+            echo "    Still building after 1 hour: check with gh run view $RUN_ID" >&2
+        else
+            echo "    The Linux builds failed ($CONCLUSION): gh run view $RUN_ID --log-failed" >&2
+            exit 1
+        fi
     fi
 fi
 echo "==> Done: $(gh release view "$TAG" --json url --jq .url)"
