@@ -23,6 +23,7 @@ def generate_code(controls_data_filename):
             'max':  row.get('max', ''),
             'default': row.get('default', ''),
             'midiCCenabled': row.get('midiCCenabled', '') == '1',
+            'description': (row.get('', '') or '').strip(),
         }
         controls_list.append(control_data)
 
@@ -194,6 +195,23 @@ def generate_code(controls_data_filename):
     current_code += '\n            '
     code_dict['Resources/ui_plugin_ws.html']['D'] = current_code
 
+
+    # Generate parameter metadata table used by the native JUCE UI
+    current_code = ''
+    for control_data in controls_list:
+        if control_data['type'] not in ['float', 'int']:
+            continue
+        current_code += '    {{ "{name}", {is_int}, {minf}f, {maxf}f, {defaultf}f, {cc}, "{description}" }},\n'.format(
+            name=control_data['name'],
+            is_int='true' if control_data['type'] == 'int' else 'false',
+            minf=float(control_data['min']),
+            maxf=float(control_data['max']),
+            defaultf=float(control_data['default']),
+            cc='true' if control_data['midiCCenabled'] else 'false',
+            description=control_data['description'].replace('"', '\\"').replace('\u201c', '').replace('\u201d', ''))
+    current_code += '    '
+    code_dict['Source/SourceParameters.h'] = {}
+    code_dict['Source/SourceParameters.h']['A'] = current_code
 
     print('Code successfully generated for: %s' % str(list(code_dict.keys())))
 

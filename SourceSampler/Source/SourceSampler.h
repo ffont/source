@@ -11,12 +11,12 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <array>
 #include "helpers_source.h"
 #include "FreesoundAPI.h"
 #include "ServerInterface.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
-#include "LevelMeterSource.h"
 
 
 //==============================================================================
@@ -29,14 +29,18 @@ class SourceSampler: public juce::ActionBroadcaster,
 {
 public:
     //==============================================================================
-    SourceSampler();
-    ~SourceSampler();
+    /** @param baseDataLocation  folder where the "SourceSampler" data folder (sounds, presets, settings) is created.
+                                  If not specified, the user's documents folder is used (or the platform-specific
+                                  location for ELK/iOS builds). */
+    explicit SourceSampler (juce::File baseDataLocation = {});
+    ~SourceSampler() override;
     
+    /** The whole sampler state. Only modify it (and only listen to it) from the message thread. */
     juce::ValueTree state;
     void bindState();
     GlobalContextStruct getGlobalContext();
     
-    void createDirectories(const juce::String& appDirectoryName);
+    void createDirectories(const juce::String& appDirectoryName, juce::File baseLocation);
     
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock);
@@ -81,6 +85,7 @@ public:
     //==============================================================================
     void setGlobalMidiInChannel(int channel);
     void setMidiThru(bool doMidiTrhu);
+    void setMpeSettings(bool enabled, int perNotePitchBendRange);
     
     //==============================================================================
     void updateReverbParameters();
@@ -112,7 +117,8 @@ public:
     };
     QueryMakerThread queryMakerThread;
     //==============================================================================
-    void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);
+    void makeQueryAndLoadSounds(const juce::String& addReplaceOrReplaceSound, const juce::String& query, int numSounds, float minSoundLength, float maxSoundLength);  // Runs in QueryMakerThread
+    void loadQueryResults(const juce::String& addReplaceOrReplaceSound, int numSounds, int numResults, juce::Array<FSSound> soundsFound);  // Runs in the message thread
     void removeSound(const juce::String& soundUUID);
     void removeSamplerSound(const juce::String& soundUUID, const juce::String& samplerSoundUUID);
     void removeAllSounds();
@@ -139,6 +145,7 @@ public:
                                                    int midiChannel,
                                                    bool addToExistingSourceSampleSounds);
     void reapplyNoteLayout(int newNoteLayoutType);
+    SourceSound* getSoundWithUUID(const juce::String& soundUUID) { return sounds != nullptr ? sounds->getSoundWithUUID(soundUUID) : nullptr; }
     void addToMidiBuffer(const juce::String& soundUUID, bool doNoteOff);
     double getStartTime();
     
@@ -149,6 +156,24 @@ public:
     void previewFile(const juce::String& path);
     void stopPreviewingFile();
     juce::String currentlyLoadedPreviewFilePath = "";
+    
+    //==============================================================================
+    // Information for UIs which is not part of the state ("volatile" state). Call from the message thread.
+    struct VoiceInfo
+    {
+        bool active = false;
+        juce::String soundUUID;  // UUID of the SourceSound being played
+        juce::String firstSampleUUID;  // UUID of the first SOUND_SAMPLE of that sound (used by the web/Python UIs)
+        float playPosition = -1.0f;  // Relative position (0-1) in the sound being played
+    };
+    std::vector<VoiceInfo> getVoicesInfo();
+    std::vector<float> getOutputLevels();
+    bool isQueryingSounds() const noexcept { return isQuerying.load(); }
+    int getLastReceivedMidiNote() const noexcept { return lastReceivedMIDINoteNumber.load(); }
+    int getLastReceivedMidiCC() const noexcept { return lastReceivedMIDIControllerNumber.load(); }
+    
+    /** Runs the function in the message thread: synchronously if already in the message thread, asynchronously otherwise. */
+    void runOnMessageThread (std::function<void(SourceSampler&)> fn);
     
 protected:
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
@@ -162,13 +187,19 @@ private:
     juce::AudioFormatManager audioFormatManager;
     SourceSamplerSynthesiser sampler;
     ServerInterface serverInterface;
-    foleys::LevelMeterSource lms;  // Object to measure audio output levels
+    // Output levels: RMS per channel averaged over ~200ms, computed in the audio thread and read by UIs (lock free)
+    static constexpr int maxMeteredChannels = 8;
+    std::array<std::atomic<float>, maxMeteredChannels> outputRmsLevels {};
+    std::array<float, maxMeteredChannels> outputMeanSquares {};  // Audio thread only
+    float levelSmoothingCoefficient = 0.0f;  // Per-block smoothing factor (set in prepareToPlay)
     
     // Properties binded to state
     juce::CachedValue<int> globalMidiInChannel;
     juce::CachedValue<int> midiOutForwardsMidiIn;
     juce::CachedValue<juce::String> useOriginalFilesPreference;
     juce::CachedValue<juce::String> freesoundOauthAccessToken;
+    juce::CachedValue<bool> mpeEnabled;
+    juce::CachedValue<int> mpePitchBendRange;
     
     std::unique_ptr<SourceSoundList> sounds;
     std::unique_ptr<SourceSoundList> soundsOld;  // Used when sounds is replaced to not immediately delete all objects inside and give time for save deletion
@@ -183,11 +214,13 @@ private:
     juce::CachedValue<float> reverbFreezeMode;
     
     // Other "volatile" properties
-    bool isQuerying = false;
-    juce::MidiBuffer midiFromEditor;
-    int lastReceivedMIDIControllerNumber = -1;
-    int lastReceivedMIDINoteNumber = -1;
-    bool midiMessagesPresentInLastStateReport = false;
+    std::atomic<bool> isQuerying { false };
+    juce::MidiBuffer midiFromEditor;  // Notes triggered from UIs, protected by midiFromEditorLock
+    juce::SpinLock midiFromEditorLock;
+    void addMidiFromEditor (const juce::MidiMessage& message);
+    std::atomic<int> lastReceivedMIDIControllerNumber { -1 };
+    std::atomic<int> lastReceivedMIDINoteNumber { -1 };
+    std::atomic<bool> midiMessagesPresentInLastStateReport { false };
     double startTime;
     double lastTimeIsAliveWasSent = 0;
     bool aconnectWasRun = false;
@@ -203,6 +236,10 @@ private:
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
     juce::AudioTransportSource transportSource;
     
+    // MIDI CC mappings and program changes received in the audio thread are applied here (message thread)
+    void processPendingControlEvents();
+    juce::TimedCallback controlEventsTimer { [this] { processPendingControlEvents(); } };
+    
     // Other
     juce::CriticalSection soundDeleteLock;
     bool loadedPresetAtElkStartup = false;
@@ -211,5 +248,7 @@ private:
     int numberOfChannels = 2;
 
     //==============================================================================
+    JUCE_DECLARE_WEAK_REFERENCEABLE (SourceSampler)
+    juce::WeakReference<SourceSampler> weakThis;  // Created in the message thread so it can be safely copied from other threads
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SourceSampler)
 };

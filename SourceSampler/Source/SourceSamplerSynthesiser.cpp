@@ -13,7 +13,7 @@
 
 SourceSamplerSynthesiser::SourceSamplerSynthesiser()
 {
-    setSamplerVoices(maxNumVoices);
+    setSamplerVoices(SourceDefaults::numVoices);
     
     // Configure effects chain
     juce::Reverb::Parameters reverbParameters;
@@ -23,30 +23,26 @@ SourceSamplerSynthesiser::SourceSamplerSynthesiser()
     reverbParameters.dryLevel = 1.0f;
     reverbParameters.width = 1.0f;
     reverbParameters.freezeMode = 0.0f;
-    auto& reverb = fxChain.get<reverbIndex>();
-    reverb.setParameters(reverbParameters);
+    setReverbParameters(reverbParameters);
 }
 
 void SourceSamplerSynthesiser::setSamplerVoices(int nVoices)
 {
-    // Clear existing voices and re-create new ones
-    clearVoices();
-    for (auto i = 0; i < juce::jmin(maxNumVoices, nVoices); ++i)
-        addVoice (new SourceSamplerVoice);
+    // Create and prepare the new voices before adding them to the synth, so the audio thread never sees an unprepared voice.
+    // Processing specs are stored the first time "prepare" is called; before that voices will be prepared in "prepare".
+    std::vector<SourceSamplerVoice*> newVoices;
+    for (auto i = 0; i < juce::jlimit(1, (int)maxNumVoices, nVoices); ++i){
+        auto* voice = new SourceSamplerVoice;
+        if (currentNumChannels > 0)
+            voice->prepare ({ getSampleRate(), (juce::uint32) currentBlockSize, (juce::uint32) currentNumChannels });
+        newVoices.push_back (voice);
+    }
     
-    // Prepare newly created voices if processing specs are given (re-prepare voices)
-    if (currentNumChannels > 0 ){
-        // This is a big UGLY, might find a better fix for the future. The issue is that the sampler.prepare method (which in its turn
-        // calls voices' prepare method) is only called once when plugin processor hits "prepareToPlay". Later on, if we remove and re-create
-        // voices, these are never prepared and the tmpVoiceBuffer is never allocated (and processing chain is not prepared either). To
-        // fix this, we store processing specs in the sampler object (num channels, sample rate, block size) so that everytime voice
-        // objects are deleted and created, we can already prepare them. These specs are stored the first time "sampler.prepare" is called
-        // because it is the first time sampler actually knows about what sample rate, block size and num channels shold work on.
-        // HOWEVER, when we call "sampler.setSamplerVoices" the first time, the processing specs have not been stored yet, so we need to
-        // add a check here to not call prepare on the voices with the default values of currentBlockSize, currentNumChannels and
-        // getSampleRate() whcih are meaningless (=0) and will throw errors.
-        for (auto* v : voices)
-            dynamic_cast<SourceSamplerVoice*> (v)->prepare ({ getSampleRate(), (juce::uint32) currentBlockSize, (juce::uint32) currentNumChannels });
+    {
+        const juce::ScopedLock sl (lock);
+        clearVoices();
+        for (auto* voice : newVoices)
+            addVoice (voice);
     }
     
     setNoteStealingEnabled (true);
@@ -80,19 +76,41 @@ void SourceSamplerSynthesiser::noteOn (const int midiChannel,
             //DBG(midiNoteNumber << "," << velocityInMidiRange << ": " << dynamic_cast<SourceSamplerSound*>(sound)->getSoundName());
             // If hitting a note that's still ringing, stop it first (it could be
             // still playing because of the sustain or sostenuto pedal).
-            for (auto* voice : voices)
-                if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel) && dynamic_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound()->getSourceSound()->getUUID() == dynamic_cast<SourceSamplerSound*>(sound)->getSourceSound()->getUUID())
-                   stopVoice (voice, 1.0f, true);  // Only allow one single instance of SourceSamplerSound type per voice
-            auto* voice = findFreeVoice (sound, midiChannel, midiNoteNumber, isNoteStealingEnabled());
-            dynamic_cast<SourceSamplerVoice*>(voice)->setModWheelValue(lastModWheelValue);
-            startVoice (voice, sound, midiChannel, midiNoteNumber, velocity);
+            auto* sourceSound = static_cast<SourceSamplerSound*>(sound)->getSourceSound();
+            for (auto* voice : voices){
+                if (voice->getCurrentlyPlayingNote() == midiNoteNumber && voice->isPlayingChannel (midiChannel)){
+                    auto* playingSound = static_cast<SourceSamplerVoice*>(voice)->getCurrentlyPlayingSourceSamplerSound();
+                    if (playingSound != nullptr && playingSound->getSourceSound() == sourceSound)
+                        stopVoice (voice, 1.0f, true);  // Only allow one single instance of SourceSamplerSound type per voice
+                }
+            }
+            if (auto* voice = findFreeVoice (sound, midiChannel, midiNoteNumber, isNoteStealingEnabled())){
+                auto* sourceVoice = static_cast<SourceSamplerVoice*>(voice);
+                sourceVoice->setModWheelValue(lastModWheelValue);
+                const int channelIndex = juce::jlimit (0, 15, midiChannel - 1);
+                sourceVoice->setMpeState(mpeEnabled.load(), mpePitchBendRange.load(), lastChannelPressure[(size_t)channelIndex],
+                                         lastSlide[(size_t)channelIndex], lastPitchWheelValues[MPE_MASTER_CHANNEL - 1]);
+                startVoice (voice, sound, midiChannel, midiNoteNumber, velocity);
+            }
         }
     }
+}
+
+void SourceSamplerSynthesiser::noteOff (const int midiChannel, const int midiNoteNumber, const float velocity, const bool allowTailOff)
+{
+    if (mpeEnabled.load() && midiChannel != MPE_MASTER_CHANNEL){
+        // Per-note pressure ends with the note (the next note on this channel will send its own initial value)
+        lastChannelPressure[(size_t) juce::jlimit (0, 15, midiChannel - 1)] = 0;
+    }
+    Synthesiser::noteOff (midiChannel, midiNoteNumber, velocity, allowTailOff);
 }
 
 void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
 {
     const int channel = m.getChannel();
+    const int channelIndex = juce::jlimit (0, 15, channel - 1);
+    const bool mpe = mpeEnabled.load();
+    const bool isMasterChannelInMpe = mpe && channel == MPE_MASTER_CHANNEL;
     
     if (m.isNoteOn())
     {
@@ -110,7 +128,15 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
     {
         const int wheelPos = m.getPitchWheelValue();
         lastPitchWheelValues [channel - 1] = wheelPos;
-        handlePitchWheel (channel, wheelPos);
+        if (isMasterChannelInMpe){
+            // Master channel pitch bend affects all notes (with each sound's pitch bend range)
+            const juce::ScopedLock sl (lock);
+            for (auto* voice : voices)
+                static_cast<SourceSamplerVoice*>(voice)->setMasterPitchBend (wheelPos);
+        } else {
+            // In MPE mode this is per-note pitch bend (only the voice playing on this channel)
+            handlePitchWheel (channel, wheelPos);
+        }
     }
     else if (m.isAftertouch())
     {
@@ -118,7 +144,14 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
     }
     else if (m.isChannelPressure())
     {
-        handleChannelPressure (channel, m.getChannelPressureValue());
+        lastChannelPressure[(size_t) channelIndex] = m.getChannelPressureValue();
+        if (isMasterChannelInMpe){
+            const juce::ScopedLock sl (lock);
+            for (auto* voice : voices)
+                voice->channelPressureChanged (m.getChannelPressureValue());
+        } else {
+            handleChannelPressure (channel, m.getChannelPressureValue());
+        }
     }
     else if (m.isController())
     {
@@ -126,27 +159,38 @@ void SourceSamplerSynthesiser::handleMidiEvent (const juce::MidiMessage& m)
         int value = m.getControllerValue();
         
         // Store last value for mod wheel (used when triggering new notes)
-        if (number == 1){
+        if (number == 1 && (!mpe || channel == MPE_MASTER_CHANNEL)){
             lastModWheelValue = value;
         }
         
-        // Handle controller in active voices
-        handleController (channel, number, value);
+        if (number == MPE_SLIDE_CC)
+            lastSlide[(size_t) channelIndex] = value;
         
-        // Check midi mappings for the loaded sounds and update parameters if needed
-        for (auto* s : sounds)
-        {
-            if (auto* sound = dynamic_cast<SourceSamplerSound*> (s)){
-                sound->getSourceSound()->applyMidiCCModulations(channel, number, value);
-            }
+        // Handle controller in active voices (in MPE mode, controllers on the master channel affect all voices)
+        if (isMasterChannelInMpe){
+            const juce::ScopedLock sl (lock);
+            for (auto* voice : voices)
+                voice->controllerMoved (number, value);
+        } else {
+            handleController (channel, number, value);
         }
+        
+        // MIDI CC mappings modify sound parameters (which live in the state), so these are applied in the message thread.
+        // In MPE mode, controllers on member channels are per-note expression and don't trigger CC mappings.
+        if (!mpe || channel == MPE_MASTER_CHANNEL)
+            pushControlEvent ({ ControlEvent::Type::controller, channel, number, value });
     }
     else if (m.isProgramChange())
     {
-        int index = m.getProgramChangeNumber();  // Preset index, this is 0-based so MIDI value 0 will be also 0 here
-        juce::String actionMessage = juce::String(ACTION_LOAD_PRESET) + ":" + (juce::String)index;
-        sendActionMessage(actionMessage);
+        // Preset index, this is 0-based so MIDI value 0 will be also 0 here. Presets are loaded in the message thread.
+        pushControlEvent ({ ControlEvent::Type::programChange, channel, m.getProgramChangeNumber(), 0 });
     }
+}
+
+void SourceSamplerSynthesiser::pushControlEvent (ControlEvent event) noexcept
+{
+    const auto scope = controlEventsFifo.write (1);
+    scope.forEach ([&] (int index) { controlEvents[(size_t) index] = event; });
 }
 
 void SourceSamplerSynthesiser::renderVoices (juce::AudioBuffer< float > &outputAudio, int startSample, int numSamples)
@@ -161,6 +205,9 @@ void SourceSamplerSynthesiser::renderVoices (juce::AudioBuffer< float > &outputA
 //==============================================================================
 
 void SourceSamplerSynthesiser::setReverbParameters (juce::Reverb::Parameters params) {
+    // juce::Reverb internally scales the dry level by 2 (and the wet level by 3), so a dry level of 1.0 would
+    // boost the signal by +6 dB. Compensate here so that dryLevel = 1.0 means unity gain.
+    params.dryLevel *= 0.5f;
     auto& reverb = fxChain.get<reverbIndex>();
     reverb.setParameters(params);
 }

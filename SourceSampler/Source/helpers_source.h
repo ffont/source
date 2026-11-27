@@ -15,6 +15,7 @@
 #include <JuceHeader.h>
 #include "defines_source.h"
 #include "drow_ValueTreeObjectList.h"
+#include <limits>
 
 
 struct GlobalContextStruct {
@@ -78,6 +79,8 @@ namespace SourceHelpers
         state.setProperty (SourceIDs::midiOutForwardsMidiIn, SourceDefaults::midiOutForwardsMidiIn, nullptr);
         state.setProperty (SourceIDs::useOriginalFilesPreference, SourceDefaults::useOriginalFilesPreference, nullptr);
         state.setProperty (SourceIDs::freesoundOauthAccessToken, SourceDefaults::freesoundOauthAccessToken, nullptr);
+        state.setProperty (SourceIDs::mpeEnabled, SourceDefaults::mpeEnabled, nullptr);
+        state.setProperty (SourceIDs::mpePitchBendRange, SourceDefaults::mpePitchBendRange, nullptr);
         return state;
     }
 
@@ -90,6 +93,8 @@ namespace SourceHelpers
         state.setProperty (SourceIDs::midiOutForwardsMidiIn, currentState.getProperty(SourceIDs::midiOutForwardsMidiIn), nullptr);
         state.setProperty (SourceIDs::useOriginalFilesPreference, currentState.getProperty(SourceIDs::useOriginalFilesPreference), nullptr);
         state.setProperty (SourceIDs::freesoundOauthAccessToken, currentState.getProperty(SourceIDs::freesoundOauthAccessToken), nullptr);
+        state.setProperty (SourceIDs::mpeEnabled, currentState.getProperty(SourceIDs::mpeEnabled, SourceDefaults::mpeEnabled), nullptr);
+        state.setProperty (SourceIDs::mpePitchBendRange, currentState.getProperty(SourceIDs::mpePitchBendRange, SourceDefaults::mpePitchBendRange), nullptr);
         return state;
     }
 
@@ -174,6 +179,18 @@ namespace SourceHelpers
         mapping.setProperty (SourceIDs::parameterName, parameterName, nullptr);
         mapping.setProperty (SourceIDs::minRange, minRange, nullptr);
         mapping.setProperty (SourceIDs::maxRange, maxRange, nullptr);
+        return mapping;
+    }
+
+    inline juce::ValueTree createMpeMappingState(const juce::String& source, const juce::String& parameterName, float minRange, float maxRange, float curve)
+    {
+        juce::ValueTree mapping (SourceIDs::MPE_MAPPING);
+        SourceHelpers::createUuidProperty (mapping);
+        mapping.setProperty (SourceIDs::mpeSource, source, nullptr);
+        mapping.setProperty (SourceIDs::parameterName, parameterName, nullptr);
+        mapping.setProperty (SourceIDs::minRange, minRange, nullptr);
+        mapping.setProperty (SourceIDs::maxRange, maxRange, nullptr);
+        mapping.setProperty (SourceIDs::curve, curve, nullptr);
         return mapping;
     }
 
@@ -269,6 +286,123 @@ namespace SourceHelpers
         juce::ValueTree preset = createEmptyPresetState();
         state.addChild (preset, -1, nullptr);
         return state;
+    }
+
+    //==============================================================================
+    // Note layouts
+
+    struct NoteLayout
+    {
+        juce::BigInteger midiNotes;
+        int midiRootNote = SourceDefaults::midiRootNote;
+        int midiChannel = SourceDefaults::midiChannel;
+    };
+
+    /** Computes the notes, root note and MIDI channel assigned to the sound at position soundIndex
+        when numSounds sounds are laid out over the keyboard using the given layout type
+        (NOTE_MAPPING_TYPE_CONTIGUOUS, NOTE_MAPPING_TYPE_INTERLEAVED or NOTE_MAPPING_TYPE_ALL). */
+    inline NoteLayout computeNoteLayout (int noteLayoutType, int soundIndex, int numSounds)
+    {
+        NoteLayout layout;
+        if (numSounds <= 0 || soundIndex < 0 || soundIndex >= numSounds)
+            return layout;
+
+        if (noteLayoutType == NOTE_MAPPING_TYPE_CONTIGUOUS){
+            // All the notes mapped to this sound are contiguous in a range which depends on the total number of sounds
+            const int nNotesPerSound = juce::jmax (1, 128 / numSounds);
+            const int firstNote = juce::jmin (127, soundIndex * nNotesPerSound);
+            layout.midiRootNote = juce::jmin (127, firstNote + nNotesPerSound / 2);
+            layout.midiNotes.setRange (firstNote, juce::jmin (nNotesPerSound, 128 - firstNote), true);
+        } else if (noteLayoutType == NOTE_MAPPING_TYPE_INTERLEAVED){
+            // Notes are mapped to sounds in interleaved fashion so each contiguous note corresponds to a different sound
+            layout.midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + soundIndex;
+            if (layout.midiRootNote > 127)
+                layout.midiRootNote = NOTE_MAPPING_INTERLEAVED_ROOT_NOTE + (soundIndex % (128 - NOTE_MAPPING_INTERLEAVED_ROOT_NOTE));
+            for (int j = layout.midiRootNote; j < 128; j += numSounds)
+                layout.midiNotes.setBit (j);  // Map notes in upwards direction
+            for (int j = layout.midiRootNote; j >= 0; j -= numSounds)
+                layout.midiNotes.setBit (j);  // Map notes in downwards direction
+        } else if (noteLayoutType == NOTE_MAPPING_TYPE_ALL){
+            // Map all notes to all sounds, each sound listening on a different MIDI channel
+            layout.midiNotes.setRange (0, 128, true);
+            layout.midiRootNote = 64;
+            layout.midiChannel = (soundIndex % 16) + 1;
+        }
+        return layout;
+    }
+
+    /** Returns the "index" of midiNote within the set of mapped notes, ignoring gaps in the mapping.
+        For example, with notes {C3, C#3, E3} mapped, E3 has index 2. If midiNote is not mapped, the
+        index of the closest mapped note is returned. Returns 0 if no notes are mapped. */
+    inline int noteIndexInMapping (const juce::BigInteger& mappedMidiNotes, int midiNote)
+    {
+        int noteIndex = 0;
+        int closestNoteIndex = 0;
+        int minDistance = std::numeric_limits<int>::max();
+        for (int note = mappedMidiNotes.findNextSetBit (0); note >= 0; note = mappedMidiNotes.findNextSetBit (note + 1)){
+            if (note == midiNote)
+                return noteIndex;
+            const int distance = std::abs (note - midiNote);
+            if (distance < minDistance){
+                minDistance = distance;
+                closestNoteIndex = noteIndex;
+            }
+            noteIndex += 1;
+        }
+        return closestNoteIndex;
+    }
+
+    //==============================================================================
+    // MPE
+
+    enum class MpeSource { press = 0, slide, glide, strike, numSources };
+
+    inline juce::StringArray getMpeSourceNames()
+    {
+        return { MPE_SOURCE_PRESS, MPE_SOURCE_SLIDE, MPE_SOURCE_GLIDE, MPE_SOURCE_STRIKE };
+    }
+
+    /** Returns the source with the given name, or MpeSource::numSources if the name is not valid. */
+    inline MpeSource mpeSourceFromName (const juce::String& name)
+    {
+        const int index = getMpeSourceNames().indexOf (name);
+        return index >= 0 ? (MpeSource) index : MpeSource::numSources;
+    }
+
+    inline bool isBipolarMpeSource (MpeSource source) { return source == MpeSource::glide; }
+
+    /** Applies a response curve to a normalised (0..1) MPE source value. curve is in [-1, 1]: 0 is linear,
+        positive values make the response slower at the start (exponential-like), negative values faster (log-like).
+        Bipolar sources (glide, where 0.5 is the centre) apply the curve symmetrically around the centre. */
+    inline float applyMpeCurve (float value01, float curve, bool bipolar)
+    {
+        value01 = juce::jlimit (0.0f, 1.0f, value01);
+        curve = juce::jlimit (-1.0f, 1.0f, curve);
+        if (curve == 0.0f)
+            return value01;
+        const float exponent = std::pow (4.0f, curve);
+        if (! bipolar)
+            return std::pow (value01, exponent);
+        const float centred = value01 * 2.0f - 1.0f;
+        const float shaped = std::copysign (std::pow (std::abs (centred), exponent), centred);
+        return (shaped + 1.0f) * 0.5f;
+    }
+
+    /** Maps a (curved) normalised source value to a parameter value: first to the mapping's normalised
+        [minRange, maxRange] range, then to the parameter's [parameterMin, parameterMax] range. */
+    inline float mapMpeValueToParameter (float value01, float curve, bool bipolar, float minRange, float maxRange, float parameterMin, float parameterMax)
+    {
+        const float normalised = juce::jmap (applyMpeCurve (value01, curve, bipolar), minRange, maxRange);
+        return juce::jmap (normalised, parameterMin, parameterMax);
+    }
+
+    //==============================================================================
+    // Action message (internal API) builders. All UIs (web, Python, native) control the sampler by sending
+    // these messages to SourceSampler::actionListenerCallback.
+
+    inline juce::String serializeAction (const juce::String& actionName, const juce::StringArray& parameters = {})
+    {
+        return actionName + ":" + parameters.joinIntoString (SERIALIZATION_SEPARATOR);
     }
 }
 

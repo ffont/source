@@ -41,6 +41,20 @@
 #endif
 
 
+#ifndef SOURCE_WEB_UI
+#define SOURCE_WEB_UI 0  // Set to 1 when building with the legacy browser-based editor (see CMake option SOURCE_WEB_UI)
+#endif
+
+// State changes are serialized and sent to "remote" UIs (the browser-based UI, or external UIs through websockets/OSC).
+// When using the native JUCE editor with the direct communication method, nobody listens to these messages, so skip that work.
+#ifndef SOURCE_SYNC_STATE_WITH_REMOTE_UI
+#if USING_DIRECT_COMMUNICATION_METHOD && !SOURCE_WEB_UI
+#define SOURCE_SYNC_STATE_WITH_REMOTE_UI 0
+#else
+#define SOURCE_SYNC_STATE_WITH_REMOTE_UI 1
+#endif
+#endif
+
 #define USE_SSL_FOR_HTTP_AND_WS 0 // At some point it looked like SSL was necessary for http and ws servers to work on macOS, but not it looks like it also works without that. The downside of using ssl is that the bundled self-certificate needs to be accepted on a browser before the UI can be loaded
 
 #ifndef LOADED_LATEST_LOADED_PRESET_AT_STARTUP
@@ -54,6 +68,7 @@
 
 #define USE_LAZY_UI 0
 
+#define CONTROL_EVENTS_TIMER_HZ 100  // Rate at which MIDI CC mappings and program changes received in the audio thread are applied
 #define MAIN_TIMER_HZ 15  // Run main timer tasks at this rate (this includes removing sounds that need to be removed and possibly other tasks)
 #define SAFE_SOUND_DELETION_TIME_MS 200
 #define SAMPLER_SOUND_TIMER_MS 20
@@ -75,7 +90,7 @@
 #define WEBSOCKETS_SERVER_PORT 8125
 #define HTTP_DOWNLOAD_SERVER_PORT 8123
 
-#define MAX_SAMPLE_LENGTH 300  // minutes maximum sample length
+#define MAX_SAMPLE_LENGTH 300  // maximum sample length in seconds (longer files are truncated)
 
 #define MAX_DOWNLOAD_WAITING_TIME_MS 20000
 #define MAX_SIZE_FOR_ORIGINAL_FILE_DOWNLOAD 1024 * 1024 * 15  // 15 MB
@@ -124,6 +139,11 @@
 #define ACTION_ADD_OR_UPDATE_CC_MAPPING "/add_or_update_cc_mapping"
 #define ACTION_REMOVE_CC_MAPPING "/remove_cc_mapping"
 
+// MPE actions
+#define ACTION_SET_MPE_SETTINGS "/set_mpe_settings"  // enabled (0/1);perNotePitchBendRange (semitones)
+#define ACTION_ADD_OR_UPDATE_MPE_MAPPING "/add_or_update_mpe_mapping"  // soundUUID;mappingUUID;source;parameterName;minRange;maxRange;curve
+#define ACTION_REMOVE_MPE_MAPPING "/remove_mpe_mapping"  // soundUUID;mappingUUID
+
 // External sound downloads actions
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
 #define ACTION_FINISHED_DOWNLOADING_SOUND "/finished_downloading_sound"
@@ -155,6 +175,14 @@
 #define USE_ORIGINAL_FILES_ALWAYS "always"
 
 #define SERIALIZATION_SEPARATOR ";"
+
+// MPE (MIDI Polyphonic Expression). SOURCE implements the MPE lower zone: master channel 1, member channels 2-16
+#define MPE_MASTER_CHANNEL 1
+#define MPE_SLIDE_CC 74
+#define MPE_SOURCE_PRESS "press"    // Per-note channel pressure (0..1)
+#define MPE_SOURCE_SLIDE "slide"    // Per-note CC74 (0..1)
+#define MPE_SOURCE_GLIDE "glide"    // Per-note pitch bend (-1..1, mapped to 0..1 for mappings)
+#define MPE_SOURCE_STRIKE "strike"  // Note-on velocity (0..1)
 
 
 namespace SourceDefaults
@@ -235,6 +263,10 @@ inline juce::String parameterName = "no name";
 inline int ccNumber = -1;
 inline float minRange = 0.0;
 inline float maxRange = 127.0;
+
+inline bool mpeEnabled = false;
+inline int mpePitchBendRange = 48;  // Semitones of per-note pitch bend (standard MPE default)
+inline float mpeCurve = 0.0f;  // 0 = linear
 }
 
 
@@ -305,6 +337,12 @@ DECLARE_ID (minRange)
 DECLARE_ID (maxRange)
 
 DECLARE_ID (numResultsLastQuery)
+
+DECLARE_ID (MPE_MAPPING)
+DECLARE_ID (mpeEnabled)
+DECLARE_ID (mpePitchBendRange)
+DECLARE_ID (mpeSource)
+DECLARE_ID (curve)
 
 // --> Start auto-generated code B
 DECLARE_ID (launchMode)

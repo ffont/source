@@ -21,3 +21,5 @@ SourceSampler/Builds/MacOSX/SourceSampler.xcodeproj/project.xcworkspace/contents
 ui_plugin_copy.html
 BinaryData.cpp
 BinaryData.h
+
+build-*/

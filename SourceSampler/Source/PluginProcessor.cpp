@@ -9,7 +9,11 @@
 */
 
 #include "PluginProcessor.h"
+#if SOURCE_WEB_UI
 #include "PluginEditor.h"
+#else
+#include "UI/NativeEditor.h"
+#endif
 
 #if INCLUDE_SEQUENCER
 #include "defines_shepherd.h"
@@ -90,7 +94,8 @@ int SourceSamplerAudioProcessor::getCurrentProgram()
 
 void SourceSamplerAudioProcessor::setCurrentProgram (int index)
 {
-    source.loadPresetFromIndex(index);
+    // Hosts may call this from any thread, but loading presets modifies the state (message thread only)
+    source.runOnMessageThread([index](SourceSampler& s){ s.loadPresetFromIndex(index); });
 }
 
 const juce::String SourceSamplerAudioProcessor::getProgramName (int index)
@@ -155,6 +160,7 @@ void SourceSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     }
     midiMessages.addEvents(sequencerCombinedBuffer, 0, sliceNumSamples, 0);  // Combine sequencer MIDI messages with plugin's input message stream
     #endif
+    keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
     source.processBlock(buffer, midiMessages);
 }
 
@@ -166,16 +172,19 @@ bool SourceSamplerAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SourceSamplerAudioProcessor::createEditor()
 {
+    #if SOURCE_WEB_UI
     return new SourceSamplerAudioProcessorEditor (*this);
+    #else
+    return new SourceNativeEditor (*this);
+    #endif
 }
 
 void SourceSamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // Save current state information to memory block
     std::unique_ptr<juce::XmlElement> xml ( source.state.createXml());
-    DBG("> Running getStateInformation");
-    DBG(xml->toString()); // Print state for debugging purposes (print it nicely indented)
-    copyXmlToBinary (*xml, destData);
+    if (xml != nullptr)
+        copyXmlToBinary (*xml, destData);
 }
 
 void SourceSamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -184,7 +193,9 @@ void SourceSamplerAudioProcessor::setStateInformation (const void* data, int siz
     DBG("> Running setStateInformation");
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr){
-        source.loadPresetFromStateInformation(juce::ValueTree::fromXml(*xmlState.get()));
+        // Hosts may call this from any thread, but the state can only be modified in the message thread
+        juce::ValueTree newState = juce::ValueTree::fromXml(*xmlState.get());
+        source.runOnMessageThread([newState](SourceSampler& s){ s.loadPresetFromStateInformation(newState); });
     }
 }
 

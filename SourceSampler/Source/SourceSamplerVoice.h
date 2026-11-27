@@ -41,15 +41,62 @@ public:
     //==============================================================================
     void prepare (const juce::dsp::ProcessSpec& spec);
     
-    float getPlayingPositionPercentage();
+    float getPlayingPositionPercentage();  // Audio thread only (use getPublishedState from other threads)
+    
+    /** Voice state published by the audio thread (once per block, and when notes start/stop) so that other threads
+        (e.g. the UI) can read it safely. sourceSound is only an identifier: it must not be dereferenced, compare it
+        with the sounds owned by the caller instead. */
+    struct PublishedState
+    {
+        bool active = false;
+        const SourceSound* sourceSound = nullptr;
+        float playPosition = -1.0f;  // Relative position (0-1) in the sound being played
+    };
+    PublishedState getPublishedState() const noexcept;
     int getNoteIndex(int midiNote);
     
     SourceSamplerSound* getCurrentlyPlayingSourceSamplerSound() const noexcept;
     
     void setModWheelValue(int newValue);
+    
+    //==============================================================================
+    // MPE
+    
+    /** Called by the synth before starting a note with the MPE settings and the last values received on the note's channel. */
+    void setMpeState (bool enabled, int perNotePitchBendRange, int initialPressure, int initialSlide, int masterPitchWheelValue);
+    /** Pitch bend received on the MPE master channel (applies to all voices using the sound's pitch bend range). */
+    void setMasterPitchBend (int pitchWheelValue);
+    float getMpeSourceValue (SourceHelpers::MpeSource source) const noexcept;  // Normalised 0..1
 
 
 private:
+    /** Returns the value of a sound parameter for this voice: the sound's value, or the value set by an MPE mapping. */
+    float getParam (SourceSamplerSound* sound, const juce::Identifier& identifier) const noexcept
+    {
+        for (int i = 0; i < numParameterOverrides; ++i)
+            if (parameterOverrides[(size_t) i].first == identifier)
+                return parameterOverrides[(size_t) i].second;
+        return sound->getParameterFloat (identifier);
+    }
+    void updateMpeParameterOverrides (SourceSamplerSound* sound);
+    void publishState (SourceSamplerSound* playingSound) noexcept;  // Audio thread, pass nullptr when the voice stops
+    std::atomic<bool> publishedActive { false };
+    std::atomic<const SourceSound*> publishedSourceSound { nullptr };
+    std::atomic<float> publishedPlayPosition { -1.0f };
+    double computePitchBendSemitones (SourceSamplerSound* sound, int pitchWheelValue);
+    
+    bool mpeMode = false;
+    int mpePitchBendRange = SourceDefaults::mpePitchBendRange;
+    float mpePress = 0.0f;   // 0..1
+    float mpeSlide = 0.5f;   // 0..1
+    float mpeGlide = 0.0f;   // -1..1
+    int pendingMasterPitchWheelValue = 8192;
+    double masterPitchBendSemitones = 0.0;
+    SourceSound::MpeMappings mpeMappings;  // Copy of the sound's MPE mappings
+    int numMpeMappings = 0;
+    std::array<std::pair<juce::Identifier, float>, SourceSound::maxMpeMappings> parameterOverrides;
+    int numParameterOverrides = 0;
+    
     int pluginNumChannelsSize = 0;
     int currentlyPlayedNoteIndex = 0;
     

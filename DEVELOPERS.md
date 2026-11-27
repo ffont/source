@@ -26,7 +26,33 @@ The sampler engine of SOURCE is implemented as a JUCE audio plug-in and can be e
 git clone https://github.com/ffont/source.git && cd source && git submodule update --init
 ```
 
-### Build standalone/plugin for desktop (macOS)
+### Build with CMake (recommended, macOS)
+
+SOURCE is now built with CMake (JUCE 9, see `SourceSampler/CMakeLists.txt`). The `.jucer` project and the `Builds/` folder are kept only for the legacy Elk/iOS workflows described below.
+
+1. Clone with submodules (`git submodule update --init --recursive`) and create `SourceSampler/Source/api_key.h` from `api_key.example.h` with your Freesound API key (or pass `-DSOURCE_FREESOUND_API_KEY=...` to CMake).
+2. Build the release plugins (AU, VST3, Standalone), run the tests and install them:
+
+```
+cd SourceSampler
+./build_and_install.sh            # --no-install, --no-tests, --clean are also available
+```
+
+Or build manually:
+
+```
+cmake -S SourceSampler -B SourceSampler/build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build SourceSampler/build --target SourceSampler_Standalone
+cd SourceSampler/build && ctest --output-on-failure
+```
+
+CMake options: `SOURCE_WEB_UI` (use the legacy browser-based editor instead of the native JUCE editor, default OFF), `SOURCE_INCLUDE_SEQUENCER` (SourceShepherd variant, untested with CMake), `SOURCE_BUILD_TESTS` (default ON), `SOURCE_BUILD_AUV3` (default OFF).
+
+Threading notes for developers: the sampler state (`SourceSampler::state` ValueTree) must only be modified from the message thread. Background threads (sound loading, downloads, Freesound queries, time stretching) post their results to the message thread, and MIDI CC mappings/program changes received in the audio thread are queued and applied in the message thread. Tests can be run under ThreadSanitizer by configuring with `-DCMAKE_CXX_FLAGS=-fsanitize=thread -DCMAKE_C_FLAGS=-fsanitize=thread -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=thread`.
+
+In debug builds, setting `SOURCE_DEBUG_ADD_FILE=<audio file>` loads a local file as a sound when the editor opens, and `SOURCE_DEBUG_SNAPSHOT=<png>` renders the editor to a PNG (handy for checking UI changes without screen access).
+
+### Build standalone/plugin for desktop (macOS, legacy Projucer workflow)
 
 1. Clone the source code repository in your local computer
 
@@ -350,6 +376,18 @@ The SOURCE sampler engine exposes a remote control interface that can be accesse
 | --------------- | --------------- | --------------- |
 | `/add_or_update_cc_mapping` | [`sound_uuid` (String), `mapping_uuid` (String), `cc_number` (Integer), `parameter_name` (String), `range_min` (Float), `range_max` (Float)] | Adds a MIDI control change mapping for sound with UUID `sound_uuid`. MIDI CC number can be specified with `cc_number`, and the parameter name that will be affected should be indicated with `parameter_name` (should be one of https://github.com/ffont/source/blob/master/SourceSampler/data_for_code_gen.csv). `range_min` [0.0-1.0] and `range_max` [0.0-1.0] should be used to define a specific range within the full range of the target parameter that will be mapped to MIDI CC values from 0 to 127. Note that these are noramlized. |
 | `/remove_cc_mapping` | [`sound_uuid` (String), `mapping_uuid` (String)] | Removes an existing MIDI control change mapping with UUID `mapping_uuid` from sound with UUID `sound_uuid`. |
+
+### MPE actions
+
+SOURCE supports MPE input (lower zone: master channel 1, member channels 2-16). When MPE is enabled, every sound responds to notes on any channel (the global/sound MIDI channels are ignored for notes), and pitch bend ("glide"), channel pressure ("press") and CC74 ("slide") received on a member channel only affect the note playing on that channel. Values sent on a member channel right before the note-on are used as the note's initial values. Messages on the master channel affect all notes (pitch bend uses each sound's pitch bend range, and only master channel CCs trigger MIDI CC mappings). The existing pressure/aftertouch modulations (`mod2CutoffAmt`, `mod2GainAmt`, `mod2PitchAmt`, `mod2PlayheadPos`) act per note in MPE mode, as they respond to the pressure of the note's channel.
+
+MPE mappings map a per-note dimension (`press`, `slide`, `glide` or `strike` = note velocity) to a sound parameter for that note only (they don't modify the sound's parameter value). The mapped parameter value replaces the sound's value while the mapping exists and MPE is enabled. Only float parameters can be mapped (the UI lists the ones marked as `midiCCenabled` in `data_for_code_gen.csv`).
+
+| Action name | Action arguments | Description |
+| --------------- | --------------- | --------------- |
+| `/set_mpe_settings` | [`enabled` (Integer 0/1), `pitch_bend_range` (Integer)] | Enables/disables MPE input and sets the per-note pitch bend range in semitones (1-96, default 48). Global setting, persisted with the other global settings. |
+| `/add_or_update_mpe_mapping` | [`sound_uuid` (String), `mapping_uuid` (String), `source` (String), `parameter_name` (String), `range_min` (Float), `range_max` (Float), `curve` (Float)] | Adds (or updates if `mapping_uuid` exists) an MPE mapping. `source` is one of `press`, `slide`, `glide`, `strike`. `range_min`/`range_max` [0.0-1.0] are normalised parameter values used when the source is at its minimum/maximum (glide is bipolar: its centre is the middle of the range). `curve` [-1.0, 1.0]: 0 is linear, positive values make the response slower at the start, negative values faster. Up to 16 mappings per sound. |
+| `/remove_mpe_mapping` | [`sound_uuid` (String), `mapping_uuid` (String)] | Removes an MPE mapping. |
 
 
 ## Working on the desktop plugin UI
