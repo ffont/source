@@ -12,8 +12,8 @@
 
 struct SourceLink::Impl
 {
-    explicit Impl (const std::string& name)
-        : link (120.0, name),
+    Impl (const std::string& name, double tempo)
+        : link (tempo, name),
           sink (link, "SOURCE", (size_t) (2 * maxBlockSize)) {}
 
     ableton::LinkAudio link;
@@ -21,12 +21,12 @@ struct SourceLink::Impl
 };
 
 
-SourceLink::SourceLink (juce::File file) : settingsFile (std::move (file))
+SourceLink::SourceLink (juce::File file, double initialTempo) : settingsFile (std::move (file))
 {
     auto settings = juce::XmlDocument::parse (settingsFile);
     const juce::String defaultName = "SOURCE (" + juce::SystemStats::getComputerName() + ")";
     const juce::String name = settings != nullptr ? settings->getStringAttribute ("peerName", defaultName) : defaultName;
-    impl = std::make_unique<Impl> (name.toStdString());
+    impl = std::make_unique<Impl> (name.toStdString(), initialTempo);
     if (settings != nullptr)
     {
         impl->link.enableLinkAudio (settings->getBoolAttribute ("audioEnabled", true));
@@ -72,6 +72,19 @@ juce::String SourceLink::getPeerName() const { return juce::String (impl->link.p
 int SourceLink::getNumPeers() const { return (int) impl->link.numPeers(); }
 
 double SourceLink::getTempo() const { return impl->link.captureAppSessionState().tempo(); }
+
+void SourceLink::setTempo (double bpm)
+{
+    auto& link = impl->link;
+    auto sessionState = link.captureAppSessionState();
+    sessionState.setTempo (bpm, link.clock().micros());
+    link.commitAppSessionState (sessionState);
+}
+
+double SourceLink::getTempoAudioThread() const noexcept
+{
+    return impl->link.captureAudioSessionState().tempo();
+}
 
 void SourceLink::process (const juce::AudioBuffer<float>& buffer, int numSamples, double sampleRate) noexcept
 {

@@ -15,6 +15,8 @@
 #include <JuceHeader.h>
 #include "SourceLookAndFeel.h"
 #include "SourceParameters.h"
+#include <deque>
+#include <map>
 
 
 class SourceSampler;
@@ -70,70 +72,166 @@ private:
 };
 
 
-/** Editor of the MIDI CC mappings of a sound. */
-class MidiMappingsComponent : public juce::Component
+/** Small oscilloscope that shows the output of a modulator over the last seconds, one trace per voice. */
+class ModulatorScope : public juce::Component,
+                       public juce::SettableTooltipClient
 {
 public:
-    explicit MidiMappingsComponent (SourceActionSender actionSender);
-
-    void updateFromState (const juce::String& soundUUID, const juce::ValueTree& soundState);
-    int getIdealHeight() const;
-    void resized() override;
+    void setRange (float newMinRange, float newMaxRange);
+    /** Vertical scale (default -1..1, the offsets of modulators; mappings use 0..1, normalised parameter values). */
+    void setVerticalRange (float bottom, float top) { verticalBottom = bottom; verticalTop = top; repaint(); }
+    /** Text drawn in the scope (e.g. what the row does, or a warning). */
+    void setMessage (const juce::String& text, bool isWarning);
+    /** Adds the newest values of a voice (spaced 1 / rate seconds, the last one at time now). A change of noteCounter
+        starts a new segment of the voice's trace. */
+    void addValues (int voiceIndex, uint32_t noteCounter, const std::vector<float>& values, double rate, double now);
+    /** Drops the points that are out of the window and repaints. */
+    void advanceTime (double now);
     void paint (juce::Graphics& g) override;
 
-private:
-    struct MappingRow : public juce::Component
-    {
-        MappingRow (MidiMappingsComponent& owner);
-        void resized() override;
-        juce::String uuid;
-        juce::Slider ccNumber;
-        juce::ComboBox parameter;
-        juce::Slider minRange, maxRange;
-        IconButton removeButton { "Remove mapping", IconButton::Icon::remove };
-        juce::TextButton saveButton { "Save" };
-    };
+    static juce::Colour getVoiceColour (int voiceIndex);
+    static constexpr double windowSeconds = 2.0;
 
-    void sendMapping (MappingRow& row);
-    SourceActionSender actions;
-    juce::String currentSoundUUID;
-    juce::OwnedArray<MappingRow> rows;
-    juce::TextButton addButton { "Add CC mapping" };
-    juce::Label lastCCLabel;
-    friend struct MappingRow;
+private:
+    struct Trace
+    {
+        uint32_t noteCounter = 0;
+        std::deque<std::pair<double, float>> points;  // (time, value), NaN values break the line
+    };
+    std::map<int, Trace> traces;
+    float minRange = 0.0f, maxRange = 0.0f;
+    float verticalBottom = -1.0f, verticalTop = 1.0f;
+    juce::String message;
+    bool messageIsWarning = false;
+    double currentTime = 0.0;
 };
 
 
-/** Editor of the MPE mappings of a sound (per-note expression -> sound parameter). */
-class MpeMappingsComponent : public juce::Component
+/** Bar plot of the values of a steps modulator: drag on it to draw the values. */
+class StepsEditor : public juce::Component,
+                    public juce::SettableTooltipClient
 {
 public:
-    explicit MpeMappingsComponent (SourceActionSender actionSender);
+    /** Sets the values and number of steps shown (not while the user is dragging). */
+    void setValues (const SourceHelpers::StepValues& newValues, int newNumSteps);
+    const SourceHelpers::StepValues& getValues() const { return values; }
+    bool isDragging() const { return dragging; }
+    /** Called while dragging, when the values change. */
+    std::function<void()> onChange;
 
+    void paint (juce::Graphics& g) override;
+    void mouseDown (const juce::MouseEvent& e) override;
+    void mouseDrag (const juce::MouseEvent& e) override;
+    void mouseUp (const juce::MouseEvent& e) override;
+
+private:
+    juce::Rectangle<float> getPlotArea() const { return getLocalBounds().toFloat().reduced (2.0f, 3.0f); }
+    void setValueAt (juce::Point<float> position);
+    SourceHelpers::StepValues values = SourceHelpers::getDefaultStepValues();
+    int numSteps = SourceDefaults::numSteps;
+    bool dragging = false;
+    int lastIndex = -1;
+    float lastValue = 0.0f;
+};
+
+
+/** Editor of the modulators of a sound (internal LFO/ADSR signals that modulate a parameter, per voice), each with an
+    oscilloscope showing its output for the voices playing the sound. */
+class ModulatorsComponent : public juce::Component
+{
+public:
+    explicit ModulatorsComponent (SourceActionSender actionSender);
+
+    /** Shows the modulators, MPE mappings and MIDI CC mappings of the sound (in the order they were added). */
     void updateFromState (const juce::String& soundUUID, const juce::ValueTree& soundState, bool mpeEnabled);
+    /** Reads the new modulator values of the voices playing the sound (call it periodically). */
+    void updateScopes (SourceSampler& sampler);
     int getIdealHeight() const;
     void resized() override;
     void paint (juce::Graphics& g) override;
 
 private:
-    struct MappingRow : public juce::Component
+    struct LabelledSlider : public juce::Component
     {
-        explicit MappingRow (MpeMappingsComponent& owner);
+        explicit LabelledSlider (const juce::String& name);
         void resized() override;
-        bool isBeingEdited() const;
-        juce::String uuid;
-        juce::ComboBox source, parameter;
-        juce::Slider minRange, maxRange, curve;
-        IconButton removeButton { "Remove mapping", IconButton::Icon::remove };
+        juce::Label label;
+        juce::Slider slider;
     };
 
+    struct LabelledCombo : public juce::Component
+    {
+        explicit LabelledCombo (const juce::String& name);
+        void resized() override;
+        juce::Label label;
+        juce::ComboBox combo;
+    };
+
+    /** A row of the list: a modulator, an MPE mapping or a MIDI CC mapping. */
+    struct Row : public juce::Component
+    {
+        juce::Identifier kind;  // SourceIDs::MODULATOR, MPE_MAPPING or MIDI_CC_MAPPING
+        juce::String uuid;
+        juce::Label typeLabel;
+        juce::ComboBox target;
+        LabelledSlider minRange { "Min" }, maxRange { "Max" };
+        IconButton removeButton { "Remove", IconButton::Icon::remove };
+        virtual int getPreferredHeight() const = 0;
+        virtual bool isBeingEdited() const = 0;
+        void paint (juce::Graphics& g) override;
+        static constexpr int typeLabelWidth = 58;
+    };
+
+    struct ModulatorRow : public Row
+    {
+        ModulatorRow (ModulatorsComponent& owner, SourceHelpers::ModulatorType type);
+        void updateSyncVisibility();
+        int getPreferredHeight() const override { return type == SourceHelpers::ModulatorType::steps ? 150 : 92; }
+        void resized() override;
+        bool isBeingEdited() const override;
+        SourceHelpers::ModulatorType type;
+        juce::ComboBox waveform;
+        LabelledSlider rate { "Rate" }, lfoAttack { "Attack" };
+        LabelledCombo rateDivision { "Rate" }, attackDivision { "Attack" };
+        juce::TextButton syncButton { "Sync" };
+        LabelledSlider numSteps { "Steps" }, stepsRate { "Rate" };
+        LabelledCombo stepsLength { "Cycle" };
+        StepsEditor stepsEditor;
+        LabelledSlider attack { "A" }, decay { "D" }, sustain { "S" }, release { "R" };
+        ModulatorScope scope;
+    };
+
+    /** MPE mapping (per-note expression -> parameter value of that note) or MIDI CC mapping (CC -> the sound's
+        parameter value, for all notes). Min and max are normalised parameter values. */
+    struct MappingRow : public Row
+    {
+        MappingRow (ModulatorsComponent& owner, bool isMpe);
+        int getPreferredHeight() const override { return 62; }
+        bool isBeingEdited() const override;
+        void resized() override;
+        const bool isMpe;
+        juce::StringArray parameterNames;  // Target choices (the combo shows their display names)
+        juce::ComboBox source;  // MPE
+        LabelledSlider curve { "Curve" };  // MPE
+        LabelledSlider ccNumber { "CC" };  // MIDI CC
+        ModulatorScope scope;
+    };
+
+    void addModulator (SourceHelpers::ModulatorType type);
+    void addMapping (bool isMpe);
+    void sendModulator (ModulatorRow& row);
     void sendMapping (MappingRow& row);
+    void updateModulatorRow (ModulatorRow& row, const juce::ValueTree& state);
+    void updateMappingRow (MappingRow& row, const juce::ValueTree& state, bool mpeEnabled);
+    std::vector<juce::TextButton*> getAddButtons() { return { &addLfoButton, &addAdsrButton, &addStepsButton, &addMpeButton, &addCcButton }; }
     SourceActionSender actions;
     juce::String currentSoundUUID;
-    bool isMpeEnabled = false;
-    juce::OwnedArray<MappingRow> rows;
-    juce::TextButton addButton { "Add MPE mapping" };
-    juce::Label columnsLabel;
+    juce::OwnedArray<Row> rows;
+    std::vector<ModulatorRow*> modulatorRows;  // In the order of the modulators (the index used by the voices' history)
+    std::vector<MappingRow*> mpeRows, ccRows;  // In the order of the MPE / MIDI CC mappings
+    juce::TextButton addLfoButton { "Add LFO" }, addAdsrButton { "Add ADSR" }, addStepsButton { "Add steps" };
+    juce::TextButton addMpeButton { "Add MPE" }, addCcButton { "Add MIDI CC" };
+    std::map<int, uint32_t> lastReadCounts;  // Per voice
 };
 
 
@@ -149,6 +247,8 @@ public:
     /** Refreshes all values from the state. */
     void updateFromState();
     void setPlayheads (std::vector<float> positions) { waveform.setPlayheads (std::move (positions)); }
+    /** Updates the modulators' oscilloscopes (call it periodically). */
+    void updateModulatorScopes() { if (modulators.isVisible()) modulators.updateScopes (sampler); }
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -181,8 +281,7 @@ private:
     juce::Viewport parametersViewport;
     juce::OwnedArray<ParameterControl> parameterControls;
     std::vector<Group> groups;
-    MidiMappingsComponent midiMappings;
-    MpeMappingsComponent mpeMappings;
+    ModulatorsComponent modulators;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundEditorComponent)
 };

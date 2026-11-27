@@ -141,6 +141,9 @@ private:
     juce::Label mpeBendLabel;
     juce::Slider mpeBendRangeSlider;
     VoicesComponent voicesComponent;
+    juce::Slider bpmSlider;  // Tempo (global setting, or the Ableton Link session tempo when Link is on)
+    juce::Label bpmLabel;
+    void bpmChanged();
 
     // Get new sounds
     CardComponent querySoundsCard { "Get new sounds" };

@@ -61,6 +61,9 @@ public:
     bool isMpeEnabled() const noexcept { return mpeEnabled.load(); }
     int getMpePitchBendRange() const noexcept { return mpePitchBendRange.load(); }
     int getGlobalMidiInChannel() const noexcept { return globalMidiInChannel.load(); }
+    /** Current tempo (used by synced LFOs). */
+    void setCurrentBpm (double newBpm) noexcept { currentBpm.store (newBpm, std::memory_order_relaxed); }
+    double getCurrentBpm() const noexcept { return currentBpm.load (std::memory_order_relaxed); }
     
     static constexpr auto maxNumVoices = 32;
     void setSamplerVoices(int nVoices);
@@ -90,6 +93,7 @@ private:
     juce::AbstractFifo controlEventsFifo { controlEventsFifoSize };
     std::array<ControlEvent, controlEventsFifoSize> controlEvents;
     std::atomic<int> globalMidiInChannel { 0 };
+    std::atomic<double> currentBpm { SourceDefaults::bpm };
     std::atomic<bool> mpeEnabled { SourceDefaults::mpeEnabled };
     std::atomic<int> mpePitchBendRange { SourceDefaults::mpePitchBendRange };
     // Last per-channel MPE values (MPE controllers send these right before the note-on on the note's channel)

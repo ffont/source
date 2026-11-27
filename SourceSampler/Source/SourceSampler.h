@@ -203,6 +203,19 @@ public:
         float playPosition = -1.0f;  // Relative position (0-1) in the sound being played
     };
     std::vector<VoiceInfo> getVoicesInfo();
+    
+    //==============================================================================
+    // Tempo: synced LFOs use the Ableton Link tempo (iPad, when Link is on), the host's tempo (plugins, when the host
+    // provides it) or the global tempo setting. The audio processor sets the current tempo at each block.
+    enum class TempoSource { internal = 0, host, link };
+    void setBpm(double newBpm);  // Global tempo setting (message thread)
+    double getGlobalBpm() const noexcept { return globalBpm.load(std::memory_order_relaxed); }
+    void setCurrentTempo(double newBpm, TempoSource source) noexcept;  // Audio thread (or message thread when audio is not running)
+    double getCurrentBpm() const noexcept { return currentBpm.load(std::memory_order_relaxed); }
+    TempoSource getTempoSource() const noexcept { return (TempoSource)tempoSource.load(std::memory_order_relaxed); }
+    /** Calls callback (voiceIndex, voice) for each voice currently playing the sound with the given UUID (e.g. to
+        read the history of its modulators). */
+    void forEachVoicePlayingSound(const juce::String& soundUUID, const std::function<void(int, const SourceSamplerVoice&)>& callback);
     std::vector<float> getOutputLevels();
     bool isQueryingSounds() const noexcept { return isQuerying.load(); }
     int getLastReceivedMidiNote() const noexcept { return lastReceivedMIDINoteNumber.load(); }
@@ -257,6 +270,10 @@ private:
     juce::CachedValue<juce::String> freesoundOauthAccessToken;
     juce::CachedValue<bool> mpeEnabled;
     juce::CachedValue<int> mpePitchBendRange;
+    juce::CachedValue<double> bpm;  // Global tempo setting (used when there is no external tempo)
+    std::atomic<double> globalBpm { SourceDefaults::bpm };  // Copy of bpm for the audio thread
+    std::atomic<double> currentBpm { SourceDefaults::bpm };
+    std::atomic<int> tempoSource { 0 };
     
     std::unique_ptr<SourceSoundList> sounds;
     std::unique_ptr<SourceSoundList> soundsOld;  // Used when sounds is replaced to not immediately delete all objects inside and give time for save deletion

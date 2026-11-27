@@ -456,6 +456,7 @@ void SourceSound::bindState ()
     
     // Build the MPE mappings used by the audio thread from the state
     updateMpeMappingsSnapshot();
+    updateModulatorsSnapshot();
 }
 
 std::vector<SourceSamplerSound*> SourceSound::getLinkedSourceSamplerSounds() {
@@ -796,6 +797,14 @@ void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
 
 // ------------------------------------------------------------------------------------------------
 
+int SourceSound::getNumModulations() const{
+    int count = 0;
+    for (const auto& child: state)
+        if (child.hasType(SourceIDs::MODULATOR) || child.hasType(SourceIDs::MPE_MAPPING) || child.hasType(SourceIDs::MIDI_CC_MAPPING))
+            count += 1;
+    return count;
+}
+
 void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::String parameterName, float minRange, float maxRange){
     const juce::ScopedLock sl (midiMappingCreateDeleteLock);
     
@@ -808,6 +817,10 @@ void SourceSound::addOrEditMidiMapping(juce::String uuid, int ccNumber, juce::St
         existingMapping.setProperty (SourceIDs::maxRange, juce::jlimit(0.0f, 1.0f, maxRange), nullptr);
     } else {
         // No mapping with uuid found, create a new one
+        if (getNumModulations() >= maxModulationsPerSound){
+            DBG("Maximum number of modulations reached");
+            return;
+        }
         // TODO: move this to the MidiCCMappingList class?
         juce::ValueTree newMapping = SourceHelpers::createMidiMappingState(ccNumber, parameterName, juce::jlimit(0.0f, 1.0f, minRange), juce::jlimit(0.0f, 1.0f, maxRange));
         state.addChild(newMapping, -1, nullptr);
@@ -838,7 +851,7 @@ void SourceSound::addOrEditMpeMapping(const juce::String& uuid, const juce::Stri
         int numExisting = 0;
         for (const auto& child: state)
             if (child.hasType(SourceIDs::MPE_MAPPING)) numExisting += 1;
-        if (numExisting >= maxMpeMappings){
+        if (numExisting >= maxMpeMappings || getNumModulations() >= maxModulationsPerSound){
             DBG("Maximum number of MPE mappings reached");
             return;
         }
@@ -866,9 +879,14 @@ void SourceSound::updateMpeMappingsSnapshot(){
             continue;
         const auto source = SourceHelpers::mpeSourceFromName(child.getProperty(SourceIDs::mpeSource).toString());
         const auto* parameterInfo = findSoundParameterInfo(child.getProperty(SourceIDs::parameterName).toString());
-        if (source == SourceHelpers::MpeSource::numSources || parameterInfo == nullptr || parameterInfo->isInt)
-            continue;
+        // Indices must match the order of the MPE_MAPPING children (the UI shows each mapping's values by index), so
+        // invalid mappings are kept without a target parameter (no effect)
         auto& mapping = newMappings[(size_t)numNewMappings++];
+        if (source == SourceHelpers::MpeSource::numSources || parameterInfo == nullptr || parameterInfo->isInt){
+            mapping = MpeMapping();
+            mapping.parameter = juce::Identifier();
+            continue;
+        }
         mapping.source = source;
         mapping.parameter = parameterInfo->getIdentifier();
         mapping.minRange = child.getProperty(SourceIDs::minRange, 0.0f);
@@ -889,6 +907,145 @@ int SourceSound::copyMpeMappings(MpeMappings& dest) noexcept{
     for (int i = 0; i < numMpeMappings; ++i)
         dest[(size_t)i] = mpeMappings[(size_t)i];
     return numMpeMappings;
+}
+
+juce::StringArray SourceSound::getModulatableParameterNames(){
+    juce::StringArray names;
+    for (const auto& info: getSoundParametersInfo())
+        if (!info.isInt)
+            names.add(info.name);
+    return names;
+}
+
+void SourceSound::addOrEditModulator(const juce::String& uuid, const juce::String& type, const juce::String& parameterName, float minRange, float maxRange,
+                                     int lfoWaveform, float lfoRate, float attack, float decay, float sustain, float release,
+                                     float lfoAttack, bool lfoSync, int lfoSyncDivision, int lfoAttackDivision,
+                                     int numSteps, float stepsRate, int stepsSyncLength, const juce::String& stepValues){
+    if (SourceHelpers::modulatorTypeFromName(type) == SourceHelpers::ModulatorType::numTypes){
+        DBG("Invalid modulator type " << type);
+        return;
+    }
+    const auto* parameterInfo = findSoundParameterInfo(parameterName);
+    if (parameterInfo == nullptr || parameterInfo->isInt){
+        DBG("Invalid parameter for modulator " << parameterName);
+        return;
+    }
+    minRange = juce::jlimit(-1.0f, 1.0f, minRange);
+    maxRange = juce::jlimit(-1.0f, 1.0f, maxRange);
+    lfoWaveform = juce::jlimit(0, SourceHelpers::numLfoWaveforms - 1, lfoWaveform);
+    lfoRate = juce::jlimit(SourceHelpers::minLfoRate, SourceHelpers::maxLfoRate, lfoRate);
+    attack = juce::jlimit(0.0f, SourceHelpers::maxModulatorEnvelopeTime, attack);
+    decay = juce::jlimit(0.0f, SourceHelpers::maxModulatorEnvelopeTime, decay);
+    sustain = juce::jlimit(0.0f, 1.0f, sustain);
+    release = juce::jlimit(0.0f, SourceHelpers::maxModulatorEnvelopeTime, release);
+    lfoAttack = juce::jlimit(0.0f, SourceHelpers::maxModulatorEnvelopeTime, lfoAttack);
+    lfoSyncDivision = juce::jlimit(0, (int)SourceHelpers::getSyncDivisions().size() - 1, lfoSyncDivision);
+    lfoAttackDivision = juce::jlimit(0, SourceHelpers::getSyncAttackNames().size() - 1, lfoAttackDivision);
+    numSteps = juce::jlimit(1, SourceHelpers::maxSteps, numSteps);
+    stepsRate = juce::jlimit(SourceHelpers::minStepsRate, SourceHelpers::maxStepsRate, stepsRate);
+    stepsSyncLength = juce::jlimit(0, (int)SourceHelpers::getStepsCycleLengths().size() - 1, stepsSyncLength);
+    const juce::String normalisedStepValues = SourceHelpers::formatStepValues(SourceHelpers::parseStepValues(stepValues));
+    auto setStepsProperties = [&](juce::ValueTree& m){
+        m.setProperty(SourceIDs::numSteps, numSteps, nullptr);
+        m.setProperty(SourceIDs::stepsRate, stepsRate, nullptr);
+        m.setProperty(SourceIDs::stepsSyncLength, stepsSyncLength, nullptr);
+        m.setProperty(SourceIDs::stepValues, normalisedStepValues, nullptr);
+    };
+    juce::ValueTree modulator = state.getChildWithProperty(SourceIDs::uuid, uuid);
+    if (!(modulator.isValid() && modulator.hasType(SourceIDs::MODULATOR))){
+        int numExisting = 0;
+        for (const auto& child: state)
+            if (child.hasType(SourceIDs::MODULATOR)) numExisting += 1;
+        if (numExisting >= maxModulators || getNumModulations() >= maxModulationsPerSound){
+            DBG("Maximum number of modulators reached");
+            return;
+        }
+        modulator = SourceHelpers::createModulatorState(type, parameterName, minRange, maxRange, lfoWaveform, lfoRate, attack, decay, sustain, release);
+        if (uuid.isNotEmpty())
+            modulator.setProperty(SourceIDs::uuid, uuid, nullptr);
+        modulator.setProperty(SourceIDs::lfoAttack, lfoAttack, nullptr);
+        modulator.setProperty(SourceIDs::lfoSync, lfoSync, nullptr);
+        modulator.setProperty(SourceIDs::lfoSyncDivision, lfoSyncDivision, nullptr);
+        modulator.setProperty(SourceIDs::lfoAttackDivision, lfoAttackDivision, nullptr);
+        setStepsProperties(modulator);
+        state.addChild(modulator, -1, nullptr);
+    } else {
+        modulator.setProperty(SourceIDs::lfoAttack, lfoAttack, nullptr);
+        modulator.setProperty(SourceIDs::lfoSync, lfoSync, nullptr);
+        modulator.setProperty(SourceIDs::lfoSyncDivision, lfoSyncDivision, nullptr);
+        modulator.setProperty(SourceIDs::lfoAttackDivision, lfoAttackDivision, nullptr);
+        setStepsProperties(modulator);
+        modulator.setProperty(SourceIDs::modulatorType, type, nullptr);
+        modulator.setProperty(SourceIDs::parameterName, parameterName, nullptr);
+        modulator.setProperty(SourceIDs::minRange, minRange, nullptr);
+        modulator.setProperty(SourceIDs::maxRange, maxRange, nullptr);
+        modulator.setProperty(SourceIDs::lfoWaveform, lfoWaveform, nullptr);
+        modulator.setProperty(SourceIDs::lfoRate, lfoRate, nullptr);
+        modulator.setProperty(SourceIDs::modAttack, attack, nullptr);
+        modulator.setProperty(SourceIDs::modDecay, decay, nullptr);
+        modulator.setProperty(SourceIDs::modSustain, sustain, nullptr);
+        modulator.setProperty(SourceIDs::modRelease, release, nullptr);
+    }
+    updateModulatorsSnapshot();
+}
+
+void SourceSound::removeModulator(const juce::String& uuid){
+    auto modulator = state.getChildWithProperty(SourceIDs::uuid, uuid);
+    if (modulator.isValid() && modulator.hasType(SourceIDs::MODULATOR))
+        state.removeChild(modulator, nullptr);
+    updateModulatorsSnapshot();
+}
+
+void SourceSound::updateModulatorsSnapshot(){
+    // Build the new list outside the lock, then copy it while holding the lock (the audio thread only try-locks).
+    // Invalid modulators are skipped, but the indices of the valid ones must match the order of the MODULATOR
+    // children (the UI shows the values of each modulator by index), so invalid ones are kept with a zero range.
+    Modulators newModulators;
+    int numNew = 0;
+    for (const auto& child: state){
+        if (!child.hasType(SourceIDs::MODULATOR) || numNew >= maxModulators)
+            continue;
+        auto& modulator = newModulators[(size_t)numNew++];
+        const auto type = SourceHelpers::modulatorTypeFromName(child.getProperty(SourceIDs::modulatorType).toString());
+        const auto* parameterInfo = findSoundParameterInfo(child.getProperty(SourceIDs::parameterName).toString());
+        if (type == SourceHelpers::ModulatorType::numTypes || parameterInfo == nullptr || parameterInfo->isInt){
+            modulator = Modulator();  // No target, no effect
+            continue;
+        }
+        modulator.type = type;
+        modulator.parameter = parameterInfo->getIdentifier();
+        modulator.minRange = child.getProperty(SourceIDs::minRange, SourceDefaults::modulatorMinRange);
+        modulator.maxRange = child.getProperty(SourceIDs::maxRange, SourceDefaults::modulatorMaxRange);
+        modulator.lfoWaveform = child.getProperty(SourceIDs::lfoWaveform, SourceDefaults::lfoWaveform);
+        modulator.lfoRate = child.getProperty(SourceIDs::lfoRate, SourceDefaults::lfoRate);
+        modulator.attack = child.getProperty(SourceIDs::modAttack, SourceDefaults::modAttack);
+        modulator.decay = child.getProperty(SourceIDs::modDecay, SourceDefaults::modDecay);
+        modulator.sustain = child.getProperty(SourceIDs::modSustain, SourceDefaults::modSustain);
+        modulator.release = child.getProperty(SourceIDs::modRelease, SourceDefaults::modRelease);
+        modulator.lfoAttack = child.getProperty(SourceIDs::lfoAttack, SourceDefaults::lfoAttack);
+        modulator.lfoSync = child.getProperty(SourceIDs::lfoSync, SourceDefaults::lfoSync);
+        modulator.lfoSyncDivision = child.getProperty(SourceIDs::lfoSyncDivision, SourceDefaults::lfoSyncDivision);
+        modulator.lfoAttackDivision = child.getProperty(SourceIDs::lfoAttackDivision, SourceDefaults::lfoAttackDivision);
+        modulator.numSteps = child.getProperty(SourceIDs::numSteps, SourceDefaults::numSteps);
+        modulator.stepsRate = child.getProperty(SourceIDs::stepsRate, SourceDefaults::stepsRate);
+        modulator.stepsSyncLength = child.getProperty(SourceIDs::stepsSyncLength, SourceDefaults::stepsSyncLength);
+        modulator.stepValues = SourceHelpers::parseStepValues(child.getProperty(SourceIDs::stepValues).toString());
+        modulator.parameterMin = parameterInfo->minValue;
+        modulator.parameterMax = parameterInfo->maxValue;
+    }
+    const juce::SpinLock::ScopedLockType sl (modulatorsLock);
+    modulators = newModulators;
+    numModulators = numNew;
+    numModulatorsAtomic.store(numNew, std::memory_order_relaxed);
+}
+
+int SourceSound::copyModulators(Modulators& dest) noexcept{
+    const juce::SpinLock::ScopedTryLockType tl (modulatorsLock);
+    if (!tl.isLocked())
+        return -1;
+    for (int i = 0; i < numModulators; ++i)
+        dest[(size_t)i] = modulators[(size_t)i];
+    return numModulators;
 }
 
 std::vector<MidiCCMapping*> SourceSound::getMidiMappingsForCcNumber(int ccNumber){
@@ -921,6 +1078,8 @@ void SourceSound::applyMidiCCModulations(int channel, int number, int value) {
         appliesToChannel = soundMidiChannel == channel;
     }
     if (appliesToChannel){
+        if (number >= 0 && number < 128)
+            lastCcValues[(size_t)number] = (float)value / 127.0f;
         std::vector<MidiCCMapping*> mappings = getMidiMappingsForCcNumber(number);
         for (int i=0; i<mappings.size(); i++){
             float normInputValue = (float)value/127.0;  // This goes from 0 to 1

@@ -24,7 +24,8 @@
 class SourceLink
 {
 public:
-    explicit SourceLink (juce::File settingsFile);
+    /** initialTempo is the tempo used until SOURCE joins a session with other peers. */
+    SourceLink (juce::File settingsFile, double initialTempo = 120.0);
     ~SourceLink();
 
     // Message thread
@@ -37,6 +38,10 @@ public:
     juce::String getPeerName() const;
     int getNumPeers() const;
     double getTempo() const;
+    /** Sets the tempo of the Link session (message thread). */
+    void setTempo (double bpm);
+    /** Tempo of the Link session (audio thread). */
+    double getTempoAudioThread() const noexcept;
 
     /** Audio thread: sends the block (first two channels) to the Link Audio channel, if Link Audio is enabled and
         some peer is receiving it. */

@@ -11,6 +11,7 @@
 #include "TestUtils.h"
 #include "SourceSamplerSynthesiser.h"
 #include "SourceSamplerSound.h"
+#include "SourceSamplerVoice.h"
 
 
 class SamplerRenderTests : public juce::UnitTest
@@ -344,6 +345,221 @@ public:
             // Changing the slide while the note plays changes its level
             f.render (slide (3, 0), 2);
             expectLessThan (TestUtils::rms (f.render ({}, 4)), 0.001f);
+
+            // Each voice publishes the value of each mapping (for the UI)
+            SourceSamplerVoice* voice = nullptr;
+            for (int i = 0; i < f.synth.getNumVoices(); ++i)
+                if (f.synth.getVoice (i)->isVoiceActive())
+                    voice = static_cast<SourceSamplerVoice*> (f.synth.getVoice (i));
+            expect (voice != nullptr);
+            if (voice != nullptr)
+            {
+                expectEquals (voice->getPublishedNumMpeValues(), 1);
+                expectWithinAbsoluteError (voice->getPublishedMpeValue (0), 0.0f, 1.0e-4f);
+                f.render (slide (3, 127), 2);
+                expectWithinAbsoluteError (voice->getPublishedMpeValue (0), 1.0f, 1.0e-4f);
+            }
+        }
+
+        beginTest ("Modulators: state, validation and removal");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            const auto uuid = juce::Uuid().toString();
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, 0.5f, SourceHelpers::lfoTriangle, 3.0f, 0.1f, 0.2f, 0.3f, 0.4f);
+            auto modulator = sound->state.getChildWithProperty (SourceIDs::uuid, uuid);
+            expect (modulator.hasType (SourceIDs::MODULATOR));
+            expectEquals (modulator.getProperty (SourceIDs::parameterName).toString(), juce::String ("gain"));
+            expectEquals ((float) modulator.getProperty (SourceIDs::lfoRate), 3.0f);
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_ADSR, "pitch", -2.0f, 1.0f, 0, 1.0f, 0.1f, 0.2f, 0.3f, 0.4f);
+            expectEquals (modulator.getProperty (SourceIDs::modulatorType).toString(), juce::String (MODULATOR_TYPE_ADSR));
+            expectEquals ((float) modulator.getProperty (SourceIDs::minRange), -1.0f, "Ranges are clamped to -1..1");
+            sound->addOrEditModulator (juce::Uuid().toString(), MODULATOR_TYPE_LFO, "launchMode", 0.0f, 1.0f, 0, 1.0f, 0.1f, 0.2f, 0.3f, 0.4f);
+            sound->addOrEditModulator (juce::Uuid().toString(), "wobble", "gain", 0.0f, 1.0f, 0, 1.0f, 0.1f, 0.2f, 0.3f, 0.4f);
+            int numModulators = 0;
+            for (const auto& child : sound->state)
+                numModulators += child.hasType (SourceIDs::MODULATOR) ? 1 : 0;
+            expectEquals (numModulators, 1, "Integer parameters and unknown types are rejected");
+            expect (sound->hasModulators());
+            sound->removeModulator (uuid);
+            expect (! sound->hasModulators());
+            expect (! sound->state.getChildWithProperty (SourceIDs::uuid, uuid).isValid());
+        }
+
+        beginTest ("Sounds remember the last value of each CC received on their channel (for the UI)");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expectEquals (sound->getLastCcValue (74), -1.0f, "Nothing received yet");
+            sound->applyMidiCCModulations (1, 74, 127);
+            expectEquals (sound->getLastCcValue (74), 1.0f);
+            expectEquals (sound->getLastCcValue (1), -1.0f);
+            expectEquals (sound->getLastCcValue (200), -1.0f);
+        }
+
+        beginTest ("Modulators, MPE mappings and MIDI CC mappings share a limit of 16 per sound");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            for (int i = 0; i < 10; ++i)
+                sound->addOrEditModulator (juce::Uuid().toString(), MODULATOR_TYPE_LFO, "gain", 0.0f, 0.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            for (int i = 0; i < 4; ++i)
+                sound->addOrEditMidiMapping (juce::Uuid().toString(), 10 + i, "gain", 0.0f, 1.0f);
+            for (int i = 0; i < 2; ++i)
+                sound->addOrEditMpeMapping (juce::Uuid().toString(), MPE_SOURCE_SLIDE, "gain", 0.0f, 1.0f, 0.0f);
+            expectEquals (sound->getNumModulations(), 16);
+            sound->addOrEditModulator (juce::Uuid().toString(), MODULATOR_TYPE_ADSR, "gain", 0.0f, 0.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            sound->addOrEditMidiMapping (juce::Uuid().toString(), 20, "gain", 0.0f, 1.0f);
+            sound->addOrEditMpeMapping (juce::Uuid().toString(), MPE_SOURCE_GLIDE, "gain", 0.0f, 1.0f, 0.0f);
+            expectEquals (sound->getNumModulations(), 16, "No more can be added");
+        }
+
+        beginTest ("Modulators: a square LFO on gain modulates the level of each note, the default range does nothing");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            const float reference = TestUtils::rms (f.render (noteOn (60), 8));
+            f.synth.allNotesOff (0, false);
+
+            const auto uuid = juce::Uuid().toString();
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, 0.0f, SourceHelpers::lfoSquare, 2.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            const float withZeroRange = TestUtils::rms (f.render (noteOn (60), 8));
+            expectWithinAbsoluteError (withZeroRange, reference, reference * 0.02f, "min = max = 0 means no modulation");
+            f.synth.allNotesOff (0, false);
+
+            // Square at 2 Hz: the first 0.25 s the signal is 1 (gain -1 normalised -> -80 dB), the next 0.25 s it is 0
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, -1.0f, SourceHelpers::lfoSquare, 2.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            auto output = f.render (noteOn (60), 43);  // ~0.5 s
+            auto segment = [&output] (double start, double end)
+            {
+                const int first = (int) (start * sampleRate), num = (int) ((end - start) * sampleRate);
+                juce::AudioBuffer<float> part (2, num);
+                for (int c = 0; c < 2; ++c)
+                    part.copyFrom (c, 0, output, c, first, num);
+                return TestUtils::rms (part);
+            };
+            expectLessThan (segment (0.02, 0.23), 0.001f, "Silent while the LFO is high");
+            expectGreaterThan (segment (0.27, 0.48), reference * 0.8f, "Normal level while the LFO is low");
+            expectEquals ((float) sound->state.getProperty (SourceIDs::gain), SourceDefaults::gain, "The sound parameter itself must not change");
+
+            // The voice publishes the modulator output for the UI
+            SourceSamplerVoice* voice = nullptr;
+            for (int i = 0; i < f.synth.getNumVoices(); ++i)
+                if (f.synth.getVoice (i)->isVoiceActive())
+                    voice = static_cast<SourceSamplerVoice*> (f.synth.getVoice (i));
+            expect (voice != nullptr);
+            if (voice == nullptr)
+                return;
+            const auto count = voice->getModulatorHistoryCount();
+            expectGreaterThan ((int) count, 90, "About 200 points per second");
+            float minSeen = 1.0f, maxSeen = -1.0f;
+            for (uint32_t i = count - 90; i < count; ++i)
+            {
+                minSeen = juce::jmin (minSeen, voice->getModulatorHistoryValue (0, i));
+                maxSeen = juce::jmax (maxSeen, voice->getModulatorHistoryValue (0, i));
+            }
+            expectEquals (minSeen, -1.0f);
+            expectEquals (maxSeen, 0.0f);
+        }
+
+        beginTest ("Modulators: synced LFOs follow the tempo, and the LFO attack delays the modulation");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            const float reference = TestUtils::rms (f.render (noteOn (60), 8));
+            f.synth.allNotesOff (0, false);
+            auto segment = [] (const juce::AudioBuffer<float>& output, double start, double end)
+            {
+                const int first = (int) (start * sampleRate), num = (int) ((end - start) * sampleRate);
+                juce::AudioBuffer<float> part (2, num);
+                for (int c = 0; c < 2; ++c)
+                    part.copyFrom (c, 0, output, c, first, num);
+                return TestUtils::rms (part);
+            };
+            const int quarterDivision = SourceDefaults::lfoSyncDivision;  // "1/4"
+            const auto uuid = juce::Uuid().toString();
+
+            // Synced square, one cycle per beat: at 120 BPM the first 0.25 s are silent (signal 1 -> gain -1), then 0.25 s loud
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, -1.0f, SourceHelpers::lfoSquare, 10.0f, 0.1f, 0.1f, 1.0f, 0.1f,
+                                       0.0f, true, quarterDivision, 0);
+            f.synth.setCurrentBpm (120.0);
+            auto fast = f.render (noteOn (60), 43);
+            f.synth.allNotesOff (0, false);
+            expectLessThan (segment (fast, 0.02, 0.23), 0.001f);
+            expectGreaterThan (segment (fast, 0.27, 0.48), reference * 0.8f);
+
+            // At 60 BPM the first half cycle lasts 0.5 s
+            f.synth.setCurrentBpm (60.0);
+            auto slow = f.render (noteOn (60), 43);
+            f.synth.allNotesOff (0, false);
+            expectLessThan (segment (slow, 0.02, 0.48), 0.001f);
+
+            // Free LFO at 2 Hz with a 1 s attack: the first half cycle takes much longer than 0.25 s
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, -1.0f, SourceHelpers::lfoSquare, 2.0f, 0.1f, 0.1f, 1.0f, 0.1f,
+                                       1.0f, false, quarterDivision, 0);
+            auto withAttack = f.render (noteOn (60), 43);
+            f.synth.allNotesOff (0, false);
+            expectLessThan (segment (withAttack, 0.27, 0.48), 0.001f, "Still in the first half cycle");
+
+            // Synced attack ("1/4" = index 9 in the attack choices) at 120 BPM: 0.5 s
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_LFO, "gain", 0.0f, -1.0f, SourceHelpers::lfoSquare, 2.0f, 0.1f, 0.1f, 1.0f, 0.1f,
+                                       0.0f, true, quarterDivision, quarterDivision + 1);
+            f.synth.setCurrentBpm (120.0);
+            auto syncedAttack = f.render (noteOn (60), 43);
+            expectLessThan (segment (syncedAttack, 0.27, 0.48), 0.001f, "The synced attack also delays the LFO");
+        }
+
+        beginTest ("Modulators: steps are cycled at their rate or, synced, over the cycle length");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            const float reference = TestUtils::rms (f.render (noteOn (60), 8));
+            f.synth.allNotesOff (0, false);
+            auto segment = [] (const juce::AudioBuffer<float>& output, double start, double end)
+            {
+                const int first = (int) (start * sampleRate), num = (int) ((end - start) * sampleRate);
+                juce::AudioBuffer<float> part (2, num);
+                for (int c = 0; c < 2; ++c)
+                    part.copyFrom (c, 0, output, c, first, num);
+                return TestUtils::rms (part);
+            };
+            // Two steps (silent, normal) on gain: signal 1 -> -1 (silent), signal 0 -> no change
+            const auto uuid = juce::Uuid().toString();
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_STEPS, "gain", 0.0f, -1.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f,
+                                       0.0f, false, 0, 0, 2, 2.0f, 0, "1,0");
+            auto free = f.render (noteOn (60), 43);  // 2 cycles per second: 0.25 s per step
+            f.synth.allNotesOff (0, false);
+            expectLessThan (segment (free, 0.02, 0.23), 0.001f);
+            expectGreaterThan (segment (free, 0.27, 0.48), reference * 0.8f);
+            expectEquals (sound->state.getChildWithProperty (SourceIDs::uuid, uuid).getProperty (SourceIDs::numSteps).toString(), juce::String ("2"));
+
+            // Synced, cycle of "1 beat" at 60 BPM: 0.5 s per step
+            sound->addOrEditModulator (uuid, MODULATOR_TYPE_STEPS, "gain", 0.0f, -1.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f,
+                                       0.0f, true, 0, 0, 2, 2.0f, 1, "1,0");
+            f.synth.setCurrentBpm (60.0);
+            auto synced = f.render (noteOn (60), 43);
+            expectEquals ((int) sound->state.getChildWithProperty (SourceIDs::uuid, uuid).getProperty (SourceIDs::stepsSyncLength), 1, "Editing updates the steps settings");
+            expectLessThan (segment (synced, 0.02, 0.48), 0.001f);
+        }
+
+        beginTest ("Modulators: an ADSR fades each note in and is released on note off");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            sound->setParameterByNameFloat (SourceIDs::release, 1.0f, false);  // Long amp release, so the note keeps sounding
+            // Envelope 0 -> gain -1 (silent), envelope 1 -> no change
+            sound->addOrEditModulator (juce::Uuid().toString(), MODULATOR_TYPE_ADSR, "gain", -1.0f, 0.0f, 0, 1.0f, 0.3f, 0.0f, 1.0f, 0.05f);
+            const float start = TestUtils::rms (f.render (noteOn (60), 2));
+            f.render ({}, 30);
+            const float sustained = TestUtils::rms (f.render ({}, 4));
+            expectLessThan (start, sustained * 0.3f);
+            f.render (noteOff (60), 1);
+            f.render ({}, 8);
+            expectLessThan (TestUtils::rms (f.render ({}, 4)), sustained * 0.05f, "The modulator envelope was released");
         }
 
         beginTest ("Corrupted files are not loaded");

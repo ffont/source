@@ -124,6 +124,7 @@
 #define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
 #define ACTION_SET_FX_PARAMETER "/set_fx_parameter"  // Parameters: parameter id (e.g. fxDelayTime, see SourceFxChain.h), value
 #define ACTION_SET_POLYPHONY "/set_polyphony"
+#define ACTION_SET_BPM "/set_bpm"  // bpm (Float): global tempo, used when there is no external tempo (Ableton Link or the plugin host)
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
 #define ACTION_ADD_NEW_SOUNDS_FROM_QUERY "/add_sounds_from_query"
@@ -160,6 +161,13 @@
 #define ACTION_SET_MPE_SETTINGS "/set_mpe_settings"  // enabled (0/1);perNotePitchBendRange (semitones)
 #define ACTION_ADD_OR_UPDATE_MPE_MAPPING "/add_or_update_mpe_mapping"  // soundUUID;mappingUUID;source;parameterName;minRange;maxRange;curve
 #define ACTION_REMOVE_MPE_MAPPING "/remove_mpe_mapping"  // soundUUID;mappingUUID
+
+// Modulator actions (modulators are internal signals, LFO or ADSR, that modulate a sound parameter per voice)
+#define ACTION_ADD_OR_UPDATE_MODULATOR "/add_or_update_modulator"  // soundUUID;modulatorUUID;type;parameterName;minRange;maxRange;lfoWaveform;lfoRate;attack;decay;sustain;release;lfoAttack;sync;lfoSyncDivision;lfoAttackDivision;numSteps;stepsRate;stepsSyncLength;stepValues (comma separated)
+#define ACTION_REMOVE_MODULATOR "/remove_modulator"  // soundUUID;modulatorUUID
+#define MODULATOR_TYPE_LFO "lfo"
+#define MODULATOR_TYPE_ADSR "adsr"
+#define MODULATOR_TYPE_STEPS "steps"
 
 // External sound downloads actions
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
@@ -285,6 +293,26 @@ inline float maxRange = 127.0;
 inline bool mpeEnabled = false;
 inline int mpePitchBendRange = 48;  // Semitones of per-note pitch bend (standard MPE default)
 inline float mpeCurve = 0.0f;  // 0 = linear
+
+// Modulators (min/max are offsets in the target parameter's normalised range: 0/0 = no modulation)
+inline juce::String modulatorParameterName = "pitch";
+inline float modulatorMinRange = 0.0f;
+inline float modulatorMaxRange = 0.0f;
+inline int lfoWaveform = 0;  // Sine
+inline float lfoRate = 1.0f;  // Hz
+inline float modAttack = 0.5f;  // Seconds
+inline float modDecay = 0.5f;  // Seconds
+inline float modSustain = 0.5f;  // 0..1
+inline float modRelease = 0.5f;  // Seconds
+inline float lfoAttack = 0.0f;  // Seconds for the LFO rate to go from 0 Hz to its rate
+inline bool lfoSync = false;  // Rate and attack as note divisions of the tempo
+inline int lfoSyncDivision = 8;  // "1/4" (see SourceHelpers::getSyncDivisions)
+inline int lfoAttackDivision = 0;  // Off (see SourceHelpers::getSyncAttackNames)
+inline int numSteps = 8;
+inline float stepsRate = 0.25f;  // Cycles (whole sequence) per second
+inline int stepsSyncLength = 4;  // "1 bar" (see SourceHelpers::getStepsCycleLengths)
+
+inline double bpm = 120.0;
 }
 
 
@@ -364,6 +392,24 @@ DECLARE_ID (mpeEnabled)
 DECLARE_ID (mpePitchBendRange)
 DECLARE_ID (mpeSource)
 DECLARE_ID (curve)
+
+DECLARE_ID (MODULATOR)
+DECLARE_ID (modulatorType)
+DECLARE_ID (lfoWaveform)
+DECLARE_ID (lfoRate)
+DECLARE_ID (modAttack)
+DECLARE_ID (modDecay)
+DECLARE_ID (modSustain)
+DECLARE_ID (modRelease)
+DECLARE_ID (lfoAttack)
+DECLARE_ID (lfoSync)
+DECLARE_ID (lfoSyncDivision)
+DECLARE_ID (lfoAttackDivision)
+DECLARE_ID (numSteps)
+DECLARE_ID (stepsRate)
+DECLARE_ID (stepsSyncLength)
+DECLARE_ID (stepValues)
+DECLARE_ID (bpm)
 
 // --> Start auto-generated code B
 DECLARE_ID (launchMode)

@@ -178,6 +178,14 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     titleImage.setImagePlacement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid | juce::RectanglePlacement::onlyReduceInSize);
     content.addAndMakeVisible (titleImage);
     content.addAndMakeVisible (voicesComponent);
+    setupNumberSlider (bpmSlider, SourceHelpers::minBpm, SourceHelpers::maxBpm, 1, sourceSampler.getCurrentBpm(), content);
+    bpmSlider.setTooltip ("Tempo of synced LFOs. With Ableton Link on, it is the tempo of the Link session (changing it changes "
+                          "the session's tempo). In plugin hosts that provide a tempo, the host's tempo is used");
+    bpmSlider.onValueChange = [this] { bpmChanged(); };
+    bpmLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
+    bpmLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
+    bpmLabel.setJustificationType (juce::Justification::centredRight);
+    content.addAndMakeVisible (bpmLabel);
     levelMeters.setTooltip ("Output level");
     content.addAndMakeVisible (levelMeters);
     muteButton.setClickingTogglesState (true);
@@ -625,6 +633,16 @@ void SourceNativeEditor::updateFromState()
         soundEditor.updateFromState();
 }
 
+void SourceNativeEditor::bpmChanged()
+{
+    const double newBpm = bpmSlider.getValue();
+    sendAction (ACTION_SET_BPM, { juce::String (newBpm) });
+   #if SOURCE_LINK
+    if (audioProcessor.link != nullptr && audioProcessor.link->isEnabled())
+        audioProcessor.link->setTempo (newBpm);
+   #endif
+}
+
 void SourceNativeEditor::timerCallback()
 {
     if (stateDirty)
@@ -633,6 +651,14 @@ void SourceNativeEditor::timerCallback()
     // Volatile state
     const auto voices = sourceSampler.getVoicesInfo();
     voicesComponent.setVoices (voices);
+    {
+        const auto tempoSource = sourceSampler.getTempoSource();
+        if (! bpmSlider.isMouseButtonDown() && ! bpmSlider.hasKeyboardFocus (true))
+            bpmSlider.setValue (sourceSampler.getCurrentBpm(), juce::dontSendNotification);
+        bpmSlider.setEnabled (tempoSource != SourceSampler::TempoSource::host);
+        bpmLabel.setText (tempoSource == SourceSampler::TempoSource::link ? "BPM (Link)"
+                          : tempoSource == SourceSampler::TempoSource::host ? "BPM (host)" : "BPM", juce::dontSendNotification);
+    }
     std::map<juce::String, int> activeVoicesPerSound;
     std::vector<float> playheads;
     for (const auto& voice : voices)
@@ -645,6 +671,7 @@ void SourceNativeEditor::timerCallback()
     }
     soundList.setActiveVoices (activeVoicesPerSound);
     soundEditor.setPlayheads (playheads);
+    soundEditor.updateModulatorScopes();
     levelMeters.setLevels (sourceSampler.getOutputLevels());
     searchPanel.setPreviewState ((int) sourceSampler.getPreviewState());
 
@@ -737,6 +764,13 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     auto tabs = header.removeFromRight ((int) tabButtons.size() * tabWidth).withSizeKeepingCentre ((int) tabButtons.size() * tabWidth, 28);
     for (auto* button : tabButtons)
         button->setBounds (tabs.removeFromLeft (tabWidth));
+    // Tempo left of the tabs
+    header.removeFromRight (10);
+    {
+        auto bpmArea = header.removeFromRight (156);
+        bpmSlider.setBounds (bpmArea.removeFromRight (90).withSizeKeepingCentre (90, 24));
+        bpmLabel.setBounds (bpmArea);
+    }
     // Voices in the space between the title and the tabs (centred in the window if that space allows it)
     header.removeFromRight (10);
     header.removeFromLeft (10);
