@@ -177,26 +177,36 @@ public:
 
         g.setFont (juce::Font (juce::FontOptions (11.0f)));
         g.setColour (SourceColours::dimText);
-        juce::String details;
+        // Details: "by <user> - <notes> - <size>", followed by the download/loading status in parentheses
+        juce::StringArray detailParts;
         if (item.username.isNotEmpty())
-            details << "by " << item.username << "  ";
-        details << item.notesDescription;
+            detailParts.add ("by " + item.username);
+        detailParts.add (item.notesDescription);
         if (item.downloadSizeBytes >= 0)
-            details << "  " << juce::String ((double) item.downloadSizeBytes / (1024.0 * 1024.0), 2) << " MB";
-        if (! item.loaded)
-        {
-            if (item.downloadProgress >= 100.0f)
-                details = "loading...  " + details;
-            else
-                details = "downloading " + juce::String (juce::roundToInt (item.downloadProgress)) + "%  " + details;
-        }
+            detailParts.add (juce::String ((double) item.downloadSizeBytes / (1024.0 * 1024.0), 2) + " MB");
+        juce::String status;
+        auto statusColour = SourceColours::dimText;
         if (item.numFailedDownloads > 0)
         {
-            details = (item.numSamples > 1 ? juce::String (item.numFailedDownloads) + " sample(s) could not be downloaded  "
-                                            : juce::String ("could not be downloaded  ")) + details;
-            g.setColour (juce::Colour (0xffe07a7a));
+            status = item.numSamples > 1 ? "(" + juce::String (item.numFailedDownloads) + " of " + juce::String (item.numSamples) + " samples failed downloading)"
+                                         : juce::String ("(failed downloading)");
+            statusColour = juce::Colour (0xffe07a7a);
         }
-        g.drawText (details, content, juce::Justification::centredLeft, true);
+        else if (! item.loaded)
+        {
+            status = item.downloadProgress >= 100.0f ? juce::String ("(loading...)")
+                                                     : "(downloading " + juce::String (juce::roundToInt (item.downloadProgress)) + "%)";
+        }
+        const juce::Font detailsFont (juce::FontOptions (11.0f));
+        juce::AttributedString details;
+        details.setWordWrap (juce::AttributedString::none);
+        details.setJustification (juce::Justification::centredLeft);
+        details.append (detailParts.joinIntoString (" - "), detailsFont, SourceColours::dimText);
+        if (status.isNotEmpty())
+            details.append ("  " + status, detailsFont, statusColour);
+        juce::Graphics::ScopedSaveState clip (g);
+        g.reduceClipRegion (content);
+        details.draw (g, content.toFloat());
     }
 
     void resized() override
