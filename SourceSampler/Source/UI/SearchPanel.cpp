@@ -149,6 +149,7 @@ SearchPanel::SearchPanel (FreesoundSearch& s, SourceActionSender actionSender, s
     table.setOutlineThickness (1);
     addChildComponent (table);
     map.onSoundClicked = [this] (int index) { selectResult (index, true); };
+    map.onStopAllSounds = [this] { actions.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { "" }); };
     map.onSoundAuditioned = [this] (int index)
     {
         if (const auto* result = getResult (index))

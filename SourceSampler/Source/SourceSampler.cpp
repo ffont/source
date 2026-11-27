@@ -1910,6 +1910,9 @@ SourceSampler::PreviewState SourceSampler::getPreviewState() const
 void SourceSampler::stopPreviewingFile(){
     for (auto& preview : hoverPreviews)
         preview.transport.stop();
+    // Hover previews still downloading won't start either
+    previewDownloadPool->cancel(hoverPreviewDownloadsCancelFlag);
+    hoverPreviewDownloadsCancelFlag = DownloadPool::makeCancelFlag();
     lastRequestedPreviewPath = {};
     previewLoading = false;
     previewDownloadPool->cancel(previewDownloadCancelFlag);

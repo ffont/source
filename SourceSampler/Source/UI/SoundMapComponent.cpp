@@ -13,6 +13,9 @@
 SoundMapComponent::SoundMapComponent()
 {
     setOpaque (false);
+    stopAllButton.setTooltip ("Stop all the sounds playing");
+    stopAllButton.onClick = [this] { if (onStopAllSounds != nullptr) onStopAllSounds(); };
+    addChildComponent (stopAllButton);
 }
 
 void SoundMapComponent::setResults (std::shared_ptr<const std::vector<FreesoundSearchResult>> newResults)
@@ -20,6 +23,7 @@ void SoundMapComponent::setResults (std::shared_ptr<const std::vector<FreesoundS
     if (newResults == results)
         return;
     results = std::move (newResults);
+    stopAllButton.setVisible (results != nullptr && ! results->empty());
     selectedIndex = hoverIndex = -1;
     animation.reset();
     stopTimer();
@@ -95,6 +99,7 @@ void SoundMapComponent::resetView()
 
 void SoundMapComponent::resized()
 {
+    stopAllButton.setBounds (getLocalBounds().reduced (8).removeFromBottom (28).removeFromRight (130));
     if (! userMovedView)
         viewTransform = getFitTransform();
 }

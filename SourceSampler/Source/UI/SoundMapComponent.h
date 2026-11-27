@@ -39,6 +39,7 @@ public:
     /** Called when a sound should be auditioned: hovering it with Cmd pressed (desktop) or dragging a finger over it
         (touch screens, where the map is moved with two fingers). */
     std::function<void (int index)> onSoundAuditioned;
+    std::function<void()> onStopAllSounds;  // "Stop all sounds" button
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -67,6 +68,7 @@ private:
     std::shared_ptr<const std::vector<FreesoundSearchResult>> results;
     int selectedIndex = -1, hoverIndex = -1;
     std::set<int> highlightedIds;
+    juce::TextButton stopAllButton { "Stop all sounds" };
     std::shared_ptr<const MapAnimationFrames> animation;
     double animationStartTime = 0.0, animationPosition = 1.0;  // Position in [0, 1]
     juce::AffineTransform viewTransform;  // World ([-1, 1] map coordinates) to component coordinates
