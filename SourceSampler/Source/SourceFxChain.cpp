@@ -7,6 +7,7 @@
 */
 
 #include "SourceFxChain.h"
+#include "helpers_source.h"
 
 using SourceFx::Param;
 
@@ -77,6 +78,31 @@ void SourceFxChain::setReverbParameters (const juce::Reverb::Parameters& params)
     reverbParametersChanged = true;
 }
 
+float SourceFxChain::getChorusRate() const noexcept
+{
+    if (! isOn (Param::chorusRateSync))
+        return value (Param::chorusRate);
+    const double beatSeconds = 60.0 / juce::jlimit (SourceHelpers::minBpm, SourceHelpers::maxBpm, currentTempo);
+    return (float) juce::jlimit (0.01, 50.0, 1.0 / (SourceHelpers::getSyncDivisionBeats ((int) value (Param::chorusRateDivision)) * beatSeconds));
+}
+
+float SourceFxChain::getPhaserRate() const noexcept
+{
+    if (! isOn (Param::phaserRateSync))
+        return value (Param::phaserRate);
+    const double beatSeconds = 60.0 / juce::jlimit (SourceHelpers::minBpm, SourceHelpers::maxBpm, currentTempo);
+    return (float) juce::jlimit (0.01, 50.0, 1.0 / (SourceHelpers::getSyncDivisionBeats ((int) value (Param::phaserRateDivision)) * beatSeconds));
+}
+
+float SourceFxChain::getDelayTimeMs() const noexcept
+{
+    if (! isOn (Param::delayTimeSync))
+        return value (Param::delayTime);
+    const double beatSeconds = 60.0 / juce::jlimit (SourceHelpers::minBpm, SourceHelpers::maxBpm, currentTempo);
+    // Divisions longer than the maximum delay time are clamped
+    return (float) juce::jlimit (1.0, (double) maxDelayTimeMs, SourceHelpers::getSyncDivisionBeats ((int) value (Param::delayTimeDivision)) * beatSeconds * 1000.0);
+}
+
 void SourceFxChain::updateProcessors()
 {
     // Audio thread (or prepare): apply the parameters that changed since the last block
@@ -106,6 +132,18 @@ void SourceFxChain::updateProcessors()
         }
     }
     auto hasChanged = [&changed] (Param p) { return changed[(size_t) p]; };
+    // A tempo change only matters for synced parameters
+    const double newTempo = tempo.load (std::memory_order_relaxed);
+    const bool tempoChanged = newTempo != currentTempo;
+    currentTempo = newTempo;
+    auto syncedChanged = [&] (Param value, Param sync, Param division)
+    {
+        return hasChanged (value) || hasChanged (sync) || hasChanged (division) || (tempoChanged && isOn (sync));
+    };
+    const bool chorusRateChanged = syncedChanged (Param::chorusRate, Param::chorusRateSync, Param::chorusRateDivision);
+    const bool phaserRateChanged = syncedChanged (Param::phaserRate, Param::phaserRateSync, Param::phaserRateDivision);
+    const bool delayTimeChanged = syncedChanged (Param::delayTime, Param::delayTimeSync, Param::delayTimeDivision);
+    anyChanged = anyChanged || chorusRateChanged || phaserRateChanged || delayTimeChanged;
 
     if (anyChanged)
     {
@@ -113,21 +151,21 @@ void SourceFxChain::updateProcessors()
         if (hasChanged (Param::driveOutput))  driveOutputGain.setTargetValue (juce::Decibels::decibelsToGain (value (Param::driveOutput)));
         if (hasChanged (Param::driveMix))     driveMix.setTargetValue (value (Param::driveMix));
 
-        if (hasChanged (Param::chorusRate))        chorus.setRate (value (Param::chorusRate));
+        if (chorusRateChanged)                     chorus.setRate (getChorusRate());
         if (hasChanged (Param::chorusDepth))       chorus.setDepth (value (Param::chorusDepth));
         if (hasChanged (Param::chorusCentreDelay)) chorus.setCentreDelay (value (Param::chorusCentreDelay));
         if (hasChanged (Param::chorusFeedback))    chorus.setFeedback (value (Param::chorusFeedback));
         if (hasChanged (Param::chorusMix))         chorus.setMix (value (Param::chorusMix));
 
-        if (hasChanged (Param::phaserRate))            phaser.setRate (value (Param::phaserRate));
+        if (phaserRateChanged)                         phaser.setRate (getPhaserRate());
         if (hasChanged (Param::phaserDepth))           phaser.setDepth (value (Param::phaserDepth));
         if (hasChanged (Param::phaserCentreFrequency)) phaser.setCentreFrequency (value (Param::phaserCentreFrequency));
         if (hasChanged (Param::phaserFeedback))        phaser.setFeedback (value (Param::phaserFeedback));
         if (hasChanged (Param::phaserMix))             phaser.setMix (value (Param::phaserMix));
 
-        if (hasChanged (Param::delayTime))
+        if (delayTimeChanged)
         {
-            const float samples = value (Param::delayTime) * 0.001f * (float) sampleRate;
+            const float samples = getDelayTimeMs() * 0.001f * (float) sampleRate;
             if (firstUpdate)
                 delayTimeSamples.setCurrentAndTargetValue (samples);
             else

@@ -141,6 +141,34 @@ namespace SourceHelpers
         return preset;
     }
 
+    /** Manual slices (times in seconds) as stored in the "slices" property of sounds, and back. */
+    inline std::vector<float> parseSliceTimes (const juce::String& text)
+    {
+        std::vector<float> times;
+        for (const auto& token : juce::StringArray::fromTokens (text, ",", {}))
+            if (token.trim().isNotEmpty())
+                times.push_back (token.getFloatValue());
+        return times;
+    }
+    inline juce::String formatSliceTimes (const std::vector<float>& times)
+    {
+        juce::StringArray tokens;
+        for (auto t : times)
+            tokens.add (juce::String (t, 4));
+        return tokens.joinIntoString (",");
+    }
+    /** Sorts the times, removes duplicates, negative times and the ones too close to the start (which would make
+        empty slices), and keeps at most MAX_MANUAL_SLICES. */
+    inline std::vector<float> cleanSliceTimes (std::vector<float> times, float minTime = 0.005f)
+    {
+        std::sort (times.begin(), times.end());
+        std::vector<float> cleaned;
+        for (auto t : times)
+            if (t >= minTime && (cleaned.empty() || t - cleaned.back() > 0.0005f) && (int) cleaned.size() < MAX_MANUAL_SLICES)
+                cleaned.push_back (t);
+        return cleaned;
+    }
+
     inline juce::ValueTree createAnalysisFromSlices(juce::StringArray slices)
     {
         juce::ValueTree soundAnalysis = juce::ValueTree(SourceIDs::ANALYSIS);
@@ -270,12 +298,6 @@ namespace SourceHelpers
         sound.setProperty (SourceIDs::pitch, 0.0f, nullptr);
         sound.setProperty (SourceIDs::pitchBendRangeUp, 12.0f, nullptr);
         sound.setProperty (SourceIDs::pitchBendRangeDown, 12.0f, nullptr);
-        sound.setProperty (SourceIDs::mod2CutoffAmt, 10.0f, nullptr);
-        sound.setProperty (SourceIDs::mod2GainAmt, 6.0f, nullptr);
-        sound.setProperty (SourceIDs::mod2PitchAmt, 0.0f, nullptr);
-        sound.setProperty (SourceIDs::mod2PlayheadPos, 0.0f, nullptr);
-        sound.setProperty (SourceIDs::vel2CutoffAmt, 0.0f, nullptr);
-        sound.setProperty (SourceIDs::vel2GainAmt, 0.5f, nullptr);
         sound.setProperty (SourceIDs::velSensitivity, 1.0f, nullptr);
         sound.setProperty (SourceIDs::midiChannel, 0, nullptr);
         sound.setProperty (SourceIDs::pitchShift, 0.0f, nullptr);
@@ -315,6 +337,7 @@ namespace SourceHelpers
             sourceSound.setProperty(SourceIDs::midiNotes, midiNotes.toString(16), nullptr);
         }
         sourceSound.setProperty(SourceIDs::midiChannel, midiChannel, nullptr);
+        sourceSound.setProperty(SourceIDs::slices, "", nullptr);  // New sounds start without manual slices (see SourceSound::bindState)
         
         sourceSound.addChild(sourceSamplerSound, -1, nullptr);
         
@@ -443,11 +466,11 @@ namespace SourceHelpers
     // the target parameter in its normalised (0..1) range. With minRange = maxRange = 0 (the default) there is no
     // modulation.
 
-    enum class ModulatorType { lfo = 0, adsr, steps, numTypes };
+    enum class ModulatorType { lfo = 0, adsr, steps, aftertouch, velocity, numTypes };
 
     inline juce::StringArray getModulatorTypeNames()
     {
-        return { MODULATOR_TYPE_LFO, MODULATOR_TYPE_ADSR, MODULATOR_TYPE_STEPS };
+        return { MODULATOR_TYPE_LFO, MODULATOR_TYPE_ADSR, MODULATOR_TYPE_STEPS, MODULATOR_TYPE_AFTERTOUCH, MODULATOR_TYPE_VELOCITY };
     }
 
     /** Returns the type with the given name, or ModulatorType::numTypes if the name is not valid. */

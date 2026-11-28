@@ -61,12 +61,12 @@ void VoicesComponent::setVoices (const std::vector<SourceSampler::VoiceInfo>& vo
 
 void VoicesComponent::paint (juce::Graphics& g)
 {
-    // Squares centred in the component: one row for up to 16 voices, otherwise two rows of (almost) the same length.
+    // Squares centred in the component: one row for up to 8 voices, otherwise two rows of (almost) the same length.
     // Squares are made smaller if they don't fit.
     const int numVoices = (int) activeVoices.size();
     if (numVoices == 0)
         return;
-    const int numRows = numVoices > 16 ? 2 : 1;
+    const int numRows = numVoices > 8 ? 2 : 1;
     const int perRow = (numVoices + numRows - 1) / numRows;
     const int gap = 3;
     const int size = juce::jlimit (4, 14, juce::jmin ((getWidth() + gap) / perRow - gap, (getHeight() + gap) / numRows - gap));
@@ -204,26 +204,24 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     logoImage.setTooltip ("Rita & Aurora");
     content.addAndMakeVisible (logoImage);
 
-    // Settings tab: audio and MIDI settings of the standalone app on iPad, where there is no title bar with the
-    // "Options" button to open them (SOURCE_DEBUG_SETTINGS_TAB=1 shows it in the desktop standalone app too)
-   #if JucePlugin_Build_Standalone
-    bool showSettingsTab = false;
-   #if JUCE_IOS
-    showSettingsTab = true;
-   #elif JUCE_DEBUG
-    showSettingsTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SETTINGS_TAB", {}) == "1";
-   #endif
-    if (auto* holder = juce::StandalonePluginHolder::getInstance(); holder != nullptr && showSettingsTab
-                                                                     && audioProcessor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+    // Settings tab: MIDI settings, and the audio and MIDI device settings of the standalone app (on iPad there is no
+    // title bar with the "Options" button to open them) and Ableton Link (iPad)
     {
-        settingsPanel = std::make_unique<SettingsPanel> (holder->deviceManager, audioProcessor.getTotalNumOutputChannels(),
-                                                         [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->saveAudioDeviceState(); });
+        juce::AudioDeviceManager* deviceManager = nullptr;
+        std::function<void()> saveDeviceSettings;
+       #if JucePlugin_Build_Standalone
+        if (auto* holder = juce::StandalonePluginHolder::getInstance(); holder != nullptr && audioProcessor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+        {
+            deviceManager = &holder->deviceManager;
+            saveDeviceSettings = [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->saveAudioDeviceState(); };
+        }
+       #endif
+        settingsPanel = std::make_unique<SettingsPanel> (actions, deviceManager, audioProcessor.getTotalNumOutputChannels(), saveDeviceSettings);
         content.addChildComponent (*settingsPanel);
        #if SOURCE_LINK
         settingsPanel->setLink (audioProcessor.link.get());
        #endif
     }
-   #endif
 
     // Tabs
     int tabIndex = 0;
@@ -244,8 +242,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     content.addChildComponent (searchPanel);
     content.addChildComponent (fxPanel);
 
-    // Preset & settings card
-    content.addAndMakeVisible (presetCard);
+    // Preset controls (header)
     // Preset slots: the dropdown lists all slots (selecting one loads it), the number of the current slot is shown
     // next to its (editable) name, "Save" saves to the current slot and "Save to..." to another one
     presetSlotsCombo.setTooltip ("Load a preset (empty slots load an empty preset)");
@@ -256,14 +253,17 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
         if (index >= 0 && index != (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, -1))
             sendAction (ACTION_LOAD_PRESET, { juce::String (index) });
     };
-    presetCard.addAndMakeVisible (presetSlotsCombo);
+    content.addAndMakeVisible (presetSlotsCombo);
     presetNameEditor.setTextToShowWhenEmpty ("Preset name", SourceColours::dimText);
+    presetNameEditor.setFont (juce::Font (juce::FontOptions (13.0f)));
+    presetNameEditor.setIndents (4, 2);
+    presetNameEditor.setTooltip ("Preset name (saved with \"Save\")");
     presetNameEditor.onReturnKey = [this] { savePresetButton.triggerClick(); };
-    presetCard.addAndMakeVisible (presetNameEditor);
-    presetCard.addAndMakeVisible (savePresetButton);
-    presetCard.addAndMakeVisible (saveToPresetButton);
-    presetCard.addAndMakeVisible (previousPresetButton);
-    presetCard.addAndMakeVisible (nextPresetButton);
+    content.addAndMakeVisible (presetNameEditor);
+    content.addAndMakeVisible (savePresetButton);
+    content.addAndMakeVisible (saveToPresetButton);
+    content.addAndMakeVisible (previousPresetButton);
+    content.addAndMakeVisible (nextPresetButton);
     savePresetButton.setTooltip ("Save the preset (with this name) to its slot");
     savePresetButton.onClick = [this] { savePresetTo (juce::jmax (0, (int) sourceSampler.state.getProperty (SourceIDs::currentPresetIndex, 0))); };
     saveToPresetButton.setTooltip ("Save the preset to another slot");
@@ -280,33 +280,18 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
         sendAction (ACTION_LOAD_PRESET, { juce::String (index) });
     };
 
-    setupLabel (midiChannelLabel, "MIDI in channel", presetCard);
-    midiChannelCombo.addItem ("All", 1);
-    for (int i = 1; i <= 16; ++i)
-        midiChannelCombo.addItem (juce::String (i), i + 1);
-    midiChannelCombo.onChange = [this] { sendAction (ACTION_SET_GLOBAL_MIDI_IN_CHANNEL, { juce::String (midiChannelCombo.getSelectedId() - 1) }); };
-    presetCard.addAndMakeVisible (midiChannelCombo);
-
-    setupLabel (numVoicesLabel, "Num voices", presetCard);
-    setupNumberSlider (numVoicesSlider, 1, SourceSamplerSynthesiser::maxNumVoices, 1, SourceDefaults::numVoices, presetCard);
-    numVoicesSlider.onValueChange = [this] { sendAction (ACTION_SET_POLYPHONY, { juce::String ((int) numVoicesSlider.getValue()) }); };
-
-    // MPE input settings
-    mpeToggle.setTooltip ("Enable MPE input (lower zone: master channel 1, notes on channels 2-16). When enabled, all sounds respond "
-                          "to all channels and pitch bend, pressure and slide (CC74) on a note's channel only affect that note.");
-    auto sendMpeSettings = [this]
+    // Number of voices: "-" and "+" buttons next to the voices display
+    for (auto* button : { &fewerVoicesButton, &moreVoicesButton })
     {
-        sendAction (ACTION_SET_MPE_SETTINGS, { mpeToggle.getToggleState() ? "1" : "0", juce::String ((int) mpeBendRangeSlider.getValue()) });
-    };
-    mpeToggle.onClick = sendMpeSettings;
-    presetCard.addAndMakeVisible (mpeToggle);
-    mpeToggle.setButtonText ("MPE input");
-    setupLabel (mpeBendLabel, "Bend range", presetCard);
-    setupNumberSlider (mpeBendRangeSlider, 1, 96, 1, SourceDefaults::mpePitchBendRange, presetCard);
-    mpeBendRangeSlider.setTooltip ("MPE per-note pitch bend range (semitones)");
-    mpeBendRangeSlider.onValueChange = sendMpeSettings;
+        button->setConnectedEdges (button == &fewerVoicesButton ? juce::Button::ConnectedOnRight : juce::Button::ConnectedOnLeft);
+        content.addAndMakeVisible (button);
+    }
+    fewerVoicesButton.setTooltip ("Fewer voices");
+    moreVoicesButton.setTooltip ("More voices");
+    fewerVoicesButton.onClick = [this] { changeNumVoices (-1); };
+    moreVoicesButton.onClick = [this] { changeNumVoices (1); };
 
-    // Get new sounds card
+    // Quick search card
     content.addAndMakeVisible (querySoundsCard);
     setupLabel (queryLabel, "Query", querySoundsCard);
     queryEditor.setTextToShowWhenEmpty ("percussion", SourceColours::dimText);
@@ -400,7 +385,7 @@ SourceNativeEditor::SourceNativeEditor (SourceSamplerAudioProcessor& p)
     const auto debugTab = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_TAB", {});
     if (debugTab == "search") showTab (Tab::search);
     if (debugTab == "fx") showTab (Tab::fx);
-    if (debugTab == "settings" && settingsPanel != nullptr) showTab (Tab::settings);
+    if (debugTab == "settings") showTab (Tab::settings);
     const auto debugSearch = juce::SystemStats::getEnvironmentVariable ("SOURCE_DEBUG_SEARCH", {});
     if (debugSearch.isNotEmpty())
     {
@@ -542,17 +527,14 @@ void SourceNativeEditor::sendAction (const juce::String& actionName, const juce:
 
 std::vector<juce::TextButton*> SourceNativeEditor::getTabButtons()
 {
-    std::vector<juce::TextButton*> buttons { &generalTabButton, &searchTabButton, &fxTabButton };
-    if (settingsPanel != nullptr)
-        buttons.push_back (&settingsTabButton);
-    return buttons;
+    return { &generalTabButton, &searchTabButton, &fxTabButton, &settingsTabButton };
 }
 
 void SourceNativeEditor::showTab (Tab tab)
 {
     currentTab = tab;
     const bool general = tab == Tab::general;
-    for (auto* c : std::initializer_list<juce::Component*> { &presetCard, &querySoundsCard, &soundList, &soundEditor })
+    for (auto* c : std::initializer_list<juce::Component*> { &querySoundsCard, &soundList, &soundEditor })
         c->setVisible (general);
     searchPanel.setVisible (tab == Tab::search);
     fxPanel.setVisible (tab == Tab::fx);
@@ -560,8 +542,7 @@ void SourceNativeEditor::showTab (Tab tab)
     searchTabButton.setToggleState (tab == Tab::search, juce::dontSendNotification);
     fxTabButton.setToggleState (tab == Tab::fx, juce::dontSendNotification);
     settingsTabButton.setToggleState (tab == Tab::settings, juce::dontSendNotification);
-    if (settingsPanel != nullptr)
-        settingsPanel->setVisible (tab == Tab::settings);
+    settingsPanel->setVisible (tab == Tab::settings);
 }
 
 juce::String SourceNativeEditor::getQueryExtraFilter() const
@@ -612,15 +593,13 @@ void SourceNativeEditor::updateFromState()
     }
     if (! presetSlotsCombo.isPopupActive())
         presetSlotsCombo.setSelectedId (presetIndex >= 0 ? presetIndex + 1 : 0, juce::dontSendNotification);
-    midiChannelCombo.setSelectedId ((int) state.getProperty (SourceIDs::globalMidiInChannel, 0) + 1, juce::dontSendNotification);
-    const bool mpeEnabled = state.getProperty (SourceIDs::mpeEnabled, SourceDefaults::mpeEnabled);
-    mpeToggle.setToggleState (mpeEnabled, juce::dontSendNotification);
-    if (! mpeBendRangeSlider.isMouseButtonDown())
-        mpeBendRangeSlider.setValue ((int) state.getProperty (SourceIDs::mpePitchBendRange, SourceDefaults::mpePitchBendRange), juce::dontSendNotification);
-    mpeBendRangeSlider.setEnabled (mpeEnabled);
-    mpeBendLabel.setEnabled (mpeEnabled);
-    if (! numVoicesSlider.isMouseButtonDown())
-        numVoicesSlider.setValue ((int) preset.getProperty (SourceIDs::numVoices, SourceDefaults::numVoices), juce::dontSendNotification);
+    settingsPanel->updateFromState (state);
+    {
+        const int numVoices = preset.getProperty (SourceIDs::numVoices, SourceDefaults::numVoices);
+        fewerVoicesButton.setEnabled (numVoices > 1);
+        moreVoicesButton.setEnabled (numVoices < SourceSamplerSynthesiser::maxNumVoices);
+        voicesComponent.setTooltip (juce::String (numVoices) + " voices");
+    }
     if (! noteLayoutCombo.isPopupActive())
         noteLayoutCombo.setSelectedId ((int) preset.getProperty (SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType) + 1, juce::dontSendNotification);
     fxPanel.updateFromState (preset);
@@ -631,6 +610,12 @@ void SourceNativeEditor::updateFromState()
         soundEditor.setSound (soundList.getSelectedSoundUUID());
     else
         soundEditor.updateFromState();
+}
+
+void SourceNativeEditor::changeNumVoices (int delta)
+{
+    const int numVoices = sourceSampler.state.getChildWithName (SourceIDs::PRESET).getProperty (SourceIDs::numVoices, SourceDefaults::numVoices);
+    sendAction (ACTION_SET_POLYPHONY, { juce::String (juce::jlimit (1, (int) SourceSamplerSynthesiser::maxNumVoices, numVoices + delta)) });
 }
 
 void SourceNativeEditor::bpmChanged()
@@ -753,7 +738,7 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     header.removeFromLeft (8);
     const auto& title = titleImage.getImage();
     const float titleAspect = title.isValid() ? (float) title.getWidth() / (float) title.getHeight() : 3.0f;
-    titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) header.getHeight() * titleAspect)).reduced (0, 2));
+    titleImage.setBounds (header.removeFromLeft (juce::roundToInt ((float) (header.getHeight() - 10) * titleAspect)).reduced (0, 5));
     // Right side: tabs, output meters (vertical) and mute button
     muteButton.setBounds (header.removeFromRight (30).withSizeKeepingCentre (30, 30));
     header.removeFromRight (8);
@@ -767,18 +752,44 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     // Tempo left of the tabs
     header.removeFromRight (10);
     {
-        auto bpmArea = header.removeFromRight (156);
+        auto bpmArea = header.removeFromRight (150);
         bpmSlider.setBounds (bpmArea.removeFromRight (90).withSizeKeepingCentre (90, 24));
         bpmLabel.setBounds (bpmArea);
     }
-    // Voices in the space between the title and the tabs (centred in the window if that space allows it)
+    // Preset controls after the title, in two rows: slots (with previous/next) and name with the save buttons
+    header.removeFromLeft (12);
+    {
+        // All the space not needed by the voices (see below), up to 320 px
+        const int voicesGroupWidth = 8 * 17 + 6 + 2 * 20 + 20;
+        auto presetArea = header.removeFromLeft (juce::jlimit (180, 320, header.getWidth() - voicesGroupWidth));
+        auto row1 = presetArea.removeFromTop (20);
+        auto row2 = presetArea.removeFromBottom (20);
+        previousPresetButton.setBounds (row1.removeFromLeft (22));
+        nextPresetButton.setBounds (row1.removeFromRight (22));
+        row1.reduce (2, 0);
+        presetSlotsCombo.setBounds (row1);
+        saveToPresetButton.setBounds (row2.removeFromRight (66));
+        row2.removeFromRight (2);
+        savePresetButton.setBounds (row2.removeFromRight (44));
+        row2.removeFromRight (4);
+        presetNameEditor.setBounds (row2);
+    }
+    // Voices (with the buttons to change their number) in the remaining space, centred in the window if possible
     header.removeFromRight (10);
     header.removeFromLeft (10);
-    const int voicesWidth = juce::jmin (header.getWidth(), SourceSamplerSynthesiser::maxNumVoices * 17);
-    auto voicesBounds = juce::Rectangle<int> (voicesWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY()));
-    if (! header.contains (voicesBounds))
-        voicesBounds = voicesBounds.withCentre (header.getCentre());
-    voicesComponent.setBounds (voicesBounds);
+    {
+        const int buttonsWidth = 2 * 20;
+        const int voicesWidth = juce::jmin (header.getWidth() - buttonsWidth - 6, 8 * 17);
+        const int groupWidth = voicesWidth + 6 + buttonsWidth;
+        auto group = juce::Rectangle<int> (groupWidth, header.getHeight()).withCentre (bounds.getCentre().withY (header.getCentreY()));
+        if (! header.contains (group))
+            group = group.withCentre (header.getCentre());
+        voicesComponent.setBounds (group.removeFromLeft (voicesWidth));
+        group.removeFromLeft (6);
+        auto buttons = group.withSizeKeepingCentre (buttonsWidth, 20);
+        fewerVoicesButton.setBounds (buttons.removeFromLeft (20));
+        moreVoicesButton.setBounds (buttons);
+    }
     b.removeFromTop (8);
 
    #if JUCE_IOS
@@ -803,21 +814,16 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     // The other tabs use all the space between the header and the keyboard
     searchPanel.setBounds (b);
     fxPanel.setBounds (b);
-    if (settingsPanel != nullptr)
-        settingsPanel->setBounds (b);
+    settingsPanel->setBounds (b);
 
-    // General tab. Landscape: preset and "get new sounds" cards and the list of sounds on the left, the sound editor
-    // (full height) on the right. Portrait: the two cards side by side, then the list of sounds and the sound editor.
+    // General tab. Landscape: the quick search card and the list of sounds on the left, the sound editor (full height)
+    // on the right. Portrait: the quick search card, then the list of sounds and the sound editor.
     const int gap = 8;
-    const int presetCardHeight = 26 + 16 + 5 * 27 - 5;
     const int queryCardHeight = getQueryCardHeight();
     juce::Rectangle<int> listArea, editorArea;
     if (portrait)
     {
-        auto top = b.removeFromTop (queryCardHeight);
-        presetCard.setBounds (top.removeFromLeft (juce::jmin (340, (top.getWidth() - gap) / 2)).withHeight (presetCardHeight));
-        top.removeFromLeft (gap);
-        querySoundsCard.setBounds (top);
+        querySoundsCard.setBounds (b.removeFromTop (queryCardHeight));
         b.removeFromTop (gap);
         listArea = b.removeFromTop (juce::jmin (240, b.getHeight() / 3));
         b.removeFromTop (gap);
@@ -828,8 +834,6 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         auto left = b.removeFromLeft (juce::jlimit (410, 470, b.getWidth() / 3));
         b.removeFromLeft (gap);
         editorArea = b;
-        presetCard.setBounds (left.removeFromTop (presetCardHeight));
-        left.removeFromTop (gap);
         querySoundsCard.setBounds (left.removeFromTop (queryCardHeight));
         left.removeFromTop (gap);
         listArea = left;
@@ -839,38 +843,6 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
 
     const int rowHeight = 22;
     const int rowGap = 5;
-    const int labelWidth = 100;
-
-    // Preset card content
-    {
-        auto c = presetCard.getContentBounds();
-        auto row = c.removeFromTop (rowHeight);
-        nextPresetButton.setBounds (row.removeFromRight (24));
-        row.removeFromRight (2);
-        previousPresetButton.setBounds (row.removeFromRight (24));
-        row.removeFromRight (6);
-        presetSlotsCombo.setBounds (row);
-        c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        saveToPresetButton.setBounds (row.removeFromRight (70));
-        row.removeFromRight (4);
-        savePresetButton.setBounds (row.removeFromRight (48));
-        row.removeFromRight (6);
-        presetNameEditor.setBounds (row);
-        c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        midiChannelLabel.setBounds (row.removeFromLeft (labelWidth));
-        midiChannelCombo.setBounds (row.removeFromLeft (80));
-        c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        numVoicesLabel.setBounds (row.removeFromLeft (labelWidth));
-        numVoicesSlider.setBounds (row.removeFromLeft (100));
-        c.removeFromTop (rowGap);
-        row = c.removeFromTop (rowHeight);
-        mpeToggle.setBounds (row.removeFromLeft (labelWidth));
-        mpeBendLabel.setBounds (row.removeFromLeft (80));
-        mpeBendRangeSlider.setBounds (row.removeFromLeft (100));
-    }
 
     // Query card content
     {

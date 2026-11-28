@@ -13,12 +13,16 @@
 //==============================================================================
 // WaveformComponent
 
-void WaveformComponent::setAudio (const juce::AudioBuffer<float>* audio)
+void WaveformComponent::setAudio (const juce::AudioBuffer<float>* audio, double sampleRate)
 {
     peaks.clear();
+    duration = 0.0;
+    resetZoom();
     if (audio != nullptr && audio->getNumSamples() > 0)
     {
         const int numSamples = audio->getNumSamples();
+        duration = sampleRate > 0.0 ? (double) numSamples / sampleRate : 0.0;
+        // Many bins, so that zoomed views still have detail
         const int numBins = juce::jmin (numPeakBins, numSamples);
         peaks.resize ((size_t) numBins, { 0.0f, 0.0f });
         for (int ch = 0; ch < audio->getNumChannels(); ++ch)
@@ -54,6 +58,181 @@ void WaveformComponent::setPlayheads (std::vector<float> positions)
     repaint();
 }
 
+void WaveformComponent::setSlices (std::vector<float> positions, bool editable, bool active)
+{
+    if (draggedSlice >= 0)
+        return;  // Don't move the markers while the user drags one
+    if (positions == slices && editable == slicesEditable && active == slicesActive)
+        return;
+    slices = std::move (positions);
+    slicesEditable = editable;
+    slicesActive = active;
+    repaint();
+}
+
+void WaveformComponent::resetZoom()
+{
+    setView (0.0f, 1.0f);
+}
+
+float WaveformComponent::xForPosition (float position) const
+{
+    return (position - viewStart) / juce::jmax (1.0e-6f, viewEnd - viewStart) * (float) getWidth();
+}
+
+float WaveformComponent::positionForX (float x) const
+{
+    return viewStart + x / (float) juce::jmax (1, getWidth()) * (viewEnd - viewStart);
+}
+
+void WaveformComponent::setView (float start, float end)
+{
+    // At most 1000x zoom (or ~32 samples per view for short sounds), always inside the sound
+    const float minWidth = juce::jmax (0.001f, peaks.empty() ? 0.001f : 32.0f / (float) juce::jmax ((size_t) 1, peaks.size()));
+    float width = juce::jlimit (minWidth, 1.0f, end - start);
+    start = juce::jlimit (0.0f, 1.0f - width, start);
+    if (start != viewStart || start + width != viewEnd)
+    {
+        viewStart = start;
+        viewEnd = start + width;
+        repaint();
+    }
+}
+
+void WaveformComponent::zoomAround (float factor, float anchorX)
+{
+    const float anchor = positionForX (anchorX);
+    const float width = (viewEnd - viewStart) / juce::jmax (0.01f, factor);
+    const float start = anchor - anchorX / (float) juce::jmax (1, getWidth()) * width;
+    setView (start, start + width);
+}
+
+int WaveformComponent::findSliceAt (juce::Point<float> point) const
+{
+    if (! slicesEditable)
+        return -1;
+    // The handle at the top, or the line itself (a bit wider for touch)
+    int closest = -1;
+    float closestDistance = 9.0f;
+    for (size_t i = 0; i < slices.size(); ++i)
+    {
+        const float distance = std::abs (xForPosition (slices[i]) - point.x);
+        if (distance < closestDistance)
+        {
+            closestDistance = distance;
+            closest = (int) i;
+        }
+    }
+    return closest;
+}
+
+void WaveformComponent::mouseDown (const juce::MouseEvent& e)
+{
+    touches[e.source.getIndex()] = e.position;
+    if (touches.size() >= 2)
+    {
+        // Two fingers: pinch to zoom (anchored at the point between the fingers)
+        auto it = touches.begin();
+        const auto a = it->second;
+        const auto b = (++it)->second;
+        pinching = true;
+        draggedSlice = -1;
+        pinchStartDistance = juce::jmax (10.0f, std::abs (a.x - b.x));
+        pinchAnchorPosition = positionForX ((a.x + b.x) * 0.5f);
+        gestureStartView = getVisibleRange();
+        return;
+    }
+    pinching = false;
+    draggedSlice = findSliceAt (e.position);
+    gestureStartView = getVisibleRange();
+    panStartX = e.position.x;
+}
+
+void WaveformComponent::mouseDrag (const juce::MouseEvent& e)
+{
+    touches[e.source.getIndex()] = e.position;
+    if (pinching && touches.size() >= 2)
+    {
+        auto it = touches.begin();
+        const auto a = it->second;
+        const auto b = (++it)->second;
+        const float distance = juce::jmax (10.0f, std::abs (a.x - b.x));
+        const float width = gestureStartView.getLength() * pinchStartDistance / distance;
+        const float centreX = (a.x + b.x) * 0.5f;
+        const float start = pinchAnchorPosition - centreX / (float) juce::jmax (1, getWidth()) * width;
+        setView (start, start + width);
+        return;
+    }
+    if (pinching)
+        return;  // One finger lifted: wait for both to be released
+    if (draggedSlice >= 0 && draggedSlice < (int) slices.size())
+    {
+        slices[(size_t) draggedSlice] = juce::jlimit (0.0005f, 0.9995f, positionForX (e.position.x));
+        repaint();
+        if (onSlicesChanged)
+        {
+            auto sorted = slices;
+            std::sort (sorted.begin(), sorted.end());
+            onSlicesChanged (sorted);
+        }
+        return;
+    }
+    // Move the view (when zoomed)
+    const float delta = (e.position.x - panStartX) / (float) juce::jmax (1, getWidth()) * gestureStartView.getLength();
+    setView (gestureStartView.getStart() - delta, gestureStartView.getEnd() - delta);
+}
+
+void WaveformComponent::mouseUp (const juce::MouseEvent& e)
+{
+    touches.erase (e.source.getIndex());
+    if (touches.empty())
+        pinching = false;
+    if (draggedSlice >= 0)
+    {
+        draggedSlice = -1;
+        std::sort (slices.begin(), slices.end());
+        if (onSlicesChanged)
+            onSlicesChanged (slices);
+    }
+}
+
+void WaveformComponent::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    const int slice = findSliceAt (e.position);
+    if (slice >= 0 && e.position.y <= 14.0f)
+    {
+        // Double-click on a handle: remove the marker
+        slices.erase (slices.begin() + slice);
+        draggedSlice = -1;
+        repaint();
+        if (onSlicesChanged)
+            onSlicesChanged (slices);
+        return;
+    }
+    resetZoom();
+}
+
+void WaveformComponent::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+{
+    if (peaks.empty())
+        return;
+    if (std::abs (wheel.deltaX) > std::abs (wheel.deltaY))
+    {
+        // Horizontal scroll: move the view
+        const float delta = -wheel.deltaX * 0.5f * (viewEnd - viewStart);
+        setView (viewStart + delta, viewEnd + delta);
+    }
+    else
+    {
+        zoomAround (std::exp (wheel.deltaY * (wheel.isReversed ? -2.0f : 2.0f)), e.position.x);
+    }
+}
+
+void WaveformComponent::mouseMagnify (const juce::MouseEvent& e, float scaleFactor)
+{
+    zoomAround (scaleFactor, e.position.x);
+}
+
 void WaveformComponent::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
@@ -71,19 +250,24 @@ void WaveformComponent::paint (juce::Graphics& g)
     const float w = bounds.getWidth();
     const float h = bounds.getHeight();
     const float midY = bounds.getCentreY();
-    auto xFor = [w] (float relative) { return juce::jlimit (0.0f, 1.0f, relative) * w; };
+    auto xFor = [this] (float position) { return xForPosition (position); };
+    juce::Graphics::ScopedSaveState clip (g);
+    g.reduceClipRegion (getLocalBounds());
 
     // Selected region (start-end)
     g.setColour (SourceColours::control.withAlpha (0.35f));
     g.fillRect (juce::Rectangle<float>::leftTopRightBottom (xFor (startPos), 0.0f, xFor (endPos), h));
 
-    // Waveform
+    // Waveform (the peaks of the visible part, one column per pixel)
     juce::Path path;
     const int numColumns = juce::jmax (1, (int) w);
+    const double binsPerPosition = (double) peaks.size();
     for (int x = 0; x < numColumns; ++x)
     {
-        const size_t firstBin = (size_t) ((juce::int64) x * (juce::int64) peaks.size() / numColumns);
-        const size_t lastBin = juce::jmax (firstBin + 1, (size_t) ((juce::int64) (x + 1) * (juce::int64) peaks.size() / numColumns));
+        const double from = (double) positionForX ((float) x) * binsPerPosition;
+        const double to = (double) positionForX ((float) (x + 1)) * binsPerPosition;
+        const size_t firstBin = (size_t) juce::jlimit (0.0, binsPerPosition - 1.0, std::floor (from));
+        const size_t lastBin = juce::jmax (firstBin + 1, (size_t) juce::jlimit (0.0, binsPerPosition, std::ceil (to)));
         float minV = 0.0f, maxV = 0.0f;
         for (size_t b = firstBin; b < juce::jmin (lastBin, peaks.size()); ++b)
         {
@@ -97,15 +281,28 @@ void WaveformComponent::paint (juce::Graphics& g)
     g.setColour (SourceColours::accent.withAlpha (0.85f));
     g.fillPath (path);
 
-    // Markers
+    // Start/end and loop markers
     g.setColour (SourceColours::text);
     g.drawVerticalLine ((int) xFor (startPos), 0.0f, h);
     g.drawVerticalLine (juce::jmin ((int) w - 1, (int) xFor (endPos)), 0.0f, h);
     if (loopVisible)
     {
-        g.setColour (SourceColours::warning);
+        g.setColour (juce::Colour (0xff7fa8ff));
         g.drawVerticalLine ((int) xFor (loopStartPos), 0.0f, h);
         g.drawVerticalLine (juce::jmin ((int) w - 1, (int) xFor (loopEndPos)), 0.0f, h);
+    }
+
+    // Slice markers (orange; faded when the note mapping doesn't use slices), with a handle if they can be dragged
+    const auto sliceColour = SourceColours::warning.withAlpha (slicesActive ? 0.95f : 0.3f);
+    for (size_t i = 0; i < slices.size(); ++i)
+    {
+        const float x = xFor (slices[i]);
+        if (x < -6.0f || x > w + 6.0f)
+            continue;
+        g.setColour ((int) i == draggedSlice ? SourceColours::text : sliceColour);
+        g.fillRect (x - 0.75f, 0.0f, 1.5f, h);
+        if (slicesEditable)
+            g.fillRect (x - 5.0f, 0.0f, 10.0f, 10.0f);
     }
 
     // Playheads
@@ -113,6 +310,21 @@ void WaveformComponent::paint (juce::Graphics& g)
     for (auto position : playheads)
         if (position >= 0.0f)
             g.fillRect (xFor (position) - 1.0f, 0.0f, 2.0f, h);
+
+    // Zoom level
+    if (viewEnd - viewStart < 0.999f)
+    {
+        g.setColour (SourceColours::dimText);
+        g.setFont (juce::Font (juce::FontOptions (11.0f)));
+        g.drawText ("x" + juce::String (1.0f / (viewEnd - viewStart), 1) + " (double-click to reset)",
+                    getLocalBounds().reduced (6, 3), juce::Justification::bottomRight);
+        // Overview of the visible part
+        const float overviewY = h - 3.0f;
+        g.setColour (SourceColours::control);
+        g.fillRect (0.0f, overviewY, w, 3.0f);
+        g.setColour (SourceColours::accent);
+        g.fillRect (viewStart * w, overviewY, (viewEnd - viewStart) * w, 3.0f);
+    }
 }
 
 
@@ -145,9 +357,7 @@ static juce::String getDisplayNameForParameter (const juce::String& name)
         { "filterDecay", "Decay" }, { "filterSustain", "Sustain" }, { "filterRelease", "Release" },
         { "filterADSR2CutoffAmt", "Env amount" }, { "gain", "Gain (dB)" }, { "attack", "Attack" }, { "decay", "Decay" },
         { "sustain", "Sustain" }, { "release", "Release" }, { "pan", "Pan" }, { "pitch", "Pitch (st)" },
-        { "pitchBendRangeUp", "Bend up" }, { "pitchBendRangeDown", "Bend down" }, { "mod2CutoffAmt", "Mod > cutoff" },
-        { "mod2GainAmt", "Mod > gain" }, { "mod2PitchAmt", "Mod > pitch" }, { "mod2PlayheadPos", "Mod > playhead" },
-        { "vel2CutoffAmt", "Vel > cutoff" }, { "vel2GainAmt", "Vel > gain" }, { "velSensitivity", "Vel sensitivity" },
+        { "pitchBendRangeUp", "Bend up" }, { "pitchBendRangeDown", "Bend down" }, { "velSensitivity", "Vel sensitivity" },
         { "midiChannel", "MIDI channel" }, { "pitchShift", "Pitch shift" }, { "timeStretch", "Time stretch" },
     };
     auto it = names.find (name);
@@ -164,11 +374,22 @@ ParameterControl::ParameterControl (const SoundParameterInfo& infoToUse, std::fu
     addAndMakeVisible (label);
 
     const auto choices = getChoicesForParameter (info);
-    if (! choices.isEmpty())
+    if (juce::String (info.name) == "numSlices")
+    {
+        // "Man" (manual slices, value 0) and 2 to 100 equal slices (1 is a legacy value, converted when sounds load)
+        comboBox = std::make_unique<juce::ComboBox>();
+        comboBox->addItem ("Man", 1);
+        for (int n = 2; n <= (int) info.maxValue; ++n)
+            comboBox->addItem (juce::String (n), n + 1);
+        comboBox->setTooltip ("Man: slices set with the markers in the waveform. 2-100: equal slices between start and end");
+        comboBox->onChange = [this] { onChange (info, (float) (comboBox->getSelectedId() - 1)); };
+        addAndMakeVisible (*comboBox);
+    }
+    else if (! choices.isEmpty())
     {
         comboBox = std::make_unique<juce::ComboBox>();
         comboBox->addItemList (choices, 1);
-        comboBox->onChange = [this] { onChange (info, (float) (comboBox->getSelectedItemIndex() + (int) info.minValue)); };
+        comboBox->onChange = [this] { onChange (info, (float) (comboBox->getSelectedId() - 1 + (int) info.minValue)); };
         addAndMakeVisible (*comboBox);
     }
     else if (info.isInt && info.minValue == 0.0f && info.maxValue == 1.0f)
@@ -201,7 +422,7 @@ void ParameterControl::setValue (float value)
     if (slider != nullptr)
         slider->setValue (value, juce::dontSendNotification);
     else if (comboBox != nullptr)
-        comboBox->setSelectedItemIndex (juce::roundToInt (value - info.minValue), juce::dontSendNotification);
+        comboBox->setSelectedId (juce::roundToInt (value - info.minValue) + 1, juce::dontSendNotification);
     else if (toggle != nullptr)
         toggle->setToggleState (value > 0.5f, juce::dontSendNotification);
 }
@@ -485,7 +706,8 @@ ModulatorsComponent::ModulatorRow::ModulatorRow (ModulatorsComponent& owner, Sou
 {
     kind = SourceIDs::MODULATOR;
     const bool isLfo = type == SourceHelpers::ModulatorType::lfo;
-    typeLabel.setText (isLfo ? "LFO" : (type == SourceHelpers::ModulatorType::steps ? "Steps" : "ADSR"), juce::dontSendNotification);
+    const char* typeNames[] = { "LFO", "ADSR", "Steps", "Aftertouch", "Velocity" };
+    typeLabel.setText (typeNames[juce::jlimit (0, 4, (int) type)], juce::dontSendNotification);
     typeLabel.setFont (juce::Font (juce::FontOptions (12.0f, juce::Font::bold)));
     typeLabel.setColour (juce::Label::textColourId, SourceColours::accent);
     addAndMakeVisible (typeLabel);
@@ -575,7 +797,7 @@ ModulatorsComponent::ModulatorRow::ModulatorRow (ModulatorsComponent& owner, Sou
         addAndMakeVisible (stepsEditor);
         updateSyncVisibility();
     }
-    else
+    else if (type == SourceHelpers::ModulatorType::adsr)
     {
         const double maxTime = SourceHelpers::maxModulatorEnvelopeTime;
         setUp (attack, 0.0, maxTime, 0.01, SourceDefaults::modAttack, "Attack time (seconds)");
@@ -714,7 +936,7 @@ void ModulatorsComponent::ModulatorRow::resized()
     auto b = getLocalBounds().reduced (6, 4);
     scope.setBounds (b.removeFromRight (juce::jlimit (140, 260, b.getWidth() / 3)));
     b.removeFromRight (8);
-    const int lineHeight = type == SourceHelpers::ModulatorType::steps ? 28 : b.getHeight() / 3;
+    const int lineHeight = type == SourceHelpers::ModulatorType::steps ? 28 : b.getHeight() / (isSourceType() ? 2 : 3);
     auto line1 = b.removeFromTop (lineHeight);
     auto line2 = b.removeFromTop (lineHeight);
     auto line3 = type == SourceHelpers::ModulatorType::steps ? b.removeFromTop (lineHeight) : b;
@@ -755,7 +977,7 @@ void ModulatorsComponent::ModulatorRow::resized()
         b.removeFromTop (2);
         stepsEditor.setBounds (b);
     }
-    else
+    else if (type == SourceHelpers::ModulatorType::adsr)
     {
         const int width = line3.getWidth() / 4;
         for (auto* s : { &attack, &decay, &sustain })
@@ -769,6 +991,12 @@ ModulatorsComponent::ModulatorsComponent (SourceActionSender actionSender) : act
     addLfoButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::lfo); };
     addAdsrButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::adsr); };
     addStepsButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::steps); };
+    addAftertouchButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::aftertouch); };
+    addVelocityButton.onClick = [this] { addModulator (SourceHelpers::ModulatorType::velocity); };
+    addAftertouchButton.setTooltip ("Modulate a parameter with the aftertouch (channel or polyphonic pressure) plus the mod wheel");
+    addVelocityButton.setTooltip ("Modulate a parameter with the velocity of each note");
+    addAndMakeVisible (addAftertouchButton);
+    addAndMakeVisible (addVelocityButton);
     addStepsButton.setTooltip ("Add a sequence of steps (cycled at a rate or synced to the tempo; restarts with each note)");
     addAndMakeVisible (addStepsButton);
     addLfoButton.setTooltip ("Add a low frequency oscillator (restarts with each note)");
@@ -948,7 +1176,7 @@ void ModulatorsComponent::updateMappingRow (MappingRow& row, const juce::ValueTr
     {
         const auto source = state.getProperty (SourceIDs::mpeSource).toString();
         info = mpeEnabled ? "Per note: " + getMpeSourceDisplayName (source).toLowerCase() + " sets the value of the note"
-                          : "MPE input is disabled (enable it in Preset & settings)";
+                          : "MPE input is disabled (enable it in the Settings tab)";
         warning = ! mpeEnabled;
     }
     else
@@ -1085,9 +1313,8 @@ namespace
             { "Playback",   { "launchMode", "startPosition", "endPosition", "loopStartPosition", "loopEndPosition", "loopXFadeNSamples", "reverse", "playheadPosition", "freezePlayheadSpeed" } },
             { "Mapping",    { "noteMappingMode", "numSlices", "midiChannel" } },
             { "Pitch",      { "pitch", "pitchBendRangeUp", "pitchBendRangeDown", "pitchShift", "timeStretch" } },
-            { "Amplitude",  { "gain", "pan", "attack", "decay", "sustain", "release", "vel2GainAmt", "velSensitivity" } },
-            { "Filter",     { "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt", "vel2CutoffAmt" } },
-            { "Modulation", { "mod2CutoffAmt", "mod2GainAmt", "mod2PitchAmt", "mod2PlayheadPos" } },
+            { "Amplitude",  { "gain", "pan", "attack", "decay", "sustain", "release", "velSensitivity" } },
+            { "Filter",     { "filterCutoff", "filterRessonance", "filterKeyboardTracking", "filterAttack", "filterDecay", "filterSustain", "filterRelease", "filterADSR2CutoffAmt" } },
         };
         return groups;
     }
@@ -1102,8 +1329,7 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
     detailsLabel.setColour (juce::Label::textColourId, SourceColours::dimText);
     addAndMakeVisible (detailsLabel);
 
-    waveform.onClick = [this] { if (soundUUID.isNotEmpty()) actions.send (ACTION_PLAY_SOUND, { soundUUID }); };
-    waveform.setTooltip ("Click to play the sound");
+
     addAndMakeVisible (waveform);
 
     rootNoteLabel.setText ("Root note", juce::dontSendNotification);
@@ -1127,6 +1353,45 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
             actions.send (ACTION_SET_SOUND_ASSIGNED_NOTES, { soundUUID, "", juce::String ((int) rootNoteSlider.getValue()) });
     };
     addAndMakeVisible (rootNoteSlider);
+    similarButton.setTooltip ("Replace the sound with a similar one from Freesound (keeping its settings)");
+    similarButton.onClick = [this] { if (soundUUID.isNotEmpty()) actions.send (ACTION_REPLACE_SOUND_WITH_SIMILAR, { soundUUID }); };
+    addAndMakeVisible (similarButton);
+
+    // Manual slices: markers in the waveform
+    addSliceButton.setTooltip ("Add a slice marker (in the largest slice in view); drag its handle to move it, double-click the handle to remove it");
+    addSliceButton.onClick = [this]
+    {
+        const double duration = waveform.getDuration();
+        if (duration <= 0.0 || (int) manualSliceTimes.size() >= MAX_MANUAL_SLICES)
+            return;
+        // Middle of the largest gap between markers in the visible part of the sound
+        const auto view = waveform.getVisibleRange();
+        std::vector<float> bounds { view.getStart() };
+        for (auto t : manualSliceTimes)
+            if ((float) (t / duration) > view.getStart() && (float) (t / duration) < view.getEnd())
+                bounds.push_back ((float) (t / duration));
+        bounds.push_back (view.getEnd());
+        float bestStart = bounds[0], bestLength = 0.0f;
+        for (size_t i = 0; i + 1 < bounds.size(); ++i)
+            if (bounds[i + 1] - bounds[i] > bestLength)
+            {
+                bestLength = bounds[i + 1] - bounds[i];
+                bestStart = bounds[i];
+            }
+        auto times = manualSliceTimes;
+        times.push_back ((float) ((bestStart + bestLength * 0.5f) * duration));
+        sendManualSlices (times);
+    };
+    addChildComponent (addSliceButton);
+    slicesFromOnsetsButton.onClick = [this] { if (soundUUID.isNotEmpty()) actions.send (ACTION_SET_SOUND_SLICES_FROM_ONSETS, { soundUUID }); };
+    addChildComponent (slicesFromOnsetsButton);
+    waveform.onSlicesChanged = [this] (const std::vector<float>& positions)
+    {
+        std::vector<float> times;
+        for (auto p : positions)
+            times.push_back ((float) (p * waveform.getDuration()));
+        sendManualSlices (times);
+    };
 
     // Create one control per parameter, organised in groups (parameters not in any group go to "Other")
     juce::StringArray grouped;
@@ -1177,11 +1442,21 @@ juce::ValueTree SoundEditorComponent::getSoundState() const
     return sampler.state.getChildWithName (SourceIDs::PRESET).getChildWithProperty (SourceIDs::uuid, soundUUID);
 }
 
+void SoundEditorComponent::sendManualSlices (const std::vector<float>& times)
+{
+    if (soundUUID.isEmpty())
+        return;
+    auto sorted = times;
+    std::sort (sorted.begin(), sorted.end());
+    manualSliceTimes = sorted;
+    actions.send (ACTION_SET_SOUND_SLICES, { soundUUID, SourceHelpers::formatSliceTimes (sorted) });
+}
+
 void SoundEditorComponent::setSound (const juce::String& newSoundUUID)
 {
     soundUUID = newSoundUUID;
     loadedWaveformForSampleUUID = {};
-    waveform.setAudio (nullptr);
+    waveform.setAudio (nullptr, 0.0);
     waveform.setPlayheads ({});
     updateFromState();
     resized();
@@ -1206,6 +1481,7 @@ void SoundEditorComponent::updateFromState()
     waveform.setVisible (! allSounds);
     rootNoteSlider.setVisible (! allSounds);
     rootNoteLabel.setVisible (! allSounds);
+    similarButton.setVisible (! allSounds);
     modulators.setVisible (! allSounds);
 
     if (allSounds)
@@ -1243,6 +1519,13 @@ void SoundEditorComponent::updateFromState()
         if (! control->isBeingEdited())
             control->setValue ((float) soundState.getProperty (control->getInfo().name, control->getInfo().defaultValue));
 
+    {
+        // Only sounds from Freesound can be replaced by similar ones
+        const bool fromFreesound = (bool) firstSample.getProperty (SourceIDs::soundFromFreesound, false) && (int) firstSample.getProperty (SourceIDs::soundId, -1) > 0;
+        const bool findingSimilar = soundState.getProperty (SourceIDs::findingSimilar, false);
+        similarButton.setEnabled (fromFreesound && ! findingSimilar && ! (bool) soundState.getProperty (SourceIDs::willBeDeleted, false));
+        similarButton.setButtonText (findingSimilar ? "Finding a similar sound..." : "Replace with similar");
+    }
     if (! rootNoteSlider.isMouseButtonDown())
         rootNoteSlider.setValue ((int) firstSample.getProperty (SourceIDs::midiRootNote, SourceDefaults::midiRootNote), juce::dontSendNotification);
 
@@ -1255,7 +1538,7 @@ void SoundEditorComponent::updateFromState()
         {
             if (auto* samplerSound = sound->getFirstLinkedSourceSamplerSound())
             {
-                waveform.setAudio (samplerSound->getAudioData());
+                waveform.setAudio (samplerSound->getAudioData(), samplerSound->getSoundSampleRate());
                 loadedWaveformForSampleUUID = sampleUUID;
             }
         }
@@ -1267,6 +1550,39 @@ void SoundEditorComponent::updateFromState()
     waveform.setMarkers (soundState.getProperty (SourceIDs::startPosition, 0.0f), soundState.getProperty (SourceIDs::endPosition, 1.0f),
                          soundState.getProperty (SourceIDs::loopStartPosition, 0.0f), soundState.getProperty (SourceIDs::loopEndPosition, 1.0f),
                          launchMode == LAUNCH_MODE_LOOP || launchMode == LAUNCH_MODE_LOOP_FW_BW);
+
+    // Slices: equal slices between start and end, or the manual slices (which can be edited)
+    {
+        const int numSlices = soundState.getProperty (SourceIDs::numSlices, 0);
+        const int mappingMode = soundState.getProperty (SourceIDs::noteMappingMode, NOTE_MAPPING_MODE_PITCH);
+        const bool slicesUsed = mappingMode == NOTE_MAPPING_MODE_SLICE || mappingMode == NOTE_MAPPING_MODE_BOTH;
+        const bool manual = numSlices == SLICE_MODE_MANUAL;
+        manualSliceTimes = SourceHelpers::parseSliceTimes (soundState.getProperty (SourceIDs::slices).toString());
+        std::vector<float> positions;
+        const double duration = waveform.getDuration();
+        if (manual && duration > 0.0)
+        {
+            for (auto t : manualSliceTimes)
+                positions.push_back ((float) (t / duration));
+        }
+        else if (numSlices >= 2)
+        {
+            const float start = soundState.getProperty (SourceIDs::startPosition, 0.0f);
+            const float end = soundState.getProperty (SourceIDs::endPosition, 1.0f);
+            for (int i = 1; i < numSlices; ++i)
+                positions.push_back (start + (end - start) * (float) i / (float) numSlices);
+        }
+        waveform.setSlices (positions, manual, slicesUsed);
+        const bool showButtons = manual && slicesUsed;
+        addSliceButton.setVisible (showButtons);
+        slicesFromOnsetsButton.setVisible (showButtons);
+        addSliceButton.setEnabled (duration > 0.0 && (int) manualSliceTimes.size() < MAX_MANUAL_SLICES);
+        const int numOnsets = soundState.getChildWithName (SourceIDs::SOUND_SAMPLE).getChildWithName (SourceIDs::ANALYSIS)
+                                       .getChildWithName (SourceIDs::onsets).getNumChildren();
+        slicesFromOnsetsButton.setEnabled (numOnsets > 0);
+        slicesFromOnsetsButton.setTooltip (numOnsets > 0 ? "Replace the slices with the " + juce::String (numOnsets) + " onsets detected by Freesound"
+                                                         : "No onsets data for this sound (only sounds from Freesound have it)");
+    }
 
     modulators.updateFromState (soundUUID, soundState, sampler.state.getProperty (SourceIDs::mpeEnabled, false));
     if (modulators.getIdealHeight() != modulators.getHeight())
@@ -1292,6 +1608,11 @@ void SoundEditorComponent::resized()
         auto rootRow = b.removeFromTop (22);
         rootNoteLabel.setBounds (rootRow.removeFromLeft (96));
         rootNoteSlider.setBounds (rootRow.removeFromLeft (130));
+        similarButton.setBounds (rootRow.removeFromRight (juce::jmin (rootRow.getWidth(), 170)));
+        rootRow.removeFromLeft (12);
+        addSliceButton.setBounds (rootRow.removeFromLeft (juce::jmin (rootRow.getWidth(), 84)));
+        rootRow.removeFromLeft (4);
+        slicesFromOnsetsButton.setBounds (rootRow.removeFromLeft (juce::jmin (rootRow.getWidth(), 150)));
         b.removeFromTop (6);
     }
     parametersViewport.setBounds (b);

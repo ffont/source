@@ -32,6 +32,7 @@ struct SoundListItem
     bool willBeDeleted = false;
     bool fromFreesound = false;       // (first sample) can be replaced by similar sounds
     bool findingSimilar = false;
+    bool muted = false;
     int numSamples = 0;
     int rootNote = -1;
     int numMappedNotes = 0;

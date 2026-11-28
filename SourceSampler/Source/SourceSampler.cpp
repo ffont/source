@@ -461,7 +461,13 @@ bool SourceSampler::loadPresetFromFile (const juce::String& fileName)
                     auto samplerSound = soundInfo.getChildWithName("SamplerSound");
                     juce::BigInteger midiNotes = 0;
                     midiNotes.parseString(samplerSound.getProperty("midiNotes", SourceDefaults::midiNotes).toString(), 16);
-                    juce::ValueTree sound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, {}, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0, (int)samplerSound.getChildWithProperty("parameter_name", "midiChannel").getProperty("parameter_value", SourceDefaults::midiChannel));
+                    // Onsets from Freesound: <fsAnalysis><onsets><onset time="..."/> in this format (they become the
+                    // ANALYSIS of the sound sample, and the manual slices if numSlices is 0, see SourceSound::bindState)
+                    juce::StringArray oldOnsets;
+                    for (const auto& onset: soundInfo.getChildWithName("fsAnalysis").getChildWithName("onsets"))
+                        if (onset.hasProperty("time"))
+                            oldOnsets.add(onset.getProperty("time").toString());
+                    juce::ValueTree sound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties((int)soundInfo.getProperty("soundId"), soundInfo.getProperty("soundName"), soundInfo.getProperty("soundUser"), soundInfo.getProperty("soundLicense"), soundInfo.getProperty("soundOGGURL"), "", "", -1, oldOnsets, midiNotes, (int)samplerSound.getChildWithProperty("parameter_name", "midiRootNote").getProperty("parameter_value"), 0, (int)samplerSound.getChildWithProperty("parameter_name", "midiChannel").getProperty("parameter_value", SourceDefaults::midiChannel));
                     sound.getChildWithName(SourceIDs::SOUND_SAMPLE).setProperty(SourceIDs::usesPreview, true, nullptr);
                     
                     sound.setProperty(SourceIDs::launchMode, (int)samplerSound.getChildWithProperty("parameter_name", "launchMode").getProperty("parameter_value"), nullptr);
@@ -492,13 +498,14 @@ bool SourceSampler::loadPresetFromFile (const juce::String& fileName)
                     sound.setProperty(SourceIDs::pitch, (float)samplerSound.getChildWithProperty("parameter_name", "pitch").getProperty("parameter_value"), nullptr);
                     sound.setProperty(SourceIDs::pitchBendRangeUp, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeUp").getProperty("parameter_value"), nullptr);
                     sound.setProperty(SourceIDs::pitchBendRangeDown, (float)samplerSound.getChildWithProperty("parameter_name", "pitchBendRangeDown").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::mod2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2CutoffAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::mod2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2GainAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::mod2PitchAmt, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PitchAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::mod2PlayheadPos, (float)samplerSound.getChildWithProperty("parameter_name", "mod2PlayheadPos").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::vel2CutoffAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2CutoffAmt").getProperty("parameter_value"), nullptr);
-                    sound.setProperty(SourceIDs::vel2GainAmt, (float)samplerSound.getChildWithProperty("parameter_name", "vel2GainAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("mod2CutoffAmt"), (float)samplerSound.getChildWithProperty("parameter_name", "mod2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("mod2GainAmt"), (float)samplerSound.getChildWithProperty("parameter_name", "mod2GainAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("mod2PitchAmt"), (float)samplerSound.getChildWithProperty("parameter_name", "mod2PitchAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("mod2PlayheadPos"), (float)samplerSound.getChildWithProperty("parameter_name", "mod2PlayheadPos").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("vel2CutoffAmt"), (float)samplerSound.getChildWithProperty("parameter_name", "vel2CutoffAmt").getProperty("parameter_value"), nullptr);
+                    sound.setProperty(juce::Identifier("vel2GainAmt"), (float)samplerSound.getChildWithProperty("parameter_name", "vel2GainAmt").getProperty("parameter_value"), nullptr);
                     
+                    sound.removeProperty(SourceIDs::slices, nullptr);  // Converted from the onsets when the sound is created
                     modifiedPresetState.addChild (sound, -1, nullptr);
                 }
                 presetState = modifiedPresetState;
@@ -1072,7 +1079,7 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
                     const auto& r = found[(size_t) i];
                     const auto layout = SourceHelpers::computeNoteLayout(sampler->noteLayoutType, i, n);
                     sampler->addOrReplaceSoundFromBasicSoundProperties("", r.id, r.name, r.username, r.license, r.previewURL, "", r.format,
-                                                                        (int) juce::jmin((juce::int64) INT_MAX, r.filesize), {}, layout.midiNotes,
+                                                                        (int) juce::jmin((juce::int64) INT_MAX, r.filesize), r.getOnsetTimesAsStrings(), layout.midiNotes,
                                                                         layout.midiRootNote, SourceDefaults::midiVelocityLayer, layout.midiChannel, false);
                 }
             });
@@ -1217,8 +1224,12 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
             for (juce::String sliceOnsetTimeStr: slices){
                 sliceOnsetTimes.push_back(sliceOnsetTimeStr.getFloatValue());
             }
-            sound->setOnsetTimesSamples(sliceOnsetTimes);
+            sound->setManualSlices(sliceOnsetTimes);
         }
+    }
+    else if (actionName == ACTION_SET_SOUND_SLICES_FROM_ONSETS){
+        if (auto* sound = sounds->getSoundWithUUID(parameters[0]))
+            sound->setSlicesFromOnsets();
     }
     else if (actionName == ACTION_SET_SOUND_ASSIGNED_NOTES){
         juce::String soundUUID = parameters[0];
@@ -1305,6 +1316,10 @@ void SourceSampler::actionListenerCallback (const juce::String &message)
         }
     }
     
+    else if (actionName == ACTION_SET_SOUND_MUTED){
+        if (auto* sound = sounds->getSoundWithUUID(parameters[0]))
+            sound->setMuted(parameters[1].getIntValue() != 0);
+    }
     else if (actionName == ACTION_SET_BPM){
         if (parameters[0].isNotEmpty())
             setBpm(parameters[0].getDoubleValue());
@@ -1475,7 +1490,7 @@ void SourceSampler::makeQueryAndLoadSounds(const juce::String& addReplaceOrRepla
         query = textQuery;
         pageSize = 100;
     }
-    SoundList list = client.textSearch(query, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,analysis", "rhythm.onset_times", 0);
+    SoundList list = client.textSearch(query, filter, "score", 0, -1, pageSize, "id,name,username,license,type,filesize,previews,onset_times", "", 0);
     int numResults = list.getCount();
     juce::Array<FSSound> soundsFound = numResults > 0 ? list.toArrayOfSounds() : juce::Array<FSSound>();
     
@@ -1644,9 +1659,14 @@ void SourceSampler::addOrReplaceSoundFromBasicSoundProperties(const juce::String
                                                               int midiChannel,
                                                               bool addToExistingSourceSampleSounds)
 {
-    // Prepare slices
+    // Prepare slices (onsets, stored in the analysis of the sound sample, used by "slices from waveform")
     juce::StringArray slices;
-    if (sound.analysis.hasProperty("rhythm")){
+    if (sound.onsetTimes.isArray()){
+        for (int j=0; j<sound.onsetTimes.size(); j++)
+            slices.add(sound.onsetTimes[j].toString());
+    } else if (sound.onsetTimes.isDouble() || sound.onsetTimes.isInt()){
+        slices.add(sound.onsetTimes.toString());
+    } else if (sound.analysis.hasProperty("rhythm")){
         if (sound.analysis["rhythm"].hasProperty("onset_times")){
             for (int j=0; j<sound.analysis["rhythm"]["onset_times"].size(); j++){
                 slices.add(sound.analysis["rhythm"]["onset_times"][j].toString());
@@ -1677,7 +1697,9 @@ bool SourceSampler::replaceSoundAudio(const juce::String& soundUUID, int soundID
     // Keep all the settings of the old sound (but not its identity or loading state)
     for (int i = 0; i < oldSound.getNumProperties(); ++i){
         const auto property = oldSound.getPropertyName(i);
-        if (property == SourceIDs::uuid || property == SourceIDs::allSoundsLoaded || property == SourceIDs::willBeDeleted || property == SourceIDs::findingSimilar)
+        // (Manual slices are times of the old audio: the new sound starts without them)
+        if (property == SourceIDs::uuid || property == SourceIDs::allSoundsLoaded || property == SourceIDs::willBeDeleted || property == SourceIDs::findingSimilar
+            || property == SourceIDs::slices)
             continue;
         newSound.setProperty(property, oldSound.getProperty(property), nullptr);
     }
@@ -1716,7 +1738,7 @@ void SourceSampler::replaceSoundWithSimilar(const juce::String& soundUUID)
         }
         const auto& chosen = similar[(size_t) juce::Random::getSystemRandom().nextInt((int) similar.size())];
         sampler->replaceSoundAudio(soundUUID, chosen.id, chosen.name, chosen.username, chosen.license, chosen.previewURL, "",
-                                   chosen.format, (int) juce::jmin((juce::int64) INT_MAX, chosen.filesize), {});
+                                   chosen.format, (int) juce::jmin((juce::int64) INT_MAX, chosen.filesize), chosen.getOnsetTimesAsStrings());
     });
 }
 

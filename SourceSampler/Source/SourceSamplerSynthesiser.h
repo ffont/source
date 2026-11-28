@@ -62,10 +62,10 @@ public:
     int getMpePitchBendRange() const noexcept { return mpePitchBendRange.load(); }
     int getGlobalMidiInChannel() const noexcept { return globalMidiInChannel.load(); }
     /** Current tempo (used by synced LFOs). */
-    void setCurrentBpm (double newBpm) noexcept { currentBpm.store (newBpm, std::memory_order_relaxed); }
+    void setCurrentBpm (double newBpm) noexcept { currentBpm.store (newBpm, std::memory_order_relaxed); fxChain.setTempo (newBpm); }
     double getCurrentBpm() const noexcept { return currentBpm.load (std::memory_order_relaxed); }
     
-    static constexpr auto maxNumVoices = 32;
+    static constexpr auto maxNumVoices = 16;
     void setSamplerVoices(int nVoices);
     void prepare (const juce::dsp::ProcessSpec& spec) noexcept;
     

@@ -101,9 +101,10 @@ public:
     void setMappedVelocities(juce::BigInteger newMappedVelocities);
     
     //==============================================================================
-    void loadOnsetTimesSamplesFromAnalysis();
-    void setOnsetTimesSamples(std::vector<float> _onsetTimes);
-    const std::vector<int>& getOnsetTimesSamples() const noexcept { return onsetTimesSamples; }
+    /** Sets the manual slices (times in seconds of the original audio; message thread). */
+    void setSliceTimes(const std::vector<float>& times);
+    /** Positions (0..1 of the sound, sorted) of the manual slices. Audio thread: hold getPlaybackDataLock(). */
+    const std::vector<float>& getSlicePositions() const noexcept { return slicePositions; }
     
     //==============================================================================
     bool isScheduledForDeletion();
@@ -152,7 +153,7 @@ private:
     double soundSampleRate;
     double pluginSampleRate;
     int pluginBlockSize;
-    std::vector<int> onsetTimesSamples = {};
+    std::vector<float> slicePositions = {};
     juce::BigInteger midiNotes = 0;
     juce::BigInteger midiVelocities = 0;
     
@@ -222,7 +223,12 @@ public:
     
     // ------------------------------------------------------------------------------------------------
     
-    void setOnsetTimesSamples(std::vector<float> onsetTimes);
+    /** Manual slices (times in seconds, used when numSlices is SLICE_MODE_MANUAL). */
+    std::vector<float> getManualSlices() const;
+    void setManualSlices(std::vector<float> times);  // Message thread (stored in the state)
+    /** Onset times (seconds) of the first sample, from the Freesound analysis (empty if not available). */
+    std::vector<float> getOnsetTimes() const;
+    void setSlicesFromOnsets();
     
     // ------------------------------------------------------------------------------------------------
     
@@ -294,6 +300,9 @@ public:
                             int stepsSyncLength = SourceDefaults::stepsSyncLength, const juce::String& stepValues = {});
     void removeModulator(const juce::String& uuid);
     void updateModulatorsSnapshot();  // Message thread: rebuilds the copy of the modulators used by the audio thread
+    /** Converts the parameters of older versions (mod2CutoffAmt, mod2GainAmt, mod2PitchAmt, mod2PlayheadPos,
+        vel2CutoffAmt, vel2GainAmt) to aftertouch and velocity modulators (and removes them). */
+    static void convertLegacyModulationParameters(juce::ValueTree& soundState);
     /** Audio thread: copies the current modulators to dest. Returns the number of modulators, or -1 if they are being
         updated (dest is then not modified and the caller should keep using its previous copy). */
     int copyModulators(Modulators& dest) noexcept;
@@ -301,7 +310,11 @@ public:
     /** Modulators, MPE mappings and MIDI CC mappings share this limit per sound (checked when adding new ones). */
     static constexpr int maxModulationsPerSound = 16;
     int getNumModulations() const;  // Number of modulators, MPE mappings and MIDI CC mappings
-    /** Parameters that can be modulated (float parameters). */
+    
+    /** Muted sounds keep playing (voices, modulators) but their output is not added to the mix. */
+    void setMuted(bool shouldBeMuted);  // Message thread
+    bool isMuted() const noexcept { return mutedFlag.load(std::memory_order_relaxed); }
+    /** Parameters that can be modulated (the same as MIDI CC and MPE mapping targets). */
     static juce::StringArray getModulatableParameterNames();
     
     // ------------------------------------------------------------------------------------------------
@@ -381,12 +394,6 @@ private:
     juce::CachedValue<float> pitch;
     juce::CachedValue<float> pitchBendRangeUp;
     juce::CachedValue<float> pitchBendRangeDown;
-    juce::CachedValue<float> mod2CutoffAmt;
-    juce::CachedValue<float> mod2GainAmt;
-    juce::CachedValue<float> mod2PitchAmt;
-    juce::CachedValue<float> mod2PlayheadPos;
-    juce::CachedValue<float> vel2CutoffAmt;
-    juce::CachedValue<float> vel2GainAmt;
     juce::CachedValue<float> velSensitivity;
     juce::CachedValue<int> midiChannel;
     juce::CachedValue<float> pitchShift;
@@ -430,6 +437,7 @@ private:
     Modulators modulators;
     int numModulators = 0;
     std::atomic<int> numModulatorsAtomic { 0 };
+    std::atomic<bool> mutedFlag { false };
     juce::SpinLock modulatorsLock;
     
     JUCE_DECLARE_WEAK_REFERENCEABLE (SourceSound)

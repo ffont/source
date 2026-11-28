@@ -173,7 +173,7 @@ public:
             auto* sound = f.addSound (f.sineFile, 60);
             expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
             sound->setParameterByNameFloat (SourceIDs::gain, 0.0f, false);
-            sound->setParameterByNameFloat (SourceIDs::vel2GainAmt, 0.0f, false);
+            // (Velocity no longer changes the gain unless the sound has a velocity modulator)
             juce::Reverb::Parameters params;
             params.wetLevel = 0.0f;
             params.dryLevel = 1.0f;
@@ -395,6 +395,168 @@ public:
             expectEquals (sound->getLastCcValue (74), 1.0f);
             expectEquals (sound->getLastCcValue (1), -1.0f);
             expectEquals (sound->getLastCcValue (200), -1.0f);
+        }
+
+        beginTest ("Old Mod/Vel parameters are converted to aftertouch and velocity modulators");
+        {
+            auto soundState = SourceHelpers::createEmptySourceSoundState();
+            soundState.setProperty (SourceIDs::filterCutoff, 1000.0f, nullptr);
+            soundState.setProperty ("mod2GainAmt", 6.0f, nullptr);
+            soundState.setProperty ("mod2CutoffAmt", 10.0f, nullptr);
+            soundState.setProperty ("mod2PitchAmt", 0.0f, nullptr);
+            soundState.setProperty ("mod2PlayheadPos", 0.0f, nullptr);
+            soundState.setProperty ("vel2GainAmt", 0.5f, nullptr);
+            soundState.setProperty ("vel2CutoffAmt", 0.0f, nullptr);
+            SourceSound::convertLegacyModulationParameters (soundState);
+            std::vector<juce::ValueTree> modulators;
+            for (const auto& child : soundState)
+                if (child.hasType (SourceIDs::MODULATOR))
+                    modulators.push_back (child);
+            expectEquals ((int) modulators.size(), 3, "Only parameters that were not 0");
+            auto find = [&modulators] (const juce::String& type, const juce::String& parameter)
+            {
+                for (const auto& m : modulators)
+                    if (m.getProperty (SourceIDs::modulatorType).toString() == type && m.getProperty (SourceIDs::parameterName).toString() == parameter)
+                        return m;
+                return juce::ValueTree();
+            };
+            auto gain = find (MODULATOR_TYPE_AFTERTOUCH, "gain");
+            expect (gain.isValid());
+            expectWithinAbsoluteError ((float) gain.getProperty (SourceIDs::maxRange), 6.0f / 92.0f, 1.0e-4f);
+            auto cutoff = find (MODULATOR_TYPE_AFTERTOUCH, "filterCutoff");
+            expect (cutoff.isValid());
+            expectWithinAbsoluteError ((float) cutoff.getProperty (SourceIDs::maxRange), 10000.0f / 19990.0f, 1.0e-4f, "Cutoff x11 at full aftertouch");
+            auto velocity = find (MODULATOR_TYPE_VELOCITY, "gain");
+            expect (velocity.isValid());
+            expectWithinAbsoluteError ((float) velocity.getProperty (SourceIDs::minRange), juce::Decibels::gainToDecibels (0.5f) / 92.0f, 1.0e-3f);
+            expectEquals ((float) velocity.getProperty (SourceIDs::maxRange), 0.0f);
+            expect (! soundState.hasProperty ("mod2GainAmt") && ! soundState.hasProperty ("vel2GainAmt"), "Old properties removed");
+            SourceSound::convertLegacyModulationParameters (soundState);
+            int numAfter = 0;
+            for (const auto& child : soundState)
+                numAfter += child.hasType (SourceIDs::MODULATOR) ? 1 : 0;
+            expectEquals (numAfter, 3, "Converting again does nothing");
+        }
+
+        beginTest ("Velocity and aftertouch modulators, and muted sounds");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            auto noteWithVelocity = [] (juce::uint8 velocity)
+            {
+                juce::MidiBuffer midi;
+                midi.addEvent (juce::MidiMessage::noteOn (1, 60, velocity), 0);
+                return midi;
+            };
+            // No velocity modulator: velocity doesn't change the level
+            const float loudNoMod = TestUtils::rms (f.render (noteWithVelocity (127), 4));
+            f.synth.allNotesOff (0, false);
+            const float softNoMod = TestUtils::rms (f.render (noteWithVelocity (20), 4));
+            f.synth.allNotesOff (0, false);
+            expectWithinAbsoluteError (softNoMod, loudNoMod, loudNoMod * 0.02f);
+
+            const auto velocityUuid = juce::Uuid().toString();
+            sound->addOrEditModulator (velocityUuid, MODULATOR_TYPE_VELOCITY, "gain", -0.5f, 0.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            const float loud = TestUtils::rms (f.render (noteWithVelocity (127), 4));
+            f.synth.allNotesOff (0, false);
+            const float soft = TestUtils::rms (f.render (noteWithVelocity (20), 4));
+            f.synth.allNotesOff (0, false);
+            expectWithinAbsoluteError (loud, loudNoMod, loudNoMod * 0.02f, "Full velocity: max (0) offset");
+            expectLessThan (soft, loud * 0.1f, "Low velocity: towards the min offset");
+            sound->removeModulator (velocityUuid);
+
+            // Aftertouch (channel pressure) moves the gain from min (silent) to max (normal)
+            sound->addOrEditModulator (juce::Uuid().toString(), MODULATOR_TYPE_AFTERTOUCH, "gain", -1.0f, 0.0f, 0, 1.0f, 0.1f, 0.1f, 1.0f, 0.1f);
+            expectLessThan (TestUtils::rms (f.render (noteOn (60), 4)), 0.001f, "No pressure");
+            juce::MidiBuffer pressure;
+            pressure.addEvent (juce::MidiMessage::channelPressureChange (1, 127), 0);
+            f.render (pressure, 2);
+            expectGreaterThan (TestUtils::rms (f.render ({}, 4)), loudNoMod * 0.8f, "Full pressure");
+            f.synth.allNotesOff (0, false);
+
+            // Muted sounds are silent (and unmuted again)
+            sound->setMuted (true);
+            expect ((bool) sound->state.getProperty (SourceIDs::muted));
+            juce::MidiBuffer full;
+            full.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 127), 0);
+            full.addEvent (juce::MidiMessage::channelPressureChange (1, 127), 1);
+            expectLessThan (TestUtils::rms (f.render (full, 4)), 1.0e-6f);
+            sound->setMuted (false);
+            expectGreaterThan (TestUtils::rms (f.render ({}, 4)), loudNoMod * 0.8f, "The voice kept playing while muted");
+        }
+
+        beginTest ("Manual slices: n markers make n + 1 slices, each note plays its slice");
+        {
+            Fixture f;
+            auto* sound = f.addSound (f.sineFile, 60);  // 2 s, all notes mapped
+            expect (TestUtils::runMessageLoopUntil ([&] { return f.synth.getNumSounds() == 1; }));
+            expect (sound->getManualSlices().empty(), "New sounds have no manual slices");
+            sound->setParameterByNameInt (SourceIDs::noteMappingMode, NOTE_MAPPING_MODE_SLICE);
+            sound->setParameterByNameInt (SourceIDs::numSlices, SLICE_MODE_MANUAL);
+            sound->setManualSlices ({ 1.0f, 0.5f });  // Unsorted on purpose
+            expectEquals (sound->state.getProperty (SourceIDs::slices).toString(), juce::String ("0.5000,1.0000"));
+            auto playPositionOf = [&f] (int note)
+            {
+                f.synth.allNotesOff (0, false);
+                f.render (noteOn (note), 1);
+                for (int i = 0; i < f.synth.getNumVoices(); ++i)
+                    if (auto* voice = static_cast<SourceSamplerVoice*> (f.synth.getVoice (i)); voice->isVoiceActive())
+                        return voice->getPublishedState().playPosition;
+                return -1.0f;
+            };
+            // Note indices: all 128 notes are mapped, so note n has index n (3 slices: n % 3)
+            expectWithinAbsoluteError (playPositionOf (60), 0.0f, 0.02f);
+            expectWithinAbsoluteError (playPositionOf (61), 0.25f, 0.02f);
+            expectWithinAbsoluteError (playPositionOf (62), 0.5f, 0.02f);
+            expectWithinAbsoluteError (playPositionOf (63), 0.0f, 0.02f);
+
+            // Equal slices ignore the markers
+            sound->setParameterByNameInt (SourceIDs::numSlices, 4);
+            expectWithinAbsoluteError (playPositionOf (61), 0.25f, 0.02f);
+            expectWithinAbsoluteError (playPositionOf (63), 0.75f, 0.02f);
+            expectEquals (sound->getManualSlices().size(), (size_t) 2, "Manual slices are kept");
+
+            // Slices from the Freesound onsets (none for this local sound)
+            expect (sound->getOnsetTimes().empty());
+            sound->setManualSlices ({});
+            expect (sound->getManualSlices().empty());
+        }
+
+        beginTest ("Slices of presets from older versions are converted; slices from onsets");
+        {
+            Fixture f;
+            juce::BigInteger allNotes;
+            allNotes.setRange (0, 8, true);
+            // numSlices 0 meant "slices from the onsets": the onsets become the manual slices
+            auto onsetsSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties (
+                -1, "a", "", "", "", f.sineFile.getFullPathName(), "wav", 1, { "0.001", "0.5", "1.0" }, allNotes, 60, 0, 0);
+            onsetsSound.removeProperty (SourceIDs::slices, nullptr);
+            onsetsSound.setProperty (SourceIDs::numSlices, 0, nullptr);
+            // numSlices 1 meant "one slice per mapped note": now that number of equal slices
+            auto notesSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties (
+                -1, "b", "", "", "", f.sineFile.getFullPathName(), "wav", 1, {}, allNotes, 60, 0, 0);
+            notesSound.removeProperty (SourceIDs::slices, nullptr);
+            notesSound.setProperty (SourceIDs::numSlices, 1, nullptr);
+            f.preset.addChild (onsetsSound, -1, nullptr);
+            f.preset.addChild (notesSound, -1, nullptr);
+            auto* converted = f.sounds->getSoundWithUUID (onsetsSound.getProperty (SourceIDs::uuid).toString());
+            expect (converted != nullptr);
+            if (converted != nullptr)
+            {
+                expectEquals (onsetsSound.getProperty (SourceIDs::slices).toString(), juce::String ("0.5000,1.0000"), "Onset at the start dropped");
+                expectEquals ((int) converted->getOnsetTimes().size(), 3);
+                converted->setManualSlices ({});
+                converted->setSlicesFromOnsets();
+                expectEquals ((int) converted->getManualSlices().size(), 2);
+            }
+            expectEquals ((int) notesSound.getProperty (SourceIDs::numSlices), 8);
+            // Sounds that already have the property are not converted again
+            auto newSound = SourceHelpers::createSourceSoundAndSourceSamplerSoundFromProperties (
+                -1, "c", "", "", "", f.sineFile.getFullPathName(), "wav", 1, { "0.5" }, allNotes, 60, 0, 0);
+            f.preset.addChild (newSound, -1, nullptr);
+            expectEquals (newSound.getProperty (SourceIDs::slices).toString(), juce::String(), "New sounds start without manual slices");
+            expectEquals (SourceHelpers::cleanSliceTimes ({ 0.3f, -1.0f, 0.001f, 0.3f, 0.2f }).size(), (size_t) 2);
         }
 
         beginTest ("Modulators, MPE mappings and MIDI CC mappings share a limit of 16 per sound");

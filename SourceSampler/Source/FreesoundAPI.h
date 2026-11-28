@@ -472,6 +472,7 @@ public:
 	/** \brief	Dictionary containing requested descriptors information according to the 
 				descriptors request parameter */
     juce::var analysis;
+    juce::var onsetTimes;  // "onset_times" field (seconds): an array (or a number if there is only one onset)
 	/** \brief	URI pointing to the complete analysis results of the sound */
     juce::URL analysisStats;
 	/** \brief	The URI for retrieving a JSON file with analysis information for each frame of the sound */

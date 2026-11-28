@@ -37,6 +37,17 @@ FreesoundSearchResult FreesoundSearchResult::fromJson (const juce::var& json)
         for (int i = 0; i < 3; ++i)
             result.tristimulus[(size_t) i] = juce::jlimit (0.0f, 1.0f, (float) tristimulus[i]);
 
+    const auto onsets = json.getProperty ("onset_times", juce::var());
+    if (onsets.isArray())
+    {
+        for (int i = 0; i < onsets.size(); ++i)
+            result.onsetTimes.push_back ((float) onsets[i]);
+    }
+    else if (onsets.isDouble() || onsets.isInt())
+    {
+        result.onsetTimes.push_back ((float) onsets);  // A single onset may come as a number
+    }
+
     const auto embedding = json.getProperty ("sim_laion_clap", juce::var());
     if (embedding.isArray())
     {
@@ -269,7 +280,7 @@ void FreesoundSearch::findSimilarSounds (int soundId, int numSounds, SimilarSoun
 {
     juce::WeakReference<FreesoundSearch> weak (this);
     const auto url = juce::URL ("https://freesound.org/apiv2/sounds/" + juce::String (soundId) + "/similar/")
-                         .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews")
+                         .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews,onset_times")
                          .withParameter ("page_size", juce::String (numSounds))
                          .withParameter ("token", apiKey);
     pool.addJob ([weak, url, onFound]
@@ -350,7 +361,7 @@ void FreesoundSearch::findRandomSounds (int numSounds, const juce::String& filte
                 juce::String pageError;
                 const auto json = getJson (baseUrl.withParameter ("page_size", "1")
                                                   .withParameter ("page", juce::String (position + 1))
-                                                  .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews"), pageError);
+                                                  .withParameter ("fields", "id,name,username,license,duration,filesize,type,previews,onset_times"), pageError);
                 const auto pageResults = json.getProperty ("results", juce::var());
                 if (pageResults.size() > 0)
                     foundSounds.push_back (FreesoundSearchResult::fromJson (pageResults[0]));
