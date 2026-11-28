@@ -44,6 +44,8 @@ void WaveformComponent::setAudio (const juce::AudioBuffer<float>* audio, double 
 
 void WaveformComponent::setMarkers (float start, float end, float loopStart, float loopEnd, bool showLoop)
 {
+    if (draggedMarker != Marker::none)
+        return;  // Don't move the markers while the user drags one
     if (start == startPos && end == endPos && loopStart == loopStartPos && loopEnd == loopEndPos && showLoop == loopVisible)
         return;
     startPos = start; endPos = end; loopStartPos = loopStart; loopEndPos = loopEnd; loopVisible = showLoop;
@@ -126,6 +128,72 @@ int WaveformComponent::findSliceAt (juce::Point<float> point) const
     return closest;
 }
 
+WaveformComponent::Marker WaveformComponent::findMarkerAt (juce::Point<float> point) const
+{
+    if (peaks.empty())
+        return Marker::none;
+    const float h = (float) getHeight();
+    auto closestOf = [&] (std::initializer_list<Marker> markers)
+    {
+        Marker closest = Marker::none;
+        float closestDistance = 10.0f;
+        for (auto m : markers)
+        {
+            const float distance = std::abs (xForPosition (getMarkerPosition (m)) - point.x);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = m;
+            }
+        }
+        return closest;
+    };
+    // Loop markers: their handles at the bottom; start/end: the handles at the top or the line itself
+    if (loopVisible && point.y >= h - handleSize - 4.0f)
+        if (auto m = closestOf ({ Marker::loopStart, Marker::loopEnd }); m != Marker::none)
+            return m;
+    if (point.y <= handleSize + 4.0f && findSliceAt (point) >= 0
+        && std::abs (xForPosition (slices[(size_t) findSliceAt (point)]) - point.x) < 6.0f)
+        return Marker::none;  // A slice handle is closer
+    return closestOf ({ Marker::start, Marker::end });
+}
+
+float WaveformComponent::getMarkerPosition (Marker marker) const
+{
+    switch (marker)
+    {
+        case Marker::start:     return startPos;
+        case Marker::end:       return endPos;
+        case Marker::loopStart: return loopStartPos;
+        case Marker::loopEnd:   return loopEndPos;
+        case Marker::none:      break;
+    }
+    return 0.0f;
+}
+
+void WaveformComponent::setMarkerPosition (Marker marker, float position)
+{
+    constexpr float minLength = 0.001f;
+    juce::String name;
+    switch (marker)
+    {
+        case Marker::start:     startPos = position = juce::jlimit (0.0f, endPos - minLength, position); name = "startPosition"; break;
+        case Marker::end:       endPos = position = juce::jlimit (startPos + minLength, 1.0f, position); name = "endPosition"; break;
+        case Marker::loopStart: loopStartPos = position = juce::jlimit (0.0f, loopEndPos - minLength, position); name = "loopStartPosition"; break;
+        case Marker::loopEnd:   loopEndPos = position = juce::jlimit (loopStartPos + minLength, 1.0f, position); name = "loopEndPosition"; break;
+        case Marker::none:      return;
+    }
+    repaint();
+    if (onMarkerChanged)
+        onMarkerChanged (name, position);
+}
+
+void WaveformComponent::mouseMove (const juce::MouseEvent& e)
+{
+    const bool overHandle = findMarkerAt (e.position) != Marker::none || findSliceAt (e.position) >= 0;
+    setMouseCursor (overHandle ? juce::MouseCursor::LeftRightResizeCursor : juce::MouseCursor::NormalCursor);
+}
+
 void WaveformComponent::mouseDown (const juce::MouseEvent& e)
 {
     touches[e.source.getIndex()] = e.position;
@@ -137,13 +205,15 @@ void WaveformComponent::mouseDown (const juce::MouseEvent& e)
         const auto b = (++it)->second;
         pinching = true;
         draggedSlice = -1;
+        draggedMarker = Marker::none;
         pinchStartDistance = juce::jmax (10.0f, std::abs (a.x - b.x));
         pinchAnchorPosition = positionForX ((a.x + b.x) * 0.5f);
         gestureStartView = getVisibleRange();
         return;
     }
     pinching = false;
-    draggedSlice = findSliceAt (e.position);
+    draggedMarker = findMarkerAt (e.position);
+    draggedSlice = draggedMarker == Marker::none ? findSliceAt (e.position) : -1;
     gestureStartView = getVisibleRange();
     panStartX = e.position.x;
 }
@@ -165,6 +235,11 @@ void WaveformComponent::mouseDrag (const juce::MouseEvent& e)
     }
     if (pinching)
         return;  // One finger lifted: wait for both to be released
+    if (draggedMarker != Marker::none)
+    {
+        setMarkerPosition (draggedMarker, positionForX (e.position.x));
+        return;
+    }
     if (draggedSlice >= 0 && draggedSlice < (int) slices.size())
     {
         slices[(size_t) draggedSlice] = juce::jlimit (0.0005f, 0.9995f, positionForX (e.position.x));
@@ -187,6 +262,11 @@ void WaveformComponent::mouseUp (const juce::MouseEvent& e)
     touches.erase (e.source.getIndex());
     if (touches.empty())
         pinching = false;
+    if (draggedMarker != Marker::none)
+    {
+        draggedMarker = Marker::none;
+        repaint();
+    }
     if (draggedSlice >= 0)
     {
         draggedSlice = -1;
@@ -198,6 +278,13 @@ void WaveformComponent::mouseUp (const juce::MouseEvent& e)
 
 void WaveformComponent::mouseDoubleClick (const juce::MouseEvent& e)
 {
+    if (const auto marker = findMarkerAt (e.position); marker != Marker::none)
+    {
+        // Double-click on a start/end or loop marker: back to the start/end of the sound
+        setMarkerPosition (marker, marker == Marker::start || marker == Marker::loopStart ? 0.0f : 1.0f);
+        draggedMarker = Marker::none;
+        return;
+    }
     const int slice = findSliceAt (e.position);
     if (slice >= 0 && e.position.y <= 14.0f)
     {
@@ -281,15 +368,29 @@ void WaveformComponent::paint (juce::Graphics& g)
     g.setColour (SourceColours::accent.withAlpha (0.85f));
     g.fillPath (path);
 
-    // Start/end and loop markers
-    g.setColour (SourceColours::text);
-    g.drawVerticalLine ((int) xFor (startPos), 0.0f, h);
-    g.drawVerticalLine (juce::jmin ((int) w - 1, (int) xFor (endPos)), 0.0f, h);
+    // Start/end markers (green, handles at the top pointing inwards) and loop markers (blue, handles at the bottom)
+    auto drawMarker = [&] (Marker marker, juce::Colour colour, bool atTop, bool pointsRight)
+    {
+        const float x = juce::jlimit (0.0f, w, xFor (getMarkerPosition (marker)));
+        g.setColour (marker == draggedMarker ? SourceColours::text : colour);
+        g.fillRect (x - 0.75f, 0.0f, 1.5f, h);
+        const float y0 = atTop ? 0.0f : h - handleSize;
+        const float y1 = atTop ? handleSize : h;
+        const float tipX = pointsRight ? x + handleSize * 0.85f : x - handleSize * 0.85f;
+        juce::Path flag;
+        flag.addTriangle (x, y0, x, y1, tipX, atTop ? y0 : y1);
+        g.fillPath (flag);
+    };
+    const auto startEndColour = juce::Colour (0xff5fd38d);
+    const auto loopColour = juce::Colour (0xff7fa8ff);
+    drawMarker (Marker::start, startEndColour, true, true);
+    drawMarker (Marker::end, startEndColour, true, false);
     if (loopVisible)
     {
-        g.setColour (juce::Colour (0xff7fa8ff));
-        g.drawVerticalLine ((int) xFor (loopStartPos), 0.0f, h);
-        g.drawVerticalLine (juce::jmin ((int) w - 1, (int) xFor (loopEndPos)), 0.0f, h);
+        g.setColour (loopColour.withAlpha (0.12f));
+        g.fillRect (juce::Rectangle<float>::leftTopRightBottom (xFor (loopStartPos), h - 3.0f, xFor (loopEndPos), h));
+        drawMarker (Marker::loopStart, loopColour, false, true);
+        drawMarker (Marker::loopEnd, loopColour, false, false);
     }
 
     // Slice markers (orange; faded when the note mapping doesn't use slices), with a handle if they can be dragged
@@ -738,7 +839,9 @@ ModulatorsComponent::ModulatorRow::ModulatorRow (ModulatorsComponent& owner, Sou
         waveform.setSelectedItemIndex (SourceDefaults::lfoWaveform, juce::dontSendNotification);
         waveform.setTooltip ("LFO waveform");
         waveform.onChange = [this, &owner] { owner.sendModulator (*this); };
-        addAndMakeVisible (waveform);
+        waveform.setTooltip ("Drag the green handles (top) to set the start and end, and the blue ones (bottom, in loop modes) to set the loop. "
+                         "Double-click a handle to reset it. Scroll or pinch to zoom");
+    addAndMakeVisible (waveform);
         setUp (rate, SourceHelpers::minLfoRate, SourceHelpers::maxLfoRate, 0.01, SourceDefaults::lfoRate, "LFO rate (Hz)");
         rate.slider.setSkewFactorFromMidPoint (2.0);
         rate.slider.setTextValueSuffix (" Hz");
@@ -1318,6 +1421,11 @@ namespace
         };
         return groups;
     }
+
+    bool isWaveformMarkerParameter (const juce::String& name)
+    {
+        return name == "startPosition" || name == "endPosition" || name == "loopStartPosition" || name == "loopEndPosition";
+    }
 }
 
 SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender actionSender)
@@ -1385,6 +1493,11 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
     addChildComponent (addSliceButton);
     slicesFromOnsetsButton.onClick = [this] { if (soundUUID.isNotEmpty()) actions.send (ACTION_SET_SOUND_SLICES_FROM_ONSETS, { soundUUID }); };
     addChildComponent (slicesFromOnsetsButton);
+    waveform.onMarkerChanged = [this] (const juce::String& name, float value)
+    {
+        if (auto* info = findSoundParameterInfo (name); info != nullptr && soundUUID.isNotEmpty())
+            parameterChanged (*info, value);
+    };
     waveform.onSlicesChanged = [this] (const std::vector<float>& positions)
     {
         std::vector<float> times;
@@ -1483,6 +1596,16 @@ void SoundEditorComponent::updateFromState()
     rootNoteLabel.setVisible (! allSounds);
     similarButton.setVisible (! allSounds);
     modulators.setVisible (! allSounds);
+    // Start/end and loop positions are edited with the waveform's handles when one sound is shown (sliders for all sounds)
+    bool layoutChanged = false;
+    for (auto* control : parameterControls)
+        if (isWaveformMarkerParameter (control->getInfo().name) && control->isVisible() != allSounds)
+        {
+            control->setVisible (allSounds);
+            layoutChanged = true;
+        }
+    if (layoutChanged)
+        layoutParameters();
 
     if (allSounds)
     {
@@ -1640,6 +1763,8 @@ void SoundEditorComponent::layoutParameters()
         y += headerHeight;
         for (auto* control : group.controls)
         {
+            if (! control->isVisible())
+                continue;
             control->setBounds (x, y, columnWidth - 12, rowHeight);
             y += rowHeight;
         }

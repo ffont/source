@@ -42,6 +42,8 @@ public:
     void setSlices (std::vector<float> positions, bool editable, bool active);
     /** Called when the user moves or removes editable slice markers (positions 0..1, sorted). */
     std::function<void (const std::vector<float>&)> onSlicesChanged;
+    /** Called when the user drags the start/end or loop start/end markers (the name of the parameter and its new value, 0..1). */
+    std::function<void (const juce::String& parameterName, float value)> onMarkerChanged;
     /** Part of the sound (0..1) shown. */
     juce::Range<float> getVisibleRange() const { return { viewStart, viewEnd }; }
     void resetZoom();
@@ -51,6 +53,7 @@ public:
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseUp (const juce::MouseEvent& e) override;
     void mouseDoubleClick (const juce::MouseEvent& e) override;
+    void mouseMove (const juce::MouseEvent& e) override;
     void mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
     void mouseMagnify (const juce::MouseEvent& e, float scaleFactor) override;
 
@@ -60,6 +63,11 @@ private:
     void setView (float start, float end);
     void zoomAround (float factor, float anchorX);  // factor > 1 zooms in
     int findSliceAt (juce::Point<float> point) const;  // Index of the editable slice marker at the point, or -1
+    enum class Marker { none, start, end, loopStart, loopEnd };
+    Marker findMarkerAt (juce::Point<float> point) const;  // Start/end (top handles) or loop (bottom handles) marker at the point
+    float getMarkerPosition (Marker marker) const;
+    void setMarkerPosition (Marker marker, float position);  // Keeps start < end and loop start < loop end, notifies onMarkerChanged
+    static constexpr float handleSize = 16.0f;
 
     static constexpr int numPeakBins = 65536;
     std::vector<std::pair<float, float>> peaks;  // Computed once (the audio is not referenced afterwards)
@@ -75,6 +83,7 @@ private:
     // Gestures
     std::map<int, juce::Point<float>> touches;  // Position of each finger/mouse (by input source index)
     int draggedSlice = -1;
+    Marker draggedMarker = Marker::none;
     bool pinching = false;
     float pinchStartDistance = 1.0f, pinchAnchorPosition = 0.0f;
     juce::Range<float> gestureStartView;
