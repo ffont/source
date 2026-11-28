@@ -101,6 +101,7 @@ private:
     std::array<bool, NUM_PRESET_SLOTS> presetSlotUsed {};
     int lastPresetIndexShown = -2;
     juce::String lastPresetNameShown;
+    juce::String lastPresetUUIDShown;  // To know when a new preset was loaded
 
     // ValueTree::Listener: changes are coalesced and the UI is refreshed in the timer callback
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override { stateDirty = true; }

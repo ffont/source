@@ -606,6 +606,21 @@ void SourceNativeEditor::updateFromState()
     searchPanel.updateFromState (preset);
 
     soundList.updateFromState (preset);
+    {
+        // A preset was loaded: if it has only one sound, show that sound (instead of "All sounds")
+        const auto presetUUID = preset.getProperty (SourceIDs::uuid).toString();
+        if (presetUUID != lastPresetUUIDShown)
+        {
+            lastPresetUUIDShown = presetUUID;
+            juce::ValueTree onlySound;
+            int numSounds = 0;
+            for (const auto& child : preset)
+                if (child.hasType (SourceIDs::SOUND) && ++numSounds == 1)
+                    onlySound = child;
+            if (numSounds == 1)
+                soundList.selectSound (onlySound.getProperty (SourceIDs::uuid).toString());
+        }
+    }
     if (soundEditor.getSoundUUID() != soundList.getSelectedSoundUUID())
         soundEditor.setSound (soundList.getSelectedSoundUUID());
     else
@@ -749,13 +764,10 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
     auto tabs = header.removeFromRight ((int) tabButtons.size() * tabWidth).withSizeKeepingCentre ((int) tabButtons.size() * tabWidth, 28);
     for (auto* button : tabButtons)
         button->setBounds (tabs.removeFromLeft (tabWidth));
-    // Tempo left of the tabs
+    // Tempo: centred between the voices and the tabs (laid out below, once the voices are placed)
     header.removeFromRight (10);
-    {
-        auto bpmArea = header.removeFromRight (150);
-        bpmSlider.setBounds (bpmArea.removeFromRight (90).withSizeKeepingCentre (90, 24));
-        bpmLabel.setBounds (bpmArea);
-    }
+    const int bpmWidth = 150;
+    auto bpmReserved = header.removeFromRight (bpmWidth);
     // Preset controls after the title, in two rows: slots (with previous/next) and name with the save buttons
     header.removeFromLeft (12);
     {
@@ -789,6 +801,14 @@ void SourceNativeEditor::layoutContent (juce::Rectangle<int> bounds, bool portra
         auto buttons = group.withSizeKeepingCentre (buttonsWidth, 20);
         fewerVoicesButton.setBounds (buttons.removeFromLeft (20));
         moreVoicesButton.setBounds (buttons);
+        // Tempo centred in the space between the voice buttons and the tabs
+        const int gapStart = moreVoicesButton.getRight();
+        const int gapEnd = bpmReserved.getRight();
+        auto bpmArea = juce::Rectangle<int> (bpmWidth, bpmReserved.getHeight())
+                           .withCentre ({ (gapStart + gapEnd) / 2, bpmReserved.getCentreY() });
+        bpmArea = bpmArea.withX (juce::jlimit (gapStart + 4, juce::jmax (gapStart + 4, gapEnd - bpmWidth), bpmArea.getX()));
+        bpmSlider.setBounds (bpmArea.removeFromRight (90).withSizeKeepingCentre (90, 24));
+        bpmLabel.setBounds (bpmArea);
     }
     b.removeFromTop (8);
 
