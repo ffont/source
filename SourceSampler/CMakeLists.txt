@@ -175,6 +175,12 @@ target_sources(SourceSampler PRIVATE
     ${SOURCE_CORE_SOURCES}
     Source/PluginProcessor.cpp)
 
+# Desktop standalone app: native window without JUCE's "Options" button (see Source/StandaloneApp.cpp)
+if(NOT SOURCE_IOS AND TARGET SourceSampler_Standalone)
+    target_sources(SourceSampler_Standalone PRIVATE Source/StandaloneApp.cpp)
+    target_compile_definitions(SourceSampler_Standalone PRIVATE JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1)
+endif()
+
 if(SOURCE_WEB_UI)
     target_sources(SourceSampler PRIVATE Source/PluginEditor.cpp)
     target_compile_definitions(SourceSampler PRIVATE SOURCE_WEB_UI=1 JUCE_WEB_BROWSER=1)

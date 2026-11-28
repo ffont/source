@@ -249,6 +249,52 @@ public:
 
 
 
+class GraphHelpersTests : public juce::UnitTest
+{
+public:
+    GraphHelpersTests() : juce::UnitTest ("Graph helpers", "Source") {}
+
+    // Gain of juce::dsp::LadderFilter (as configured in the voices) for a quiet sine, measured after it settles
+    static double measureLadderGain (double frequency, float cutoff, float resonance, double sampleRate)
+    {
+        juce::dsp::LadderFilter<float> filter;
+        filter.prepare ({ sampleRate, 512, 1 });
+        filter.setCutoffFrequencyHz (cutoff);
+        filter.setResonance (resonance);
+        filter.reset();
+        const int numSamples = (int) sampleRate;  // 1 s
+        juce::AudioBuffer<float> buffer (1, numSamples);
+        for (int i = 0; i < numSamples; ++i)
+            buffer.setSample (0, i, 0.001f * (float) std::sin (2.0 * juce::MathConstants<double>::pi * frequency * i / sampleRate));
+        juce::dsp::AudioBlock<float> block (buffer);
+        filter.process (juce::dsp::ProcessContextReplacing<float> (block));
+        const int start = numSamples / 2;
+        return buffer.getRMSLevel (0, start, numSamples - start) / (0.001 / std::sqrt (2.0));
+    }
+
+    void runTest() override
+    {
+        using namespace SourceHelpers;
+        beginTest ("The filter response matches the ladder filter used by the voices");
+        const double sampleRate = 48000.0;
+        for (float resonance : { 0.0f, 0.5f, 0.9f })
+            for (double frequency : { 100.0, 800.0, 1000.0, 2500.0, 8000.0 })
+            {
+                const double expected = juce::Decibels::gainToDecibels (measureLadderGain (frequency, 1000.0f, resonance, sampleRate));
+                const double computed = juce::Decibels::gainToDecibels (ladderFilterMagnitude (frequency, 1000.0, resonance, sampleRate));
+                expectWithinAbsoluteError (computed, expected, 0.5, "f=" + juce::String (frequency) + " res=" + juce::String (resonance));
+            }
+
+        beginTest ("ADSR levels");
+        expectWithinAbsoluteError (adsrLevelAt (0.05f, 0.1f, 0.2f, 0.5f, 0.3f, 1.0f), 0.5f, 1.0e-5f);   // Half of the attack
+        expectWithinAbsoluteError (adsrLevelAt (0.2f, 0.1f, 0.2f, 0.5f, 0.3f, 1.0f), 0.75f, 1.0e-5f);   // Half of the decay
+        expectWithinAbsoluteError (adsrLevelAt (0.8f, 0.1f, 0.2f, 0.5f, 0.3f, 1.0f), 0.5f, 1.0e-5f);    // Sustain
+        expectWithinAbsoluteError (adsrLevelAt (1.15f, 0.1f, 0.2f, 0.5f, 0.3f, 1.0f), 0.25f, 1.0e-5f);  // Half of the release
+        expectWithinAbsoluteError (adsrLevelAt (2.0f, 0.1f, 0.2f, 0.5f, 0.3f, 1.0f), 0.0f, 1.0e-5f);
+        expectWithinAbsoluteError (adsrLevelAt (0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 1.0f), 0.7f, 1.0e-5f);    // No attack or decay
+    }
+};
+
 class ModulatorHelpersTests : public juce::UnitTest
 {
 public:
@@ -381,3 +427,4 @@ static NoteLayoutTests noteLayoutTests;
 static MpeHelpersTests mpeHelpersTests;
 static NoteIndexTests noteIndexTests;
 static StateHelpersTests stateHelpersTests;
+static GraphHelpersTests graphHelpersTests;

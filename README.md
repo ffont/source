@@ -201,7 +201,7 @@ sudo apt-get install libasound2 libcurl4 libfreetype6 libfontconfig1 libx11-6 li
 
 Unzip the files you need and copy them to these locations:
 
-* **Standalone app**: `SourceSampler` anywhere (e.g. `~/.local/bin`), and run it. It uses ALSA, or JACK if it is running (select the audio device in the *Options* menu).
+* **Standalone app**: `SourceSampler` anywhere (e.g. `~/.local/bin`), and run it. It uses ALSA, or JACK if it is running (select the audio device in the *Settings* tab).
 * **VST3**: `SourceSampler.vst3` to `~/.vst3` (or `/usr/lib/vst3`).
 * **LV2**: `SourceSampler.lv2` to `~/.lv2` (or `/usr/lib/lv2`).
 
@@ -209,7 +209,7 @@ Unzip the files you need and copy them to these locations:
 
 The Windows builds (`SOURCE-<version>-windows-x64-*.zip`) run on 64-bit Windows 10 and 11. Unzip the files you need and copy them to these locations:
 
-* **Standalone app**: `SourceSampler.exe` anywhere (e.g. `C:\Program Files\SOURCE`), and run it. Select the audio device in the *Options* menu.
+* **Standalone app**: `SourceSampler.exe` anywhere (e.g. `C:\Program Files\SOURCE`), and run it. Select the audio device in the *Settings* tab.
 * **VST3**: `SourceSampler.vst3` to `C:\Program Files\Common Files\VST3`.
 
 The builds are not signed, so Windows SmartScreen may show a warning the first time you open the app: click *More info* and then *Run anyway*. Then restart your DAW (or rescan plugins) so that it finds SOURCE.

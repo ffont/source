@@ -14,6 +14,7 @@
 
 #include <JuceHeader.h>
 #include "SourceLookAndFeel.h"
+#include "SoundGraphs.h"
 #include "SourceParameters.h"
 #include <deque>
 #include <map>
@@ -326,7 +327,11 @@ private:
         juce::String name;
         std::vector<ParameterControl*> controls;
         std::unique_ptr<juce::Label> header;
+        std::map<juce::String, std::pair<juce::Component*, int>> graphsBefore;  // Graph (and its height) shown above a control
     };
+    FilterGraphComponent filterGraph;
+    EnvelopeGraphComponent amplitudeEnvelopeGraph, filterEnvelopeGraph;
+    void updateGraphs (const juce::ValueTree& soundState);
     juce::Component parametersContent;
     juce::Viewport parametersViewport;
     juce::OwnedArray<ParameterControl> parameterControls;

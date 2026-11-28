@@ -1520,6 +1520,13 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
                 grouped.add (name);
             }
         }
+        if (groupName == "Amplitude")
+            group.graphsBefore["attack"] = { &amplitudeEnvelopeGraph, 64 };
+        if (groupName == "Filter")
+        {
+            group.graphsBefore["filterCutoff"] = { &filterGraph, 96 };
+            group.graphsBefore["filterAttack"] = { &filterEnvelopeGraph, 64 };
+        }
         groups.push_back (std::move (group));
     }
     Group other;
@@ -1538,7 +1545,16 @@ SoundEditorComponent::SoundEditorComponent (SourceSampler& s, SourceActionSender
         parametersContent.addAndMakeVisible (*group.header);
         for (auto* control : group.controls)
             parametersContent.addAndMakeVisible (control);
+        for (auto& [name, graph] : group.graphsBefore)
+            parametersContent.addAndMakeVisible (graph.first);
     }
+    filterGraph.onChange = [this] (float cutoff, float resonance)
+    {
+        if (auto* info = findSoundParameterInfo ("filterCutoff"))
+            parameterChanged (*info, cutoff);
+        if (auto* info = findSoundParameterInfo ("filterRessonance"))
+            parameterChanged (*info, resonance);
+    };
     parametersContent.addAndMakeVisible (modulators);
 
     parametersViewport.setViewedComponent (&parametersContent, false);
@@ -1617,6 +1633,7 @@ void SoundEditorComponent::updateFromState()
             if (! control->isBeingEdited())
                 control->setValue (firstSound.isValid() ? (float) firstSound.getProperty (control->getInfo().name, control->getInfo().defaultValue)
                                                         : control->getInfo().defaultValue);
+        updateGraphs (firstSound);
         return;
     }
 
@@ -1641,6 +1658,7 @@ void SoundEditorComponent::updateFromState()
     for (auto* control : parameterControls)
         if (! control->isBeingEdited())
             control->setValue ((float) soundState.getProperty (control->getInfo().name, control->getInfo().defaultValue));
+    updateGraphs (soundState);
 
     {
         // Only sounds from Freesound can be replaced by similar ones
@@ -1712,6 +1730,20 @@ void SoundEditorComponent::updateFromState()
         layoutParameters();
 }
 
+void SoundEditorComponent::updateGraphs (const juce::ValueTree& soundState)
+{
+    // Values of the sound (or the defaults if there is no sound)
+    auto get = [&soundState] (const char* name)
+    {
+        const auto* info = findSoundParameterInfo (name);
+        const float defaultValue = info != nullptr ? info->defaultValue : 0.0f;
+        return soundState.isValid() ? (float) soundState.getProperty (name, defaultValue) : defaultValue;
+    };
+    filterGraph.setValues (get ("filterCutoff"), get ("filterRessonance"));
+    amplitudeEnvelopeGraph.setValues (get ("attack"), get ("decay"), get ("sustain"), get ("release"));
+    filterEnvelopeGraph.setValues (get ("filterAttack"), get ("filterDecay"), get ("filterSustain"), get ("filterRelease"));
+}
+
 void SoundEditorComponent::paint (juce::Graphics& g)
 {
     g.setColour (SourceColours::card);
@@ -1765,6 +1797,11 @@ void SoundEditorComponent::layoutParameters()
         {
             if (! control->isVisible())
                 continue;
+            if (auto it = group.graphsBefore.find (control->getInfo().name); it != group.graphsBefore.end())
+            {
+                it->second.first->setBounds (x, y + 2, columnWidth - 12, it->second.second);
+                y += it->second.second + 6;
+            }
             control->setBounds (x, y, columnWidth - 12, rowHeight);
             y += rowHeight;
         }
