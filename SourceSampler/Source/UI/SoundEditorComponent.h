@@ -22,31 +22,63 @@
 class SourceSampler;
 
 
-/** Waveform overview of a sound with start/end/loop markers and playhead positions. */
+/** Waveform of a sound with start/end/loop markers, slice markers and playhead positions. It can be zoomed (mouse
+    wheel or trackpad scroll and pinch, two-finger pinch on touch screens; double-click resets the zoom) and moved when
+    zoomed (dragging, horizontal scroll). Editable slice markers can be dragged by their handle (and removed with a
+    double-click on the handle). */
 class WaveformComponent : public juce::Component,
                           public juce::SettableTooltipClient
 {
 public:
     /** Computes the min/max peaks of the given audio (call from the message thread). */
-    void setAudio (const juce::AudioBuffer<float>* audio);
+    void setAudio (const juce::AudioBuffer<float>* audio, double sampleRate);
     bool hasAudio() const { return ! peaks.empty(); }
+    double getDuration() const { return duration; }
 
     void setMarkers (float start, float end, float loopStart, float loopEnd, bool showLoop);
     void setPlayheads (std::vector<float> positions);
     void setMessage (const juce::String& message) { messageText = message; repaint(); }
+    /** Slice markers (positions 0..1). Editable ones can be dragged; inactive ones are drawn faded. */
+    void setSlices (std::vector<float> positions, bool editable, bool active);
+    /** Called when the user moves or removes editable slice markers (positions 0..1, sorted). */
+    std::function<void (const std::vector<float>&)> onSlicesChanged;
+    /** Part of the sound (0..1) shown. */
+    juce::Range<float> getVisibleRange() const { return { viewStart, viewEnd }; }
+    void resetZoom();
 
     void paint (juce::Graphics& g) override;
-
-    std::function<void()> onClick;
-    void mouseDown (const juce::MouseEvent&) override { if (onClick) onClick(); }
+    void mouseDown (const juce::MouseEvent& e) override;
+    void mouseDrag (const juce::MouseEvent& e) override;
+    void mouseUp (const juce::MouseEvent& e) override;
+    void mouseDoubleClick (const juce::MouseEvent& e) override;
+    void mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+    void mouseMagnify (const juce::MouseEvent& e, float scaleFactor) override;
 
 private:
-    static constexpr int numPeakBins = 2048;
+    float xForPosition (float position) const;
+    float positionForX (float x) const;
+    void setView (float start, float end);
+    void zoomAround (float factor, float anchorX);  // factor > 1 zooms in
+    int findSliceAt (juce::Point<float> point) const;  // Index of the editable slice marker at the point, or -1
+
+    static constexpr int numPeakBins = 65536;
     std::vector<std::pair<float, float>> peaks;  // Computed once (the audio is not referenced afterwards)
+    double duration = 0.0;
     float startPos = 0.0f, endPos = 1.0f, loopStartPos = 0.0f, loopEndPos = 1.0f;
     bool loopVisible = false;
     std::vector<float> playheads;
     juce::String messageText;
+    std::vector<float> slices;
+    bool slicesEditable = false, slicesActive = false;
+    float viewStart = 0.0f, viewEnd = 1.0f;
+
+    // Gestures
+    std::map<int, juce::Point<float>> touches;  // Position of each finger/mouse (by input source index)
+    int draggedSlice = -1;
+    bool pinching = false;
+    float pinchStartDistance = 1.0f, pinchAnchorPosition = 0.0f;
+    juce::Range<float> gestureStartView;
+    float panStartX = 0.0f;
 };
 
 
@@ -179,14 +211,15 @@ private:
         virtual int getPreferredHeight() const = 0;
         virtual bool isBeingEdited() const = 0;
         void paint (juce::Graphics& g) override;
-        static constexpr int typeLabelWidth = 58;
+        static constexpr int typeLabelWidth = 72;
     };
 
     struct ModulatorRow : public Row
     {
         ModulatorRow (ModulatorsComponent& owner, SourceHelpers::ModulatorType type);
         void updateSyncVisibility();
-        int getPreferredHeight() const override { return type == SourceHelpers::ModulatorType::steps ? 150 : 92; }
+        bool isSourceType() const { return type == SourceHelpers::ModulatorType::aftertouch || type == SourceHelpers::ModulatorType::velocity; }
+        int getPreferredHeight() const override { return type == SourceHelpers::ModulatorType::steps ? 150 : (isSourceType() ? 62 : 92); }
         void resized() override;
         bool isBeingEdited() const override;
         SourceHelpers::ModulatorType type;
@@ -223,13 +256,17 @@ private:
     void sendMapping (MappingRow& row);
     void updateModulatorRow (ModulatorRow& row, const juce::ValueTree& state);
     void updateMappingRow (MappingRow& row, const juce::ValueTree& state, bool mpeEnabled);
-    std::vector<juce::TextButton*> getAddButtons() { return { &addLfoButton, &addAdsrButton, &addStepsButton, &addMpeButton, &addCcButton }; }
+    std::vector<juce::TextButton*> getAddButtons()
+    {
+        return { &addLfoButton, &addAdsrButton, &addStepsButton, &addAftertouchButton, &addVelocityButton, &addMpeButton, &addCcButton };
+    }
     SourceActionSender actions;
     juce::String currentSoundUUID;
     juce::OwnedArray<Row> rows;
     std::vector<ModulatorRow*> modulatorRows;  // In the order of the modulators (the index used by the voices' history)
     std::vector<MappingRow*> mpeRows, ccRows;  // In the order of the MPE / MIDI CC mappings
     juce::TextButton addLfoButton { "Add LFO" }, addAdsrButton { "Add ADSR" }, addStepsButton { "Add steps" };
+    juce::TextButton addAftertouchButton { "Add aftertouch" }, addVelocityButton { "Add velocity" };
     juce::TextButton addMpeButton { "Add MPE" }, addCcButton { "Add MIDI CC" };
     std::map<int, uint32_t> lastReadCounts;  // Per voice
 };
@@ -269,6 +306,10 @@ private:
     juce::Label titleLabel, detailsLabel;
     WaveformComponent waveform;
     juce::Slider rootNoteSlider;
+    juce::TextButton similarButton { "Replace with similar" };
+    juce::TextButton addSliceButton { "Add slice" }, slicesFromOnsetsButton { "Slices from waveform" };
+    std::vector<float> manualSliceTimes;  // Current manual slices (seconds)
+    void sendManualSlices (const std::vector<float>& times);
     juce::Label rootNoteLabel;
 
     struct Group

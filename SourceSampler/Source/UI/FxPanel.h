@@ -32,6 +32,11 @@ private:
         juce::Label label;
         juce::Slider slider;
         juce::ToggleButton toggle;
+        // Rates/times that can be synced to the tempo: the slider is replaced by a divisions combo when synced
+        int syncParamIndex = -1, divisionParamIndex = -1;
+        juce::TextButton syncButton { "Sync" };
+        juce::ComboBox divisionCombo;
+        void updateSyncVisibility();
     };
     struct EffectCard
     {

@@ -7,6 +7,7 @@
 */
 
 #include "FxPanel.h"
+#include "helpers_source.h"
 
 namespace
 {
@@ -38,7 +39,10 @@ FxPanel::FxPanel (SourceActionSender actionSender) : actions (std::move (actionS
             const auto& info = infos[(size_t) i];
             if (effectName != info.effect)
                 continue;
-            if (juce::String (info.id).endsWith ("Enabled"))
+            const juce::String id (info.id);
+            if (id.endsWith ("Sync") || id.endsWith ("Division"))
+                continue;  // Part of the control of the synced parameter (see below)
+            if (id.endsWith ("Enabled"))
             {
                 // The on/off switch goes in the title bar of the card
                 effect->enabledParamIndex = i;
@@ -83,6 +87,31 @@ FxPanel::FxPanel (SourceActionSender actionSender) : actions (std::move (actionS
                 slider.updateText();
                 slider.onValueChange = [this, control, i] { sendParameter (i, (float) control->slider.getValue()); };
                 effect->card->addAndMakeVisible (slider);
+
+                // Tempo sync ("<id>Sync" and "<id>Division" parameters)
+                control->syncParamIndex = SourceFx::findParam (id + "Sync");
+                control->divisionParamIndex = SourceFx::findParam (id + "Division");
+                if (control->syncParamIndex >= 0 && control->divisionParamIndex >= 0)
+                {
+                    const int syncIndex = control->syncParamIndex, divisionIndex = control->divisionParamIndex;
+                    control->syncButton.setClickingTogglesState (true);
+                    control->syncButton.setTooltip ("Sync to the tempo (Ableton Link, the host or the BPM next to the voices)");
+                    control->syncButton.onClick = [this, control, syncIndex]
+                    {
+                        control->updateSyncVisibility();
+                        sendParameter (syncIndex, control->syncButton.getToggleState() ? 1.0f : 0.0f);
+                    };
+                    effect->card->addAndMakeVisible (control->syncButton);
+                    for (const auto& division : SourceHelpers::getSyncDivisions())
+                        control->divisionCombo.addItem (division.name, control->divisionCombo.getNumItems() + 1);
+                    control->divisionCombo.setTooltip (id.endsWith ("Time") ? "Delay time as a note division (D = dotted, T = triplet)"
+                                                                            : "One cycle per note division (D = dotted, T = triplet)");
+                    control->divisionCombo.onChange = [this, control, divisionIndex]
+                    {
+                        sendParameter (divisionIndex, (float) juce::jmax (0, control->divisionCombo.getSelectedItemIndex()));
+                    };
+                    effect->card->addChildComponent (control->divisionCombo);
+                }
             }
         }
     }
@@ -112,6 +141,15 @@ FxPanel::FxPanel (SourceActionSender actionSender) : actions (std::move (actionS
         control.slider.onValueChange = [this] { sendReverbParameters(); };
         reverbCard.addAndMakeVisible (control.slider);
     }
+}
+
+void FxPanel::Control::updateSyncVisibility()
+{
+    if (syncParamIndex < 0)
+        return;
+    const bool sync = syncButton.getToggleState();
+    slider.setVisible (! sync);
+    divisionCombo.setVisible (sync);
 }
 
 void FxPanel::sendParameter (int paramIndex, float value)
@@ -150,6 +188,22 @@ void FxPanel::updateFromState (const juce::ValueTree& presetState)
                 control->toggle.setToggleState (value >= 0.5f, juce::dontSendNotification);
             else if (! control->slider.isMouseButtonDown())
                 control->slider.setValue (value, juce::dontSendNotification);
+            if (control->syncParamIndex >= 0)
+            {
+                const auto& syncInfo = infos[(size_t) control->syncParamIndex];
+                const auto& divisionInfo = infos[(size_t) control->divisionParamIndex];
+                const bool sync = (float) presetState.getProperty (syncInfo.getIdentifier(), syncInfo.defaultValue) >= 0.5f;
+                if (sync != control->syncButton.getToggleState())
+                {
+                    control->syncButton.setToggleState (sync, juce::dontSendNotification);
+                    control->updateSyncVisibility();
+                }
+                if (! control->divisionCombo.isPopupActive())
+                    control->divisionCombo.setSelectedItemIndex ((int) (float) presetState.getProperty (divisionInfo.getIdentifier(), divisionInfo.defaultValue),
+                                                                 juce::dontSendNotification);
+                control->syncButton.setAlpha (enabled ? 1.0f : 0.45f);
+                control->divisionCombo.setAlpha (enabled ? 1.0f : 0.45f);
+            }
             // Controls of effects that are off are dimmed (but can still be edited)
             const float alpha = enabled ? 1.0f : 0.45f;
             control->slider.setAlpha (alpha);
@@ -184,6 +238,12 @@ void FxPanel::layoutCard (EffectCard& effect)
         else
         {
             control->label.setBounds (row.removeFromLeft (labelWidth));
+            if (control->syncParamIndex >= 0)
+            {
+                control->syncButton.setBounds (row.removeFromRight (48));
+                row.removeFromRight (6);
+                control->divisionCombo.setBounds (row.withWidth (juce::jmin (row.getWidth(), 120)));  // Same place as the slider
+            }
             control->slider.setBounds (row);
         }
     }

@@ -28,6 +28,15 @@ struct FreesoundSearchResult
     juce::int64 filesize = 0;
     std::array<float, 3> tristimulus { -1.0f, -1.0f, -1.0f };  // -1 if not available
     std::vector<float> embedding;                              // sim_laion_clap (empty if not available)
+    std::vector<float> onsetTimes;                             // onset_times, in seconds (empty if not available)
+    /** Onset times as strings (the "slices" argument of the add/replace sound actions, comma-separated). */
+    juce::StringArray getOnsetTimesAsStrings() const
+    {
+        juce::StringArray strings;
+        for (auto t : onsetTimes)
+            strings.add (juce::String (t, 4));
+        return strings;
+    }
     float x = 0.0f, y = 0.0f;                                  // Position in the map, in [-1, 1]
     bool hasPosition = false;
 
@@ -80,7 +89,7 @@ public:
 
     static constexpr int pageSize = 150;
     static constexpr int maxResultsLimit = 600;
-    static juce::String getFields() { return "id,name,username,license,duration,filesize,type,previews,tristimulus,sim_laion_clap"; }
+    static juce::String getFields() { return "id,name,username,license,duration,filesize,type,previews,tristimulus,sim_laion_clap,onset_times"; }
 
     explicit FreesoundSearch (juce::String apiKey);
     ~FreesoundSearch() override;

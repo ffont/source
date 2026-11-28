@@ -32,6 +32,9 @@ namespace SourceFx
         delayEnabled, delayTime, delayFeedback, delayDamping, delayMix, delayPingPong,
         reverbEnabled,
         compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup,
+        // Tempo sync of the rate/time parameters: "<param>Sync" (on/off) and "<param>Division" (index in
+        // SourceHelpers::getSyncDivisions: one cycle per division for rates, the delay time for the delay)
+        chorusRateSync, chorusRateDivision, phaserRateSync, phaserRateDivision, delayTimeSync, delayTimeDivision,
         numParams
     };
     constexpr int numParams = (int) Param::numParams;
@@ -88,6 +91,12 @@ namespace SourceFx
             { "fxCompressorAttack",       "Compressor", "Attack",        0.1f,  200.0f,   10.0f,   0.1f,   "ms", false, 20.0f },
             { "fxCompressorRelease",      "Compressor", "Release",       5.0f, 2000.0f,  150.0f,   1.0f,   "ms", false, 200.0f },
             { "fxCompressorMakeup",       "Compressor", "Makeup",        0.0f,   24.0f,    0.0f,   0.1f,   "dB", false, 0.0f },
+            { "fxChorusRateSync",         "Chorus",     "Sync",          0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
+            { "fxChorusRateDivision",     "Chorus",     "Rate",          0.0f,   17.0f,    3.0f,   1.0f,   "",   false, 0.0f },  // "1 bar"
+            { "fxPhaserRateSync",         "Phaser",     "Sync",          0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
+            { "fxPhaserRateDivision",     "Phaser",     "Rate",          0.0f,   17.0f,    3.0f,   1.0f,   "",   false, 0.0f },  // "1 bar"
+            { "fxDelayTimeSync",          "Delay",      "Sync",          0.0f,    1.0f,    0.0f,   1.0f,   "",   true,  0.0f },
+            { "fxDelayTimeDivision",      "Delay",      "Time",          0.0f,   17.0f,   10.0f,   1.0f,   "",   false, 0.0f },  // "1/8 D"
         }};
         return infos;
     }
@@ -123,6 +132,8 @@ public:
     void setParameter (SourceFx::Param param, float value) noexcept;
     float getParameter (SourceFx::Param param) const noexcept { return parameters[(size_t) param].load(); }
 
+    /** Tempo used by the synced rates/times (any thread). */
+    void setTempo (double bpm) noexcept { tempo.store (bpm, std::memory_order_relaxed); }
     /** Can be called from any thread (applied in the audio thread). dryLevel = 1 is unity gain. */
     void setReverbParameters (const juce::Reverb::Parameters& params);
 
@@ -138,6 +149,11 @@ private:
     std::array<std::atomic<float>, SourceFx::numParams> parameters;
     std::array<float, SourceFx::numParams> currentValues {};
     bool firstUpdate = true;
+    std::atomic<double> tempo { 120.0 };
+    double currentTempo = 0.0;
+    float getChorusRate() const noexcept;
+    float getPhaserRate() const noexcept;
+    float getDelayTimeMs() const noexcept;
 
     // Reverb parameters are set as a whole from other threads
     juce::SpinLock reverbParametersLock;

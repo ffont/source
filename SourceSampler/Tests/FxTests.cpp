@@ -112,6 +112,34 @@ public:
             expect (allFinite (buffer));
         }
 
+        beginTest ("Synced delay time is a note division of the tempo; synced rates and times have their companion parameters");
+        {
+            auto fx = makeChain();
+            fx->setParameter (Param::delayEnabled, 1.0f);
+            fx->setParameter (Param::delayTime, 100.0f);
+            fx->setParameter (Param::delayTimeSync, 1.0f);
+            fx->setParameter (Param::delayTimeDivision, 14.0f);  // "1/16": 125 ms at 120 BPM
+            fx->setParameter (Param::delayFeedback, 0.0f);
+            fx->setParameter (Param::delayMix, 1.0f);
+            fx->setParameter (Param::delayDamping, 20000.0f);
+            fx->setTempo (120.0);
+            juce::AudioBuffer<float> buffer (2, 12000);
+            buffer.clear();
+            for (int i = 0; i < 240; ++i)
+                for (int ch = 0; ch < 2; ++ch)
+                    buffer.setSample (ch, i, 0.5f);
+            process (*fx, buffer);
+            const int delaySamples = (int) (0.125 * sampleRate);
+            expectGreaterThan (buffer.getMagnitude (0, delaySamples + 20, 200), 0.3f, "Repeat after a 1/16 note");
+            expectLessThan (buffer.getMagnitude (0, 400, delaySamples - 500), 1.0e-4f, "Not after the unsynced 100 ms");
+            for (const char* id : { "fxChorusRate", "fxPhaserRate", "fxDelayTime" })
+            {
+                expect (SourceFx::findParam (juce::String (id) + "Sync") >= 0, id);
+                expect (SourceFx::findParam (juce::String (id) + "Division") >= 0, id);
+            }
+            expectEquals ((int) SourceFx::getParamInfo (Param::chorusRateDivision).maxValue, (int) SourceHelpers::getSyncDivisions().size() - 1);
+        }
+
         beginTest ("Delay feedback produces decaying repeats, ping-pong alternates channels");
         {
             auto fx = makeChain();

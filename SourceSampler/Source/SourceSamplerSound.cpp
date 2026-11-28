@@ -44,8 +44,8 @@ SourceSamplerSound::SourceSamplerSound (const juce::ValueTree& _state,
     // Add duration to state
     state.setProperty(SourceIDs::duration, getLengthInSeconds(), nullptr);
     
-    // Load calculated onsets (if any)
-    loadOnsetTimesSamplesFromAnalysis();
+    // Manual slices of the sound
+    setSliceTimes(sourceSoundPointer->getManualSlices());
     
     // Schedule pre-processing of audio data with stretch (so time stretching/pitch shifting is not computed in real time)
     // This does nothing if no stretching is needed
@@ -299,29 +299,21 @@ void SourceSamplerSound::setMappedVelocities(juce::BigInteger newMappedVelocitie
     midiVelocities = newMappedVelocities;
 }
 
-void SourceSamplerSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
-    onsetTimesSamples.clear();
-    for (int i=0; i<onsetTimes.size(); i++){
-        onsetTimesSamples.push_back((int)(onsetTimes[i] * soundSampleRate));
-    }
-}
-
-
-
-void SourceSamplerSound::loadOnsetTimesSamplesFromAnalysis(){
-    juce::ValueTree soundAnalysis = state.getChildWithName(SourceIDs::ANALYSIS);
-    if (soundAnalysis.isValid()){
-        juce::ValueTree onsetTimes = soundAnalysis.getChildWithName(SourceIDs::onsets);
-        if (onsetTimes.isValid()){
-            std::vector<float> onsets = {};
-            for (int i=0; i<onsetTimes.getNumChildren(); i++){
-                juce::ValueTree onsetVT = onsetTimes.getChild(i);
-                float onset = (float)(onsetVT.getProperty(SourceIDs::onsetTime));
-                onsets.push_back(onset);
-            }
-            setOnsetTimesSamples(onsets);
+void SourceSamplerSound::setSliceTimes(const std::vector<float>& times){
+    // Times are relative to the original audio: store them as positions (0..1), which also work with the stretched
+    // playback data (whose length can be different)
+    const double duration = soundSampleRate > 0.0 && data != nullptr ? (double)data->getNumSamples() / soundSampleRate : 0.0;
+    std::vector<float> positions;
+    if (duration > 0.0){
+        for (auto t: times){
+            const float position = (float)((double)t / duration);
+            if (position > 0.0f && position < 1.0f)
+                positions.push_back(position);
         }
+        std::sort(positions.begin(), positions.end());
     }
+    const juce::SpinLock::ScopedLockType lock (playbackDataLock);
+    slicePositions.swap(positions);  // The old vector is freed outside the lock (when positions goes out of scope)
 }
 
 // --------------------------------------------------------------------------------------------
@@ -366,6 +358,8 @@ SourceSound::~SourceSound ()
 
 void SourceSound::bindState ()
 {
+    convertLegacyModulationParameters(state);  // Presets made with versions before 1.1
+    mutedFlag.store((bool)state.getProperty(SourceIDs::muted, false));
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::willBeDeleted, SourceDefaults::willBeDeleted);
     willBeDeleted.referTo(state, SourceIDs::willBeDeleted, nullptr);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::allSoundsLoaded, SourceDefaults::allSoundsLoaded);
@@ -430,18 +424,6 @@ void SourceSound::bindState ()
     pitchBendRangeUp.referTo(state, SourceIDs::pitchBendRangeUp, nullptr, SourceDefaults::pitchBendRangeUp);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::pitchBendRangeDown, SourceDefaults::pitchBendRangeDown);
     pitchBendRangeDown.referTo(state, SourceIDs::pitchBendRangeDown, nullptr, SourceDefaults::pitchBendRangeDown);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2CutoffAmt, SourceDefaults::mod2CutoffAmt);
-    mod2CutoffAmt.referTo(state, SourceIDs::mod2CutoffAmt, nullptr, SourceDefaults::mod2CutoffAmt);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2GainAmt, SourceDefaults::mod2GainAmt);
-    mod2GainAmt.referTo(state, SourceIDs::mod2GainAmt, nullptr, SourceDefaults::mod2GainAmt);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PitchAmt, SourceDefaults::mod2PitchAmt);
-    mod2PitchAmt.referTo(state, SourceIDs::mod2PitchAmt, nullptr, SourceDefaults::mod2PitchAmt);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::mod2PlayheadPos, SourceDefaults::mod2PlayheadPos);
-    mod2PlayheadPos.referTo(state, SourceIDs::mod2PlayheadPos, nullptr, SourceDefaults::mod2PlayheadPos);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2CutoffAmt, SourceDefaults::vel2CutoffAmt);
-    vel2CutoffAmt.referTo(state, SourceIDs::vel2CutoffAmt, nullptr, SourceDefaults::vel2CutoffAmt);
-    SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::vel2GainAmt, SourceDefaults::vel2GainAmt);
-    vel2GainAmt.referTo(state, SourceIDs::vel2GainAmt, nullptr, SourceDefaults::vel2GainAmt);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::velSensitivity, SourceDefaults::velSensitivity);
     velSensitivity.referTo(state, SourceIDs::velSensitivity, nullptr, SourceDefaults::velSensitivity);
     SourceHelpers::addPropertyWithDefaultValueIfNotExisting(state, SourceIDs::midiChannel, SourceDefaults::midiChannel);
@@ -457,6 +439,17 @@ void SourceSound::bindState ()
     // Build the MPE mappings used by the audio thread from the state
     updateMpeMappingsSnapshot();
     updateModulatorsSnapshot();
+    
+    // Slices of presets from versions before 1.1: numSlices 0 meant "slices from the onsets" (now the onsets become
+    // the manual slices) and 1 "one slice per mapped note" (now that number of equal slices)
+    if (!state.hasProperty(SourceIDs::slices)){
+        std::vector<float> initialSlices;
+        if (numSlices.get() == SLICE_MODE_MANUAL)
+            initialSlices = SourceHelpers::cleanSliceTimes(getOnsetTimes());
+        state.setProperty(SourceIDs::slices, SourceHelpers::formatSliceTimes(initialSlices), nullptr);
+    }
+    if (numSlices.get() == SLICE_MODE_AUTO_NNOTES)
+        numSlices = juce::jlimit(2, 100, getNumberOfMappedMidiNotes());
 }
 
 std::vector<SourceSamplerSound*> SourceSound::getLinkedSourceSamplerSounds() {
@@ -564,12 +557,6 @@ float SourceSound::getParameterFloat(juce::Identifier identifier, bool normed){
         else if (identifier == SourceIDs::pitch) { return !normed ? pitch.get() : juce::jmap(pitch.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::pitchBendRangeUp) { return !normed ? pitchBendRangeUp.get() : juce::jmap(pitchBendRangeUp.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::pitchBendRangeDown) { return !normed ? pitchBendRangeDown.get() : juce::jmap(pitchBendRangeDown.get(), 0.0f, 36.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::mod2CutoffAmt) { return !normed ? mod2CutoffAmt.get() : juce::jmap(mod2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::mod2GainAmt) { return !normed ? mod2GainAmt.get() : juce::jmap(mod2GainAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::mod2PitchAmt) { return !normed ? mod2PitchAmt.get() : juce::jmap(mod2PitchAmt.get(), -12.0f, 12.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::mod2PlayheadPos) { return !normed ? mod2PlayheadPos.get() : juce::jmap(mod2PlayheadPos.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::vel2CutoffAmt) { return !normed ? vel2CutoffAmt.get() : juce::jmap(vel2CutoffAmt.get(), 0.0f, 100.0f, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::vel2GainAmt) { return !normed ? vel2GainAmt.get() : juce::jmap(vel2GainAmt.get(), 0.0f, 1.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::velSensitivity) { return !normed ? velSensitivity.get() : juce::jmap(velSensitivity.get(), 0.0f, 6.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::pitchShift) { return !normed ? pitchShift.get() : juce::jmap(pitchShift.get(), -36.0f, 36.0f, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::timeStretch) { return !normed ? timeStretch.get() : juce::jmap(timeStretch.get(), 0.1f, 4.0f, 0.0f, 1.0f); }
@@ -603,12 +590,6 @@ void SourceSound::setParameterByNameFloat(juce::Identifier identifier, float val
         else if (identifier == SourceIDs::pitch) { pitch = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
         else if (identifier == SourceIDs::pitchBendRangeUp) { pitchBendRangeUp = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
         else if (identifier == SourceIDs::pitchBendRangeDown) { pitchBendRangeDown = !normed ? juce::jlimit(0.0f, 36.0f, value) : juce::jmap(value, 0.0f, 36.0f); }
-        else if (identifier == SourceIDs::mod2CutoffAmt) { mod2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
-        else if (identifier == SourceIDs::mod2GainAmt) { mod2GainAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
-        else if (identifier == SourceIDs::mod2PitchAmt) { mod2PitchAmt = !normed ? juce::jlimit(-12.0f, 12.0f, value) : juce::jmap(value, -12.0f, 12.0f); }
-        else if (identifier == SourceIDs::mod2PlayheadPos) { mod2PlayheadPos = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
-        else if (identifier == SourceIDs::vel2CutoffAmt) { vel2CutoffAmt = !normed ? juce::jlimit(0.0f, 100.0f, value) : juce::jmap(value, 0.0f, 100.0f); }
-        else if (identifier == SourceIDs::vel2GainAmt) { vel2GainAmt = !normed ? juce::jlimit(0.0f, 1.0f, value) : juce::jmap(value, 0.0f, 1.0f); }
         else if (identifier == SourceIDs::velSensitivity) { velSensitivity = !normed ? juce::jlimit(0.0f, 6.0f, value) : juce::jmap(value, 0.0f, 6.0f); }
         else if (identifier == SourceIDs::pitchShift) { pitchShift = !normed ? juce::jlimit(-36.0f, 36.0f, value) : juce::jmap(value, -36.0f, 36.0f); }
         else if (identifier == SourceIDs::timeStretch) { timeStretch = !normed ? juce::jlimit(0.1f, 4.0f, value) : juce::jmap(value, 0.1f, 4.0f); }
@@ -786,16 +767,36 @@ int SourceSound::getMidiNoteFromFirstSourceSamplerSound(){
 
 // ------------------------------------------------------------------------------------------------
 
-void SourceSound::setOnsetTimesSamples(std::vector<float> onsetTimes){
-    // Set the given onset times as slices
-    // NOTE: this method should not be called for multi-sample sounds (should I assert here?)
-    SourceSamplerSound* first = getFirstLinkedSourceSamplerSound();
-    if (first != nullptr){
-        first->setOnsetTimesSamples(onsetTimes);
-    }
+std::vector<float> SourceSound::getManualSlices() const{
+    return SourceHelpers::parseSliceTimes(state.getProperty(SourceIDs::slices).toString());
+}
+
+void SourceSound::setManualSlices(std::vector<float> times){
+    times = SourceHelpers::cleanSliceTimes(times, 0.0005f);
+    state.setProperty(SourceIDs::slices, SourceHelpers::formatSliceTimes(times), nullptr);
+    for (auto* samplerSound: getLinkedSourceSamplerSounds())
+        samplerSound->setSliceTimes(times);
+}
+
+std::vector<float> SourceSound::getOnsetTimes() const{
+    std::vector<float> onsets;
+    const auto onsetsState = state.getChildWithName(SourceIDs::SOUND_SAMPLE).getChildWithName(SourceIDs::ANALYSIS).getChildWithName(SourceIDs::onsets);
+    for (const auto& onset: onsetsState)
+        onsets.push_back((float)onset.getProperty(SourceIDs::onsetTime, 0.0f));
+    return onsets;
+}
+
+void SourceSound::setSlicesFromOnsets(){
+    // Onsets at the very start of the sound would make empty slices
+    setManualSlices(SourceHelpers::cleanSliceTimes(getOnsetTimes()));
 }
 
 // ------------------------------------------------------------------------------------------------
+
+void SourceSound::setMuted(bool shouldBeMuted){
+    state.setProperty(SourceIDs::muted, shouldBeMuted, nullptr);
+    mutedFlag.store(shouldBeMuted);
+}
 
 int SourceSound::getNumModulations() const{
     int count = 0;
@@ -912,9 +913,66 @@ int SourceSound::copyMpeMappings(MpeMappings& dest) noexcept{
 juce::StringArray SourceSound::getModulatableParameterNames(){
     juce::StringArray names;
     for (const auto& info: getSoundParametersInfo())
-        if (!info.isInt)
+        if (!info.isInt && info.midiCCEnabled)
             names.add(info.name);
     return names;
+}
+
+void SourceSound::convertLegacyModulationParameters(juce::ValueTree& soundState){
+    static const juce::Identifier mod2CutoffAmt ("mod2CutoffAmt"), mod2GainAmt ("mod2GainAmt"), mod2PitchAmt ("mod2PitchAmt"),
+                                  mod2PlayheadPos ("mod2PlayheadPos"), vel2CutoffAmt ("vel2CutoffAmt"), vel2GainAmt ("vel2GainAmt");
+    const std::array<juce::Identifier, 6> legacy { mod2CutoffAmt, mod2GainAmt, mod2PitchAmt, mod2PlayheadPos, vel2CutoffAmt, vel2GainAmt };
+    bool hasLegacy = false;
+    for (const auto& id: legacy)
+        hasLegacy = hasLegacy || soundState.hasProperty(id);
+    if (!hasLegacy)
+        return;
+
+    auto addModulator = [&soundState](const juce::String& type, const juce::String& parameterName, float minRange, float maxRange){
+        int numModulations = 0;
+        for (const auto& child: soundState)
+            if (child.hasType(SourceIDs::MODULATOR) || child.hasType(SourceIDs::MPE_MAPPING) || child.hasType(SourceIDs::MIDI_CC_MAPPING))
+                numModulations += 1;
+        if (numModulations >= maxModulationsPerSound)
+            return;
+        soundState.addChild(SourceHelpers::createModulatorState(type, parameterName, juce::jlimit(-1.0f, 1.0f, minRange), juce::jlimit(-1.0f, 1.0f, maxRange),
+                                                                SourceDefaults::lfoWaveform, SourceDefaults::lfoRate, SourceDefaults::modAttack,
+                                                                SourceDefaults::modDecay, SourceDefaults::modSustain, SourceDefaults::modRelease), -1, nullptr);
+    };
+    auto normalisedRange = [](const char* parameterName){
+        const auto* info = findSoundParameterInfo(parameterName);
+        return info != nullptr ? info->maxValue - info->minValue : 1.0f;
+    };
+    // The old cutoff modulations multiplied the cutoff (cutoff * (1 + amount * signal)): use the offset that gives the
+    // same cutoff with the full signal, for the sound's current cutoff
+    const auto* cutoffInfo = findSoundParameterInfo("filterCutoff");
+    const float cutoff = soundState.getProperty(SourceIDs::filterCutoff, cutoffInfo != nullptr ? cutoffInfo->defaultValue : 20000.0f);
+    auto cutoffOffset = [cutoff, cutoffInfo](float amount){
+        const float maxCutoff = cutoffInfo != nullptr ? cutoffInfo->maxValue : 20000.0f;
+        const float minCutoff = cutoffInfo != nullptr ? cutoffInfo->minValue : 10.0f;
+        return (juce::jmin(maxCutoff, cutoff * (1.0f + amount)) - cutoff) / (maxCutoff - minCutoff);
+    };
+    auto get = [&soundState](const juce::Identifier& id){ return (float)soundState.getProperty(id, 0.0f); };
+
+    // Aftertouch (and mod wheel)
+    if (get(mod2GainAmt) != 0.0f)
+        addModulator(MODULATOR_TYPE_AFTERTOUCH, "gain", 0.0f, get(mod2GainAmt) / normalisedRange("gain"));
+    if (get(mod2PitchAmt) != 0.0f)
+        addModulator(MODULATOR_TYPE_AFTERTOUCH, "pitch", 0.0f, get(mod2PitchAmt) / normalisedRange("pitch"));
+    if (get(mod2CutoffAmt) != 0.0f && cutoffOffset(get(mod2CutoffAmt)) != 0.0f)
+        addModulator(MODULATOR_TYPE_AFTERTOUCH, "filterCutoff", 0.0f, cutoffOffset(get(mod2CutoffAmt)));
+    if ((int)soundState.getProperty(SourceIDs::launchMode, 0) == LAUNCH_MODE_FREEZE)
+        addModulator(MODULATOR_TYPE_AFTERTOUCH, "playheadPosition", 0.0f, 1.0f);  // Aftertouch always moved the playhead in freeze mode
+    // Velocity: the gain was multiplied by (amount * velocity + 1 - amount), from (1 - amount) to 1 (approximated in dB)
+    if (get(vel2GainAmt) != 0.0f){
+        const float minDb = juce::jmax(-80.0f, juce::Decibels::gainToDecibels(juce::jmax(0.0001f, 1.0f - get(vel2GainAmt))));
+        addModulator(MODULATOR_TYPE_VELOCITY, "gain", minDb / normalisedRange("gain"), 0.0f);
+    }
+    if (get(vel2CutoffAmt) != 0.0f && cutoffOffset(get(vel2CutoffAmt)) != 0.0f)
+        addModulator(MODULATOR_TYPE_VELOCITY, "filterCutoff", 0.0f, cutoffOffset(get(vel2CutoffAmt)));
+
+    for (const auto& id: legacy)
+        soundState.removeProperty(id, nullptr);
 }
 
 void SourceSound::addOrEditModulator(const juce::String& uuid, const juce::String& type, const juce::String& parameterName, float minRange, float maxRange,

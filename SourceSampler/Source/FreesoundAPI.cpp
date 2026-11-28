@@ -827,6 +827,7 @@ FSSound::FSSound(juce::var sound)
 	comment = juce::URL(sound["comment"]);
 	similarSounds = juce::URL(sound["similar_sounds"]);
 	analysis = sound["analysis"];
+	onsetTimes = sound["onset_times"];
 	analysisStats = juce::URL(sound["analysis_stats"]);
 	analysisFrames = juce::URL(sound["analysis_frames"]);
 	acAnalysis = sound["ac_analysis"];

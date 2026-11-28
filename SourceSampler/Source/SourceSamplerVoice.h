@@ -163,6 +163,7 @@ private:
     bool mpeMode = false;
     int mpePitchBendRange = SourceDefaults::mpePitchBendRange;
     float mpePress = 0.0f;   // 0..1
+    float currentPressure = 0.0f;  // Aftertouch / channel pressure of the note (0..1), for aftertouch modulators
     float mpeSlide = 0.5f;   // 0..1
     float mpeGlide = 0.0f;   // -1..1
     int pendingMasterPitchWheelValue = 8192;
@@ -186,7 +187,6 @@ private:
     double pitchModSemitones = 0;  // For aftertouch, modulation wheel
     double pitchBendModSemitones = 0;
     double playheadSamplePosition = 0;
-    double playheadSamplePositionMod = 0;
     float pan = 0;
     float lgain = 0, rgain = 0;
     juce::ADSR adsr;
@@ -204,8 +204,6 @@ private:
     
     float filterCutoff = 20000.0f;
     float filterRessonance = 0.0f;
-    float filterCutoffMod = 0.0f;  // For aftertouch, modulation wheel
-    float gainMod = 1.0f;  // For aftertouch, modulation wheel
     int startPositionSample = 0;
     int endPositionSample = 0;
     int loopStartPositionSample = 0;

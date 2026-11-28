@@ -247,7 +247,7 @@ public:
 
             // Invalid sources / parameters (or int parameters) are ignored
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), "notASource", "pan", "0", "1", "0" });
-            f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), "press", "pan", "0", "1", "0" });  // Pressure uses the mod2* parameters
+            f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), "press", "pan", "0", "1", "0" });  // Pressure is used by aftertouch modulators
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), MPE_SOURCE_SLIDE, "notAParameter", "0", "1", "0" });
             f.send (ACTION_ADD_OR_UPDATE_MPE_MAPPING, { soundUUID, juce::Uuid().toString(), MPE_SOURCE_SLIDE, "launchMode", "0", "1", "0" });
             int numMappings = 0;
@@ -525,6 +525,34 @@ public:
             expectGreaterThan (buffer.getMagnitude (0, blockSize), 0.1f);
             f.send (ACTION_PLAY_SOUND_FILE_FROM_PATH, { "" });  // Stopping previews stops these too
             expectEquals (f.sampler.getNumHoverPreviewsPlaying(), 0);
+        }
+
+        beginTest ("Presets in the old format keep their Freesound onsets (as manual slices when numSlices was 0)");
+        {
+            Fixture f;
+            const juce::String oldPreset = R"(<?xml version="1.0" encoding="UTF-8"?>
+<SourcePresetState presetName="old" noteLayoutType="0">
+  <soundsInfo>
+    <soundInfo soundId="1" soundName="a" soundUser="u" soundLicense="" soundOGGURL="">
+      <fsAnalysis><onsets><onset time="0.001"/><onset time="0.5"/><onset time="1.25"/></onsets></fsAnalysis>
+      <SamplerSound midiNotes="ff" soundIdx="0">
+        <SamplerSoundParameter parameter_type="int" parameter_name="numSlices" parameter_value="0"/>
+      </SamplerSound>
+    </soundInfo>
+    <soundInfo soundId="2" soundName="b" soundUser="u" soundLicense="" soundOGGURL="">
+      <fsAnalysis><onsets/></fsAnalysis>
+      <SamplerSound midiNotes="ff" soundIdx="0"/>
+    </soundInfo>
+  </soundsInfo>
+</SourcePresetState>)";
+            expect (f.sampler.presetFilesLocation.getChildFile ("40.xml").replaceWithText (oldPreset));
+            f.send (ACTION_LOAD_PRESET, { "40" });
+            auto first = f.preset().getChild (0), second = f.preset().getChild (1);
+            expect (first.hasType (SourceIDs::SOUND) && second.hasType (SourceIDs::SOUND));
+            expectEquals (first.getChildWithName (SourceIDs::SOUND_SAMPLE).getChildWithName (SourceIDs::ANALYSIS)
+                               .getChildWithName (SourceIDs::onsets).getNumChildren(), 3, "Onsets kept");
+            expectEquals (first.getProperty (SourceIDs::slices).toString(), juce::String ("0.5000,1.2500"), "Manual slices from the onsets");
+            expectEquals (second.getProperty (SourceIDs::slices).toString(), juce::String(), "No onsets, no slices");
         }
 
         beginTest ("Program changes load presets");

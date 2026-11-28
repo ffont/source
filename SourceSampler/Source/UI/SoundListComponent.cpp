@@ -32,6 +32,7 @@ SoundListItem SoundListItem::fromState (const juce::ValueTree& soundState)
     item.loaded = soundState.getProperty (SourceIDs::allSoundsLoaded, false);
     item.willBeDeleted = soundState.getProperty (SourceIDs::willBeDeleted, false);
     item.findingSimilar = soundState.getProperty (SourceIDs::findingSimilar, false);
+    item.muted = soundState.getProperty (SourceIDs::muted, false);
 
     // Files are relative to the data location (stored in the root of the state)
     const juce::File dataLocation (soundState.getRoot().getProperty (SourceIDs::sourceDataLocation).toString());
@@ -97,10 +98,9 @@ class SoundListComponent::RowComponent : public juce::Component
 public:
     explicit RowComponent (SoundListComponent& o) : owner (o)
     {
-        for (auto* b : { &similarButton, &playButton, &stopButton, &removeButton })
+        for (auto* b : { &playButton, &stopButton, &muteButton, &removeButton })
             addAndMakeVisible (b);
-        similarButton.setTooltip ("Replace with a similar sound from Freesound (keeping the settings)");
-        similarButton.onClick = [this] { owner.actions.send (ACTION_REPLACE_SOUND_WITH_SIMILAR, { item.uuid }); };
+        muteButton.onClick = [this] { owner.actions.send (ACTION_SET_SOUND_MUTED, { item.uuid, item.muted ? "0" : "1" }); };
         addChildComponent (retryButton);
         retryButton.setTooltip ("Retry downloading");
         retryButton.onClick = [this] { owner.actions.send (ACTION_RETRY_SOUND_DOWNLOADS, { item.uuid }); };
@@ -119,9 +119,10 @@ public:
             item = owner.items[(size_t) (row - 1)];
         else
             item = {};
-        for (auto* b : { &similarButton, &playButton, &stopButton, &removeButton })
+        for (auto* b : { &playButton, &stopButton, &muteButton, &removeButton })
             b->setVisible (! isAllSoundsRow);
-        similarButton.setEnabled (item.fromFreesound && ! item.findingSimilar && ! item.willBeDeleted);
+        muteButton.setIcon (item.muted ? IconButton::Icon::speakerMuted : IconButton::Icon::speaker);
+        muteButton.setTooltip (item.muted ? "Unmute this sound" : "Mute this sound");
         // Sounds can't be played until they are downloaded and loaded (or if some file could not be downloaded)
         const bool canPlay = item.loaded && item.numFailedDownloads == 0 && item.numMissingLocalFiles == 0;
         playButton.setEnabled (canPlay);
@@ -240,11 +241,11 @@ public:
             retryButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
         buttons = buttons.removeFromRight (4 * 26 - 2);
-        similarButton.setBounds (buttons.removeFromLeft (24));
-        buttons.removeFromLeft (2);
         playButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
         stopButton.setBounds (buttons.removeFromLeft (24));
+        buttons.removeFromLeft (2);
+        muteButton.setBounds (buttons.removeFromLeft (24));
         buttons.removeFromLeft (2);
         removeButton.setBounds (buttons.removeFromLeft (24));
     }
@@ -262,7 +263,7 @@ private:
     int numActiveVoices = 0;
     SoundListItem item;
     IconButton retryButton { "Retry", IconButton::Icon::retry };
-    IconButton similarButton { "Similar", IconButton::Icon::similar };
+    IconButton muteButton { "Mute", IconButton::Icon::speaker };
     IconButton playButton { "Play", IconButton::Icon::play };
     IconButton stopButton { "Stop", IconButton::Icon::stop };
     IconButton removeButton { "Remove", IconButton::Icon::remove };

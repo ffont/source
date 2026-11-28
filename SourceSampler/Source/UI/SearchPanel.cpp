@@ -303,7 +303,7 @@ void SearchPanel::addResultToPreset (int index)
     // Parameters of ACTION_ADD_SOUND: soundID, name, user, license, previewURL, localFilePath, format, sizeBytes, slices, midiNotes, midiRootNote
     actions.send (ACTION_ADD_SOUND, { juce::String (result->id), SourceActionSender::sanitize (result->name), SourceActionSender::sanitize (result->username),
                                       result->license, result->previewURL, "", result->format, juce::String ((int) juce::jmin ((juce::int64) INT_MAX, result->filesize)),
-                                      "", "", "-1" });
+                                      result->getOnsetTimesAsStrings().joinIntoString (","), "", "-1" });
     // Lay out notes for all sounds (including the new one)
     const auto preset = getPreset();
     actions.send (ACTION_REAPPLY_LAYOUT, { juce::String ((int) preset.getProperty (SourceIDs::noteLayoutType, SourceDefaults::noteLayoutType)) });
@@ -320,7 +320,8 @@ void SearchPanel::replaceSoundWithResult (const juce::String& soundUUID, int ind
     // Parameters of ACTION_REPLACE_SOUND_AUDIO: sound UUID, sound ID, name, user, license, preview URL, local file path, format, size, slices
     actions.send (ACTION_REPLACE_SOUND_AUDIO, { soundUUID, juce::String (result->id), SourceActionSender::sanitize (result->name),
                                                 SourceActionSender::sanitize (result->username), result->license, result->previewURL, "",
-                                                result->format, juce::String ((int) juce::jmin ((juce::int64) INT_MAX, result->filesize)), "" });
+                                                result->format, juce::String ((int) juce::jmin ((juce::int64) INT_MAX, result->filesize)),
+                                                result->getOnsetTimesAsStrings().joinIntoString (",") });
     statusLabel.setText ("Replaced a sound with \"" + result->name + "\"", juce::dontSendNotification);
     statusLabel.setColour (juce::Label::textColourId, SourceColours::accent);
     updateFromState (getPreset());

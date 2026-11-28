@@ -140,6 +140,18 @@ public:
             expect (withoutDescriptors.embedding.empty());
         }
 
+        beginTest ("Onset times are parsed (as an array or a single number)");
+        {
+            const auto result = FreesoundSearchResult::fromJson (juce::JSON::parse (R"({"id": 1, "onset_times": [0.012, 0.5, 1.25]})"));
+            expectEquals ((int) result.onsetTimes.size(), 3);
+            expectWithinAbsoluteError (result.onsetTimes[1], 0.5f, 1.0e-6f);
+            expectEquals (result.getOnsetTimesAsStrings().joinIntoString (","), juce::String ("0.0120,0.5000,1.2500"));
+            const auto single = FreesoundSearchResult::fromJson (juce::JSON::parse (R"({"id": 1, "onset_times": 0.3})"));
+            expectEquals ((int) single.onsetTimes.size(), 1);
+            expect (FreesoundSearchResult::fromJson (juce::JSON::parse (R"({"id": 1})")).onsetTimes.empty());
+            expect (FreesoundSearch::getFields().contains ("onset_times"));
+        }
+
         beginTest ("Map positions are computed for all results");
         {
             std::vector<FreesoundSearchResult> results (20);

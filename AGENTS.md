@@ -83,10 +83,13 @@ cmake --build build --target SourceSamplerTests SourceSampler_Standalone
   posts results back to the message thread. The UI reads voice state only through atomics published by the voices
   (`getPublishedState`, modulator history, MPE values) via `SourceSampler::getVoicesInfo`/`forEachVoicePlayingSound`.
 - **Modulation**: MIDI CC mappings set the sound's parameter value (all notes, saved in the preset). MPE mappings
-  replace a parameter per note. Modulators (LFO/ADSR/steps) add an offset in the parameter's normalised range per
-  voice (min = max = 0 means none). Modulators and mappings share a limit of 16 per sound. Voices of sounds with
-  modulators render in 32-sample chunks.
-- **Tempo**: synced LFOs/steps use `SourceSamplerSynthesiser::getCurrentBpm()`, set every block by the processor.
+  replace a parameter per note. Modulators (LFO/ADSR/steps/aftertouch/velocity) add an offset in the parameter's
+  normalised range per voice (min = max = 0 means none). Velocity and aftertouch only act through modulators (the old
+  `mod2*`/`vel2*` parameters are converted when presets load, see `convertLegacyModulationParameters`). Modulators and
+  mappings share a limit of 16 per sound and target the `midiCCenabled` parameters. Voices of sounds with modulators
+  render in 32-sample chunks. Muted sounds keep playing silently.
+- **Tempo**: synced LFOs/steps and FX rates use `SourceSamplerSynthesiser::getCurrentBpm()` (and `SourceFxChain::setTempo`),
+  set every block by the processor.
 
 ## Working conventions
 

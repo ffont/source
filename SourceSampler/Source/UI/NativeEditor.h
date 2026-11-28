@@ -37,7 +37,8 @@ private:
 
 
 /** Shows which voices are active. */
-class VoicesComponent : public juce::Component
+class VoicesComponent : public juce::Component,
+                        public juce::SettableTooltipClient
 {
 public:
     void setVoices (const std::vector<SourceSampler::VoiceInfo>& voices);
@@ -122,31 +123,26 @@ private:
 
     // Header
     juce::ImageComponent titleImage, logoImage;
-    LoadingIndicator queryLoadingIndicator;  // Shown while a "Get new sounds" query runs
+    LoadingIndicator queryLoadingIndicator;  // Shown while a quick search query runs
     juce::TextButton generalTabButton { "General" }, searchTabButton { "Search" }, fxTabButton { "FX" }, settingsTabButton { "Settings" };
     std::vector<juce::TextButton*> getTabButtons();
     Tab currentTab = Tab::general;
 
-    // Preset & settings
-    CardComponent presetCard { "Preset & settings" };
-    juce::Label midiChannelLabel, numVoicesLabel;
+    // Preset controls (in the header)
     PresetSlotsComboBox presetSlotsCombo;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save" }, saveToPresetButton { "Save to..." };
     IconButton previousPresetButton { "Previous preset", IconButton::Icon::previous };
     IconButton nextPresetButton { "Next preset", IconButton::Icon::next };
-    juce::ComboBox midiChannelCombo;
-    juce::Slider numVoicesSlider;
-    juce::ToggleButton mpeToggle { "MPE" };
-    juce::Label mpeBendLabel;
-    juce::Slider mpeBendRangeSlider;
     VoicesComponent voicesComponent;
+    juce::TextButton fewerVoicesButton { "-" }, moreVoicesButton { "+" };
+    void changeNumVoices (int delta);
     juce::Slider bpmSlider;  // Tempo (global setting, or the Ableton Link session tempo when Link is on)
     juce::Label bpmLabel;
     void bpmChanged();
 
-    // Get new sounds
-    CardComponent querySoundsCard { "Get new sounds" };
+    // Quick search ("get new sounds" for the whole preset)
+    CardComponent querySoundsCard { "Quick search" };
     juce::Label queryLabel, numSoundsLabel, lengthLabel, lengthToLabel, layoutLabel, queryLicenseLabel;
     juce::ComboBox queryLicenseCombo;
     juce::OwnedArray<AcousticFilterComponent> queryAcousticFilters;
@@ -169,7 +165,7 @@ private:
     // Other tabs
     SearchPanel searchPanel;
     FxPanel fxPanel;
-    std::unique_ptr<SettingsPanel> settingsPanel;  // Only in the standalone app on iPad (where the settings window can't be opened)
+    std::unique_ptr<SettingsPanel> settingsPanel;  // MIDI settings, device settings (standalone app) and Link (iPad)
 
     // Keyboard
     juce::MidiKeyboardComponent keyboard;

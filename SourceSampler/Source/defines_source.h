@@ -124,6 +124,7 @@
 #define ACTION_SET_REVERB_PARAMETERS "/set_reverb_parameters"
 #define ACTION_SET_FX_PARAMETER "/set_fx_parameter"  // Parameters: parameter id (e.g. fxDelayTime, see SourceFxChain.h), value
 #define ACTION_SET_POLYPHONY "/set_polyphony"
+#define ACTION_SET_SOUND_MUTED "/set_sound_muted"  // soundUUID;muted (0/1)
 #define ACTION_SET_BPM "/set_bpm"  // bpm (Float): global tempo, used when there is no external tempo (Ableton Link or the plugin host)
 #define ACTION_REAPPLY_LAYOUT "/reapply_layout"
 #define ACTION_CLEAR_ALL_SOUNDS "/clear_all_sounds"
@@ -142,7 +143,8 @@
 #define ACTION_RETRY_SOUND_DOWNLOADS "/retry_sound_downloads"
 #define ACTION_SET_SOUND_PARAMETER_FLOAT "/set_sound_parameter"
 #define ACTION_SET_SOUND_PARAMETER_INT "/set_sound_parameter_int"
-#define ACTION_SET_SOUND_SLICES "/set_slices"
+#define ACTION_SET_SOUND_SLICES "/set_slices"  // soundUUID;slices (comma-separated times in seconds): the sound's manual slices
+#define ACTION_SET_SOUND_SLICES_FROM_ONSETS "/set_slices_from_onsets"  // soundUUID: manual slices from the Freesound onsets of the sound
 #define ACTION_SET_SOUND_ASSIGNED_NOTES "/set_assigned_notes"
 #define ACTION_PLAY_SOUND "/play_sound"
 #define ACTION_STOP_SOUND "/stop_sound"
@@ -168,6 +170,8 @@
 #define MODULATOR_TYPE_LFO "lfo"
 #define MODULATOR_TYPE_ADSR "adsr"
 #define MODULATOR_TYPE_STEPS "steps"
+#define MODULATOR_TYPE_AFTERTOUCH "aftertouch"  // Signal: aftertouch/channel pressure plus the mod wheel (clamped to 1)
+#define MODULATOR_TYPE_VELOCITY "velocity"      // Signal: note velocity (after the sound's velocity sensitivity)
 
 // External sound downloads actions
 #define ACTION_DOWNLOADING_SOUND_PROGRESS "/downloading_sound_progress"
@@ -182,8 +186,9 @@
 #define LAUNCH_MODE_TRIGGER 3
 #define LAUNCH_MODE_FREEZE 4
 
-#define SLICE_MODE_AUTO_NNOTES 1
-#define SLICE_MODE_AUTO_ONSETS 0
+#define SLICE_MODE_MANUAL 0       // Slices defined by the sound's markers ("slices" property, in seconds)
+#define SLICE_MODE_AUTO_NNOTES 1  // Legacy: one equal slice per mapped note (converted when sounds load)
+#define MAX_MANUAL_SLICES 100
 
 #define NOTE_MAPPING_MODE_PITCH 0
 #define NOTE_MAPPING_MODE_SLICE 1
@@ -204,8 +209,8 @@
 // MPE (MIDI Polyphonic Expression). SOURCE implements the MPE lower zone: master channel 1, member channels 2-16
 #define MPE_MASTER_CHANNEL 1
 #define MPE_SLIDE_CC 74
-// Per-note pressure is not an MPE mapping source: it is the same signal as aftertouch, which already drives the
-// sound's modulation parameters (mod2*) per note
+// Per-note pressure is not an MPE mapping source: it is the same signal as aftertouch, used by "aftertouch"
+// modulators (per note in MPE mode)
 #define MPE_SOURCE_SLIDE "slide"    // Per-note CC74 (0..1)
 #define MPE_SOURCE_GLIDE "glide"    // Per-note pitch bend (-1..1, mapped to 0..1 for mappings)
 #define MPE_SOURCE_STRIKE "strike"  // Note-on velocity (0..1)
@@ -261,12 +266,6 @@ inline float pan = 0.0f;
 inline float pitch = 0.0f;
 inline float pitchBendRangeUp = 12.0f;
 inline float pitchBendRangeDown = 12.0f;
-inline float mod2CutoffAmt = 10.0f;
-inline float mod2GainAmt = 6.0f;
-inline float mod2PitchAmt = 0.0f;
-inline float mod2PlayheadPos = 0.0f;
-inline float vel2CutoffAmt = 0.0f;
-inline float vel2GainAmt = 0.5f;
 inline float velSensitivity = 1.0f;
 inline int midiChannel = 0;
 inline float pitchShift = 0.0f;
@@ -355,6 +354,7 @@ DECLARE_ID (filesize)
 DECLARE_ID (duration)
 DECLARE_ID (onsets)
 DECLARE_ID (onset)
+DECLARE_ID (slices)
 DECLARE_ID (onsetTime)
 DECLARE_ID (midiRootNote)
 DECLARE_ID (midiNotes)
@@ -406,6 +406,7 @@ DECLARE_ID (lfoSync)
 DECLARE_ID (lfoSyncDivision)
 DECLARE_ID (lfoAttackDivision)
 DECLARE_ID (numSteps)
+DECLARE_ID (muted)
 DECLARE_ID (stepsRate)
 DECLARE_ID (stepsSyncLength)
 DECLARE_ID (stepValues)
@@ -440,12 +441,6 @@ DECLARE_ID (pan)
 DECLARE_ID (pitch)
 DECLARE_ID (pitchBendRangeUp)
 DECLARE_ID (pitchBendRangeDown)
-DECLARE_ID (mod2CutoffAmt)
-DECLARE_ID (mod2GainAmt)
-DECLARE_ID (mod2PitchAmt)
-DECLARE_ID (mod2PlayheadPos)
-DECLARE_ID (vel2CutoffAmt)
-DECLARE_ID (vel2GainAmt)
 DECLARE_ID (velSensitivity)
 DECLARE_ID (midiChannel)
 DECLARE_ID (pitchShift)

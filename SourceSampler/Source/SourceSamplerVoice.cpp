@@ -88,10 +88,8 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
         adsrFilter.reset();
         pitchModSemitones = 0.0;
         pitchBendModSemitones = 0.0;
-        filterCutoffMod = 0.0;
-        gainMod = 0.0;
-        playheadSamplePositionMod = 0.0;
         masterPitchBendSemitones = 0.0;
+        currentPressure = mpeMode ? mpePress : 0.0f;  // MPE: pressure sent on the note's channel before the note-on
         numParameterOverrides = 0;
         numMpeMappings = 0;
         modulatorSampleRate = pluginSampleRate;
@@ -102,7 +100,6 @@ void SourceSamplerVoice::startNote (int midiNoteNumber, float velocity, juce::Sy
             mpeGlide = juce::jlimit (-1.0f, 1.0f, ((float) currentPitchWheelPosition - 8192.0f) / 8192.0f);
             pitchBendModSemitones = mpeGlide * (float) mpePitchBendRange;
             masterPitchBendSemitones = computePitchBendSemitones (sound, pendingMasterPitchWheelValue);
-            channelPressureChanged (juce::roundToInt (mpePress * 127.0f));  // Applies the press modulations (mod2* amounts)
         }
         
         // Compute index of the currently played note
@@ -155,7 +152,7 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     
     if (sound->gpi(SourceIDs::launchMode) == LAUNCH_MODE_FREEZE){
         // If in freeze mode, we "only" care about the playhead position parameter, the rest of parameters to define pitch, start/end times, etc., are not relevant
-        targetPlayheadSamplePosition = (getParam(sound, SourceIDs::playheadPosition) + playheadSamplePositionMod + currentModWheelValue/127.0) * sound->getLengthInSamples();
+        targetPlayheadSamplePosition = getParam(sound, SourceIDs::playheadPosition) * sound->getLengthInSamples();
         
     } else {
         // Pitch
@@ -186,15 +183,15 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
             int globalStartPositionSample = (int)(getParam(sound, SourceIDs::startPosition) * soundLengthInSamples);
             int globalEndPositionSample = (int)(getParam(sound, SourceIDs::endPosition) * soundLengthInSamples);
             int startToEndSoundLength = globalEndPositionSample - globalStartPositionSample;
-            if (sound->gpi(SourceIDs::numSlices) != SLICE_MODE_AUTO_ONSETS){
-                // if not in slice by onsets mode, divide the sound in N equal slices
+            const int numSlicesParameter = sound->gpi(SourceIDs::numSlices);
+            if (numSlicesParameter != SLICE_MODE_MANUAL){
+                // Divide the sound in N equal slices
                 int nSlices;
-                if (sound->gpi(SourceIDs::numSlices) == SLICE_MODE_AUTO_NNOTES){
-                    // If in auto-nnotes mode choose the number of slices automatically to be the same of the number of notes mapped to this sound
+                if (numSlicesParameter == SLICE_MODE_AUTO_NNOTES){
+                    // Legacy mode: as many slices as notes mapped to this sound
                     nSlices = sound->getNumberOfMappedMidiNotes();
                 } else {
-                    // Othwise, assign the selected number of slices directly
-                    nSlices = sound->gpi(SourceIDs::numSlices);
+                    nSlices = numSlicesParameter;
                 }
                 nSlices = juce::jmax (1, nSlices);
                 float sliceLength = (float)startToEndSoundLength / (float)nSlices;
@@ -203,37 +200,31 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
                 endPositionSample = globalStartPositionSample + (currentSlice + 1) * sliceLength;
                 
             } else {
-                // If in onsets mode, get the slices from the onsets analysis. Only consider those onsets inside the global start/end selection
-                int globalStartPositionSample = (int)(getParam(sound, SourceIDs::startPosition) * soundLengthInSamples);
-                int globalEndPositionSample = (int)(getParam(sound, SourceIDs::endPosition) * soundLengthInSamples);
-                // Count onsets inside the start/end selection without allocating (this runs in the audio thread)
-                const std::vector<int>& onsetTimesSamples = sound->getOnsetTimesSamples();
-                int nSlices = 0;
-                for (int onset: onsetTimesSamples){
-                    if ((onset >= globalStartPositionSample) && (onset <= globalEndPositionSample))
-                        nSlices += 1;
+                // Manual slices: the markers inside the start/end selection split it in slices (n markers make n + 1
+                // slices; with no markers the whole selection is one slice). No allocations (audio thread).
+                const std::vector<float>& slicePositions = sound->getSlicePositions();
+                int numMarkers = 0;
+                for (float position: slicePositions){
+                    const int sample = (int)(position * soundLengthInSamples);
+                    if (sample > globalStartPositionSample && sample < globalEndPositionSample)
+                        numMarkers += 1;
                 }
-                if (nSlices > 0){
-                    // If onset data is available, use the onsets :)
-                    int currentSlice = currentlyPlayedNoteIndex % nSlices;
-                    int validIndex = 0;
-                    startPositionSample = globalStartPositionSample;
-                    endPositionSample = globalEndPositionSample;
-                    for (int onset: onsetTimesSamples){
-                        if ((onset < globalStartPositionSample) || (onset > globalEndPositionSample))
-                            continue;
-                        if (validIndex == currentSlice)
-                            startPositionSample = onset;
-                        else if (validIndex == currentSlice + 1){
-                            endPositionSample = onset;
-                            break;
-                        }
-                        validIndex += 1;
+                const int nSlices = numMarkers + 1;
+                const int currentSlice = currentlyPlayedNoteIndex % nSlices;
+                startPositionSample = globalStartPositionSample;
+                endPositionSample = globalEndPositionSample;
+                int markerIndex = 0;
+                for (float position: slicePositions){
+                    const int sample = (int)(position * soundLengthInSamples);
+                    if (sample <= globalStartPositionSample || sample >= globalEndPositionSample)
+                        continue;
+                    if (markerIndex == currentSlice - 1)
+                        startPositionSample = sample;
+                    if (markerIndex == currentSlice){
+                        endPositionSample = sample;
+                        break;
                     }
-                } else {
-                    // If no onset data is available, use all sound
-                    startPositionSample = globalStartPositionSample;
-                    endPositionSample = globalEndPositionSample;
+                    markerIndex += 1;
                 }
             }
             soundLoopStartPosition = startPositionSample;
@@ -283,33 +274,22 @@ void SourceSamplerVoice::updateParametersFromSourceSamplerSound(SourceSamplerSou
     
     // Filter
     
-    // Compute velocity modulations (only relevant at start of note)
     filterCutoff = getParam(sound, SourceIDs::filterCutoff); // * std::pow(2, getCurrentlyPlayingNote() - sound->midiRootNote) * sound->filterKeyboardTracking;  // Add kb tracking
     filterRessonance = getParam(sound, SourceIDs::filterRessonance);
-    float filterCutoffVelMod = currentNoteVelocity * getParam(sound, SourceIDs::filterCutoff) * getParam(sound, SourceIDs::vel2CutoffAmt);
-    float newFilterCutoffMod = filterCutoffMod + (currentModWheelValue/127.0) * filterCutoff * getParam(sound, SourceIDs::mod2CutoffAmt);  // Add mod wheel modulation and aftertouch here
     float filterADSRMod = adsrFilter.getNextSample() * filterCutoff * getParam(sound, SourceIDs::filterADSR2CutoffAmt);
     float computedCutoff = (1.0 - getParam(sound, SourceIDs::filterKeyboardTracking)) * filterCutoff + getParam(sound, SourceIDs::filterKeyboardTracking) * filterCutoff * std::pow(2.0f, (float)(getCurrentlyPlayingNote() - sound->getMidiRootNote()) / 12.0f) + // Base cutoff and kb tracking
-                           filterCutoffVelMod + // Velocity mod to cutoff
-                           newFilterCutoffMod +  // Aftertouch mod/modulation wheel mod
-                           filterADSRMod; // ADSR mod
+                           filterADSRMod; // ADSR mod (velocity and aftertouch are modulators that act on the cutoff parameter)
     auto& filter = processorChain.get<filterIndex>();
     filter.setCutoffFrequencyHz (juce::jmax(0.001f, computedCutoff));
     filter.setResonance (filterRessonance);
     
     // Amp and pan
-    float velocityGain = (getParam(sound, SourceIDs::vel2GainAmt) * currentNoteVelocity) + (1 - getParam(sound, SourceIDs::vel2GainAmt));
-    lgain = velocityGain;
-    rgain = velocityGain;
+    // Velocity and aftertouch act on the gain parameter through modulators
+    lgain = 1.0f;
+    rgain = 1.0f;
     pan = getParam(sound, SourceIDs::pan);
     auto& gain = processorChain.get<masterGainIndex>();
-    float newGainMod;
-    if (getParam(sound, SourceIDs::mod2GainAmt) >= 0){  // Set a maximum gain modulation combining mod wheel and aftertouch
-        newGainMod = (float)juce::jmin((double)(gainMod + getParam(sound, SourceIDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)getParam(sound, SourceIDs::mod2GainAmt));  // Add mod wheel modulation here
-    } else {
-        newGainMod = (float)juce::jmax((double)(gainMod + getParam(sound, SourceIDs::mod2GainAmt) * (double)currentModWheelValue/127.0), (double)getParam(sound, SourceIDs::mod2GainAmt));  // Add mod wheel modulation here
-    }
-    gain.setGainDecibels(getParam(sound, SourceIDs::gain) + newGainMod);
+    gain.setGainDecibels(getParam(sound, SourceIDs::gain));
 }
 
 void SourceSamplerVoice::stopNote (float /*velocity*/, bool allowTailOff)
@@ -418,26 +398,16 @@ void SourceSamplerVoice::updateMpeParameterOverrides (SourceSamplerSound* sound)
 
 void SourceSamplerVoice::aftertouchChanged(int newAftertouchValue)
 {
-    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
-    {
-        pitchModSemitones = getParam(sound, SourceIDs::mod2PitchAmt) * (double)newAftertouchValue/127.0;
-        filterCutoffMod = (newAftertouchValue/127.0) * filterCutoff * getParam(sound, SourceIDs::mod2CutoffAmt);
-        gainMod = getParam(sound, SourceIDs::mod2GainAmt) * (float)newAftertouchValue/127.0;
-        playheadSamplePositionMod = (double)newAftertouchValue/127.0;
-    }
+    // Polyphonic aftertouch of this note (used by aftertouch modulators)
+    currentPressure = juce::jlimit (0.0f, 1.0f, (float) newAftertouchValue / 127.0f);
 }
 
 
 void SourceSamplerVoice::channelPressureChanged  (int newChannelPressureValue)
 {
+    // Channel pressure (per note in MPE mode), used by aftertouch modulators
     mpePress = juce::jlimit (0.0f, 1.0f, (float) newChannelPressureValue / 127.0f);
-    if (auto* sound = getCurrentlyPlayingSourceSamplerSound())
-    {
-        pitchModSemitones = getParam(sound, SourceIDs::mod2PitchAmt) * (double)newChannelPressureValue/127.0;
-        filterCutoffMod = (newChannelPressureValue/127.0) * filterCutoff * getParam(sound, SourceIDs::mod2CutoffAmt);
-        gainMod = getParam(sound, SourceIDs::mod2GainAmt) * (float)newChannelPressureValue/127.0;
-        playheadSamplePositionMod = (double)newChannelPressureValue/127.0;
-    }
+    currentPressure = mpePress;
 }
 
 void SourceSamplerVoice::controllerMoved (int controllerNumber, int newValue)
@@ -524,6 +494,15 @@ void SourceSamplerVoice::updateModulators (SourceSamplerSound* sound, int numSam
             modulatorState.phase += rate * (double) seconds;
             modulatorState.phase -= std::floor (modulatorState.phase);
         }
+        else if (modulator.type == SourceHelpers::ModulatorType::aftertouch)
+        {
+            // Aftertouch (per note) plus the mod wheel, as the old "Mod >" parameters did
+            signal = juce::jlimit (0.0f, 1.0f, currentPressure + (float) currentModWheelValue / 127.0f);
+        }
+        else if (modulator.type == SourceHelpers::ModulatorType::velocity)
+        {
+            signal = currentNoteVelocity;
+        }
         else
         {
             signal = modulatorState.envelope.level;
@@ -586,7 +565,7 @@ void SourceSamplerVoice::renderChunk (juce::AudioBuffer<float>& outputBuffer, in
         // Do some preparation (not all parameters will be used depending on the launch mode)
         int originalNumSamples = numSamples; // user later for filter processing
         double previousPitchRatio = pitchRatio;
-        float previousPitchModSemitones = (float)juce::jmin((double)pitchModSemitones + getParam(sound, SourceIDs::mod2PitchAmt) * (double)currentModWheelValue/127.0, (double)getParam(sound, SourceIDs::mod2PitchAmt));  // Add mod wheel position
+        float previousPitchModSemitones = (float) pitchModSemitones;  // Always 0 (pitch modulations are applied to the pitch parameter)
         float previousPitchBendModSemitones = (float) (pitchBendModSemitones + masterPitchBendSemitones);
         float previousPan = pan;
         bool noteStoppedHard = false;
@@ -778,10 +757,11 @@ void SourceSamplerVoice::renderChunk (juce::AudioBuffer<float>& outputBuffer, in
         auto contextToUse = juce::dsp::ProcessContextReplacing<float> (blockToUse);
         processorChain.process (contextToUse);
         
-        // Add voice signal (including filter) to the output buffer
-        juce::dsp::AudioBlock<float> (outputBuffer)
-            .getSubBlock ((size_t) startSample, (size_t) originalNumSamples)
-            .add (blockToUse);
+        // Add voice signal (including filter) to the output buffer (muted sounds keep playing silently)
+        if (! sound->getSourceSound()->isMuted())
+            juce::dsp::AudioBlock<float> (outputBuffer)
+                .getSubBlock ((size_t) startSample, (size_t) originalNumSamples)
+                .add (blockToUse);
         
         // Publish the new playhead position for the UI (unless the note finished in this block)
         if (getCurrentlyPlayingSound() != nullptr)
