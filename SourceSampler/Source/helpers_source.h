@@ -16,6 +16,7 @@
 #include "defines_source.h"
 #include "drow_ValueTreeObjectList.h"
 #include <limits>
+#include <complex>
 
 
 struct GlobalContextStruct {
@@ -142,6 +143,47 @@ namespace SourceHelpers
     }
 
     /** Manual slices (times in seconds) as stored in the "slices" property of sounds, and back. */
+    /** Magnitude response (linear gain) of the sounds' filter (juce::dsp::LadderFilter in its default LPF12 mode, with
+        its default drive of 1.2, for small signals) at the given frequency. Computed from the filter's difference
+        equations: four one-pole stages H1(z) = g (0.769 + 0.231 z^-1) / (1 - a1 z^-1), with a1 = exp(-2 pi fc / fs) and
+        g = 1 - a1, and the input a = dx - 4 k (d2 z^-1 e - 0.5 dx), where dx = d1 x, k = 0.1 + 0.9 resonance, e is the
+        output of the fourth stage and d1, d2 are the small-signal gains of the drive stages. The output is 1.2 times
+        the second stage's. */
+    inline double ladderFilterMagnitude (double frequencyHz, double cutoffHz, double resonance, double sampleRate)
+    {
+        using C = std::complex<double>;
+        const double a1 = std::exp (-2.0 * juce::MathConstants<double>::pi * juce::jmax (0.001, cutoffHz) / sampleRate);
+        const double g = 1.0 - a1;
+        const double k = 0.1 + 0.9 * juce::jlimit (0.0, 1.0, resonance);
+        const C zInv = std::polar (1.0, -2.0 * juce::MathConstants<double>::pi * juce::jlimit (0.0, sampleRate * 0.5, frequencyHz) / sampleRate);
+        const C h1 = g * (0.76923076923 + 0.23076923076 * zInv) / (1.0 - a1 * zInv);
+        const C h2 = h1 * h1;
+        auto driveGain = [] (double drive) { return drive * (std::pow (drive, -2.642) * 0.6103 + 0.3903); };
+        const double d1 = driveGain (1.2), d2 = driveGain (1.2 * 0.04 + 0.96);
+        const C a = d1 * (1.0 + 2.0 * k) / (1.0 + 4.0 * k * d2 * zInv * h2 * h2);
+        return std::abs (1.2 * h2 * a);
+    }
+
+    /** Level (0..1) of an ADSR envelope (linear segments, like juce::ADSR) at a time (seconds) after note on, for a
+        note released at releaseTime (seconds after note on). */
+    inline float adsrLevelAt (float time, float attack, float decay, float sustain, float release, float releaseTime)
+    {
+        auto levelBeforeRelease = [&] (float t)
+        {
+            if (t < attack)
+                return attack > 0.0f ? t / attack : 1.0f;
+            if (t < attack + decay)
+                return 1.0f - (1.0f - sustain) * (decay > 0.0f ? (t - attack) / decay : 1.0f);
+            return sustain;
+        };
+        if (time < releaseTime)
+            return levelBeforeRelease (time);
+        const float releaseStartLevel = levelBeforeRelease (releaseTime);
+        if (release <= 0.0f)
+            return 0.0f;
+        return juce::jmax (0.0f, releaseStartLevel * (1.0f - (time - releaseTime) / release));
+    }
+
     inline std::vector<float> parseSliceTimes (const juce::String& text)
     {
         std::vector<float> times;
